@@ -65,6 +65,77 @@ node dist/ai.js connect npx -- -y @modelcontextprotocol/server-filesystem
 node dist/ai.js connect node -- path/to/your-server.js
 ```
 
+## Using the Connect-MCP Script
+
+If you prefer a standard command-line interface without AI interpretation, you can use the `connect-mcp` script. This provides direct access to MCP commands and is useful when you need precise control or when working with MCP tools programmatically.
+
+**Windows:**
+```cmd
+scripts\windows\connect-mcp.bat npx -- -y @wonderwhy-er/desktop-commander
+```
+
+**Unix/Linux:**
+```bash
+chmod +x scripts/unix/connect-mcp.sh
+./scripts/unix/connect-mcp.sh npx -- -y @wonderwhy-er/desktop-commander
+```
+
+Once connected, you'll get a standard MCP interface where you can run commands like:
+
+```
+MCP> list-tools
+MCP> call filesystem.list_files {"path":"."}
+MCP> server-info
+MCP> help
+MCP> exit
+```
+
+Unlike the AI CLI, this interface requires exact MCP command syntax but offers more direct and predictable interaction with the MCP server.
+
+## MCP Server Configuration
+
+The project now supports a configuration file for defining MCP servers. This makes it easy to add, modify, or share server configurations without changing code.
+
+### Configuration File
+
+Server configurations are stored in `configuration/servers.json`:
+
+```json
+{
+  "desktopCommander": {
+    "command": "npx",
+    "args": ["-y", "@wonderwhy-er/desktop-commander"]
+  },
+  "filesystem": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem"]
+  },
+  "local": {
+    "command": "node",
+    "args": ["dist/host.js", "stdio"]
+  }
+}
+```
+
+Each key is a server alias, and the value contains:
+- `command`: The executable to run
+- `args`: Array of command-line arguments
+- `env` (optional): Environment variables for the server process
+
+### Using Server Aliases
+
+With the configuration in place, you can use server aliases instead of full commands:
+
+```bash
+# Using an alias
+./scripts/unix/ai-cli.sh desktopCommander
+
+# List available server aliases
+./scripts/unix/list-servers.sh
+```
+
+This makes it easier to switch between different MCP servers and share configurations with others.
+
 ## MCP Server Capabilities
 
 Different MCP servers provide different capabilities:

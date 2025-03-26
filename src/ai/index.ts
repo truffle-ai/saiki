@@ -11,8 +11,14 @@ dotenv.config();
  * @param command Command to execute the server
  * @param args Arguments for the command
  * @param options CLI options
+ * @param env Environment variables for the server process
  */
-export async function startAiCli(command: string, args: string[], options: AiCliOptions) {
+export async function startAiCli(
+  command: string, 
+  args: string[], 
+  options: AiCliOptions,
+  env?: Record<string, string>
+) {
   // Check for OpenAI API key
   const apiKey = process.env.OPENAI_API_KEY;
   
@@ -40,7 +46,7 @@ export async function startAiCli(command: string, args: string[], options: AiCli
   
   try {
     // Connect to server
-    await connection.connectViaStdio(command, args);
+    await connection.connectViaStdio(command, args, env);
     
     // Start AI CLI
     await startAiInterface(connection, apiKey, options);

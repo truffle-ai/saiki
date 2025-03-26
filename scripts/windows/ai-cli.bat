@@ -36,10 +36,14 @@ if not exist "dist" (
     echo.
 )
 
-echo Starting AI-powered MCP client connected to ClaudeDesktopCommander...
+REM Get server alias from command line or use default
+set SERVER_ALIAS=%1
+if "%SERVER_ALIAS%"=="" set SERVER_ALIAS=desktopCommander
+
+echo Starting AI-powered MCP client connected to %SERVER_ALIAS%...
 echo.
 echo This client uses OpenAI to interpret your commands and call appropriate MCP tools.
-echo You can interact with the ClaudeDesktopCommander tools using natural language.
+echo You can interact with tools using natural language.
 echo.
 echo Examples:
 echo - "List all files in the current directory"
@@ -48,4 +52,4 @@ echo - "Create a new file called test.txt with 'Hello World' as content"
 echo - "Run a simple python script that prints numbers from 1 to 10"
 echo.
 
-node dist\ai.js connect "C:\Program Files\nodejs\npx.cmd" -- -y @wonderwhy-er/desktop-commander -v
+node dist\ai.js connect %SERVER_ALIAS% -v

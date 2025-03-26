@@ -11,6 +11,7 @@ export class McpConnection {
   private isConnected = false;
   private serverCommand: string | null = null;
   private serverArgs: string[] | null = null;
+  private serverEnv: Record<string, string> | null = null;
   private serverSpawned = false;
   private serverPid: number | null = null;
   private childProcess: ChildProcess | null = null;
@@ -24,14 +25,26 @@ export class McpConnection {
    * Connect to an MCP server using stdio transport
    * @param command Command to execute the server
    * @param args Arguments for the command
+   * @param env Environment variables for the server process
    */
-  async connectViaStdio(command: string, args: string[] = []): Promise<Client> {
+  async connectViaStdio(
+    command: string, 
+    args: string[] = [], 
+    env?: Record<string, string>
+  ): Promise<Client> {
     this.serverCommand = command;
     this.serverArgs = args;
+    this.serverEnv = env || null;
     
     console.log('\n======== SERVER SPAWN DETAILS ========');
     console.log(`Command: ${command}`);
     console.log(`Arguments: ${args.join(' ')}`);
+    if (env) {
+      console.log('Environment:');
+      Object.entries(env).forEach(([key, value]) => {
+        console.log(`  ${key}=${value}`);
+      });
+    }
     console.log('=======================================\n');
     
     console.log(`Connecting to MCP server: ${command} ${args.join(' ')}`);
@@ -41,7 +54,8 @@ export class McpConnection {
     // so we have to rely on transport events
     this.transport = new StdioClientTransport({
       command,
-      args
+      args,
+      env
     });
     
     // We'll set server spawned to true after successful connection
@@ -95,12 +109,14 @@ export class McpConnection {
     pid: number | null;
     command: string | null;
     args: string[] | null;
+    env: Record<string, string> | null;
   } {
     return {
       spawned: this.serverSpawned,
       pid: this.serverPid,
       command: this.serverCommand,
-      args: this.serverArgs
+      args: this.serverArgs,
+      env: this.serverEnv
     };
   }
 
