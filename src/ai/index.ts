@@ -30,6 +30,10 @@ export async function startAiCli(command: string, args: string[], options: AiCli
     console.error('Please set a valid OpenAI API key in the .env file');
     process.exit(1);
   }
+
+  console.log('[DEBUG] Verified API key');
+
+  console.log('[DEBUG] Creating connection to MCP server');
   
   // Create connection to MCP server
   const connection = new McpConnection();

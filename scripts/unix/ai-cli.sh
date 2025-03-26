@@ -17,25 +17,27 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
-# Check if the project is built
-if [ ! -d "dist" ]; then
-    echo "Building the project..."
+# Check if dependencies are installed
+if [ ! -d "node_modules" ]; then
+    echo "Installing dependencies..."
     npm install
     if [ $? -ne 0 ]; then
         echo "Error: Failed to install dependencies."
         read -p "Press Enter to exit..."
         exit 1
     fi
-    
-    npm run build
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to build the project."
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
-    echo "Project built successfully."
-    echo
 fi
+
+# Always build the project
+echo "Building the project..."
+npm run build
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to build the project."
+    read -p "Press Enter to exit..."
+    exit 1
+fi
+echo "Project built successfully."
+echo
 
 echo "Starting AI-powered MCP client connected to ClaudeDesktopCommander..."
 echo
