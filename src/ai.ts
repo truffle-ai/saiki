@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { startAiCli } from './ai/index.js';
-import { getServerConfig, configExists } from './config.js';
+import { getServerConfig, configExists } from './server/config.js';
 
 const program = new Command();
 
