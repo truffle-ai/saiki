@@ -19,15 +19,8 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 3. Run the AI CLI with the default server configuration:
 
-**Windows:**
-```cmd
-scripts\windows\ai-cli.bat
-```
-
-**Unix/Linux:**
 ```bash
-chmod +x scripts/unix/ai-cli.sh
-./scripts/unix/ai-cli.sh
+npm run dev
 ```
 
 ## Using the AI CLI
@@ -47,19 +40,15 @@ The AI translates your natural language into MCP tool calls, choosing the approp
 
 By default, the AI CLI uses the servers defined in `configuration/mcp.json`. To use a custom set of servers, create your own configuration file:
 
-**Unix/Linux:**
 ```bash
 # Connect using a custom configuration file
-./scripts/unix/ai-cli.sh --config-file path/to/your/config.json
+npm run dev -- --config-file path/to/your/config.json
 
 # Use strict mode to require all connections to succeed
-./scripts/unix/ai-cli.sh --config-file path/to/your/config.json --strict
-```
+npm run dev -- --config-file path/to/your/config.json --strict
 
-**Windows:**
-```cmd
-# Connect using a custom configuration file
-scripts\windows\ai-cli.bat --config-file path\to\your\config.json
+# Disable verbose output
+npm run dev -- --no-verbose
 ```
 
 ## Server Configuration File
