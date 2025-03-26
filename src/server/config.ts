@@ -76,16 +76,16 @@ export function getDefaultConfig(): ServerConfigs {
   return {
     desktopCommander: {
       command: 'npx',
-      args: ['-y', '@wonderwhy-er/desktop-commander']
+      args: ['-y', '@wonderwhy-er/desktop-commander'],
     },
     filesystem: {
       command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-filesystem']
+      args: ['-y', '@modelcontextprotocol/server-filesystem'],
     },
     local: {
       command: 'node',
-      args: ['dist/host.js', 'stdio']
-    }
+      args: ['dist/host.js', 'stdio'],
+    },
   };
 }
 
@@ -97,15 +97,11 @@ export async function createDefaultConfig(): Promise<string> {
   try {
     // Create directory if it doesn't exist
     await ensureConfigDirExists();
-    
+
     // Write default config
     const config = getDefaultConfig();
-    await fs.writeFile(
-      CONFIG_PATH,
-      JSON.stringify(config, null, 2),
-      'utf-8'
-    );
-    
+    await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+
     console.log(`Created default configuration at ${CONFIG_PATH}`);
     return CONFIG_PATH;
   } catch (error) {
@@ -126,4 +122,4 @@ export async function configExists(configPath?: string): Promise<boolean> {
   } catch {
     return false;
   }
-} 
+}

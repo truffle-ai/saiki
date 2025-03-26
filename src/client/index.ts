@@ -8,11 +8,11 @@ import { McpInteractiveCli } from './interactive.js';
  */
 export async function connectAndInteract(command: string, args: string[] = []): Promise<void> {
   const connection = new McpConnection();
-  
+
   try {
     // Connect to the server
     await connection.connectViaStdio(command, args);
-    
+
     // Start the interactive CLI
     const cli = new McpInteractiveCli(connection);
     await cli.start();

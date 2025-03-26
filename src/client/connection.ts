@@ -28,14 +28,14 @@ export class McpConnection {
    * @param env Environment variables for the server process
    */
   async connectViaStdio(
-    command: string, 
-    args: string[] = [], 
+    command: string,
+    args: string[] = [],
     env?: Record<string, string>
   ): Promise<Client> {
     this.serverCommand = command;
     this.serverArgs = args;
     this.serverEnv = env || null;
-    
+
     console.log('\n======== SERVER SPAWN DETAILS ========');
     console.log(`Command: ${command}`);
     console.log(`Arguments: ${args.join(' ')}`);
@@ -46,40 +46,40 @@ export class McpConnection {
       });
     }
     console.log('=======================================\n');
-    
+
     console.log(`Connecting to MCP server: ${command} ${args.join(' ')}`);
-    
+
     // Create transport for stdio connection
     // Note: StdioClientTransport doesn't directly expose the childProcess
     // so we have to rely on transport events
     this.transport = new StdioClientTransport({
       command,
       args,
-      env
+      env,
     });
-    
+
     // We'll set server spawned to true after successful connection
-    
+
     // Create client
     this.client = new Client(
       { name: 'MCP-Example-Client', version: '1.0.0' },
       {
         capabilities: {
-          tools: {}
-        }
+          tools: {},
+        },
       }
     );
-    
+
     try {
       console.log('Establishing connection...');
       await this.client.connect(this.transport);
-      
+
       // If connection is successful, we know the server was spawned
       this.serverSpawned = true;
       console.log(`\n✅ SERVER SPAWNED (PID unknown - MCP SDK doesn't expose it)`);
       console.log('Connection established!');
       this.isConnected = true;
-      
+
       return this.client;
     } catch (error: any) {
       console.error('Failed to connect to MCP server:', error.message);
@@ -104,8 +104,8 @@ export class McpConnection {
   /**
    * Get server status information
    */
-  getServerInfo(): { 
-    spawned: boolean; 
+  getServerInfo(): {
+    spawned: boolean;
     pid: number | null;
     command: string | null;
     args: string[] | null;
@@ -116,7 +116,7 @@ export class McpConnection {
       pid: this.serverPid,
       command: this.serverCommand,
       args: this.serverArgs,
-      env: this.serverEnv
+      env: this.serverEnv,
     };
   }
 

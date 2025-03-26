@@ -5,10 +5,7 @@ import { getServerConfig, configExists } from './server/config.js';
 
 const program = new Command();
 
-program
-  .name('mcp-ai')
-  .description('AI-powered CLI for MCP servers')
-  .version('0.1.0');
+program.name('mcp-ai').description('AI-powered CLI for MCP servers').version('0.1.0');
 
 program
   .command('connect')
@@ -22,7 +19,7 @@ program
     let command;
     let finalArgs = args;
     let env = undefined;
-    
+
     try {
       if (await configExists(options.config)) {
         const serverConfig = await getServerConfig(serverAlias, options.config);
@@ -44,7 +41,7 @@ program
       console.error(error);
       process.exit(1);
     }
-    
+
     await startAiCli(command, finalArgs, options, env);
   });
 

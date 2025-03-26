@@ -10,7 +10,7 @@ export class AiService {
   private client: Client;
   private conversationHistory: any[] = [];
   private model: string;
-  
+
   /**
    * Create a new AI Service
    * @param client MCP Client
@@ -20,18 +20,19 @@ export class AiService {
   constructor(client: Client, apiKey: string, model: string = 'gpt-4o-mini') {
     this.client = client;
     this.model = model;
-    
+
     // Initialize OpenAI client
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY || apiKey,
-      baseURL: 'https://api.openai.com/v1'
+      baseURL: 'https://api.openai.com/v1',
     });
-    
+
     // Initialize conversation history with a basic system message
     // This will be updated with specific tool details when updateSystemMessage is called
     this.conversationHistory.push({
       role: 'system',
-      content: 'You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.'
+      content:
+        'You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.',
     });
   }
 
@@ -41,16 +42,18 @@ export class AiService {
    */
   updateSystemMessage(tools: McpTool[]): void {
     // Create a more detailed system message with tool descriptions
-    const toolDescriptions = tools.map(tool => {
-      let description = `- ${tool.name}: ${tool.description || 'No description provided'}`;
-      if (tool.parameters && Object.keys(tool.parameters).length > 0) {
-        description += '\n  Parameters:';
-        for (const [paramName, param] of Object.entries(tool.parameters)) {
-          description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
+    const toolDescriptions = tools
+      .map((tool) => {
+        let description = `- ${tool.name}: ${tool.description || 'No description provided'}`;
+        if (tool.parameters && Object.keys(tool.parameters).length > 0) {
+          description += '\n  Parameters:';
+          for (const [paramName, param] of Object.entries(tool.parameters)) {
+            description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
+          }
         }
-      }
-      return description;
-    }).join('\n');
+        return description;
+      })
+      .join('\n');
 
     // Update the system message with available tools and enhanced guidance
     this.conversationHistory[0].content = `You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks by calling appropriate tools.
@@ -70,19 +73,19 @@ Follow these guidelines when using tools:
 
 Remember: You can use multiple tool calls in a sequence to solve multi-step problems.`;
   }
-  
+
   /**
    * Format tools for OpenAI function calling
    * @param tools MCP tools
    * @returns OpenAI tools format
    */
   private formatToolsForOpenAI(tools: McpTool[]): any[] {
-    return tools.map(tool => {
+    return tools.map((tool) => {
       // Convert parameters to OpenAI function parameters format
       const parameters: any = {
         type: 'object',
         properties: {},
-        required: []
+        required: [],
       };
 
       if (tool.parameters) {
@@ -100,7 +103,7 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
             // Extract enum values if they exist
             const enumMatch = param.type.match(/\[(.*?)\]/);
             if (enumMatch) {
-              paramEnum = enumMatch[1].split(',').map(v => v.trim().replace(/["']/g, ''));
+              paramEnum = enumMatch[1].split(',').map((v) => v.trim().replace(/["']/g, ''));
             }
           }
 
@@ -125,12 +128,12 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
         function: {
           name: tool.name,
           description: tool.description || `Tool for ${tool.name}`,
-          parameters: parameters
-        }
+          parameters: parameters,
+        },
       };
     });
   }
-  
+
   /**
    * Process user input with OpenAI
    * @param userInput User input
@@ -141,11 +144,11 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
     try {
       // Format tools for OpenAI function calling
       const openaiTools = this.formatToolsForOpenAI(tools);
-      
+
       // Add user message to conversation history
       this.conversationHistory.push({
         role: 'user',
-        content: userInput
+        content: userInput,
       });
 
       // Call OpenAI API
@@ -158,17 +161,17 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
 
       // Get the response message
       const responseMessage = response.choices[0].message;
-      
+
       // Add response to conversation history
       this.conversationHistory.push(responseMessage);
-      
+
       return responseMessage;
     } catch (error) {
       console.error('Error calling OpenAI API:', error);
       throw error;
     }
   }
-  
+
   /**
    * Call an MCP tool
    * @param toolName Tool name
@@ -178,10 +181,10 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
   async callTool(toolName: string, args: any): Promise<any> {
     return await this.client.callTool({
       name: toolName,
-      arguments: args
+      arguments: args,
     });
   }
-  
+
   /**
    * Process tool results with OpenAI
    * @param toolName Tool name
@@ -199,75 +202,77 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
   async processToolResults(toolName: string, toolResults: any, toolCallId?: string): Promise<any> {
     // Debug the conversation state
     this.logConversationState();
-    
+
     // Create a batch with just this single result
     return this.processToolResultsBatch([{ toolName, result: toolResults, toolCallId }]);
   }
-  
+
   /**
    * Process multiple tool results in a batch with OpenAI
    * @param toolResults Array of tool results
    * @returns OpenAI response
    */
-  async processToolResultsBatch(toolResults: Array<{toolName: string, result: any, toolCallId?: string}>): Promise<any> {
+  async processToolResultsBatch(
+    toolResults: Array<{ toolName: string; result: any; toolCallId?: string }>
+  ): Promise<any> {
     // Debug the conversation state before processing
     this.logConversationState();
-    
+
     console.log(`Processing batch of ${toolResults.length} tool results`);
-    
+
     // Step 1: Register all tool results with their tool call IDs
     for (const { toolName, result, toolCallId } of toolResults) {
       this.registerToolResult(toolName, result, toolCallId);
     }
-    
+
     // Step 2: Ensure all pending tool calls have responses
     this.ensureAllToolCallsHaveResponses();
-    
+
     // Step 3: Validate the conversation structure
     const isValid = this.validateConversationStructure();
     if (!isValid) {
-      console.log("Conversation structure is invalid. Attempting repair...");
+      console.log('Conversation structure is invalid. Attempting repair...');
       this.repairConversationStructure();
     }
-    
+
     // Step 4: Send the conversation to the LLM for analysis
     return this.getAIResponse();
   }
-  
+
   /**
    * Log the current state of the conversation for debugging
    */
   private logConversationState(): void {
-    console.log("===== CONVERSATION STATE =====");
-    
+    console.log('===== CONVERSATION STATE =====');
+
     // Create a simplified version of the conversation for logging
-    const simplifiedConversation = this.conversationHistory.map(msg => {
+    const simplifiedConversation = this.conversationHistory.map((msg) => {
       if (msg.role === 'tool') {
         return {
           role: msg.role,
           tool_call_id: msg.tool_call_id,
-          name: msg.name
+          name: msg.name,
         };
       } else if (msg.role === 'assistant' && msg.tool_calls) {
         return {
           role: msg.role,
-          tool_calls: msg.tool_calls.map(tc => ({
+          tool_calls: msg.tool_calls.map((tc) => ({
             id: tc.id,
-            name: tc.function.name
-          }))
+            name: tc.function.name,
+          })),
         };
       } else {
         return {
           role: msg.role,
-          has_content: Boolean(msg.content)
+          has_content: Boolean(msg.content),
         };
       }
     });
-    
+
     console.log(JSON.stringify(simplifiedConversation, null, 2));
-    console.log("===============================");
+    console.log('===============================');
   }
-  
+
   /**
    * Validate the conversation structure to ensure it follows OpenAI's requirements
    * @returns true if the conversation is valid, false otherwise
@@ -276,7 +281,7 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
     // Check that all tool calls have corresponding tool responses
     const toolCallIds = new Set<string>();
     const toolResponseIds = new Set<string>();
-    
+
     // Gather all tool call IDs
     for (const message of this.conversationHistory) {
       if (message.role === 'assistant' && message.tool_calls) {
@@ -285,14 +290,14 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
         }
       }
     }
-    
+
     // Gather all tool response IDs
     for (const message of this.conversationHistory) {
       if (message.role === 'tool' && message.tool_call_id) {
         toolResponseIds.add(message.tool_call_id);
       }
     }
-    
+
     // Check for any tool calls without responses
     for (const id of toolCallIds) {
       if (!toolResponseIds.has(id)) {
@@ -300,7 +305,7 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
         return false;
       }
     }
-    
+
     // Check for any tool responses without tool calls
     for (const id of toolResponseIds) {
       if (!toolCallIds.has(id)) {
@@ -308,22 +313,24 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
         return false;
       }
     }
-    
+
     // Make sure assistant messages with tool_calls are followed by tool messages
     for (let i = 0; i < this.conversationHistory.length - 1; i++) {
       const message = this.conversationHistory[i];
       if (message.role === 'assistant' && message.tool_calls && message.tool_calls.length > 0) {
         const nextNonToolCallCount = this.countNonToolMessagesAfter(i);
         if (nextNonToolCallCount > 0) {
-          console.log(`Found ${nextNonToolCallCount} non-tool messages after tool calls at index ${i}`);
+          console.log(
+            `Found ${nextNonToolCallCount} non-tool messages after tool calls at index ${i}`
+          );
           return false;
         }
       }
     }
-    
+
     return true;
   }
-  
+
   /**
    * Count non-tool messages after a specific index
    * @param index The starting index
@@ -332,7 +339,7 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
   private countNonToolMessagesAfter(index: number): number {
     let count = 0;
     let i = index + 1;
-    
+
     while (i < this.conversationHistory.length) {
       const message = this.conversationHistory[i];
       if (message.role !== 'tool') {
@@ -344,10 +351,10 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
       }
       i++;
     }
-    
+
     return count;
   }
-  
+
   /**
    * Repair the conversation structure if it's invalid
    */
@@ -355,7 +362,7 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
     // First, check for tool responses without valid tool calls
     const validToolCallIds = this.getValidToolCallIds();
     const invalidResponses: number[] = [];
-    
+
     for (let i = 0; i < this.conversationHistory.length; i++) {
       const message = this.conversationHistory[i];
       if (message.role === 'tool' && message.tool_call_id) {
@@ -364,26 +371,28 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
         }
       }
     }
-    
+
     // Remove invalid tool responses
     for (let i = invalidResponses.length - 1; i >= 0; i--) {
       const index = invalidResponses[i];
       console.log(`Removing invalid tool response at index ${index}`);
       this.conversationHistory.splice(index, 1);
     }
-    
+
     // Next, ensure all tool calls have responses
     this.ensureAllToolCallsHaveResponses();
-    
+
     // Finally, check the structure again
     const isValid = this.validateConversationStructure();
     if (!isValid) {
       // If still invalid, try a more aggressive repair
-      console.log("Conversation structure still invalid after repair. Trying more aggressive repair...");
+      console.log(
+        'Conversation structure still invalid after repair. Trying more aggressive repair...'
+      );
       this.removeLastToolCallSequence();
     }
   }
-  
+
   /**
    * Remove the last sequence of tool calls if the conversation is broken
    */
@@ -397,16 +406,16 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
         break;
       }
     }
-    
+
     if (lastToolCallIndex === -1) {
-      console.log("No tool call messages found to remove");
+      console.log('No tool call messages found to remove');
       return;
     }
-    
+
     // Find all related tool responses
-    const toolCallIds = this.conversationHistory[lastToolCallIndex].tool_calls.map(tc => tc.id);
+    const toolCallIds = this.conversationHistory[lastToolCallIndex].tool_calls.map((tc) => tc.id);
     const relatedIndices: number[] = [lastToolCallIndex];
-    
+
     for (let i = lastToolCallIndex + 1; i < this.conversationHistory.length; i++) {
       const message = this.conversationHistory[i];
       if (message.role === 'tool' && toolCallIds.includes(message.tool_call_id)) {
@@ -416,21 +425,22 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
         break;
       }
     }
-    
+
     // Remove all related messages in reverse order to avoid index shifting
     for (let i = relatedIndices.length - 1; i >= 0; i--) {
       const index = relatedIndices[i];
       console.log(`Removing problematic message at index ${index}`);
       this.conversationHistory.splice(index, 1);
     }
-    
+
     // Add a recovery message
     this.conversationHistory.push({
       role: 'assistant',
-      content: "I ran into an issue processing the previous tool calls. Let's try a different approach. How can I help you?"
+      content:
+        "I ran into an issue processing the previous tool calls. Let's try a different approach. How can I help you?",
     });
   }
-  
+
   /**
    * Register a tool result in the conversation history with proper tool call ID
    * @param toolName Name of the tool that was called
@@ -441,23 +451,25 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
     // First, ensure we only use tool call IDs that exist in the previous message
     const validToolCallIds = this.getValidToolCallIds();
     console.log(`Valid tool call IDs: ${JSON.stringify(validToolCallIds)}`);
-    
+
     // Determine the appropriate tool call ID
     let effectiveToolCallId = null;
-    
+
     // If provided ID is valid, use it
     if (toolCallId && validToolCallIds.includes(toolCallId)) {
       effectiveToolCallId = toolCallId;
       console.log(`Using provided tool call ID: ${effectiveToolCallId}`);
-    } 
+    }
     // Otherwise try to find a match by tool name
     else {
       // Get pending calls (tool calls without responses)
       const pendingCalls = this.findPendingToolCalls();
-      console.log(`Pending tool calls: ${JSON.stringify(pendingCalls.map(c => ({ id: c.id, name: c.name })))}`);
-      
+      console.log(
+        `Pending tool calls: ${JSON.stringify(pendingCalls.map((c) => ({ id: c.id, name: c.name })))}`
+      );
+
       // Try to match by tool name first
-      const matchByName = pendingCalls.find(call => call.name === toolName);
+      const matchByName = pendingCalls.find((call) => call.name === toolName);
       if (matchByName && validToolCallIds.includes(matchByName.id)) {
         effectiveToolCallId = matchByName.id;
         console.log(`Matched tool call by name: ${toolName} → ${effectiveToolCallId}`);
@@ -465,40 +477,42 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
       // If no match by name, use the first pending call if available
       else if (pendingCalls.length > 0) {
         // Make sure we only use valid tool call IDs
-        const validPendingCalls = pendingCalls.filter(call => validToolCallIds.includes(call.id));
+        const validPendingCalls = pendingCalls.filter((call) => validToolCallIds.includes(call.id));
         if (validPendingCalls.length > 0) {
           effectiveToolCallId = validPendingCalls[0].id;
           console.log(`Using first valid pending call ID: ${effectiveToolCallId}`);
         }
       }
     }
-    
+
     // If we couldn't find a valid tool call ID, we'll need to defer this response
     if (!effectiveToolCallId) {
       console.log(`No valid tool call ID found for ${toolName}. Cannot register tool result yet.`);
       return;
     }
-    
+
     // Format and add the tool result message to conversation history
     const toolResultMessage = {
       role: 'tool',
       tool_call_id: effectiveToolCallId,
       name: toolName,
-      content: JSON.stringify(toolResults || { error: "Tool returned null or undefined" })
+      content: JSON.stringify(toolResults || { error: 'Tool returned null or undefined' }),
     };
-    
+
     // Add to conversation history
     this.conversationHistory.push(toolResultMessage);
-    console.log(`Successfully registered tool result for: ${toolName} with ID: ${effectiveToolCallId}`);
+    console.log(
+      `Successfully registered tool result for: ${toolName} with ID: ${effectiveToolCallId}`
+    );
   }
-  
+
   /**
    * Get all valid tool call IDs from the conversation history
    * @returns Array of valid tool call IDs
    */
   private getValidToolCallIds(): string[] {
     const validIds: string[] = [];
-    
+
     // Find all assistant messages with tool_calls
     for (const message of this.conversationHistory) {
       if (message.role === 'assistant' && message.tool_calls) {
@@ -507,35 +521,35 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
         }
       }
     }
-    
+
     return validIds;
   }
-  
+
   /**
    * Ensure all pending tool calls in the conversation have corresponding responses
    */
   private ensureAllToolCallsHaveResponses(): void {
     // Find any tool calls that still need responses after our registration
     const pendingCalls = this.findPendingToolCalls();
-    
+
     if (pendingCalls.length > 0) {
       console.log(`Found ${pendingCalls.length} tool calls still needing responses`);
-      
+
       // Add placeholder responses for all remaining pending calls
       for (const call of pendingCalls) {
         console.log(`Adding placeholder response for: ${call.name} (${call.id})`);
-        
+
         this.conversationHistory.push({
           role: 'tool',
           tool_call_id: call.id,
           name: call.name,
           content: JSON.stringify({
-            status: "placeholder",
-            message: "This tool call was acknowledged but not fully processed"
-          })
+            status: 'placeholder',
+            message: 'This tool call was acknowledged but not fully processed',
+          }),
         });
       }
-      
+
       // Verify that we've handled all pending calls
       const stillPending = this.findPendingToolCalls();
       if (stillPending.length > 0) {
@@ -547,7 +561,7 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
       console.log('No pending tool calls - all are properly responded to');
     }
   }
-  
+
   /**
    * Get a response from the AI based on the current conversation history
    * @returns The AI's response message
@@ -555,58 +569,61 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
   private async getAIResponse(): Promise<any> {
     let attempts = 0;
     const MAX_ATTEMPTS = 3;
-    
+
     while (attempts < MAX_ATTEMPTS) {
       attempts++;
-      
+
       try {
         console.log(`API call attempt ${attempts}...`);
-        
+
         // Find available tools to offer to the model
         const availableTools = this.findAvailableTools();
-        
-        // Call OpenAI API 
+
+        // Call OpenAI API
         const response = await this.openai.chat.completions.create({
           model: this.model,
           messages: this.conversationHistory,
           tools: attempts === 1 ? availableTools : [], // Only offer tools on first attempt
           tool_choice: attempts === 1 ? 'auto' : 'none', // Disable tool choice on retry
         });
-        
+
         // Get and add the response to conversation history
         const responseMessage = response.choices[0].message;
         this.conversationHistory.push(responseMessage);
-        
-        console.log("API call successful");
+
+        console.log('API call successful');
         return responseMessage;
       } catch (error) {
         console.error(`API call attempt ${attempts} failed:`, error.message);
-        
-        if (error.message && error.message.includes('not found in \'tool_calls\'')) {
+
+        if (error.message && error.message.includes("not found in 'tool_calls'")) {
           // Handle specific error case for invalid tool call IDs
           this.handleInvalidToolCallError(error);
-        } else if (error.message && error.message.includes('tool_call_ids did not have response messages')) {
+        } else if (
+          error.message &&
+          error.message.includes('tool_call_ids did not have response messages')
+        ) {
           // Handle missing tool response error
           this.handleMissingToolResponseError(error);
         } else {
           // For other errors, if we're at max attempts, return a fallback
           if (attempts >= MAX_ATTEMPTS) {
-            console.log("Max retry attempts reached, returning fallback message");
+            console.log('Max retry attempts reached, returning fallback message');
             return this.createRecoveryMessage();
           }
         }
-        
+
         // For retry, simplify the conversation by removing tool calls
         if (attempts < MAX_ATTEMPTS) {
           this.simplifyConversationForRetry();
         }
       }
     }
-    
+
     // If we get here, all attempts failed
     return this.createRecoveryMessage();
   }
-  
+
   /**
    * Handle invalid tool call ID error
    * @param error The error containing invalid tool call ID information
@@ -618,10 +635,10 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
       console.error('Could not parse invalid tool call ID from error');
       return;
     }
-    
+
     const invalidId = invalidIdMatch[1];
     console.log(`Found invalid tool call ID: ${invalidId}`);
-    
+
     // Find and remove the invalid tool response
     for (let i = this.conversationHistory.length - 1; i >= 0; i--) {
       const message = this.conversationHistory[i];
@@ -631,34 +648,36 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
       }
     }
   }
-  
+
   /**
    * Handle missing tool response error
    * @param error The error containing missing tool response information
    */
   private handleMissingToolResponseError(error: any): void {
     // Extract the missing tool call ID from the error message
-    const missingIdMatch = error.message.match(/tool_call_ids did not have response messages: ([a-zA-Z0-9_]+)/);
+    const missingIdMatch = error.message.match(
+      /tool_call_ids did not have response messages: ([a-zA-Z0-9_]+)/
+    );
     if (!missingIdMatch) {
       console.error('Could not parse missing tool call ID from error');
       return;
     }
-    
+
     const missingId = missingIdMatch[1];
     console.log(`Found missing tool response ID: ${missingId}`);
-    
+
     // Add a placeholder response for this tool call
     this.conversationHistory.push({
       role: 'tool',
       tool_call_id: missingId,
       name: 'emergency_recovery',
-      content: JSON.stringify({ 
-        status: "error_recovery", 
-        message: "This tool call response was missing and has been auto-generated"
-      })
+      content: JSON.stringify({
+        status: 'error_recovery',
+        message: 'This tool call response was missing and has been auto-generated',
+      }),
     });
   }
-  
+
   /**
    * Simplify the conversation for retry attempts
    */
@@ -671,30 +690,30 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
         break;
       }
     }
-    
+
     if (lastUserIndex === -1) {
-      console.log("No user message found for simplification");
+      console.log('No user message found for simplification');
       return;
     }
-    
+
     // Remove everything after the last user message except one assistant response
     if (lastUserIndex < this.conversationHistory.length - 1) {
       // Keep one simple assistant response after the user message
       const responseMessage = {
         role: 'assistant',
-        content: "I'm working on your request. Let me think about this differently."
+        content: "I'm working on your request. Let me think about this differently.",
       };
-      
+
       // Truncate the conversation after the user message
       this.conversationHistory = [
         ...this.conversationHistory.slice(0, lastUserIndex + 1),
-        responseMessage
+        responseMessage,
       ];
-      
-      console.log("Simplified conversation for retry");
+
+      console.log('Simplified conversation for retry');
     }
   }
-  
+
   /**
    * Create a generic recovery message for error conditions
    * @returns A recovery response message
@@ -702,13 +721,14 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
   private createRecoveryMessage(): any {
     const recoveryMessage = {
       role: 'assistant',
-      content: "I encountered a technical issue, but I'm still here to help. What would you like me to do next?"
+      content:
+        "I encountered a technical issue, but I'm still here to help. What would you like me to do next?",
     };
-    
+
     this.conversationHistory.push(recoveryMessage);
     return recoveryMessage;
   }
-  
+
   /**
    * Find all available tools from the most recent message with tools
    * @returns Array of available tools in OpenAI format
@@ -721,22 +741,22 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
     }
     return [];
   }
-  
+
   /**
    * Find all pending tool calls that need responses
    * @returns Array of pending tool calls with their IDs and names
    */
-  private findPendingToolCalls(): Array<{id: string, name: string}> {
-    const pendingCalls: Array<{id: string, name: string}> = [];
+  private findPendingToolCalls(): Array<{ id: string; name: string }> {
+    const pendingCalls: Array<{ id: string; name: string }> = [];
     const respondedIds = new Set<string>();
-    
+
     // First, collect all tool response IDs
     for (const message of this.conversationHistory) {
       if (message.role === 'tool' && message.tool_call_id) {
         respondedIds.add(message.tool_call_id);
       }
     }
-    
+
     // Then find all tool calls that don't have responses
     for (const message of this.conversationHistory) {
       if (message.role === 'assistant' && message.tool_calls) {
@@ -744,16 +764,16 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
           if (!respondedIds.has(toolCall.id)) {
             pendingCalls.push({
               id: toolCall.id,
-              name: toolCall.function.name
+              name: toolCall.function.name,
             });
           }
         }
       }
     }
-    
+
     return pendingCalls;
   }
-  
+
   /**
    * Get all available tools from the client
    * @returns Available MCP tools
@@ -762,7 +782,7 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
     const toolsResult = await this.client.listTools();
     return toolsResult.tools as McpTool[];
   }
-  
+
   /**
    * Clear conversation history
    */

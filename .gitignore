@@ -21,6 +21,7 @@ build/
 *.swp
 *.swo
 .DS_Store
+.cursor/
 
 # Logs
 logs/
@@ -34,3 +35,6 @@ logs/
 
 # Optional eslint cache
 .eslintcache
+
+# Coverage directory
+coverage/
