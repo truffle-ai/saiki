@@ -42,6 +42,7 @@
     "openai": "^4.89.0",
     "ora": "^7.0.1",
     "readline-sync": "^1.4.10",
+    "winston": "^3.17.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

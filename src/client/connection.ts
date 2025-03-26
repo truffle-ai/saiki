@@ -126,7 +126,6 @@ export class MCPClient implements IMCPClient {
   async listResources(): Promise<string[]> { return []; }
   async readResource(url: string): Promise<string> { return ""; }
 
-  // Temp unused implementation
   async callTool(name: string, args: any): Promise<any> {
     try {
       console.log(`Calling tool '${name}' with args:`, args);

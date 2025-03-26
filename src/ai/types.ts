@@ -21,7 +21,6 @@ export interface McpTool {
  */
 export interface AiCliOptions {
   model?: string;
-  verbose?: boolean;
   configFile?: string;
   connectionMode?: 'strict' | 'lenient';
 }

@@ -1,111 +1,20 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import boxen from 'boxen';
 import ora from 'ora';
+import { logger } from '../utils/logger.js';
 import { AiService } from './service.js';
 import { AiCliOptions } from './types.js';
 import { MCPConnectionManager } from '../client/manager.js';
-/**
- * Format and display tool call
- */
-function displayToolCall(toolName: string, args: any) {
-  console.log(
-    boxen(
-      `${chalk.cyan('Tool Call')}: ${chalk.yellow(toolName)}\n${chalk.dim('Arguments')}:\n${chalk.white(JSON.stringify(args, null, 2))}`,
-      { padding: 1, borderColor: 'blue', title: '🔧 Tool Call', titleAlignment: 'center' }
-    )
-  );
-}
-
-/**
- * Format and display tool result
- */
-function displayToolResult(result: any) {
-  let displayText = '';
-  let isError = false;
-  let borderColor = 'green';
-  let title = '✅ Tool Result';
-
-  // Check if result indicates an error
-  if (result?.error || result?.isError) {
-    isError = true;
-    borderColor = 'yellow';
-    title = '⚠️ Tool Result (Error)';
-  }
-
-  // Handle different result formats
-  if (result?.content && Array.isArray(result.content)) {
-    // Standard MCP format with content array
-    result.content.forEach((item: any) => {
-      if (item.type === 'text') {
-        displayText += item.text;
-      } else if (item.type === 'image' && item.url) {
-        displayText += `[Image: ${item.url}]`;
-      } else if (item.type === 'markdown') {
-        displayText += item.markdown;
-      } else {
-        displayText += `[Unsupported content type: ${item.type}]`;
-      }
-      displayText += '\n';
-    });
-  } else if (result?.message) {
-    // Error message format
-    displayText = result.message;
-    isError = true;
-    borderColor = 'red';
-    title = '❌ Tool Error';
-  } else if (typeof result === 'string') {
-    // Plain string response
-    displayText = result;
-  } else {
-    // Fallback for any other format
-    try {
-      displayText = JSON.stringify(result, null, 2);
-    } catch {
-      displayText = `[Unparseable result: ${typeof result}]`;
-    }
-  }
-
-  // Format empty results
-  if (!displayText || displayText.trim() === '') {
-    displayText = '[Empty result]';
-  }
-
-  // Apply color based on error status
-  const textColor = isError ? chalk.yellow : chalk.green;
-  console.log(
-    boxen(textColor(displayText), { padding: 1, borderColor, title, titleAlignment: 'center' })
-  );
-}
-
-/**
- * Format and display LLM response
- */
-function displayLlmResponse(response: any) {
-  if (response.content) {
-    console.log(
-      boxen(chalk.white(response.content), {
-        padding: 1,
-        borderColor: 'yellow',
-        title: '🤖 AI Response',
-        titleAlignment: 'center',
-      })
-    );
-  } else {
-    console.log(chalk.yellow('AI is thinking...'));
-  }
-}
 
 /**
  * Start AI-powered CLI
  */
 export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: string, options: AiCliOptions) {
   // Display welcome message
-  console.log(chalk.bold.cyan('\nAI-Powered MCP Client\n========================\n'));
-  console.log(chalk.gray('Using OpenAI model:'), chalk.green(options.model || 'gpt-4o-mini'));
-  console.log(chalk.gray('Verbose mode:'), options.verbose ? chalk.green('On') : chalk.red('Off'));
-  console.log(chalk.gray('Connected servers:'), chalk.green(connectionManager.getClients().size));
-  console.log('');
+  logger.info('AI-Powered MCP Client\n========================\n');
+  logger.info(`Using OpenAI model: ${options.model || 'gpt-4o-mini'}`);
+  logger.info(`Log level: ${logger.getLevel()}`);
+  logger.info(`Connected servers: ${connectionManager.getClients().size}`);
 
   // Initialize spinner
   const spinner = ora('Initializing AI service...').start();
@@ -116,27 +25,24 @@ export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: 
   try {
     // Get available tools from all connected servers
     spinner.text = 'Loading available tools...';
-    console.log('[DEBUG] Getting available tools...');
+    logger.debug('Getting available tools...');
     const tools = await aiService.getAvailableTools();
-    console.log(
-      '[DEBUG] Received tools:',
-      tools.map((t) => t.name)
+    logger.debug(
+      `Received tools: ${tools.map((t) => t.name)}`
     );
 
     // Update system message with available tools
     aiService.updateSystemMessage(tools);
     spinner.succeed(`Loaded ${tools.length} tools from ${connectionManager.getClients().size} MCP servers`);
 
-    if (options.verbose) {
-      console.log(chalk.gray('\nAvailable tools:'));
-      tools.forEach((tool, index) => {
-        console.log(chalk.gray(`  ${index + 1}. ${chalk.yellow(tool.name)}`));
-        if (tool.description) {
-          console.log(chalk.gray(`     ${tool.description}`));
-        }
-      });
-      console.log('');
-    }
+    // Show available tools (these will only display if debug level is enabled)
+    logger.debug('Available tools:');
+    tools.forEach((tool, index) => {
+      logger.debug(`${index + 1}. ${tool.name}`);
+      if (tool.description) {
+        logger.debug(`${tool.description}`);
+      }
+    });
 
     // Create readline interface
     const rl = readline.createInterface({
@@ -150,28 +56,28 @@ export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: 
     // Main interaction loop
     for await (const line of rl) {
       const trimmedInput = line.trim();
-      console.log(`[DEBUG] Received input: "${trimmedInput}"`);
+      logger.debug(`Received input: "${trimmedInput}"`);
 
       if (trimmedInput.toLowerCase() === 'exit' || trimmedInput.toLowerCase() === 'quit') {
-        console.log(chalk.yellow('\nExiting AI CLI. Goodbye!'));
+        logger.warn('Exiting AI CLI. Goodbye!');
         rl.close();
         process.exit(0);
         break;
       }
 
       try {
-        console.log('[DEBUG] Stopping spinner before processing input.');
+        logger.debug('Stopping spinner before processing input.');
         spinner.stop();
         spinner.text = 'AI thinking...';
-        console.log('[DEBUG] Calling aiService.processUserInput()');
+        logger.debug('Calling aiService.processUserInput()');
         // Process user input with LLM
         let currentResponse = await aiService.processUserInput(trimmedInput, tools);
-        console.log('[DEBUG] Received AI response:', currentResponse);
+        logger.debug(`Received AI response: ${JSON.stringify(currentResponse)}`);
         spinner.stop();
         process.stdout.write('\n');
 
         // Initialize response
-        displayLlmResponse(currentResponse);
+        logger.displayAIResponse(currentResponse);
 
         // Display initial LLM response regardless of whether it contains tool calls
         let toolCallIteration = 0;
@@ -183,7 +89,7 @@ export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: 
         while (currentResponse.tool_calls?.length && toolCallIteration < MAX_TOOL_ITERATIONS) {
           // Safety check to prevent infinite loops
           toolCallIteration++;
-          console.log(chalk.gray(`[DEBUG] Tool execution cycle ${toolCallIteration} started.`));
+          logger.debug(`Tool execution cycle ${toolCallIteration} started.`);
 
           // Collect and parse all tool calls
           const toolCallsToProcess = currentResponse.tool_calls.map((toolCall) => {
@@ -193,10 +99,10 @@ export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: 
               toolName = toolCall.function.name;
               args = JSON.parse(toolCall.function.arguments || '{}');
               toolCallId = toolCall.id;
-              console.log(`[DEBUG] Parsed tool call: ${toolName} with args:`, args);
+              logger.debug(`Parsed tool call: ${toolName} with args: ${JSON.stringify(args)}`);
             } catch (error: any) {
-              console.error(
-                chalk.red(`[DEBUG] Error parsing tool call arguments: ${error.message}`)
+              logger.error(
+                `Error parsing tool call arguments: ${error.message}`
               );
               toolName = toolCall.function?.name || 'unknown';
               args = {};
@@ -204,13 +110,13 @@ export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: 
             }
 
             // Display tool call information to the user
-            displayToolCall(toolName, args);
+            logger.toolCall(toolName, args);
             return { toolName, args, toolCallId };
           });
 
           // Execute all tool calls in parallel
           spinner.text = `Executing ${toolCallsToProcess.length} tools in parallel...`;
-          console.log('[DEBUG] Executing tool calls in parallel...');
+          logger.debug('Executing tool calls in parallel...');
           spinner.start();
 
           // Wait for all tool calls to complete
@@ -218,14 +124,14 @@ export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: 
             toolCallsToProcess.map(async ({ toolName, args, toolCallId }) => {
               try {
                 // Call the tool and get the result
-                console.log(`[DEBUG] Calling tool: ${toolName}`);
+                logger.debug(`Calling tool: ${toolName}`);
                 const result = await aiService.callTool(toolName, args);
-                console.log(`[DEBUG] Received result from ${toolName}`);
+                logger.debug(`Received result from ${toolName}`);
                 return { toolName, result, toolCallId, success: true };
               } catch (error: any) {
                 // Create an error result object
-                console.error(
-                  chalk.red(`[DEBUG] Error executing tool ${toolName}: ${error.message}`)
+                logger.error(
+                  `Error executing tool ${toolName}: ${error.message}`
                 );
                 return {
                   toolName,
@@ -249,42 +155,35 @@ export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: 
           toolResults.forEach(({ toolName, result, success, error }) => {
             if (success) {
               // Display successful result
-              console.log(`[DEBUG] Displaying result for ${toolName}`);
-              displayToolResult(result);
+              logger.debug(`Displaying result for ${toolName}`);
+              logger.toolResult(result);
             } else {
               // Display error result
-              console.error(`[DEBUG] Displaying error for ${toolName}: ${error.message}`);
-              console.log(
-                boxen(chalk.red(`Error: ${error.message}`), {
-                  padding: 1,
-                  borderColor: 'red',
-                  title: `❌ ${toolName} Error`,
-                  titleAlignment: 'center',
-                })
-              );
+              logger.error(`Displaying error for ${toolName}: ${error.message}`);
+              logger.error(`${toolName} Error: ${error.message}`);
             }
           });
 
           // Process all tool results at once
           spinner.text = 'AI analyzing all tool results...';
-          console.log('[DEBUG] Calling aiService.processToolResultsBatch()');
+          logger.debug('Calling aiService.processToolResultsBatch()');
           spinner.start();
           try {
             // Process all results in one batch
             currentResponse = await aiService.processToolResultsBatch(toolResults);
-            console.log('[DEBUG] Received analysis response:', currentResponse);
+            logger.debug(`Received analysis response: ${JSON.stringify(currentResponse)}`);
             spinner.stop();
 
             // Update current response to the latest analysis
             // Display the AI's analysis to the user
-            displayLlmResponse(currentResponse);
+            logger.displayAIResponse(currentResponse);
           } catch (analysisError: any) {
             // Handle analysis errors
             spinner.fail(`Error during AI analysis: ${analysisError.message}`);
-            console.error('[DEBUG] Error during AI analysis:', analysisError);
+            logger.error(`Error during AI analysis: ${analysisError.message}`);
 
             // Create a simple recovery message
-            displayLlmResponse({
+            logger.displayAIResponse({
               role: 'assistant',
               content: `I encountered an error analyzing the tool results. Let's try a different approach.`,
             });
@@ -298,22 +197,22 @@ export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: 
         }
       } catch (error: any) {
         spinner.fail(`Error: ${error.message}`);
-        console.error('[DEBUG] Error in processing input:', error);
+        logger.error(`Error in processing input: ${error.message}`);
       } finally {
         spinner.stop();
         spinner.clear();
         process.stdout.write('\n');
-        console.log('[DEBUG] About to prompt for next input; resuming stdin.');
+        logger.debug('About to prompt for next input; resuming stdin.');
         process.stdin.resume();
         // Add a slight delay before prompting to let the event loop catch up.
         await new Promise((resolve) => setTimeout(resolve, 50));
-        console.log('[DEBUG] Prompting for next input...');
+        logger.debug('Prompting for next input...');
         // Prompt for next input
         rl.prompt();
       }
     }
   } catch (error: any) {
     spinner.fail(`Error initializing AI service: ${error.message}`);
-    console.error('[DEBUG] Error during initialization:', error);
+    logger.error(`Error during initialization: ${error.message}`);
   }
 }

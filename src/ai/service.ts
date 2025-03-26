@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { McpTool } from './types.js';
 import { MCPConnectionManager } from '../client/manager.js';
 import { IMCPClient } from '../client/connection.js';
+import { logger } from '../utils/logger.js';
 // System prompt constants
 const INITIAL_SYSTEM_PROMPT = 'You are an AI assistant with access to MCP tools from multiple servers. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.';
 
@@ -177,7 +178,7 @@ export class AiService {
 
       return responseMessage;
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
+      logger.error('Error calling OpenAI API:', error);
       throw error;
     }
   }
@@ -232,7 +233,7 @@ export class AiService {
     // Debug the conversation state before processing
     this.logConversationState();
 
-    console.log(`Processing batch of ${toolResults.length} tool results`);
+    logger.info(`Processing batch of ${toolResults.length} tool results`);
 
     // Step 1: Register all tool results with their tool call IDs
     for (const { toolName, result, toolCallId } of toolResults) {
@@ -245,7 +246,7 @@ export class AiService {
     // Step 3: Validate the conversation structure
     const isValid = this.validateConversationStructure();
     if (!isValid) {
-      console.log('Conversation structure is invalid. Attempting repair...');
+      logger.error('Conversation structure is invalid. Attempting repair...');
       this.repairConversationStructure();
     }
 
@@ -257,7 +258,7 @@ export class AiService {
    * Log the current state of the conversation for debugging
    */
   private logConversationState(): void {
-    console.log('===== CONVERSATION STATE =====');
+    logger.info('===== CONVERSATION STATE =====');
 
     // Create a simplified version of the conversation for logging
     const simplifiedConversation = this.conversationHistory.map((msg) => {
@@ -283,8 +284,8 @@ export class AiService {
       }
     });
 
-    console.log(JSON.stringify(simplifiedConversation, null, 2));
-    console.log('===============================');
+    logger.info(JSON.stringify(simplifiedConversation, null, 2));
+    logger.info('===============================');
   }
 
   /**
@@ -315,7 +316,7 @@ export class AiService {
     // Check for any tool calls without responses
     for (const id of toolCallIds) {
       if (!toolResponseIds.has(id)) {
-        console.log(`Missing tool response for tool call ID: ${id}`);
+        logger.error(`Missing tool response for tool call ID: ${id}`);
         return false;
       }
     }
@@ -323,7 +324,7 @@ export class AiService {
     // Check for any tool responses without tool calls
     for (const id of toolResponseIds) {
       if (!toolCallIds.has(id)) {
-        console.log(`Tool response references non-existent tool call ID: ${id}`);
+        logger.error(`Tool response references non-existent tool call ID: ${id}`);
         return false;
       }
     }
@@ -334,7 +335,7 @@ export class AiService {
       if (message.role === 'assistant' && message.tool_calls && message.tool_calls.length > 0) {
         const nextNonToolCallCount = this.countNonToolMessagesAfter(i);
         if (nextNonToolCallCount > 0) {
-          console.log(
+          logger.error(
             `Found ${nextNonToolCallCount} non-tool messages after tool calls at index ${i}`
           );
           return false;
@@ -389,7 +390,7 @@ export class AiService {
     // Remove invalid tool responses
     for (let i = invalidResponses.length - 1; i >= 0; i--) {
       const index = invalidResponses[i];
-      console.log(`Removing invalid tool response at index ${index}`);
+      logger.error(`Removing invalid tool response at index ${index}`);
       this.conversationHistory.splice(index, 1);
     }
 
@@ -400,7 +401,7 @@ export class AiService {
     const isValid = this.validateConversationStructure();
     if (!isValid) {
       // If still invalid, try a more aggressive repair
-      console.log(
+      logger.error(
         'Conversation structure still invalid after repair. Trying more aggressive repair...'
       );
       this.removeLastToolCallSequence();
@@ -422,7 +423,7 @@ export class AiService {
     }
 
     if (lastToolCallIndex === -1) {
-      console.log('No tool call messages found to remove');
+      logger.info('No tool call messages found to remove');
       return;
     }
 
@@ -443,7 +444,7 @@ export class AiService {
     // Remove all related messages in reverse order to avoid index shifting
     for (let i = relatedIndices.length - 1; i >= 0; i--) {
       const index = relatedIndices[i];
-      console.log(`Removing problematic message at index ${index}`);
+      logger.info(`Removing problematic message at index ${index}`);
       this.conversationHistory.splice(index, 1);
     }
 
@@ -464,7 +465,7 @@ export class AiService {
   private registerToolResult(toolName: string, toolResults: any, toolCallId?: string): void {
     // First, ensure we only use tool call IDs that exist in the previous message
     const validToolCallIds = this.getValidToolCallIds();
-    console.log(`Valid tool call IDs: ${JSON.stringify(validToolCallIds)}`);
+    logger.info(`Valid tool call IDs: ${JSON.stringify(validToolCallIds)}`);
 
     // Determine the appropriate tool call ID
     let effectiveToolCallId = null;
@@ -472,13 +473,13 @@ export class AiService {
     // If provided ID is valid, use it
     if (toolCallId && validToolCallIds.includes(toolCallId)) {
       effectiveToolCallId = toolCallId;
-      console.log(`Using provided tool call ID: ${effectiveToolCallId}`);
+      logger.info(`Using provided tool call ID: ${effectiveToolCallId}`);
     }
     // Otherwise try to find a match by tool name
     else {
       // Get pending calls (tool calls without responses)
       const pendingCalls = this.findPendingToolCalls();
-      console.log(
+      logger.info(
         `Pending tool calls: ${JSON.stringify(pendingCalls.map((c) => ({ id: c.id, name: c.name })))}`
       );
 
@@ -486,7 +487,7 @@ export class AiService {
       const matchByName = pendingCalls.find((call) => call.name === toolName);
       if (matchByName && validToolCallIds.includes(matchByName.id)) {
         effectiveToolCallId = matchByName.id;
-        console.log(`Matched tool call by name: ${toolName} → ${effectiveToolCallId}`);
+        logger.info(`Matched tool call by name: ${toolName} → ${effectiveToolCallId}`);
       }
       // If no match by name, use the first pending call if available
       else if (pendingCalls.length > 0) {
@@ -494,14 +495,14 @@ export class AiService {
         const validPendingCalls = pendingCalls.filter((call) => validToolCallIds.includes(call.id));
         if (validPendingCalls.length > 0) {
           effectiveToolCallId = validPendingCalls[0].id;
-          console.log(`Using first valid pending call ID: ${effectiveToolCallId}`);
+          logger.info(`Using first valid pending call ID: ${effectiveToolCallId}`);
         }
       }
     }
 
     // If we couldn't find a valid tool call ID, we'll need to defer this response
     if (!effectiveToolCallId) {
-      console.log(`No valid tool call ID found for ${toolName}. Cannot register tool result yet.`);
+      logger.info(`No valid tool call ID found for ${toolName}. Cannot register tool result yet.`);
       return;
     }
 
@@ -515,7 +516,7 @@ export class AiService {
 
     // Add to conversation history
     this.conversationHistory.push(toolResultMessage);
-    console.log(
+    logger.info(
       `Successfully registered tool result for: ${toolName} with ID: ${effectiveToolCallId}`
     );
   }
@@ -547,11 +548,11 @@ export class AiService {
     const pendingCalls = this.findPendingToolCalls();
 
     if (pendingCalls.length > 0) {
-      console.log(`Found ${pendingCalls.length} tool calls still needing responses`);
+      logger.info(`Found ${pendingCalls.length} tool calls still needing responses`);
 
       // Add placeholder responses for all remaining pending calls
       for (const call of pendingCalls) {
-        console.log(`Adding placeholder response for: ${call.name} (${call.id})`);
+        logger.info(`Adding placeholder response for: ${call.name} (${call.id})`);
 
         this.conversationHistory.push({
           role: 'tool',
@@ -567,12 +568,12 @@ export class AiService {
       // Verify that we've handled all pending calls
       const stillPending = this.findPendingToolCalls();
       if (stillPending.length > 0) {
-        console.warn(`WARNING: Still have ${stillPending.length} pending tool calls after fixes`);
+        logger.warn(`WARNING: Still have ${stillPending.length} pending tool calls after fixes`);
       } else {
-        console.log('All tool calls now have responses');
+        logger.info('All tool calls now have responses');
       }
     } else {
-      console.log('No pending tool calls - all are properly responded to');
+      logger.info('No pending tool calls - all are properly responded to');
     }
   }
 
@@ -588,7 +589,7 @@ export class AiService {
       attempts++;
 
       try {
-        console.log(`API call attempt ${attempts}...`);
+        logger.info(`API call attempt ${attempts}...`);
 
         // Find available tools to offer to the model
         const availableTools = this.findAvailableTools();
@@ -605,10 +606,10 @@ export class AiService {
         const responseMessage = response.choices[0].message;
         this.conversationHistory.push(responseMessage);
 
-        console.log('API call successful');
+        logger.info('API call successful');
         return responseMessage;
       } catch (error) {
-        console.error(`API call attempt ${attempts} failed:`, error.message);
+        logger.error(`API call attempt ${attempts} failed:`, error.message);
 
         if (error.message && error.message.includes("not found in 'tool_calls'")) {
           // Handle specific error case for invalid tool call IDs
@@ -622,7 +623,7 @@ export class AiService {
         } else {
           // For other errors, if we're at max attempts, return a fallback
           if (attempts >= MAX_ATTEMPTS) {
-            console.log('Max retry attempts reached, returning fallback message');
+            logger.info('Max retry attempts reached, returning fallback message');
             return this.createRecoveryMessage();
           }
         }
@@ -646,18 +647,18 @@ export class AiService {
     // Extract the invalid tool call ID from the error message
     const invalidIdMatch = error.message.match(/'tool_call_id' of '([^']+)' not found/);
     if (!invalidIdMatch) {
-      console.error('Could not parse invalid tool call ID from error');
+      logger.error('Could not parse invalid tool call ID from error');
       return;
     }
 
     const invalidId = invalidIdMatch[1];
-    console.log(`Found invalid tool call ID: ${invalidId}`);
+    logger.error(`Found invalid tool call ID: ${invalidId}`);
 
     // Find and remove the invalid tool response
     for (let i = this.conversationHistory.length - 1; i >= 0; i--) {
       const message = this.conversationHistory[i];
       if (message.role === 'tool' && message.tool_call_id === invalidId) {
-        console.log(`Removing invalid tool response at index ${i}`);
+        logger.info(`Removing invalid tool response at index ${i}`);
         this.conversationHistory.splice(i, 1);
       }
     }
@@ -673,12 +674,12 @@ export class AiService {
       /tool_call_ids did not have response messages: ([a-zA-Z0-9_]+)/
     );
     if (!missingIdMatch) {
-      console.error('Could not parse missing tool call ID from error');
+      logger.error('Could not parse missing tool call ID from error');
       return;
     }
 
     const missingId = missingIdMatch[1];
-    console.log(`Found missing tool response ID: ${missingId}`);
+    logger.error(`Found missing tool response ID: ${missingId}`);
 
     // Add a placeholder response for this tool call
     this.conversationHistory.push({
@@ -706,7 +707,7 @@ export class AiService {
     }
 
     if (lastUserIndex === -1) {
-      console.log('No user message found for simplification');
+      logger.info('No user message found for simplification');
       return;
     }
 
@@ -724,7 +725,7 @@ export class AiService {
         responseMessage,
       ];
 
-      console.log('Simplified conversation for retry');
+      logger.info('Simplified conversation for retry');
     }
   }
 
@@ -799,7 +800,7 @@ export class AiService {
 
     const clients = this.connectionManager.getClients();
     for (const [name, client] of clients) {
-      console.log(`[DEBUG] Getting tools from ${name}`);
+      logger.debug(`Getting tools from ${name}`);
       const toolsResult = await client.listTools() as McpTool[];
       if (toolsResult.length > 0) {
         // Add tool to list of all tools and to clientToolMap
