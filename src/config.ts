@@ -17,12 +17,12 @@ export type ServerConfigs = Record<string, McpServerConfig>;
 
 // Config paths relative to project root
 const CONFIG_DIR = 'configuration';
-const CONFIG_FILE = 'servers.json';
+const CONFIG_FILE = 'mcp.json';
 const CONFIG_PATH = path.join(CONFIG_DIR, CONFIG_FILE);
 
 /**
  * Load server configurations from file
- * @param configPath Path to the config file (defaults to configuration/servers.json)
+ * @param configPath Path to the config file (defaults to configuration/mcp.json)
  * @returns Loaded configuration
  */
 export async function loadServerConfigs(configPath: string = CONFIG_PATH): Promise<ServerConfigs> {

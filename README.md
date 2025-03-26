@@ -98,7 +98,7 @@ The project now supports a configuration file for defining MCP servers. This mak
 
 ### Configuration File
 
-Server configurations are stored in `configuration/servers.json`:
+Server configurations are stored in `configuration/mcp.json`:
 
 ```json
 {

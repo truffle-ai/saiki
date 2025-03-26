@@ -4,18 +4,18 @@ echo ==================================
 echo.
 
 REM Check if config file exists
-if not exist "configuration\servers.json" (
-    echo ERROR: configuration\servers.json file not found.
-    echo Please make sure the configuration directory and servers.json file exist.
+if not exist "configuration\mcp.json" (
+    echo ERROR: configuration\mcp.json file not found.
+    echo Please make sure the configuration directory and mcp.json file exist.
     pause
     exit /b 1
 )
 
-echo Server aliases found in configuration\servers.json:
+echo Server aliases found in configuration\mcp.json:
 echo.
 
 REM Simple way to display server aliases in Windows
-for /f "tokens=1 delims=:" %%a in ('findstr /C:"\"" configuration\servers.json') do (
+for /f "tokens=1 delims=:" %%a in ('findstr /C:"\"" configuration\mcp.json') do (
     set line=%%a
     setlocal enabledelayedexpansion
     set line=!line:~0!
