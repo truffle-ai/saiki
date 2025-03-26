@@ -63,7 +63,7 @@ export function getConfigPath(): string {
 export async function ensureConfigDirExists(): Promise<void> {
   try {
     await fs.mkdir(CONFIG_DIR, { recursive: true });
-  } catch (error) {
+  } catch {
     // Directory might already exist, ignore error
   }
 }

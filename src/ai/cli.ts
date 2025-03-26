@@ -4,7 +4,7 @@ import boxen from 'boxen';
 import ora from 'ora';
 import { AiService } from './service.js';
 import { McpConnection } from '../client/connection.js';
-import { AiCliOptions, McpTool } from './types.js';
+import { AiCliOptions } from './types.js';
 
 /**
  * Format and display tool call
