@@ -31,12 +31,12 @@ export async function initializeAiCli(
   logger.debug('Verified API key');
   logger.debug('Multi-server mode active');
 
-  const connectionManager = new MCPClientManager(serverConfigs, connectionMode);
-  await connectionManager.initialize();
+  const mcpClientManager = new MCPClientManager(serverConfigs, connectionMode);
+  await mcpClientManager.initialize();
   
   // Start AI CLI with multiple connections
   try {
-    await runAiCli(connectionManager, apiKey, options);
+    await runAiCli(mcpClientManager, apiKey, options);
   } catch (error) {
     logger.error(`Error running AI CLI: ${error.message}`);
     process.exit(1);

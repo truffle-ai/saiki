@@ -29,23 +29,22 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
 export class AiService {
   private openai: OpenAI;
   private clientToolMap: Map<string, IMCPClient> = new Map();
-  private connectionManager: MCPClientManager;
+  private mcpClientManager: MCPClientManager;
   private conversationHistory: any[] = [];
   private model: string;
 
   /**
    * Create a new AI Service
-   * @param clients Array of MCP Clients
-   * @param clientAliases Map of clients to their server aliases
+   * @param mcpClientManager MCP Client Manager
    * @param apiKey OpenAI API key
    * @param model OpenAI model to use
    */
   constructor(
-    connectionManager: MCPClientManager,
+    mcpClientManager: MCPClientManager,
     apiKey: string, 
     model: string = 'gpt-4o-mini'
   ) {
-    this.connectionManager = connectionManager;
+    this.mcpClientManager = mcpClientManager;
     this.model = model;
 
     // Initialize OpenAI client
@@ -798,7 +797,7 @@ export class AiService {
     const allTools: McpTool[] = [];
     // const seenToolNames = new Set<string>();
 
-    const clients = this.connectionManager.getClients();
+    const clients = this.mcpClientManager.getClients();
     for (const [name, client] of clients) {
       logger.debug(`Getting tools from ${name}`);
       const toolsResult = await client.listTools() as McpTool[];

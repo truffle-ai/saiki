@@ -9,19 +9,19 @@ import { MCPClientManager } from '../client/manager.js';
 /**
  * Start AI-powered CLI
  */
-export async function runAiCli(connectionManager: MCPClientManager, apiKey: string, options: AiCliOptions) {
+export async function runAiCli(mcpClientManager: MCPClientManager, apiKey: string, options: AiCliOptions) {
   // Display welcome message
   logger.info('AI-Powered MCP Client\n========================\n');
   logger.info(`Using OpenAI model: ${options.model || 'gpt-4o-mini'}`);
   logger.info(`Log level: ${logger.getLevel()}`);
-  logger.info(`Connected servers: ${connectionManager.getClients().size}`);
-  logger.error(`Failed connections: ${Object.keys(connectionManager.getFailedConnections()).length}`);
+  logger.info(`Connected servers: ${mcpClientManager.getClients().size}`);
+  logger.error(`Failed connections: ${Object.keys(mcpClientManager.getFailedConnections()).length}`);
 
   // Initialize spinner
   const spinner = ora('Initializing AI service...').start();
 
   // Create AI service with multiple clients
-  const aiService = new AiService(connectionManager, apiKey, options.model || 'gpt-4o-mini');
+  const aiService = new AiService(mcpClientManager, apiKey, options.model || 'gpt-4o-mini');
 
   try {
     // Get available tools from all connected servers
@@ -34,7 +34,7 @@ export async function runAiCli(connectionManager: MCPClientManager, apiKey: stri
 
     // Update system message with available tools
     aiService.updateSystemMessage(tools);
-    spinner.succeed(`Loaded ${tools.length} tools from ${connectionManager.getClients().size} MCP servers`);
+    spinner.succeed(`Loaded ${tools.length} tools from ${mcpClientManager.getClients().size} MCP servers`);
 
     // Show available tools (these will only display if debug level is enabled)
     logger.debug('Available tools:');
