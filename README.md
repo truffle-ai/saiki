@@ -45,25 +45,27 @@ The AI translates your natural language into MCP tool calls, enabling you to int
 
 ## Connect to Different MCP Servers
 
-The AI CLI can connect to any MCP server. Here are some examples:
+The AI CLI can connect to any MCP server defined in your configuration file:
 
 **Windows:**
 ```cmd
 # Connect to file system MCP server
-node dist\ai.js connect npx -- -y @modelcontextprotocol/server-filesystem
+scripts\windows\ai-cli.bat filesystem
 
-# Connect to a custom MCP server
-node dist\ai.js connect node -- path\to\your-server.js
+# Connect to a custom MCP server (defined in mcp.json)
+scripts\windows\ai-cli.bat myCustomServer
 ```
 
 **Unix/Linux:**
 ```bash
 # Connect to file system MCP server
-node dist/ai.js connect npx -- -y @modelcontextprotocol/server-filesystem
+./scripts/unix/ai-cli.sh filesystem
 
-# Connect to a custom MCP server
-node dist/ai.js connect node -- path/to/your-server.js
+# Connect to a custom MCP server (defined in mcp.json)
+./scripts/unix/ai-cli.sh myCustomServer
 ```
+
+To add your own custom server, edit the `configuration/mcp.json` file and add a new entry.
 
 ## Using the Connect-MCP Script
 

@@ -87,23 +87,25 @@ This will:
 
 ### Manual Usage
 
-For advanced scenarios, you can run the AI CLI manually with any MCP server:
+For advanced scenarios, you can run the AI CLI manually with any MCP server defined in your configuration:
 
 ```bash
-node dist/ai.js connect <command> [...args] [options]
+node dist/ai.js connect <serverAlias> [options]
 ```
 
 Examples:
 ```bash
 # Connect to ClaudeDesktopCommander
-node dist/ai.js connect "C:\Program Files\nodejs\npx.cmd" -- -y @wonderwhy-er/desktop-commander
+node dist/ai.js connect desktopCommander
 
 # Connect to a local server with verbose output
-node dist/ai.js connect "node" "dist/host.js" "stdio" -v
+node dist/ai.js connect local -v
 
 # Use a specific OpenAI model
-node dist/ai.js connect "node" "dist/host.js" "stdio" -m gpt-4-turbo
+node dist/ai.js connect local -m gpt-4-turbo
 ```
+
+To add or modify server configurations, edit the `configuration/mcp.json` file.
 
 ## Extension Points
 
