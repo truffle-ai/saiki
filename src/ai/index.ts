@@ -1,5 +1,5 @@
 import { McpConnection } from '../client/connection.js';
-import { startAiCli as startAiInterface } from './cli.js';
+import { runAiCli } from './cli.js';
 import { AiCliOptions } from './types.js';
 import dotenv from 'dotenv';
 
@@ -13,7 +13,7 @@ dotenv.config();
  * @param options CLI options
  * @param env Environment variables for the server process
  */
-export async function startAiCli(
+export async function initializeAiCli(
   command: string,
   args: string[],
   options: AiCliOptions,
@@ -49,7 +49,7 @@ export async function startAiCli(
     await connection.connectViaStdio(command, args, env);
 
     // Start AI CLI
-    await startAiInterface(connection, apiKey, options);
+    await runAiCli(connection, apiKey, options);
   } catch (error) {
     console.error('Error connecting to MCP server:', error.message);
     process.exit(1);

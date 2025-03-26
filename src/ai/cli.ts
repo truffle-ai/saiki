@@ -100,7 +100,7 @@ function displayLlmResponse(response: any) {
 /**
  * Start AI-powered CLI
  */
-export async function startAiCli(connection: McpConnection, apiKey: string, options: AiCliOptions) {
+export async function runAiCli(connection: McpConnection, apiKey: string, options: AiCliOptions) {
   // Display welcome message
   console.log(chalk.bold.cyan('\nAI-Powered MCP Client\n========================\n'));
   console.log(chalk.gray('Using OpenAI model:'), chalk.green(options.model));

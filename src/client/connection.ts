@@ -14,7 +14,6 @@ export class McpConnection {
   private serverEnv: Record<string, string> | null = null;
   private serverSpawned = false;
   private serverPid: number | null = null;
-  private childProcess: ChildProcess | null = null;
 
   /**
    * Create a new MCP connection

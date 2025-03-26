@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { startAiCli } from './ai/index.js';
+import { initializeAiCli } from './ai/index.js';
 import { getServerConfig, configExists } from './server/config.js';
 
 const program = new Command();
@@ -42,7 +42,7 @@ program
       process.exit(1);
     }
 
-    await startAiCli(command, finalArgs, options, env);
+    await initializeAiCli(command, finalArgs, options, env);
   });
 
 program.parse();
