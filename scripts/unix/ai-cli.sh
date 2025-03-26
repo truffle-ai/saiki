@@ -39,10 +39,42 @@ fi
 echo "Project built successfully."
 echo
 
-# Get server alias from command line or use default
-SERVER_ALIAS=${1:-"desktopCommander"}
+# Parse command line options
+CONFIG_FILE="configuration/mcp.json"  # Default config file
+VERBOSE="-v"
+CONNECTION_MODE="lenient"
 
-echo "Starting AI-powered MCP client connected to ${SERVER_ALIAS}..."
+# Process options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -c|--config-file)
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        -s|--strict)
+            CONNECTION_MODE="strict"
+            shift
+            ;;
+        --no-verbose)
+            VERBOSE=""
+            shift
+            ;;
+        *)
+            # Unknown option
+            echo "Unknown option: $1"
+            echo "Usage: $0 [options]"
+            echo "Options:"
+            echo "  -c, --config-file PATH    Path to server config file (default: configuration/mcp.json)"
+            echo "  -s, --strict              Require all server connections to succeed"
+            echo "  --no-verbose              Disable verbose output"
+            exit 1
+            ;;
+    esac
+done
+
+echo "Starting AI-powered MCP client with config file: ${CONFIG_FILE}"
+node dist/ai.js connect --config-file "$CONFIG_FILE" --connection-mode "$CONNECTION_MODE" $VERBOSE
+
 echo
 echo "This client uses OpenAI to interpret your commands and call appropriate MCP tools."
 echo "You can interact with tools using natural language."
@@ -52,6 +84,4 @@ echo "- \"List all files in the current directory\""
 echo "- \"Show system information\""
 echo "- \"Create a new file called test.txt with 'Hello World' as content\""
 echo "- \"Run a simple python script that prints numbers from 1 to 10\""
-echo
-
-node dist/ai.js connect "$SERVER_ALIAS" -v 
+echo 

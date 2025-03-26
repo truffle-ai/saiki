@@ -2,6 +2,7 @@ import readline from 'readline';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import ora from 'ora';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { AiService } from './service.js';
 import { McpConnection } from '../client/connection.js';
 import { AiCliOptions } from './types.js';
@@ -100,29 +101,45 @@ function displayLlmResponse(response: any) {
 /**
  * Start AI-powered CLI
  */
-export async function runAiCli(connection: McpConnection, apiKey: string, options: AiCliOptions) {
+export async function runAiCli(connections: McpConnection[], apiKey: string, options: AiCliOptions) {
   // Display welcome message
   console.log(chalk.bold.cyan('\nAI-Powered MCP Client\n========================\n'));
-  console.log(chalk.gray('Using OpenAI model:'), chalk.green(options.model));
+  console.log(chalk.gray('Using OpenAI model:'), chalk.green(options.model || 'gpt-4o-mini'));
   console.log(chalk.gray('Verbose mode:'), options.verbose ? chalk.green('On') : chalk.red('Off'));
+  console.log(chalk.gray('Connected servers:'), chalk.green(connections.length));
   console.log('');
 
   // Initialize spinner
   const spinner = ora('Initializing AI service...').start();
 
-  // Get MCP client from connection
-  const client = connection.getClient();
-  if (!client) {
-    spinner.fail('No active MCP client connection');
-    console.error('[DEBUG] Client is null. Exiting.');
+  // Get MCP clients from connections and track server aliases
+  const clients: Client[] = [];
+  const clientAliasMap = new Map<Client, string>();
+  
+  for (const connection of connections) {
+    const client = connection.getClient();
+    const serverInfo = connection.getServerInfo();
+    
+    if (client) {
+      clients.push(client);
+      
+      // Store the server alias for this client
+      const alias = serverInfo.alias || `Server-${clients.length}`;
+      clientAliasMap.set(client, alias);
+    }
+  }
+  
+  if (clients.length === 0) {
+    spinner.fail('No active MCP client connections');
+    console.error('[DEBUG] All clients are null. Exiting.');
     return;
   }
 
-  // Create AI service
-  const aiService = new AiService(client, apiKey, options.model);
+  // Create AI service with multiple clients
+  const aiService = new AiService(clients, clientAliasMap, apiKey, options.model || 'gpt-4o-mini');
 
   try {
-    // Get available tools
+    // Get available tools from all connected servers
     spinner.text = 'Loading available tools...';
     console.log('[DEBUG] Getting available tools...');
     const tools = await aiService.getAvailableTools();
@@ -133,7 +150,7 @@ export async function runAiCli(connection: McpConnection, apiKey: string, option
 
     // Update system message with available tools
     aiService.updateSystemMessage(tools);
-    spinner.succeed(`Loaded ${tools.length} tools from MCP server`);
+    spinner.succeed(`Loaded ${tools.length} tools from ${clients.length} MCP servers`);
 
     if (options.verbose) {
       console.log(chalk.gray('\nAvailable tools:'));

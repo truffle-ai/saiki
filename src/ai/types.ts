@@ -20,6 +20,8 @@ export interface McpTool {
  * AI CLI Options
  */
 export interface AiCliOptions {
-  model: string;
-  verbose: boolean;
+  model?: string;
+  verbose?: boolean;
+  configFile?: string;
+  connectionMode?: 'strict' | 'lenient';
 }

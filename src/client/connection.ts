@@ -13,6 +13,7 @@ export class McpConnection {
   private serverEnv: Record<string, string> | null = null;
   private serverSpawned = false;
   private serverPid: number | null = null;
+  private serverAlias: string | null = null;
 
   /**
    * Create a new MCP connection
@@ -20,23 +21,26 @@ export class McpConnection {
   constructor() {}
 
   /**
-   * Connect to an MCP server using stdio transport
-   * @param command Command to execute the server
+   * Connect to an MCP server via stdio
+   * @param command Command to run
    * @param args Arguments for the command
-   * @param env Environment variables for the server process
+   * @param env Environment variables
+   * @param serverAlias Optional server alias/name to show in logs
    */
   async connectViaStdio(
     command: string,
     args: string[] = [],
-    env?: Record<string, string>
+    env?: Record<string, string>,
+    serverAlias?: string
   ): Promise<Client> {
+    // Store server details
     this.serverCommand = command;
     this.serverArgs = args;
     this.serverEnv = env || null;
+    this.serverAlias = serverAlias || null;
 
-    console.log('\n======== SERVER SPAWN DETAILS ========');
-    console.log(`Command: ${command}`);
-    console.log(`Arguments: ${args.join(' ')}`);
+    console.log('=======================================');
+    console.log(`MCP SERVER: ${command} ${args.join(' ')}`);
     if (env) {
       console.log('Environment:');
       Object.entries(env).forEach(([key, value]) => {
@@ -45,7 +49,8 @@ export class McpConnection {
     }
     console.log('=======================================\n');
 
-    console.log(`Connecting to MCP server: ${command} ${args.join(' ')}`);
+    const serverName = serverAlias ? `"${serverAlias}" (${command} ${args.join(' ')})` : `${command} ${args.join(' ')}`;
+    console.log(`Connecting to MCP server: ${serverName}`);
 
     // Create transport for stdio connection
     // Note: StdioClientTransport doesn't directly expose the childProcess
@@ -108,6 +113,7 @@ export class McpConnection {
     command: string | null;
     args: string[] | null;
     env: Record<string, string> | null;
+    alias: string | null;
   } {
     return {
       spawned: this.serverSpawned,
@@ -115,6 +121,7 @@ export class McpConnection {
       command: this.serverCommand,
       args: this.serverArgs,
       env: this.serverEnv,
+      alias: this.serverAlias
     };
   }
 

@@ -2,23 +2,52 @@ import OpenAI from 'openai';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpTool } from './types.js';
 
+// System prompt constants
+const INITIAL_SYSTEM_PROMPT = 'You are an AI assistant with access to MCP tools from multiple servers. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.';
+
+const DETAILED_SYSTEM_PROMPT_TEMPLATE = `You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks by calling appropriate tools.
+
+Available tools:
+TOOL_DESCRIPTIONS
+
+Follow these guidelines when using tools:
+1. Use tools whenever they can help complete the user's request.
+2. You can call multiple tools in sequence to solve complex problems.
+3. After each tool returns a result, analyze the result carefully to determine next steps.
+4. If the result indicates you need additional information, call another tool to get that information.
+5. Continue this process until you have all the information needed to fulfill the user's request.
+6. Be concise in your responses, focusing on the task at hand.
+7. When presenting tool results to the user, format them in a clear and readable way.
+8. If a tool returns an error, try a different approach or ask the user for clarification.
+
+Remember: You can use multiple tool calls in a sequence to solve multi-step problems.`;
+
 /**
  * AI Service that orchestrates interactions between LLM and MCP client
  */
 export class AiService {
   private openai: OpenAI;
-  private client: Client;
+  private clients: Client[];
+  private clientToolMap: Map<string, Client> = new Map();
+  private clientAliasMap: Map<Client, string> = new Map();
   private conversationHistory: any[] = [];
   private model: string;
 
   /**
    * Create a new AI Service
-   * @param client MCP Client
+   * @param clients Array of MCP Clients
+   * @param clientAliases Map of clients to their server aliases
    * @param apiKey OpenAI API key
    * @param model OpenAI model to use
    */
-  constructor(client: Client, apiKey: string, model: string = 'gpt-4o-mini') {
-    this.client = client;
+  constructor(
+    clients: Client[], 
+    clientAliases: Map<Client, string>,
+    apiKey: string, 
+    model: string = 'gpt-4o-mini'
+  ) {
+    this.clients = clients;
+    this.clientAliasMap = clientAliases;
     this.model = model;
 
     // Initialize OpenAI client
@@ -31,8 +60,7 @@ export class AiService {
     // This will be updated with specific tool details when updateSystemMessage is called
     this.conversationHistory.push({
       role: 'system',
-      content:
-        'You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.',
+      content: INITIAL_SYSTEM_PROMPT,
     });
   }
 
@@ -56,22 +84,7 @@ export class AiService {
       .join('\n');
 
     // Update the system message with available tools and enhanced guidance
-    this.conversationHistory[0].content = `You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks by calling appropriate tools.
-
-Available tools:
-${toolDescriptions}
-
-Follow these guidelines when using tools:
-1. Use tools whenever they can help complete the user's request.
-2. You can call multiple tools in sequence to solve complex problems.
-3. After each tool returns a result, analyze the result carefully to determine next steps.
-4. If the result indicates you need additional information, call another tool to get that information.
-5. Continue this process until you have all the information needed to fulfill the user's request.
-6. Be concise in your responses, focusing on the task at hand.
-7. When presenting tool results to the user, format them in a clear and readable way.
-8. If a tool returns an error, try a different approach or ask the user for clarification.
-
-Remember: You can use multiple tool calls in a sequence to solve multi-step problems.`;
+    this.conversationHistory[0].content = DETAILED_SYSTEM_PROMPT_TEMPLATE.replace('TOOL_DESCRIPTIONS', toolDescriptions);
   }
 
   /**
@@ -179,7 +192,14 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
    * @returns Tool result
    */
   async callTool(toolName: string, args: any): Promise<any> {
-    return await this.client.callTool({
+    // Get the client associated with this tool
+    const client = this.clientToolMap.get(toolName);
+    
+    if (!client) {
+      throw new Error(`Tool "${toolName}" is not associated with any connected MCP server`);
+    }
+    
+    return await client.callTool({
       name: toolName,
       arguments: args,
     });
@@ -775,12 +795,53 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
   }
 
   /**
-   * Get all available tools from the client
-   * @returns Available MCP tools
+   * Get all available tools from all connected clients
+   * @returns Combined list of available MCP tools from all servers
    */
   async getAvailableTools(): Promise<McpTool[]> {
-    const toolsResult = await this.client.listTools();
-    return toolsResult.tools as McpTool[];
+    // Track tools to handle potential duplicates
+    const allTools: McpTool[] = [];
+    const seenToolNames = new Set<string>();
+    
+    // Get tools from each client
+    for (const client of this.clients) {
+      try {
+        // Get the server alias for this client
+        const serverAlias = this.clientAliasMap.get(client) || `Client-${this.clients.indexOf(client)+1}`;
+        
+        const toolsResult = await client.listTools();
+        const clientTools = toolsResult.tools as McpTool[];
+        
+        console.log(`[INFO] Received ${clientTools.length} tools from ${serverAlias}`);
+        
+        // Add each tool to the combined list and map it to its client
+        for (const tool of clientTools) {
+          // Check for duplicate tools
+          if (!seenToolNames.has(tool.name)) {
+            seenToolNames.add(tool.name);
+            allTools.push(tool);
+            
+            // Map this tool to its client for later use
+            this.clientToolMap.set(tool.name, client);
+          } else {
+            // Get the alias of the client that owns the first occurrence of this tool
+            const ownerClient = this.clientToolMap.get(tool.name);
+            const ownerAlias = ownerClient ? this.clientAliasMap.get(ownerClient) || 'Unknown' : 'Unknown';
+            
+            // Warning for duplicate tool names
+            console.warn(
+              `[WARN] Duplicate tool name detected: "${tool.name}" from ${serverAlias} is being ignored. ` +
+              `Using the first occurrence of this tool name from ${ownerAlias} server.`
+            );
+          }
+        }
+      } catch (error) {
+        console.error(`Error getting tools from client:`, error);
+        // Continue with other clients even if one fails
+      }
+    }
+    
+    return allTools;
   }
 
   /**

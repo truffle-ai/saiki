@@ -1,6 +1,6 @@
 # MCP Connector with AI CLI
 
-An AI-powered CLI for interacting with MCP servers using natural language. Connect to MCP servers like ClaudeDesktopCommander to gain powerful capabilities such as file operations, terminal commands, and more.
+An AI-powered CLI for interacting with multiple MCP servers using natural language. Connect to multiple MCP servers simultaneously to gain powerful capabilities such as file operations, terminal commands, and more, all through a single interface.
 
 ## Quick Start
 
@@ -17,7 +17,7 @@ npm run build
 OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-3. Connect to ClaudeDesktopCommander:
+3. Run the AI CLI with the default server configuration:
 
 **Windows:**
 ```cmd
@@ -32,7 +32,7 @@ chmod +x scripts/unix/ai-cli.sh
 
 ## Using the AI CLI
 
-Once connected, you can interact with the MCP server using natural language:
+Once connected, you can interact with all MCP servers using natural language:
 
 ```
 > List all files in this directory
@@ -41,66 +41,30 @@ Once connected, you can interact with the MCP server using natural language:
 > Find all JavaScript files in the current directory
 ```
 
-The AI translates your natural language into MCP tool calls, enabling you to interact with your system seamlessly.
+The AI translates your natural language into MCP tool calls, choosing the appropriate server for each task automatically.
 
-## Connect to Different MCP Servers
+## Connect to Custom MCP Servers
 
-The AI CLI can connect to any MCP server defined in your configuration file:
-
-**Windows:**
-```cmd
-# Connect to file system MCP server
-scripts\windows\ai-cli.bat filesystem
-
-# Connect to a custom MCP server (defined in mcp.json)
-scripts\windows\ai-cli.bat myCustomServer
-```
+By default, the AI CLI uses the servers defined in `configuration/mcp.json`. To use a custom set of servers, create your own configuration file:
 
 **Unix/Linux:**
 ```bash
-# Connect to file system MCP server
-./scripts/unix/ai-cli.sh filesystem
+# Connect using a custom configuration file
+./scripts/unix/ai-cli.sh --config-file path/to/your/config.json
 
-# Connect to a custom MCP server (defined in mcp.json)
-./scripts/unix/ai-cli.sh myCustomServer
+# Use strict mode to require all connections to succeed
+./scripts/unix/ai-cli.sh --config-file path/to/your/config.json --strict
 ```
-
-To add your own custom server, edit the `configuration/mcp.json` file and add a new entry.
-
-## Using the Connect-MCP Script
-
-If you prefer a standard command-line interface without AI interpretation, you can use the `connect-mcp` script. This provides direct access to MCP commands and is useful when you need precise control or when working with MCP tools programmatically.
 
 **Windows:**
 ```cmd
-scripts\windows\connect-mcp.bat npx -- -y @wonderwhy-er/desktop-commander
+# Connect using a custom configuration file
+scripts\windows\ai-cli.bat --config-file path\to\your\config.json
 ```
 
-**Unix/Linux:**
-```bash
-chmod +x scripts/unix/connect-mcp.sh
-./scripts/unix/connect-mcp.sh npx -- -y @wonderwhy-er/desktop-commander
-```
+## Server Configuration File
 
-Once connected, you'll get a standard MCP interface where you can run commands like:
-
-```
-MCP> list-tools
-MCP> call filesystem.list_files {"path":"."}
-MCP> server-info
-MCP> help
-MCP> exit
-```
-
-Unlike the AI CLI, this interface requires exact MCP command syntax but offers more direct and predictable interaction with the MCP server.
-
-## MCP Server Configuration
-
-The project now supports a configuration file for defining MCP servers. This makes it easy to add, modify, or share server configurations without changing code.
-
-### Configuration File
-
-Server configurations are stored in `configuration/mcp.json`:
+The server configuration file defines the MCP servers to connect to. Each server is specified with a command to execute and arguments:
 
 ```json
 {
@@ -124,21 +88,16 @@ Each key is a server alias, and the value contains:
 - `args`: Array of command-line arguments
 - `env` (optional): Environment variables for the server process
 
-### Using Server Aliases
+The AI CLI will connect to all servers in the configuration file and make all of their tools available in a single interface. If any server fails to connect, the CLI will continue with the successful connections unless strict mode is enabled.
 
-With the configuration in place, you can use server aliases instead of full commands:
+## Connection Modes
 
-```bash
-# Using an alias
-./scripts/unix/ai-cli.sh desktopCommander
+The AI CLI supports two connection modes:
 
-# List available server aliases
-./scripts/unix/list-servers.sh
-```
+- **Lenient mode** (default): Allows the CLI to start as long as at least one server connects successfully
+- **Strict mode**: Requires all configured servers to connect successfully
 
-This makes it easier to switch between different MCP servers and share configurations with others.
-
-## MCP Server Capabilities
+## Common MCP Server Types
 
 Different MCP servers provide different capabilities:
 
@@ -146,12 +105,15 @@ Different MCP servers provide different capabilities:
 - **@modelcontextprotocol/server-filesystem**: File system operations
 - **Custom servers**: Any capabilities you implement
 
+By connecting to multiple servers simultaneously, you can access all of these capabilities through a single interface.
+
 ## Features
 
 - 🤖 **Natural Language Interface**: Interact with MCP servers using plain English
-- 🔌 **MCP Integration**: Connect to any MCP-compatible server
+- 🔌 **Multi-Server Support**: Connect to multiple MCP servers simultaneously
 - 🧠 **AI-Powered**: Uses OpenAI to translate natural language to specific MCP tool calls
 - 🛠️ **Extensible**: Gain new capabilities by connecting to different MCP servers
+- 🔄 **Connection Resilience**: Continue operating even if some servers fail to connect
 
 ## License
 

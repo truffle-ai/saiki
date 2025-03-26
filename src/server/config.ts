@@ -123,3 +123,41 @@ export async function configExists(configPath?: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Load and validate multiple server configurations from a file
+ * @param configPath Path to the config file with server definitions
+ * @returns Dictionary of server configurations
+ */
+export async function getMultiServerConfig(configPath: string): Promise<ServerConfigs> {
+  try {
+    // If the path doesn't exist, throw an error
+    if (!await configExists(configPath)) {
+      throw new Error(`Config file not found: ${configPath}`);
+    }
+    
+    // Load configurations from the file
+    const configs = await loadServerConfigs(configPath);
+    
+    // Validate that we have at least one valid server configuration
+    if (!configs || Object.keys(configs).length === 0) {
+      throw new Error('No server configurations found in the config file');
+    }
+    
+    // Validate each server configuration
+    for (const [alias, config] of Object.entries(configs)) {
+      if (!config.command) {
+        throw new Error(`Server "${alias}" is missing a command`);
+      }
+      
+      if (!Array.isArray(config.args)) {
+        configs[alias].args = []; // Initialize to empty array if missing
+      }
+    }
+    
+    return configs;
+  } catch (error) {
+    console.error(`Error loading multi-server configuration: ${error.message}`);
+    throw error;
+  }
+}
