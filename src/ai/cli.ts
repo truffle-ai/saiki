@@ -4,12 +4,12 @@ import ora from 'ora';
 import { logger } from '../utils/logger.js';
 import { AiService } from './service.js';
 import { AiCliOptions } from './types.js';
-import { MCPConnectionManager } from '../client/manager.js';
+import { MCPClientManager } from '../client/manager.js';
 
 /**
  * Start AI-powered CLI
  */
-export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: string, options: AiCliOptions) {
+export async function runAiCli(connectionManager: MCPClientManager, apiKey: string, options: AiCliOptions) {
   // Display welcome message
   logger.info('AI-Powered MCP Client\n========================\n');
   logger.info(`Using OpenAI model: ${options.model || 'gpt-4o-mini'}`);

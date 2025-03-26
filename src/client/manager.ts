@@ -1,7 +1,7 @@
-import { IMCPClient, MCPClient } from './connection.js';
+import { IMCPClient, MCPClient } from './mcpClient.js';
 import { ServerConfigs } from '../server/config.js';
 
-export class MCPConnectionManager implements IMCPConnectionManager {
+export class MCPClientManager implements IMCPClientManager {
   private clients: Map<string, IMCPClient> = new Map();
   private connectionErrors: { [key: string]: string } = {};
   private successfulServers: string[] = [];
@@ -59,7 +59,7 @@ export class MCPConnectionManager implements IMCPConnectionManager {
   }
 }
 
-export interface IMCPConnectionManager {
+export interface IMCPClientManager {
   getClients(): Map<string, IMCPClient>;
   disconnectAll(): void;
 }

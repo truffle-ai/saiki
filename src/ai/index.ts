@@ -1,4 +1,4 @@
-import { MCPConnectionManager } from '../client/manager.js';
+import { MCPClientManager } from '../client/manager.js';
 import { runAiCli } from './cli.js';
 import { AiCliOptions } from './types.js';
 import dotenv from 'dotenv';
@@ -31,7 +31,7 @@ export async function initializeAiCli(
   logger.debug('Verified API key');
   logger.debug('Multi-server mode active');
 
-  const connectionManager = new MCPConnectionManager(serverConfigs, connectionMode);
+  const connectionManager = new MCPClientManager(serverConfigs, connectionMode);
   await connectionManager.initialize();
   
   // Start AI CLI with multiple connections

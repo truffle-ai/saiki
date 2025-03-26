@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { McpTool } from './types.js';
-import { MCPConnectionManager } from '../client/manager.js';
-import { IMCPClient } from '../client/connection.js';
+import { MCPClientManager } from '../client/manager.js';
+import { IMCPClient } from '../client/mcpClient.js';
 import { logger } from '../utils/logger.js';
 // System prompt constants
 const INITIAL_SYSTEM_PROMPT = 'You are an AI assistant with access to MCP tools from multiple servers. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.';
@@ -29,7 +29,7 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
 export class AiService {
   private openai: OpenAI;
   private clientToolMap: Map<string, IMCPClient> = new Map();
-  private connectionManager: MCPConnectionManager;
+  private connectionManager: MCPClientManager;
   private conversationHistory: any[] = [];
   private model: string;
 
@@ -41,7 +41,7 @@ export class AiService {
    * @param model OpenAI model to use
    */
   constructor(
-    connectionManager: MCPConnectionManager,
+    connectionManager: MCPClientManager,
     apiKey: string, 
     model: string = 'gpt-4o-mini'
   ) {
