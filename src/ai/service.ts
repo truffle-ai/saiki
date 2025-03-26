@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpTool } from './types.js';
-
+import { MCPConnectionManager } from '../client/manager.js';
+import { IMCPClient } from '../client/connection.js';
 // System prompt constants
 const INITIAL_SYSTEM_PROMPT = 'You are an AI assistant with access to MCP tools from multiple servers. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.';
 
@@ -27,9 +27,8 @@ Remember: You can use multiple tool calls in a sequence to solve multi-step prob
  */
 export class AiService {
   private openai: OpenAI;
-  private clients: Client[];
-  private clientToolMap: Map<string, Client> = new Map();
-  private clientAliasMap: Map<Client, string> = new Map();
+  private clientToolMap: Map<string, IMCPClient> = new Map();
+  private connectionManager: MCPConnectionManager;
   private conversationHistory: any[] = [];
   private model: string;
 
@@ -41,13 +40,11 @@ export class AiService {
    * @param model OpenAI model to use
    */
   constructor(
-    clients: Client[], 
-    clientAliases: Map<Client, string>,
+    connectionManager: MCPConnectionManager,
     apiKey: string, 
     model: string = 'gpt-4o-mini'
   ) {
-    this.clients = clients;
-    this.clientAliasMap = clientAliases;
+    this.connectionManager = connectionManager;
     this.model = model;
 
     // Initialize OpenAI client
@@ -193,16 +190,13 @@ export class AiService {
    */
   async callTool(toolName: string, args: any): Promise<any> {
     // Get the client associated with this tool
-    const client = this.clientToolMap.get(toolName);
+    const client: IMCPClient = this.clientToolMap.get(toolName);
     
     if (!client) {
       throw new Error(`Tool "${toolName}" is not associated with any connected MCP server`);
     }
     
-    return await client.callTool({
-      name: toolName,
-      arguments: args,
-    });
+    return await client.callTool(toolName, args);
   }
 
   /**
@@ -801,46 +795,20 @@ export class AiService {
   async getAvailableTools(): Promise<McpTool[]> {
     // Track tools to handle potential duplicates
     const allTools: McpTool[] = [];
-    const seenToolNames = new Set<string>();
-    
-    // Get tools from each client
-    for (const client of this.clients) {
-      try {
-        // Get the server alias for this client
-        const serverAlias = this.clientAliasMap.get(client) || `Client-${this.clients.indexOf(client)+1}`;
-        
-        const toolsResult = await client.listTools();
-        const clientTools = toolsResult.tools as McpTool[];
-        
-        console.log(`[INFO] Received ${clientTools.length} tools from ${serverAlias}`);
-        
-        // Add each tool to the combined list and map it to its client
-        for (const tool of clientTools) {
-          // Check for duplicate tools
-          if (!seenToolNames.has(tool.name)) {
-            seenToolNames.add(tool.name);
-            allTools.push(tool);
-            
-            // Map this tool to its client for later use
-            this.clientToolMap.set(tool.name, client);
-          } else {
-            // Get the alias of the client that owns the first occurrence of this tool
-            const ownerClient = this.clientToolMap.get(tool.name);
-            const ownerAlias = ownerClient ? this.clientAliasMap.get(ownerClient) || 'Unknown' : 'Unknown';
-            
-            // Warning for duplicate tool names
-            console.warn(
-              `[WARN] Duplicate tool name detected: "${tool.name}" from ${serverAlias} is being ignored. ` +
-              `Using the first occurrence of this tool name from ${ownerAlias} server.`
-            );
-          }
-        }
-      } catch (error) {
-        console.error(`Error getting tools from client:`, error);
-        // Continue with other clients even if one fails
+    // const seenToolNames = new Set<string>();
+
+    const clients = this.connectionManager.getClients();
+    for (const [name, client] of clients) {
+      console.log(`[DEBUG] Getting tools from ${name}`);
+      const toolsResult = await client.listTools() as McpTool[];
+      if (toolsResult.length > 0) {
+        // Add tool to list of all tools and to clientToolMap
+        allTools.push(...toolsResult);
+        toolsResult.forEach((tool) => {
+          this.clientToolMap.set(tool.name, client);
+        });
       }
     }
-    
     return allTools;
   }
 

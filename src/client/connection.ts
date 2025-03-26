@@ -1,10 +1,24 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { z } from 'zod';
+import { McpTool } from '../ai/types.js';
+
+const ToolsListSchema = z.object({
+  tools: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string().optional(),
+      inputSchema: z.any().optional(),
+    })
+  ),
+  nextCursor: z.string().optional(),
+});
+
 
 /**
  * Connection manager for MCP clients
  */
-export class McpConnection {
+export class MCPClient implements IMCPClient {
   private client: Client | null = null;
   private transport: any = null;
   private isConnected = false;
@@ -16,7 +30,7 @@ export class McpConnection {
   private serverAlias: string | null = null;
 
   /**
-   * Create a new MCP connection
+   * Create a new MCP Client object
    */
   constructor() {}
 
@@ -91,6 +105,78 @@ export class McpConnection {
   }
 
   /**
+   * Disconnect from the server
+   */
+  async disconnect(): Promise<void> {
+    if (this.transport && typeof this.transport.close === 'function') {
+      try {
+        await this.transport.close();
+        this.isConnected = false;
+        this.serverSpawned = false;
+        console.log('Disconnected from MCP server');
+      } catch (error: any) {
+        console.error('Error disconnecting from MCP server:', error.message);
+      }
+    }
+  }
+
+  async listPrompts(): Promise<string[]> { return []; }
+  async getPrompt(name: string, args?: any): Promise<string> { return ""; }
+
+  async listResources(): Promise<string[]> { return []; }
+  async readResource(url: string): Promise<string> { return ""; }
+
+  // Temp unused implementation
+  async callTool(name: string, args: any): Promise<any> {
+    try {
+      console.log(`Calling tool '${name}' with args:`, args);
+      
+      // Parse args if it's a string (handle JSON strings)
+      let toolArgs = args;
+      if (typeof args === 'string') {
+        try {
+          toolArgs = JSON.parse(args);
+        } catch (e) {
+          // If it's not valid JSON, keep as string
+          toolArgs = { input: args };
+        }
+      }
+      
+      // Call the tool with properly formatted arguments
+      const result = await this.client.callTool({ name, arguments: toolArgs });
+      console.log(`Tool '${name}' result:`, result);
+      
+      // Check for null or undefined result
+      if (result === null || result === undefined) {
+        return 'Tool executed successfully with no result data.';
+      }
+      return result;
+    } catch (error) {
+      console.error(`Tool call '${name}' failed:`, error);
+      return `Error executing tool '${name}': ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  // Temp unused implementation
+  async listTools(): Promise<McpTool[]> {
+    try {
+      const response = await this.client.request(
+        { method: 'tools/list', params: {} },
+        ToolsListSchema
+      );
+      // console.log('Tools/list response:', response);
+      return response.tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description || 'No description available',
+        parameters: tool.inputSchema || null,
+      }));
+    } catch (error) {
+      console.error('Failed to list tools:', error);
+      return [];
+    }
+  }
+
+  /**
    * Check if the client is connected
    */
   getConnectionStatus(): boolean {
@@ -125,19 +211,49 @@ export class McpConnection {
     };
   }
 
+
   /**
-   * Disconnect from the server
+   * Get the client instance once connected
+   * @returns Promise with the MCP client
    */
-  async disconnect(): Promise<void> {
-    if (this.transport && typeof this.transport.close === 'function') {
-      try {
-        await this.transport.close();
-        this.isConnected = false;
-        this.serverSpawned = false;
-        console.log('Disconnected from MCP server');
-      } catch (error: any) {
-        console.error('Error disconnecting from MCP server:', error.message);
-      }
+  async getConnectedClient(): Promise<Client> {
+    if (this.client && this.isConnected) {
+      return this.client;
     }
+    
+    if (!this.serverCommand) {
+      throw new Error('Cannot get client: Connection has not been initialized');
+    }
+    
+    // If connection is in progress, wait for it to complete
+    return this.connectViaStdio(
+      this.serverCommand,
+      this.serverArgs || [],
+      this.serverEnv || undefined,
+      this.serverAlias || undefined
+    );
   }
+}
+
+export interface IMCPClient {
+  // Connection Management
+  connectViaStdio(
+    command: string,
+    args: string[],
+    env?: Record<string, string>,
+    serverAlias?: string
+  ): Promise<Client>;
+  disconnect(): Promise<void>;
+
+  // Prompt Management
+  listPrompts(): Promise<string[]>;
+  getPrompt(name: string, args?: any): Promise<string>;
+
+  // Resource Management  
+  listResources(): Promise<string[]>;
+  readResource(url: string): Promise<string>;
+
+  // Tool Management
+  callTool(name: string, args: any): Promise<any>;
+  listTools(): Promise<McpTool[]>;
 }
