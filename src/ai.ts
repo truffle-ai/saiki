@@ -2,6 +2,7 @@
 import { Command } from 'commander';
 import { initializeAiCli } from './ai/index.js';
 import { getMultiServerConfig } from './server/config.js';
+import { logger } from './utils/logger.js';
 
 const program = new Command();
 
@@ -18,15 +19,18 @@ program
     try {
       const serverConfigs = await getMultiServerConfig(options.configFile);
       if (Object.keys(serverConfigs).length === 0) {
-        console.error('Error: No server configurations found in the provided file');
+        logger.error('Error: No server configurations found in the provided file');
         process.exit(1);
       }
       
-      console.log(`Found ${Object.keys(serverConfigs).length} server configurations in ${options.configFile}`);
+      logger.info(`Found ${Object.keys(serverConfigs).length} server configurations in ${options.configFile}`, null, 'green');
+      logger.info('===============================================');
+      logger.info('Starting AI-powered MCP client...', null, 'cyanBright');
+      logger.info('===============================================\n');
       await initializeAiCli(options, serverConfigs, options.connectionMode);
     } catch (error) {
-      console.error('Error: Failed to load server configurations from file');
-      console.error(error);
+      logger.error('Error: Failed to load server configurations from file');
+      logger.error(error);
       process.exit(1);
     }
   });

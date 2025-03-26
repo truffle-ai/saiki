@@ -13,8 +13,14 @@ const logLevels = {
   silly: 6
 };
 
+// Available chalk colors for message formatting
+type ChalkColor = 
+  'black' | 'red' | 'green' | 'yellow' | 'blue' | 'magenta' | 'cyan' | 'white' | 
+  'gray' | 'grey' | 'blackBright' | 'redBright' | 'greenBright' | 'yellowBright' | 
+  'blueBright' | 'magentaBright' | 'cyanBright' | 'whiteBright';
+
 // Custom format for console output
-const consoleFormat = winston.format.printf(({ level, message, timestamp }) => {
+const consoleFormat = winston.format.printf(({ level, message, timestamp, color }) => {
   const levelColorMap: Record<string, (text: string) => string> = {
     error: chalk.red,
     warn: chalk.yellow,
@@ -26,7 +32,13 @@ const consoleFormat = winston.format.printf(({ level, message, timestamp }) => {
   };
 
   const colorize = levelColorMap[level] || chalk.white;
-  return `${chalk.dim(timestamp)} ${colorize(level.toUpperCase())}: ${message}`;
+  
+  // Apply color to message if specified
+  const formattedMessage = color && typeof color === 'string' && chalk[color as ChalkColor] 
+    ? chalk[color as ChalkColor](message) 
+    : message;
+  
+  return `${chalk.dim(timestamp)} ${colorize(level.toUpperCase())}: ${formattedMessage}`;
 });
 
 export interface LoggerOptions {
@@ -73,36 +85,36 @@ export class Logger {
     });
   }
 
-  // General logging methods
-  error(message: string, ...meta: any[]) {
-    this.logger.error(message, ...meta);
+  // General logging methods with optional color parameter
+  error(message: string, meta?: any, color?: ChalkColor) {
+    this.logger.error(message, { ...meta, color });
   }
 
-  warn(message: string, ...meta: any[]) {
-    this.logger.warn(message, ...meta);
+  warn(message: string, meta?: any, color?: ChalkColor) {
+    this.logger.warn(message, { ...meta, color });
   }
 
-  info(message: string, ...meta: any[]) {
-    this.logger.info(message, ...meta);
+  info(message: string, meta?: any, color?: ChalkColor) {
+    this.logger.info(message, { ...meta, color });
   }
 
-  http(message: string, ...meta: any[]) {
-    this.logger.http(message, ...meta);
+  http(message: string, meta?: any, color?: ChalkColor) {
+    this.logger.http(message, { ...meta, color });
   }
 
-  verbose(message: string, ...meta: any[]) {
-    this.logger.verbose(message, ...meta);
+  verbose(message: string, meta?: any, color?: ChalkColor) {
+    this.logger.verbose(message, { ...meta, color });
   }
 
-  debug(message: string | object, ...meta: any[]) {
+  debug(message: string | object, meta?: any, color?: ChalkColor) {
     const formattedMessage = typeof message === 'string' 
       ? message 
       : JSON.stringify(message, null, 2);
-    this.logger.debug(formattedMessage, ...meta);
+    this.logger.debug(formattedMessage, { ...meta, color });
   }
 
-  silly(message: string, ...meta: any[]) {
-    this.logger.silly(message, ...meta);
+  silly(message: string, meta?: any, color?: ChalkColor) {
+    this.logger.silly(message, { ...meta, color });
   }
 
   // Special formatting for agent-related logging

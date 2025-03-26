@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { logger } from '../utils/logger.js';
 
 /**
  * Configuration for an MCP server
@@ -30,7 +31,7 @@ export async function loadServerConfigs(configPath: string = CONFIG_PATH): Promi
     const data = await fs.readFile(configPath, 'utf-8');
     return JSON.parse(data) as ServerConfigs;
   } catch (error) {
-    console.log(`Configuration file not found at ${configPath}`);
+    logger.error(`Configuration file not found at ${configPath}`);
     throw new Error(`Failed to load config file: ${error}`);
   }
 }
@@ -102,10 +103,10 @@ export async function createDefaultConfig(): Promise<string> {
     const config = getDefaultConfig();
     await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
 
-    console.log(`Created default configuration at ${CONFIG_PATH}`);
+    logger.info(`Created default configuration at ${CONFIG_PATH}`);
     return CONFIG_PATH;
   } catch (error) {
-    console.error('Failed to create default configuration:', error);
+    logger.error('Failed to create default configuration:', error);
     throw error;
   }
 }
@@ -157,7 +158,7 @@ export async function getMultiServerConfig(configPath: string): Promise<ServerCo
     
     return configs;
   } catch (error) {
-    console.error(`Error loading multi-server configuration: ${error.message}`);
+    logger.error(`Error loading multi-server configuration: ${error.message}`);
     throw error;
   }
 }

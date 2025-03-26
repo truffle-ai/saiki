@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { z } from 'zod';
 import { McpTool } from '../ai/types.js';
+import { logger } from '../utils/logger.js';
 
 const ToolsListSchema = z.object({
   tools: z.array(
@@ -53,18 +54,19 @@ export class MCPClient implements IMCPClient {
     this.serverEnv = env || null;
     this.serverAlias = serverAlias || null;
 
-    console.log('=======================================');
-    console.log(`MCP SERVER: ${command} ${args.join(' ')}`);
+    logger.info('')
+    logger.info('=======================================');
+    logger.info(`MCP SERVER: ${command} ${args.join(' ')}`);
     if (env) {
-      console.log('Environment:');
+      logger.info('Environment:');
       Object.entries(env).forEach(([key, value]) => {
-        console.log(`  ${key}=${value}`);
+        logger.info(`  ${key}=${value}`);
       });
     }
-    console.log('=======================================\n');
+    logger.info('=======================================\n');
 
     const serverName = serverAlias ? `"${serverAlias}" (${command} ${args.join(' ')})` : `${command} ${args.join(' ')}`;
-    console.log(`Connecting to MCP server: ${serverName}`);
+    logger.info(`Connecting to MCP server: ${serverName}`);
 
     // Create transport for stdio connection
     // Note: StdioClientTransport doesn't directly expose the childProcess
@@ -88,18 +90,18 @@ export class MCPClient implements IMCPClient {
     );
 
     try {
-      console.log('Establishing connection...');
+      logger.info('Establishing connection...');
       await this.client.connect(this.transport);
 
       // If connection is successful, we know the server was spawned
       this.serverSpawned = true;
-      console.log(`\n✅ SERVER SPAWNED (PID unknown - MCP SDK doesn't expose it)`);
-      console.log('Connection established!');
+      logger.info(`✅ SERVER ${serverName} SPAWNED (PID unknown - MCP SDK doesn't expose it)`);
+      logger.info('Connection established!');
       this.isConnected = true;
 
       return this.client;
     } catch (error: any) {
-      console.error('Failed to connect to MCP server:', error.message);
+      logger.error(`Failed to connect to MCP server ${serverName}:`, error.message);
       throw error;
     }
   }
@@ -113,9 +115,9 @@ export class MCPClient implements IMCPClient {
         await this.transport.close();
         this.isConnected = false;
         this.serverSpawned = false;
-        console.log('Disconnected from MCP server');
+        logger.info('Disconnected from MCP server');
       } catch (error: any) {
-        console.error('Error disconnecting from MCP server:', error.message);
+        logger.error('Error disconnecting from MCP server:', error.message);
       }
     }
   }
@@ -128,7 +130,7 @@ export class MCPClient implements IMCPClient {
 
   async callTool(name: string, args: any): Promise<any> {
     try {
-      console.log(`Calling tool '${name}' with args:`, args);
+      logger.debug(`Calling tool '${name}' with args:`, args);
       
       // Parse args if it's a string (handle JSON strings)
       let toolArgs = args;
@@ -143,7 +145,7 @@ export class MCPClient implements IMCPClient {
       
       // Call the tool with properly formatted arguments
       const result = await this.client.callTool({ name, arguments: toolArgs });
-      console.log(`Tool '${name}' result:`, result);
+      logger.debug(`Tool '${name}' result:`, result);
       
       // Check for null or undefined result
       if (result === null || result === undefined) {
@@ -151,7 +153,7 @@ export class MCPClient implements IMCPClient {
       }
       return result;
     } catch (error) {
-      console.error(`Tool call '${name}' failed:`, error);
+      logger.error(`Tool call '${name}' failed:`, error);
       return `Error executing tool '${name}': ${error instanceof Error ? error.message : String(error)}`;
     }
   }
@@ -163,14 +165,14 @@ export class MCPClient implements IMCPClient {
         { method: 'tools/list', params: {} },
         ToolsListSchema
       );
-      // console.log('Tools/list response:', response);
+      // logger.debug('Tools/list response:', response);
       return response.tools.map((tool) => ({
         name: tool.name,
         description: tool.description || 'No description available',
         parameters: tool.inputSchema || null,
       }));
     } catch (error) {
-      console.error('Failed to list tools:', error);
+      logger.error('Failed to list tools:', error);
       return [];
     }
   }

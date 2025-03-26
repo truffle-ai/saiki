@@ -15,6 +15,7 @@ export async function runAiCli(connectionManager: MCPConnectionManager, apiKey: 
   logger.info(`Using OpenAI model: ${options.model || 'gpt-4o-mini'}`);
   logger.info(`Log level: ${logger.getLevel()}`);
   logger.info(`Connected servers: ${connectionManager.getClients().size}`);
+  logger.error(`Failed connections: ${Object.keys(connectionManager.getFailedConnections()).length}`);
 
   // Initialize spinner
   const spinner = ora('Initializing AI service...').start();

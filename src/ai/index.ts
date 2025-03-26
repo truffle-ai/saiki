@@ -3,7 +3,7 @@ import { runAiCli } from './cli.js';
 import { AiCliOptions } from './types.js';
 import dotenv from 'dotenv';
 import { ServerConfigs } from '../server/config.js';
-import chalk from 'chalk';
+import { logger } from '../utils/logger.js';
 
 // Load environment variables
 dotenv.config();
@@ -23,22 +23,13 @@ export async function initializeAiCli(
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
-    console.error(chalk.red('Error: OPENAI_API_KEY not found in environment variables'));
-    console.error(chalk.red('Please set your OpenAI API key in the .env file'));
+    logger.error('Error: OPENAI_API_KEY not found in environment variables');
+    logger.error('Please set your OpenAI API key in the .env file');
     process.exit(1);
   }
 
-  // Verify API key format
-  if (!apiKey.startsWith('sk-')) {
-    console.error(chalk.red('Error: Invalid OpenAI API key format'));
-    console.error(chalk.red('OpenAI API keys should start with "sk-"'));
-    console.error(chalk.red('You appear to be using an Anthropic API key (starts with sk-proj-)'));
-    console.error(chalk.red('Please set a valid OpenAI API key in the .env file'));
-    process.exit(1);
-  }
-
-  console.log(chalk.dim('[DEBUG] Verified API key'));
-  console.log(chalk.dim('[DEBUG] Multi-server mode active'));
+  logger.debug('Verified API key');
+  logger.debug('Multi-server mode active');
 
   const connectionManager = new MCPConnectionManager(serverConfigs, connectionMode);
   await connectionManager.initialize();
@@ -47,7 +38,7 @@ export async function initializeAiCli(
   try {
     await runAiCli(connectionManager, apiKey, options);
   } catch (error) {
-    console.error(chalk.red(`Error running AI CLI: ${error.message}`));
+    logger.error(`Error running AI CLI: ${error.message}`);
     process.exit(1);
   }
 }

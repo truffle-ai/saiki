@@ -48,6 +48,10 @@ export class MCPConnectionManager implements IMCPConnectionManager {
     return this.clients;
   }
 
+  getFailedConnections(): { [key: string]: string } {
+    return this.connectionErrors;
+  }
+
   disconnectAll(): void {
     for (const client of this.clients.values()) {
       client.disconnect();
