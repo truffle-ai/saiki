@@ -17,10 +17,22 @@ npm run build
 OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-3. Run the AI CLI with the default server configuration:
+3. Run the AI CLI:
 
 ```bash
+npm start
+```
+
+## Development
+
+For development with automatic recompilation:
+
+```bash
+# In terminal 1: Watch TypeScript files and recompile on changes
 npm run dev
+
+# In terminal 2: Run the application
+npm start
 ```
 
 ## Using the AI CLI
@@ -42,13 +54,16 @@ By default, the AI CLI uses the servers defined in `configuration/mcp.json`. To 
 
 ```bash
 # Connect using a custom configuration file
-npm run dev -- --config-file path/to/your/config.json
+npm start -- --config-file path/to/your/config.json
 
 # Use strict mode to require all connections to succeed
-npm run dev -- --config-file path/to/your/config.json --strict
+npm start -- --config-file path/to/your/config.json --strict
 
 # Disable verbose output
-npm run dev -- --no-verbose
+npm start -- --no-verbose
+
+# Specify a different model
+npm start -- --model gpt-4o
 ```
 
 ## Server Configuration File
