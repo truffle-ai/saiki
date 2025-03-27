@@ -1,9 +1,11 @@
-import { MCPClientManager } from '../client/manager.js';
-import { runAiCli } from './cli.js';
 import { AiCliOptions } from './types.js';
-import dotenv from 'dotenv';
-import { ServerConfigs } from '../server/config.js';
 import { logger } from '../utils/logger.js';
+import { MCPClientManager } from '../client/manager.js';
+import { ServerConfigs } from '../server/config.js';
+import { runAiCli } from './cli.js';
+import { createLLMService } from './llm/factory.js';
+import { LLMConfig } from './llm/types.js';
+import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
@@ -19,24 +21,39 @@ export async function initializeAiCli(
   serverConfigs: ServerConfigs,
   connectionMode: 'strict' | 'lenient' = 'lenient'
 ) {
-  // Check for OpenAI API key
-  const apiKey = process.env.OPENAI_API_KEY;
+  // Get provider from options or default to OpenAI
+  const provider = options.provider || 'openai';
+  
+  // Check for appropriate API key
+  const apiKeyEnvVar = provider === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY';
+  const apiKey = process.env[apiKeyEnvVar];
 
   if (!apiKey) {
-    logger.error('Error: OPENAI_API_KEY not found in environment variables');
-    logger.error('Please set your OpenAI API key in the .env file');
+    logger.error(`Error: ${apiKeyEnvVar} not found in environment variables`);
+    logger.error(`Please set your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key in the .env file`);
     process.exit(1);
   }
 
   logger.debug('Verified API key');
   logger.debug('Multi-server mode active');
 
+  // Initialize client manager
   const mcpClientManager = new MCPClientManager(serverConfigs, connectionMode);
   await mcpClientManager.initialize();
   
-  // Start AI CLI with multiple connections
+  // Create LLM service
+  const llmConfig: LLMConfig = {
+    provider,
+    apiKey,
+    model: options.model,
+    options: options.providerOptions
+  };
+  
+  const llmService = createLLMService(llmConfig, mcpClientManager);
+  
+  // Run AI CLI
   try {
-    await runAiCli(mcpClientManager, apiKey, options);
+    await runAiCli(mcpClientManager, llmService, options);
   } catch (error) {
     logger.error(`Error running AI CLI: ${error.message}`);
     process.exit(1);
