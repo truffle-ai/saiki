@@ -29,6 +29,9 @@ export interface LLMService {
   
   // Clear conversation history
   resetConversation(): void;
+  
+  // Get configuration information about the LLM service
+  getConfig(): { provider: string; model: string;};
 }
 
 /**

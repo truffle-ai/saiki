@@ -163,6 +163,17 @@ export class AnthropicService implements LLMService {
     this.messages = [];
   }
   
+  /**
+   * Get configuration information about the LLM service
+   * @returns Configuration object with provider and model information
+   */
+  getConfig(): { provider: string; model: string; [key: string]: any } {
+    return {
+      provider: 'anthropic',
+      model: this.model
+    };
+  }
+  
   private formatToolsForClaude(tools: McpTool[]): any[] {
     return tools.map(tool => {
       // Convert tool to Claude tool format

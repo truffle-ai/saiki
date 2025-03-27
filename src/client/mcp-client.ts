@@ -56,7 +56,7 @@ export class MCPClient implements IMCPClient {
 
     logger.info('')
     logger.info('=======================================');
-    logger.info(`MCP SERVER: ${command} ${args.join(' ')}`);
+    logger.info(`MCP SERVER: ${command} ${args.join(' ')}`, null, 'magenta');
     if (env) {
       logger.info('Environment:');
       Object.entries(env).forEach(([key, value]) => {
@@ -95,8 +95,8 @@ export class MCPClient implements IMCPClient {
 
       // If connection is successful, we know the server was spawned
       this.serverSpawned = true;
-      logger.info(`✅ SERVER ${serverName} SPAWNED (PID unknown - MCP SDK doesn't expose it)`);
-      logger.info('Connection established!');
+      logger.info(`✅ SERVER ${serverName} SPAWNED`);
+      logger.info('Connection established!\n\n');
       this.isConnected = true;
 
       return this.client;

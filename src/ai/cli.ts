@@ -16,12 +16,13 @@ export async function runAiCli(
   llmService: LLMService,
   options: AiCliOptions
 ) {
-  // Display welcome message with provider info
-  logger.info('AI-Powered MCP Client\n========================\n');
-  logger.info(`Using ${options.provider || 'openai'} model: ${options.model || 'default'}`);
+  // Get model and provider info directly from the LLM service
+  const { provider, model } = llmService.getConfig();
+  logger.info(`Using ${provider} model: ${model}`, null, 'yellow');
+
   logger.debug(`Log level: ${logger.getLevel()}`);
-  logger.info(`Connected servers: ${mcpClientManager.getClients().size}`);
-  logger.error(`Failed connections: ${Object.keys(mcpClientManager.getFailedConnections()).length}`);
+  logger.info(`Connected servers: ${mcpClientManager.getClients().size}`, null, 'green');
+  logger.error(`Failed connections: ${Object.keys(mcpClientManager.getFailedConnections()).length}. Ignoring in lenient mode.\n`, null, 'red');
 
   
   try {
@@ -38,8 +39,8 @@ export async function runAiCli(
     // Update system context with available tools
     llmService.updateSystemContext(tools);
     
-    logger.info(`Loaded ${tools.length} tools from ${mcpClientManager.getClients().size} MCP servers`);
-
+    logger.info(`Loaded ${tools.length} tools from ${mcpClientManager.getClients().size} MCP servers\n`);
+    logger.info('AI Agent initialized successfully!', null, 'green');
     // Create readline interface
     const rl = readline.createInterface({
       input: process.stdin,

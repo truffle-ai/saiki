@@ -187,6 +187,17 @@ export class OpenAIService implements LLMService {
     this.conversationHistory = this.conversationHistory.slice(0, 1);
   }
   
+  /**
+   * Get configuration information about the LLM service
+   * @returns Configuration object with provider and model information
+   */
+  getConfig(): { provider: string; model: string; [key: string]: any } {
+    return {
+      provider: 'openai',
+      model: this.model
+    };
+  }
+  
   // Helper methods from AiService
   private async getAIResponseWithRetries(tools: any[]): Promise<any> {
     let attempts = 0;

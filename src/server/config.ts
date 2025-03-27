@@ -50,40 +50,49 @@ export async function configExists(configPath?: string): Promise<boolean> {
   }
 }
 
-/**
- * Load and validate multiple server configurations from a file
- * @param configPath Path to the config file with server definitions
- * @returns Dictionary of server configurations
- */
-export async function getMultiServerConfig(configPath: string): Promise<ServerConfigs> {
+// Server configuration types
+export type ServerConfig = {
+  url: string;
+  auth?: {
+    username?: string;
+    password?: string;
+    token?: string;
+  };
+};
+
+// LLM configuration type
+export type LLMConfig = {
+  provider: string;
+  model: string;
+  apiKey?: string;
+  providerOptions?: Record<string, any>;
+};
+
+// Agent configuration type
+export type AgentConfig = {
+  mcpServers: ServerConfigs;
+  llm: LLMConfig;
+  [key: string]: any; // Allow for future extensions
+};
+
+// Update the function to load the entire config
+export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
   try {
-    // If the path doesn't exist, throw an error
-    if (!await configExists(configPath)) {
-      throw new Error(`Config file not found: ${configPath}`);
-    }
+    // Convert to absolute path if it's relative
+    const fs = await import('fs/promises');
+    const path = await import('path');
     
-    // Load configurations from the file
-    const configs = await loadServerConfigs(configPath);
+    // Make path absolute if it's relative
+    const absolutePath = path.isAbsolute(configPath) 
+      ? configPath 
+      : path.resolve(process.cwd(), configPath);
     
-    // Validate that we have at least one valid server configuration
-    if (!configs || Object.keys(configs).length === 0) {
-      throw new Error('No server configurations found in the config file');
-    }
+    // Read and parse the config file
+    const fileContent = await fs.readFile(absolutePath, 'utf-8');
+    const config = JSON.parse(fileContent);
     
-    // Validate each server configuration
-    for (const [alias, config] of Object.entries(configs)) {
-      if (!config.command) {
-        throw new Error(`Server "${alias}" is missing a command`);
-      }
-      
-      if (!Array.isArray(config.args)) {
-        configs[alias].args = []; // Initialize to empty array if missing
-      }
-    }
-    
-    return configs;
+    return config;
   } catch (error) {
-    logger.error(`Error loading multi-server configuration: ${error.message}`);
-    throw error;
+    throw new Error(`Failed to load config file: ${error.message}`);
   }
 }

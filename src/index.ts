@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import path from 'path';
 import { logger } from './utils/logger.js';
 import { initializeAiCli } from './ai/index.js';
-import { getMultiServerConfig } from './server/config.js';
+import { loadConfigFile } from './server/config.js';
 
 const program = new Command();
 
@@ -23,9 +23,8 @@ if (!existsSync('.env')) {
 program
   .name('mcp-cli')
   .description('AI-powered CLI for interacting with MCP servers')
-  .option('-c, --config-file <path>', 'Path to server config file', 'configuration/mcp.json')
+  .option('-c, --config-file <path>', 'Path to config file', 'configuration/mcp.json')
   .option('-s, --strict', 'Require all server connections to succeed')
-  .option('-m, --model <model>', 'OpenAI model to use', 'gpt-4o-mini')
   .option('--no-verbose', 'Disable verbose output')
   .version('0.1.0');
 
@@ -57,13 +56,26 @@ logger.info('');
 // Start the AI client directly
 async function startAiClient() {
   try {
-    const serverConfigs = await getMultiServerConfig(normalizedConfigPath);
-    if (Object.keys(serverConfigs).length === 0) {
-      logger.error('Error: No server configurations found in the provided file');
+    // Load the agent configuration
+    const config = await loadConfigFile(normalizedConfigPath);
+    
+    // Validate MCP servers section exists
+    if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
+      logger.error('Error: No MCP server configurations found in the provided file');
       process.exit(1);
     }
+    logger.info(`Found ${Object.keys(config.mcpServers).length} server configurations in ${normalizedConfigPath}`, null, 'green');
+
+    // Validate LLM section exists, use defaults if not
+    if (!config.llm) {
+      logger.info('No LLM configuration found, using defaults', null, 'yellow');
+      config.llm = {
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        apiKey: 'env:OPENAI_API_KEY'
+      };
+    }
     
-    logger.info(`Found ${Object.keys(serverConfigs).length} server configurations in ${normalizedConfigPath}`, null, 'green');
     logger.info('===============================================');
     logger.info('Starting AI-powered MCP client...', null, 'cyanBright');
     logger.info('===============================================\n');
@@ -71,13 +83,12 @@ async function startAiClient() {
     // Convert CLI options to the format expected by initializeAiCli
     const aiOptions = {
       configFile: normalizedConfigPath,
-      model: options.model,
       verbose: verbose
     };
     
-    await initializeAiCli(aiOptions, serverConfigs, connectionMode);
+    await initializeAiCli(aiOptions, config, connectionMode);
   } catch (error) {
-    logger.error('Error: Failed to load server configurations from file');
+    logger.error('Error: Failed to load configuration from file');
     logger.error(error);
     process.exit(1);
   }

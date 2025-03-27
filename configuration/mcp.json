@@ -1,10 +1,21 @@
 {
-  "desktopCommander": {
-    "command": "npx",
-    "args": ["-y", "@wonderwhy-er/desktop-commander"]
+  "mcpServers": {
+    "desktopCommander": {
+      "command": "npx",
+      "args": ["-y", "@wonderwhy-er/desktop-commander"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"]
+    },
+    "puppeteer": {
+      "command": "node",
+      "args": ["/Users/karaj/.mcp/puppeteer/index.js"]
+    }
   },
-  "filesystem": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-filesystem"]
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "apiKey": "env:OPENAI_API_KEY"
   }
 } 

@@ -1,7 +1,7 @@
 import { AiCliOptions } from './types.js';
 import { logger } from '../utils/logger.js';
 import { MCPClientManager } from '../client/manager.js';
-import { ServerConfigs } from '../server/config.js';
+import { AgentConfig } from '../server/config.js';
 import { runAiCli } from './cli.js';
 import { createLLMService } from './llm/factory.js';
 import { LLMConfig } from './llm/types.js';
@@ -11,46 +11,62 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 /**
- * Start AI-powered CLI with multiple MCP server connections
+ * Start AI-powered CLI with unified configuration
  * @param options CLI options
- * @param serverConfigs Dictionary of server configurations
+ * @param config Agent configuration including MCP servers and LLM settings
  * @param connectionMode Whether to enforce all connections must succeed ("strict") or allow partial success ("lenient")
  */
 export async function initializeAiCli(
   options: AiCliOptions = {},
-  serverConfigs: ServerConfigs,
+  config: AgentConfig,
   connectionMode: 'strict' | 'lenient' = 'lenient'
 ) {
-  // Get provider from options or default to OpenAI
-  const provider = options.provider || 'openai';
+  // Extract LLM config with default values
+  const llmConfig: LLMConfig = {
+    provider: config.llm?.provider || 'openai',
+    model: config.llm?.model || 'gpt-4o-mini',
+    apiKey: config.llm?.apiKey || '',
+    options: config.llm?.providerOptions
+  };
   
-  // Check for appropriate API key
-  const apiKeyEnvVar = provider === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY';
-  const apiKey = process.env[apiKeyEnvVar];
+  // Get provider from config
+  const provider = llmConfig.provider;
+  
+  // Get API key from config or environment
+  let apiKey = llmConfig.apiKey;
+  if (apiKey?.startsWith('env:')) {
+    // If the API key is specified as an environment variable reference
+    const envVarName = apiKey.substring(4);
+    apiKey = process.env[envVarName];
+  } else {
+    // Fall back to environment variables if not in config
+    const apiKeyEnvVar = provider === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY';
+    apiKey = apiKey || process.env[apiKeyEnvVar];
+  }
 
   if (!apiKey) {
-    logger.error(`Error: ${apiKeyEnvVar} not found in environment variables`);
-    logger.error(`Please set your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key in the .env file`);
+    logger.error(`Error: API key for ${provider} not found`);
+    logger.error(`Please set your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key in the config file or .env file`);
     process.exit(1);
   }
 
   logger.debug('Verified API key');
 
-  // Initialize client manager
-  const mcpClientManager = new MCPClientManager(serverConfigs, connectionMode);
+  // Initialize client manager with server configs from unified config
+  const mcpClientManager = new MCPClientManager(config.mcpServers, connectionMode);
   await mcpClientManager.initialize();
 
   logger.debug('MCP servers initialized');
   
-  // Create LLM service
-  const llmConfig: LLMConfig = {
+  // Create LLM service using config from unified config
+  const llmServiceConfig: LLMConfig = {
     provider,
     apiKey,
-    model: options.model,
-    options: options.providerOptions
+    model: llmConfig.model,
+    options: llmConfig.options
   };
   
-  const llmService = createLLMService(llmConfig, mcpClientManager);
+  const llmService = createLLMService(llmServiceConfig, mcpClientManager);
 
   logger.debug('LLM service created');
   
