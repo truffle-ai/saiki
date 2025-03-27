@@ -7,10 +7,6 @@
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-filesystem"]
   },
-  "local": {
-    "command": "node",
-    "args": ["dist/host.js", "stdio"]
-  },
   "puppeteer": {
     "command": "node",
     "args": ["/Users/karaj/.mcp/puppeteer/index.js"]
