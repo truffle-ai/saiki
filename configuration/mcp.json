@@ -6,9 +6,5 @@
   "filesystem": {
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-filesystem"]
-  },
-  "puppeteer": {
-    "command": "node",
-    "args": ["/Users/karaj/.mcp/puppeteer/index.js"]
   }
 } 

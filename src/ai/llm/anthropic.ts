@@ -7,6 +7,7 @@ import { logger } from '../../utils/logger.js';
 
 /**
  * Anthropic Claude implementation of LLMService
+ * UNTESTED AS OF NOW
  */
 export class AnthropicService implements LLMService {
   private anthropic: Anthropic;
