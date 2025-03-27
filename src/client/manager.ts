@@ -1,4 +1,4 @@
-import { IMCPClient, MCPClient } from './mcpClient.js';
+import { IMCPClient, MCPClient } from './mcp-client.js';
 import { ServerConfigs } from '../server/config.js';
 
 export class MCPClientManager implements IMCPClientManager {

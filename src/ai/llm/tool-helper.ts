@@ -1,5 +1,5 @@
 import { MCPClientManager } from '../../client/manager.js';
-import { IMCPClient } from '../../client/mcpClient.js';
+import { IMCPClient } from '../../client/mcp-client.js';
 import { McpTool } from '../types.js';
 import { logger } from '../../utils/logger.js';
 /**

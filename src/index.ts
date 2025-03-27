@@ -44,7 +44,7 @@ logger.info(`Starting AI-powered MCP client with config file: ${normalizedConfig
 
 // Display examples
 logger.info('');
-logger.info('This client uses OpenAI to interpret your commands and call appropriate MCP tools.', null, 'cyanBright');
+logger.info('This client uses LLM models to interpret your commands and call appropriate MCP tools.', null, 'cyanBright');
 logger.info('You can interact with tools using natural language.');
 logger.info('');
 logger.info('Examples:', null, 'yellow');
