@@ -5,10 +5,6 @@ import { AgentConfig } from '../server/config.js';
 import { runAiCli } from './cli.js';
 import { createLLMService } from './llm/factory.js';
 import { LLMConfig } from './llm/types.js';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 /**
  * Start AI-powered CLI with unified configuration
