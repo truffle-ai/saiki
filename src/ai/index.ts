@@ -35,11 +35,12 @@ export async function initializeAiCli(
   }
 
   logger.debug('Verified API key');
-  logger.debug('Multi-server mode active');
 
   // Initialize client manager
   const mcpClientManager = new MCPClientManager(serverConfigs, connectionMode);
   await mcpClientManager.initialize();
+
+  logger.debug('MCP servers initialized');
   
   // Create LLM service
   const llmConfig: LLMConfig = {
@@ -50,6 +51,8 @@ export async function initializeAiCli(
   };
   
   const llmService = createLLMService(llmConfig, mcpClientManager);
+
+  logger.debug('LLM service created');
   
   // Run AI CLI
   try {

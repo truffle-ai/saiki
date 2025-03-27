@@ -19,7 +19,7 @@ export async function runAiCli(
   // Display welcome message with provider info
   logger.info('AI-Powered MCP Client\n========================\n');
   logger.info(`Using ${options.provider || 'openai'} model: ${options.model || 'default'}`);
-  logger.info(`Log level: ${logger.getLevel()}`);
+  logger.debug(`Log level: ${logger.getLevel()}`);
   logger.info(`Connected servers: ${mcpClientManager.getClients().size}`);
   logger.error(`Failed connections: ${Object.keys(mcpClientManager.getFailedConnections()).length}`);
 
@@ -27,7 +27,6 @@ export async function runAiCli(
   try {
     // Get available tools from all connected servers
     logger.info('Loading available tools...');
-    logger.debug('Getting available tools...');
     
     // Using ToolHelper internal to LLMService instead of direct tool fetching
     const tools = await getMCPTools(mcpClientManager);
