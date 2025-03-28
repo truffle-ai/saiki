@@ -5,7 +5,6 @@ import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 import { streamText, generateText, CoreMessage } from 'ai';
 import { VercelLLM } from './types.js';
-
 /**
  * Vercel generic implementation of LLMService
  */
@@ -65,57 +64,22 @@ export class VercelLLMService implements ILLMService {
         let iterationCount = 0;
         let fullResponse = '';
 
+        //let stream: AsyncIterable<string> & ReadableStream<string>;
+        let stream: any;
         try {
             while (iterationCount < 1) {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
-
                 logger.debug(`Messages: ${JSON.stringify(this.messages, null, 2)}`);
+                logger.silly(`Tools: ${JSON.stringify(tools, null, 2)}`);
 
-                // Use vercel's generateStream along with mcp
-                const response = await streamText({
-                    model: this.model,
-                    messages: this.messages,
-                    tools,
-                    onChunk: (chunk) => {
-                        logger.debug(`Chunk type: ${chunk.chunk.type}`);
-                        logger.debug(`Chunk: ${JSON.stringify(chunk, null, 2)}`);
-                    },
-                    onError: (error) => {
-                        logger.error(`Error in streamText: ${JSON.stringify(error, null, 2)}`);
-                    },
-                    onStepFinish: (step) => {
-                        //logger.debug(`Step finished: ${JSON.stringify(step, null, 2)}`);
-                        logger.debug(`Step finished, step type: ${JSON.stringify(step.stepType, null, 2)}`);
-                        logger.debug(`Step finished, step text: ${JSON.stringify(step.text, null, 2)}`);
-                        logger.debug(`Step finished, step tool calls: ${JSON.stringify(step.toolCalls, null, 2)}`);
-                        logger.debug(`Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`);
-                    },
-                    onFinish: (result) => {
-                        //logger.debug(`Stream finished: ${JSON.stringify(result, null, 2)}`);
-                        logger.debug(`Stream finished, result finishReason: ${result.finishReason}`);
-                        logger.debug(`Stream finished, result text: ${result.text}`);
-                        logger.debug(`Stream finished, result tool calls: ${JSON.stringify( result.toolCalls, null, 2)}`);
-                        logger.debug(
-                            `Stream finished, result tool results: ${JSON.stringify(
-                                result.toolResults,
-                                null,
-                                2
-                            )}`
-                        );
-                    },
-                    maxSteps: MAX_ITERATIONS,
-                    toolCallStreaming: true,
-                    // maxTokens: this.maxTokens,
-                    // temperature: this.temperature,
-                });
+                fullResponse = await this.generateText(tools, callbacks, MAX_ITERATIONS);
+                
+                // stream = await this.streamText(tools, callbacks, MAX_ITERATIONS);
 
-                //logger.debug(`Response: ${JSON.stringify(response, null, 2)}`);
-
-                for await (const textPart of response.textStream) {
-                    fullResponse += textPart;
-                    console.log(textPart);
-                }
+                // for await (const textPart of stream) {
+                //     fullResponse += textPart;
+                // }
 
                 // Notify thinking for next iteration
                 callbacks?.onThinking?.();
@@ -130,10 +94,122 @@ export class VercelLLMService implements ILLMService {
         } catch (error) {
             // Handle API errors
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error(`Error in Anthropic service: ${errorMessage}`);
+            logger.error(`Error in vercel llm service: ${errorMessage}`);
 
             return `Error: ${errorMessage}`;
         }
+    }
+
+    async generateText(
+        tools: any,
+        callbacks?: LLMCallbacks,
+        maxSteps: number = 10
+    ): Promise<string> {
+
+        let stepIteration = 0;
+        const response = await generateText({
+            model: this.model,
+            messages: this.messages,
+            tools,
+            onStepFinish: (step) => {
+                logger.debug(`Step iteration: ${stepIteration}`);
+                stepIteration++;
+                logger.debug(`Step finished, step type: ${step.stepType}`);
+                logger.debug(`Step finished, step text: ${step.text}`);
+                logger.debug(`Step finished, step tool calls: ${JSON.stringify(step.toolCalls, null, 2)}`);
+                logger.debug(`Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`);
+
+                if (step.stepType === 'tool-result') {
+                    for (const toolResult of step.toolResults) {
+                        callbacks?.onToolResult?.(toolResult.toolName, toolResult.result);
+                    }
+                }
+                if (step.toolCalls) {
+                    for (const toolCall of step.toolCalls) {
+                        callbacks?.onToolCall?.(toolCall.toolName, toolCall.args);
+                    }
+                }
+            },
+            maxSteps: maxSteps,
+        });
+
+        const fullResponse = response.text;
+
+        this.messages.push({ role: 'assistant', content: fullResponse });
+
+        return fullResponse;
+    }
+    
+    // returns AsyncIterable<string> & ReadableStream<string>
+    async streamText(
+        tools: any,
+        callbacks?: LLMCallbacks,
+        maxSteps: number = 10
+    ): Promise<any> {
+        let stepIteration = 0;
+        // use vercel's streamText with mcp
+        const response = streamText({
+            model: this.model,
+            messages: this.messages,
+            tools,
+            onChunk: (chunk) => {
+                logger.debug(`Chunk type: ${chunk.chunk.type}`);
+                // Safely access textDelta if it exists
+                if ('textDelta' in chunk.chunk) {
+                    logger.debug(`Chunk text: ${chunk.chunk.textDelta}`);
+                    // Pass the textDelta to the callback if it exists
+                    callbacks?.onChunk?.(chunk.chunk.textDelta);
+                }
+            },
+            onError: (error) => {
+                logger.error(`Error in streamText: ${JSON.stringify(error, null, 2)}`);
+            },
+            onStepFinish: (step) => {
+                logger.debug(`Step iteration: ${stepIteration}`);
+                stepIteration++;
+                logger.debug(`Step finished, step type: ${step.stepType}`);
+                logger.debug(`Step finished, step text: ${step.text}`);
+                logger.debug(`Step finished, step tool calls: ${JSON.stringify(step.toolCalls, null, 2)}`);
+                logger.debug(`Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`);
+
+                if (step.stepType === 'tool-result') {
+                    for (const toolResult of step.toolResults) {
+                        callbacks?.onToolResult?.(toolResult.toolName, toolResult.result);
+                    }
+                }
+                if (step.toolCalls) {
+                    for (const toolCall of step.toolCalls) {
+                        callbacks?.onToolCall?.(toolCall.toolName, toolCall.args);
+                    }
+                }
+            },
+            onFinish: (result) => {
+                //logger.debug(`Stream finished: ${JSON.stringify(result, null, 2)}`);
+                logger.debug(`Stream finished, result finishReason: ${result.finishReason}`);
+                logger.debug(`Stream finished, result text: ${result.text}`);
+                logger.debug(`Stream finished, result tool calls: ${JSON.stringify( result.toolCalls, null, 2)}`);
+                logger.debug(
+                    `Stream finished, result tool results: ${JSON.stringify(
+                        result.toolResults,
+                        null,
+                        2
+                    )}`
+                );
+            },
+            maxSteps: maxSteps,
+            toolCallStreaming: true,
+            // maxTokens: this.maxTokens,
+            // temperature: this.temperature,
+        });
+
+        logger.silly(`Response: ${JSON.stringify(response, null, 2)}`);
+
+        return response.textStream;
+
+        // for await (const textPart of response.textStream) {
+        //     fullResponse += textPart;
+        //     console.log(textPart);
+        // }
     }
 
     resetConversation(): void {

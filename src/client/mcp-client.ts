@@ -32,9 +32,6 @@ export class MCPClientWrapper implements IMCPClientWrapper {
     private serverPid: number | null = null;
     private serverAlias: string | null = null;
 
-    /**
-     * Create a new MCP Client object
-     */
     constructor() {}
 
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {

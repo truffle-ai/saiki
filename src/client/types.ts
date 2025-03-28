@@ -2,6 +2,7 @@ import { McpServerConfig } from '../server/config.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpTool } from '../ai/types.js';
 
+// Defining types as any because we don't know what the actual types are
 export type VercelMCPClient = any;
 export type VercelMCPTool = any;
 
@@ -15,7 +16,7 @@ export interface IMCPClientWrapper {
         args: string[],
         env?: Record<string, string>,
         serverAlias?: string
-    ): Promise<Client>;
+    ): Promise<IMCPClient>;
     disconnect(): Promise<void>;
 
     // Prompt Management

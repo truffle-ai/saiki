@@ -149,6 +149,9 @@ export async function runAiCli(
                 try {
                     // Create callbacks for progress indication (without spinner)
                     const callbacks: LLMCallbacks = {
+                        onChunk: (chunk) => {
+                            console.log(chunk);
+                        },
                         onThinking: () => {
                             logger.info('AI thinking...');
                         },

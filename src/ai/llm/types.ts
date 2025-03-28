@@ -4,6 +4,9 @@ import { McpTool } from '../types.js';
  * Callbacks for LLM processing events
  */
 export interface LLMCallbacks {
+    // Called when a chunk of the response is received
+    onChunk?: (chunk: string) => void;
+
     // Called when the LLM is processing/thinking
     onThinking?: () => void;
 

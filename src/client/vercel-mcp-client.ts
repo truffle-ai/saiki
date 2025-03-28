@@ -1,6 +1,5 @@
 // import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 // import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { z } from 'zod';
 import { logger } from '../utils/logger.js';
 import { experimental_createMCPClient as createMCPClient} from 'ai';
 import { Experimental_StdioMCPTransport as StdioMCPTransport} from 'ai/mcp-stdio';
@@ -20,9 +19,6 @@ export class VercelMCPClientWrapper implements IMCPClientWrapper {
     private serverPid: number | null = null;
     private serverName: string | null = null;
 
-    /**
-     * Create a new MCP Client object
-     */
     constructor() {}
 
     async connect(config: McpServerConfig, serverName: string): Promise<VercelMCPClient> {
@@ -153,25 +149,6 @@ export class VercelMCPClientWrapper implements IMCPClientWrapper {
             return `Error executing tool '${name}': ${error instanceof Error ? error.message : String(error)}`;
         }
     }
-
-    // // Temp unused implementation
-    // async listTools(): Promise<McpTool[]> {
-    //     try {
-    //         const response = await this.client.request(
-    //             { method: 'tools/list', params: {} },
-    //             ToolsListSchema
-    //         );
-    //         // logger.debug('Tools/list response:', response);
-    //         return response.tools.map((tool) => ({
-    //             name: tool.name,
-    //             description: tool.description || 'No description available',
-    //             parameters: tool.inputSchema || null,
-    //         }));
-    //     } catch (error) {
-    //         logger.error('Failed to list tools:', error);
-    //         return [];
-    //     }
-    // }
 
     async listTools(): Promise<VercelMCPTool[]> {
         return this.client.tools();
