@@ -38,26 +38,29 @@ This architecture allows each component to be developed, tested, and extended in
 ## Setup
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/mcp-connector.git
-   cd mcp-connector
-   ```
+
+    ```bash
+    git clone https://github.com/yourusername/mcp-connector.git
+    cd mcp-connector
+    ```
 
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
 
 3. Create a `.env` file with your OpenAI API key:
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your OpenAI API key
-   ```
+
+    ```bash
+    cp .env.example .env
+    # Edit .env and add your OpenAI API key
+    ```
 
 4. Build the project:
-   ```bash
-   npm run build
-   ```
+    ```bash
+    npm run build
+    ```
 
 ## Usage
 
@@ -80,6 +83,7 @@ ai-cli.bat
 ```
 
 This will:
+
 1. Check for your OpenAI API key
 2. Build the project if needed
 3. Connect to the ClaudeDesktopCommander MCP server
@@ -94,6 +98,7 @@ node dist/ai.js connect <serverAlias> [options]
 ```
 
 Examples:
+
 ```bash
 # Connect to ClaudeDesktopCommander
 node dist/ai.js connect desktopCommander
@@ -112,16 +117,19 @@ To add or modify server configurations, edit the `configuration/mcp.json` file.
 The modular architecture provides several natural extension points:
 
 ### MCP Connection Layer
+
 - Add support for different transport types
 - Implement connection pooling for multiple servers
 - Add authentication and security features
 
 ### AI Service Layer
+
 - Support different LLM providers
 - Implement custom prompt engineering
 - Add tool discovery and mapping
 
 ### CLI Interface Layer
+
 - Create different visualization styles
 - Implement web-based interfaces
 - Add telemetry and logging
@@ -131,6 +139,7 @@ The modular architecture provides several natural extension points:
 ### McpConnection
 
 Handles the connection to MCP servers:
+
 - Creates and manages the transport
 - Establishes the client connection
 - Provides access to server capabilities
@@ -138,6 +147,7 @@ Handles the connection to MCP servers:
 ### AiService
 
 Orchestrates the AI interaction:
+
 - Processes natural language with OpenAI
 - Maps MCP tools to OpenAI function calling
 - Maintains conversation history for context
@@ -145,6 +155,7 @@ Orchestrates the AI interaction:
 ### CLI Interface
 
 Provides the user experience:
+
 - Takes user input and displays results
 - Visualizes tool calls and their results
 - Handles error reporting and status updates

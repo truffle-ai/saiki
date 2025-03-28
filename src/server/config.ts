@@ -6,9 +6,9 @@ import { logger } from '../utils/logger.js';
  * Configuration for an MCP server
  */
 export interface McpServerConfig {
-  command: string;
-  args: string[];
-  env?: Record<string, string>;
+    command: string;
+    args: string[];
+    env?: Record<string, string>;
 }
 
 /**
@@ -27,13 +27,13 @@ const CONFIG_PATH = path.join(CONFIG_DIR, CONFIG_FILE);
  * @returns Loaded configuration
  */
 export async function loadServerConfigs(configPath: string = CONFIG_PATH): Promise<ServerConfigs> {
-  try {
-    const data = await fs.readFile(configPath, 'utf-8');
-    return JSON.parse(data) as ServerConfigs;
-  } catch (error) {
-    logger.error(`Configuration file not found at ${configPath}`);
-    throw new Error(`Failed to load config file: ${error}`);
-  }
+    try {
+        const data = await fs.readFile(configPath, 'utf-8');
+        return JSON.parse(data) as ServerConfigs;
+    } catch (error) {
+        logger.error(`Configuration file not found at ${configPath}`);
+        throw new Error(`Failed to load config file: ${error}`);
+    }
 }
 
 /**
@@ -42,57 +42,57 @@ export async function loadServerConfigs(configPath: string = CONFIG_PATH): Promi
  * @returns True if config file exists
  */
 export async function configExists(configPath?: string): Promise<boolean> {
-  try {
-    await fs.access(configPath || CONFIG_PATH);
-    return true;
-  } catch {
-    return false;
-  }
+    try {
+        await fs.access(configPath || CONFIG_PATH);
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 // Server configuration types
 export type ServerConfig = {
-  url: string;
-  auth?: {
-    username?: string;
-    password?: string;
-    token?: string;
-  };
+    url: string;
+    auth?: {
+        username?: string;
+        password?: string;
+        token?: string;
+    };
 };
 
 // LLM configuration type
 export type LLMConfig = {
-  provider: string;
-  model: string;
-  apiKey?: string;
-  providerOptions?: Record<string, any>;
+    provider: string;
+    model: string;
+    apiKey?: string;
+    providerOptions?: Record<string, any>;
 };
 
 // Agent configuration type
 export type AgentConfig = {
-  mcpServers: ServerConfigs;
-  llm: LLMConfig;
-  [key: string]: any; // Allow for future extensions
+    mcpServers: ServerConfigs;
+    llm: LLMConfig;
+    [key: string]: any; // Allow for future extensions
 };
 
 // Update the function to load the entire config
 export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
-  try {
-    // Convert to absolute path if it's relative
-    const fs = await import('fs/promises');
-    const path = await import('path');
+    try {
+        // Convert to absolute path if it's relative
+        const fs = await import('fs/promises');
+        const path = await import('path');
 
-    // Make path absolute if it's relative
-    const absolutePath = path.isAbsolute(configPath)
-      ? configPath
-      : path.resolve(process.cwd(), configPath);
+        // Make path absolute if it's relative
+        const absolutePath = path.isAbsolute(configPath)
+            ? configPath
+            : path.resolve(process.cwd(), configPath);
 
-    // Read and parse the config file
-    const fileContent = await fs.readFile(absolutePath, 'utf-8');
-    const config = JSON.parse(fileContent);
+        // Read and parse the config file
+        const fileContent = await fs.readFile(absolutePath, 'utf-8');
+        const config = JSON.parse(fileContent);
 
-    return config;
-  } catch (error) {
-    throw new Error(`Failed to load config file: ${error.message}`);
-  }
+        return config;
+    } catch (error) {
+        throw new Error(`Failed to load config file: ${error.message}`);
+    }
 }

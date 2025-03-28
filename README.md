@@ -5,6 +5,7 @@ An AI-powered CLI for interacting with multiple MCP servers using natural langua
 ## Quick Start
 
 1. Clone and install:
+
 ```bash
 git clone <repository-url>
 cd mcp-connector
@@ -13,6 +14,7 @@ npm run build
 ```
 
 2. Create a `.env` file with your OpenAI API key:
+
 ```
 OPENAI_API_KEY=your_openai_api_key_here
 ```
@@ -72,22 +74,23 @@ The server configuration file defines the MCP servers to connect to. Each server
 
 ```json
 {
-  "desktopCommander": {
-    "command": "npx",
-    "args": ["-y", "@wonderwhy-er/desktop-commander"]
-  },
-  "filesystem": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-filesystem"]
-  },
-  "local": {
-    "command": "node",
-    "args": ["dist/host.js", "stdio"]
-  }
+    "desktopCommander": {
+        "command": "npx",
+        "args": ["-y", "@wonderwhy-er/desktop-commander"]
+    },
+    "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem"]
+    },
+    "local": {
+        "command": "node",
+        "args": ["dist/host.js", "stdio"]
+    }
 }
 ```
 
 Each key is a server alias, and the value contains:
+
 - `command`: The executable to run
 - `args`: Array of command-line arguments
 - `env` (optional): Environment variables for the server process

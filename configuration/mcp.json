@@ -1,21 +1,21 @@
 {
-  "mcpServers": {
-    "desktopCommander": {
-      "command": "npx",
-      "args": ["-y", "@wonderwhy-er/desktop-commander"]
+    "mcpServers": {
+        "desktopCommander": {
+            "command": "npx",
+            "args": ["-y", "@wonderwhy-er/desktop-commander"]
+        },
+        "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem"]
+        },
+        "puppeteer": {
+            "command": "node",
+            "args": ["/Users/karaj/.mcp/puppeteer/index.js"]
+        }
     },
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem"]
-    },
-    "puppeteer": {
-      "command": "node",
-      "args": ["/Users/karaj/.mcp/puppeteer/index.js"]
+    "llm": {
+        "provider": "anthropic",
+        "model": "claude-3-5-sonnet-20240620",
+        "apiKey": "env:ANTHROPIC_API_KEY"
     }
-  },
-  "llm": {
-    "provider": "openai",
-    "model": "gpt-4o-mini",
-    "apiKey": "env:OPENAI_API_KEY"
-  }
-} 
+}
