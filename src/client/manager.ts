@@ -8,10 +8,7 @@ export class MCPClientManager implements IMCPClientManager {
   private connectionMode: 'strict' | 'lenient';
   private serverConfigs: ServerConfigs;
 
-  constructor(
-    serverConfigs: ServerConfigs,
-    connectionMode: 'strict' | 'lenient' = 'lenient'
-  ) {
+  constructor(serverConfigs: ServerConfigs, connectionMode: 'strict' | 'lenient' = 'lenient') {
     // Just set up basic state, initialize() will do the real work
     this.connectionMode = connectionMode;
     this.serverConfigs = serverConfigs;
@@ -32,18 +29,17 @@ export class MCPClientManager implements IMCPClientManager {
       } catch (error) {
         this.connectionErrors[name] = error instanceof Error ? error.message : String(error);
       }
-
     }
     // Check connection mode to see if we throw an error or not
     // If mode is lenient, at least one connection has to succeed
     // If mode is strict, all connections have to succeed
-    const requiredSuccessfulConnections = this.connectionMode === 'strict' ? Object.keys(this.serverConfigs).length : 1;
+    const requiredSuccessfulConnections =
+      this.connectionMode === 'strict' ? Object.keys(this.serverConfigs).length : 1;
     if (this.successfulServers.length < requiredSuccessfulConnections) {
       throw new Error('Failed to connect to all servers');
     }
-    
   }
-    
+
   getClients(): Map<string, IMCPClient> {
     return this.clients;
   }

@@ -7,7 +7,6 @@ import { logger } from './utils/logger.js';
 import { initializeAiCli } from './ai/cli.js';
 import { loadConfigFile } from './server/config.js';
 
-
 // Load environment variables
 dotenv.config();
 
@@ -44,17 +43,25 @@ program.parse();
 // Get options
 const options = program.opts();
 const configFile = options.configFile;
-const connectionMode = options.strict ? 'strict' : 'lenient' as 'strict' | 'lenient';
+const connectionMode = options.strict ? 'strict' : ('lenient' as 'strict' | 'lenient');
 const verbose = options.verbose !== false;
 
 // Platform-independent path handling
 const normalizedConfigPath = path.normalize(configFile);
 
-logger.info(`Starting AI-powered MCP client with config file: ${normalizedConfigPath}`, null, 'blue');
+logger.info(
+  `Starting AI-powered MCP client with config file: ${normalizedConfigPath}`,
+  null,
+  'blue'
+);
 
 // Display examples
 logger.info('');
-logger.info('This client uses LLM models to interpret your commands and call appropriate MCP tools.', null, 'cyanBright');
+logger.info(
+  'This client uses LLM models to interpret your commands and call appropriate MCP tools.',
+  null,
+  'cyanBright'
+);
 logger.info('You can interact with tools using natural language.');
 logger.info('');
 logger.info('Examples:', null, 'yellow');
@@ -69,13 +76,17 @@ async function startAiClient() {
   try {
     // Load the agent configuration
     const config = await loadConfigFile(normalizedConfigPath);
-    
+
     // Validate MCP servers section exists
     if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
       logger.error('Error: No MCP server configurations found in the provided file');
       process.exit(1);
     }
-    logger.info(`Found ${Object.keys(config.mcpServers).length} server configurations in ${normalizedConfigPath}`, null, 'green');
+    logger.info(
+      `Found ${Object.keys(config.mcpServers).length} server configurations in ${normalizedConfigPath}`,
+      null,
+      'green'
+    );
 
     // Validate LLM section exists, use defaults if not
     if (!config.llm) {
@@ -83,20 +94,20 @@ async function startAiClient() {
       config.llm = {
         provider: 'openai',
         model: 'gpt-4o-mini',
-        apiKey: 'env:OPENAI_API_KEY'
+        apiKey: 'env:OPENAI_API_KEY',
       };
     }
-    
+
     logger.info('===============================================');
     logger.info('Starting AI-powered MCP client...', null, 'cyanBright');
     logger.info('===============================================\n');
-    
+
     // Convert CLI options to the format expected by initializeAiCli
     const aiOptions = {
       configFile: normalizedConfigPath,
-      verbose: verbose
+      verbose: verbose,
     };
-    
+
     await initializeAiCli(aiOptions, config, connectionMode);
   } catch (error) {
     logger.error('Error: Failed to load configuration from file');
@@ -106,8 +117,8 @@ async function startAiClient() {
 }
 
 // Execute the client
-startAiClient().catch(error => {
+startAiClient().catch((error) => {
   logger.error('Unhandled error:');
   logger.error(error);
   process.exit(1);
-}); 
+});

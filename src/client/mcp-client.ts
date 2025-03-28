@@ -15,7 +15,6 @@ const ToolsListSchema = z.object({
   nextCursor: z.string().optional(),
 });
 
-
 /**
  * Connection manager for MCP clients
  */
@@ -54,7 +53,7 @@ export class MCPClient implements IMCPClient {
     this.serverEnv = env || null;
     this.serverAlias = serverAlias || null;
 
-    logger.info('')
+    logger.info('');
     logger.info('=======================================');
     logger.info(`MCP SERVER: ${command} ${args.join(' ')}`, null, 'magenta');
     if (env) {
@@ -65,7 +64,9 @@ export class MCPClient implements IMCPClient {
     }
     logger.info('=======================================\n');
 
-    const serverName = serverAlias ? `"${serverAlias}" (${command} ${args.join(' ')})` : `${command} ${args.join(' ')}`;
+    const serverName = serverAlias
+      ? `"${serverAlias}" (${command} ${args.join(' ')})`
+      : `${command} ${args.join(' ')}`;
     logger.info(`Connecting to MCP server: ${serverName}`);
 
     // Create transport for stdio connection
@@ -122,16 +123,24 @@ export class MCPClient implements IMCPClient {
     }
   }
 
-  async listPrompts(): Promise<string[]> { return []; }
-  async getPrompt(name: string, args?: any): Promise<string> { return ""; }
+  async listPrompts(): Promise<string[]> {
+    return [];
+  }
+  async getPrompt(name: string, args?: any): Promise<string> {
+    return '';
+  }
 
-  async listResources(): Promise<string[]> { return []; }
-  async readResource(url: string): Promise<string> { return ""; }
+  async listResources(): Promise<string[]> {
+    return [];
+  }
+  async readResource(url: string): Promise<string> {
+    return '';
+  }
 
   async callTool(name: string, args: any): Promise<any> {
     try {
       logger.debug(`Calling tool '${name}' with args: ${JSON.stringify(args, null, 2)}`);
-      
+
       // Parse args if it's a string (handle JSON strings)
       let toolArgs = args;
       if (typeof args === 'string') {
@@ -142,11 +151,11 @@ export class MCPClient implements IMCPClient {
           toolArgs = { input: args };
         }
       }
-      
+
       // Call the tool with properly formatted arguments
       const result = await this.client.callTool({ name, arguments: toolArgs });
       logger.debug(`Tool '${name}' result: ${JSON.stringify(result, null, 2)}`);
-      
+
       // Check for null or undefined result
       if (result === null || result === undefined) {
         return 'Tool executed successfully with no result data.';
@@ -208,10 +217,9 @@ export class MCPClient implements IMCPClient {
       command: this.serverCommand,
       args: this.serverArgs,
       env: this.serverEnv,
-      alias: this.serverAlias
+      alias: this.serverAlias,
     };
   }
-
 
   /**
    * Get the client instance once connected
@@ -221,11 +229,11 @@ export class MCPClient implements IMCPClient {
     if (this.client && this.isConnected) {
       return this.client;
     }
-    
+
     if (!this.serverCommand) {
       throw new Error('Cannot get client: Connection has not been initialized');
     }
-    
+
     // If connection is in progress, wait for it to complete
     return this.connectViaStdio(
       this.serverCommand,
@@ -250,7 +258,7 @@ export interface IMCPClient {
   listPrompts(): Promise<string[]>;
   getPrompt(name: string, args?: any): Promise<string>;
 
-  // Resource Management  
+  // Resource Management
   listResources(): Promise<string[]>;
   readResource(url: string): Promise<string>;
 

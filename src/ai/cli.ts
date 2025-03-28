@@ -23,12 +23,12 @@ export async function initializeAiCli(
     provider: config.llm?.provider || 'openai',
     model: config.llm?.model || 'gpt-4o-mini',
     apiKey: config.llm?.apiKey || '',
-    options: config.llm?.providerOptions
+    options: config.llm?.providerOptions,
   };
-  
+
   // Get provider from config
   const provider = llmConfig.provider;
-  
+
   // Get API key from config or environment
   let apiKey = llmConfig.apiKey;
   if (apiKey?.startsWith('env:')) {
@@ -43,7 +43,9 @@ export async function initializeAiCli(
 
   if (!apiKey) {
     logger.error(`Error: API key for ${provider} not found`);
-    logger.error(`Please set your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key in the config file or .env file`);
+    logger.error(
+      `Please set your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key in the config file or .env file`
+    );
     process.exit(1);
   }
 
@@ -54,19 +56,19 @@ export async function initializeAiCli(
   await mcpClientManager.initialize();
 
   logger.debug('MCP servers initialized');
-  
+
   // Create LLM service using config from unified config
   const llmServiceConfig: LLMConfig = {
     provider,
     apiKey,
     model: llmConfig.model,
-    options: llmConfig.options
+    options: llmConfig.options,
   };
-  
+
   const llmService = createLLMService(llmServiceConfig, mcpClientManager);
 
   logger.debug('LLM service created');
-  
+
   // Run AI CLI
   try {
     await runAiCli(mcpClientManager, llmService, options);
@@ -93,24 +95,27 @@ export async function runAiCli(
 
   logger.debug(`Log level: ${logger.getLevel()}`);
   logger.info(`Connected servers: ${mcpClientManager.getClients().size}`, null, 'green');
-  logger.error(`Failed connections: ${Object.keys(mcpClientManager.getFailedConnections()).length}. Ignoring in lenient mode.\n`, null, 'red');
+  logger.error(
+    `Failed connections: ${Object.keys(mcpClientManager.getFailedConnections()).length}. Ignoring in lenient mode.\n`,
+    null,
+    'red'
+  );
 
-  
   try {
     // Get available tools from all connected servers
     logger.info('Loading available tools...');
-    
+
     // Using ToolHelper internal to LLMService instead of direct tool fetching
     const tools = await getMCPTools(mcpClientManager);
-    
-    logger.debug(
-      `Received tools: ${tools.map((t) => t.name)}`
-    );
+
+    logger.debug(`Received tools: ${tools.map((t) => t.name)}`);
 
     // Update system context with available tools
     llmService.updateSystemContext(tools);
-    
-    logger.info(`Loaded ${tools.length} tools from ${mcpClientManager.getClients().size} MCP servers\n`);
+
+    logger.info(
+      `Loaded ${tools.length} tools from ${mcpClientManager.getClients().size} MCP servers\n`
+    );
     logger.info('AI Agent initialized successfully!', null, 'green');
     // Create readline interface
     const rl = readline.createInterface({
@@ -118,7 +123,7 @@ export async function runAiCli(
       output: process.stdout,
       prompt: chalk.bold.green('\nWhat would you like to do? '),
     });
-    
+
     // Make sure stdin is in flowing mode
     process.stdin.resume();
     rl.prompt();
@@ -132,24 +137,24 @@ export async function runAiCli(
         });
       });
     };
-    
+
     try {
       while (true) {
         const userInput = await promptUser();
-        
+
         if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
           logger.warn('Exiting AI CLI. Goodbye!');
           rl.close();
           process.exit(0);
           break;
         }
-        
+
         if (userInput.toLowerCase() === 'clear') {
           llmService.resetConversation();
           logger.info('Conversation history cleared.');
           continue;
         }
-        
+
         try {
           // Create callbacks for progress indication (without spinner)
           const callbacks: LLMCallbacks = {
@@ -164,9 +169,9 @@ export async function runAiCli(
             },
             onResponse: (response) => {
               logger.displayAIResponse({ content: response });
-            }
+            },
           };
-          
+
           // Use the high-level method to handle the entire interaction
           await llmService.completeTask(userInput, callbacks);
         } catch (error) {

@@ -81,16 +81,16 @@ export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
     // Convert to absolute path if it's relative
     const fs = await import('fs/promises');
     const path = await import('path');
-    
+
     // Make path absolute if it's relative
-    const absolutePath = path.isAbsolute(configPath) 
-      ? configPath 
+    const absolutePath = path.isAbsolute(configPath)
+      ? configPath
       : path.resolve(process.cwd(), configPath);
-    
+
     // Read and parse the config file
     const fileContent = await fs.readFile(absolutePath, 'utf-8');
     const config = JSON.parse(fileContent);
-    
+
     return config;
   } catch (error) {
     throw new Error(`Failed to load config file: ${error.message}`);

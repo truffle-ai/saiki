@@ -6,7 +6,8 @@ import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 
 // System prompt constants
-const INITIAL_SYSTEM_PROMPT = 'You are an AI assistant with access to MCP tools from multiple servers. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.';
+const INITIAL_SYSTEM_PROMPT =
+  'You are an AI assistant with access to MCP tools from multiple servers. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.';
 
 const DETAILED_SYSTEM_PROMPT_TEMPLATE = `You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks by calling appropriate tools.
 
@@ -34,30 +35,27 @@ export class OpenAIService implements LLMService {
   private toolHelper: ToolHelper;
   private conversationHistory: any[] = [];
   private systemPromptTemplate: string;
-  
-  constructor(
-    mcpClientManager: MCPClientManager, 
-    apiKey: string, 
-    model?: string, 
-    options?: any
-  ) {
+
+  constructor(mcpClientManager: MCPClientManager, apiKey: string, model?: string, options?: any) {
     this.model = model || 'gpt-4o-mini';
     this.openai = new OpenAI({ apiKey });
     this.toolHelper = new ToolHelper(mcpClientManager);
     this.systemPromptTemplate = options?.systemPromptTemplate || DETAILED_SYSTEM_PROMPT_TEMPLATE;
-    
+
     // Initialize with system message
-    this.conversationHistory = [
-      { role: 'system', content: INITIAL_SYSTEM_PROMPT }
-    ];
+    this.conversationHistory = [{ role: 'system', content: INITIAL_SYSTEM_PROMPT }];
   }
-  
+
   updateSystemContext(tools: McpTool[]): void {
     // Create detailed tool descriptions as a flat list
     const toolDescriptions = tools
       .map((tool) => {
         let description = `- ${tool.name}: ${tool.description || 'No description provided'}`;
-        if (tool.parameters && tool.parameters.properties && typeof tool.parameters.properties === 'object') {
+        if (
+          tool.parameters &&
+          tool.parameters.properties &&
+          typeof tool.parameters.properties === 'object'
+        ) {
           description += '\n  Parameters:';
           for (const [paramName, param] of Object.entries(tool.parameters.properties)) {
             description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
@@ -72,121 +70,124 @@ export class OpenAIService implements LLMService {
       .join('\n\n'); // Add extra line between tools for readability
 
     // Update the system message
-    this.conversationHistory[0].content = this.systemPromptTemplate.replace('TOOL_DESCRIPTIONS', toolDescriptions);
-    
+    this.conversationHistory[0].content = this.systemPromptTemplate.replace(
+      'TOOL_DESCRIPTIONS',
+      toolDescriptions
+    );
+
     // Log the number of tools provided to help with debugging
     logger.info(`Included ${tools.length} tools in system context`);
   }
-  
+
   async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {
     // Add user message to history
     this.conversationHistory.push({ role: 'user', content: userInput });
-    
+
     // Get all tools
     const rawTools = await this.toolHelper.getAllTools();
     const formattedTools = this.formatToolsForOpenAI(rawTools);
 
     logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
-    
+
     // Notify thinking
     callbacks?.onThinking?.();
-    
+
     // Maximum number of tool use iterations
     const MAX_ITERATIONS = 10;
     let iterationCount = 0;
-    
+
     try {
       while (iterationCount < MAX_ITERATIONS) {
         iterationCount++;
-        
+
         // Attempt to get a response, with retry logic
         const message = await this.getAIResponseWithRetries(formattedTools);
-        
+
         // If there are no tool calls, we're done
         if (!message.tool_calls || message.tool_calls.length === 0) {
           const responseText = message.content || '';
           callbacks?.onResponse?.(responseText);
           return responseText;
         }
-        
+
         // Handle tool calls
         for (const toolCall of message.tool_calls) {
           logger.debug(`Tool call initiated: ${JSON.stringify(toolCall, null, 2)}`);
           const toolName = toolCall.function.name;
           let args: any = {};
-          
+
           try {
             args = JSON.parse(toolCall.function.arguments);
           } catch (e) {
             logger.error(`Error parsing arguments for ${toolName}:`, e);
           }
-          
+
           // Notify tool call
           callbacks?.onToolCall?.(toolName, args);
-          
+
           // Execute tool
           try {
             const result = await this.toolHelper.executeTool(toolName, args);
-            
+
             // Register tool result with proper error handling
             this.registerToolResult(toolName, result, toolCall.id);
-            
+
             // Notify tool result
             callbacks?.onToolResult?.(toolName, result);
           } catch (error) {
             // Handle tool execution error
             const errorMessage = error instanceof Error ? error.message : String(error);
-            
+
             // Register error result
             this.registerToolResult(toolName, { error: errorMessage }, toolCall.id);
-            
+
             callbacks?.onToolResult?.(toolName, { error: errorMessage });
           }
         }
-        
+
         // Ensure all tool calls have responses
         this.ensureAllToolCallsHaveResponses();
-        
+
         // Validate the conversation structure
         const isValid = this.validateConversationStructure();
         if (!isValid) {
           logger.error('Conversation structure is invalid. Attempting repair...');
           this.repairConversationStructure();
         }
-        
+
         // Notify thinking for next iteration
         callbacks?.onThinking?.();
       }
-      
+
       // If we reached max iterations, return the last message
       const lastMessage = this.conversationHistory.find(
-        msg => msg.role === 'assistant' && msg.content
+        (msg) => msg.role === 'assistant' && msg.content
       );
-      
-      const finalResponse = lastMessage?.content || 'Task completed but reached maximum iterations.';
+
+      const finalResponse =
+        lastMessage?.content || 'Task completed but reached maximum iterations.';
       callbacks?.onResponse?.(finalResponse);
       return finalResponse;
-      
     } catch (error) {
       // Handle API errors
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error('Error in OpenAI service:', errorMessage);
-      
+
       // Add error message to conversation
-      this.conversationHistory.push({ 
-        role: 'assistant', 
-        content: `Error: ${errorMessage}` 
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: `Error: ${errorMessage}`,
       });
-      
+
       return `Error: ${errorMessage}`;
     }
   }
-  
+
   resetConversation(): void {
     // Keep only the system message
     this.conversationHistory = this.conversationHistory.slice(0, 1);
   }
-  
+
   /**
    * Get configuration information about the LLM service
    * @returns Configuration object with provider and model information
@@ -194,10 +195,10 @@ export class OpenAIService implements LLMService {
   getConfig(): { provider: string; model: string; [key: string]: any } {
     return {
       provider: 'openai',
-      model: this.model
+      model: this.model,
     };
   }
-  
+
   // Helper methods from AiService
   private async getAIResponseWithRetries(tools: any[]): Promise<any> {
     let attempts = 0;
@@ -205,7 +206,9 @@ export class OpenAIService implements LLMService {
 
     // add a log of tools size
     logger.debug(`Tools size in getAIResponseWithRetries: ${tools.length}`);
-    logger.silly(`Message history in getAIResponseWithRetries: ${JSON.stringify(this.conversationHistory, null, 2)}`);
+    logger.silly(
+      `Message history in getAIResponseWithRetries: ${JSON.stringify(this.conversationHistory, null, 2)}`
+    );
     while (attempts < MAX_ATTEMPTS) {
       attempts++;
 
@@ -218,7 +221,7 @@ export class OpenAIService implements LLMService {
           tool_choice: attempts === 1 ? 'auto' : 'none', // Disable tool choice on retry
         });
 
-        logger.silly("OPENAI CHAT COMPLETION RESPONSE: ", JSON.stringify(response, null, 2));
+        logger.silly('OPENAI CHAT COMPLETION RESPONSE: ', JSON.stringify(response, null, 2));
 
         // Get the response message
         const responseMessage = response.choices[0].message;
@@ -235,7 +238,9 @@ export class OpenAIService implements LLMService {
         ) {
           this.handleMissingToolResponseError(error);
         } else {
-          logger.error(`Error in OpenAI service: ${error.message || JSON.stringify(error, null, 2)}`);
+          logger.error(
+            `Error in OpenAI service: ${error.message || JSON.stringify(error, null, 2)}`
+          );
           // For other errors, if we're at max attempts, throw
           if (attempts >= MAX_ATTEMPTS) {
             throw error;
@@ -251,7 +256,7 @@ export class OpenAIService implements LLMService {
 
     throw new Error('Failed to get response after multiple attempts');
   }
-  
+
   private validateConversationStructure(): boolean {
     // Check that all tool calls have corresponding tool responses
     const toolCallIds = new Set<string>();
@@ -284,7 +289,7 @@ export class OpenAIService implements LLMService {
     // All validations passed
     return true;
   }
-  
+
   private registerToolResult(toolName: string, result: any, toolCallId: string): void {
     // Format and add the tool result message to conversation history
     const toolResultMessage = {
@@ -297,7 +302,7 @@ export class OpenAIService implements LLMService {
     // Add to conversation history
     this.conversationHistory.push(toolResultMessage);
   }
-  
+
   private ensureAllToolCallsHaveResponses(): void {
     // Find all tool calls that need responses
     const pendingCalls = this.findPendingToolCalls();
@@ -317,7 +322,7 @@ export class OpenAIService implements LLMService {
       }
     }
   }
-  
+
   private handleInvalidToolCallError(error: any): void {
     // Extract the invalid tool call ID from the error message
     const invalidIdMatch = error.message.match(/'tool_call_id' of '([^']+)' not found/);
@@ -326,7 +331,7 @@ export class OpenAIService implements LLMService {
     }
 
     const invalidId = invalidIdMatch[1];
-    
+
     // Find and remove the invalid tool response
     for (let i = this.conversationHistory.length - 1; i >= 0; i--) {
       const message = this.conversationHistory[i];
@@ -335,7 +340,7 @@ export class OpenAIService implements LLMService {
       }
     }
   }
-  
+
   private handleMissingToolResponseError(error: any): void {
     // Extract the missing tool call ID from the error message
     const missingIdMatch = error.message.match(
@@ -358,12 +363,12 @@ export class OpenAIService implements LLMService {
       }),
     });
   }
-  
+
   private repairConversationStructure(): void {
     // Simple implementation - remove the last tool call sequence
     this.removeLastToolCallSequence();
   }
-  
+
   private removeLastToolCallSequence(): void {
     // Find the last assistant message with tool calls
     let lastToolCallIndex = -1;
@@ -402,10 +407,11 @@ export class OpenAIService implements LLMService {
     // Add a recovery message
     this.conversationHistory.push({
       role: 'assistant',
-      content: "I ran into an issue processing the previous tool calls. Let's try a different approach.",
+      content:
+        "I ran into an issue processing the previous tool calls. Let's try a different approach.",
     });
   }
-  
+
   private simplifyConversationForRetry(): void {
     // Get the last user message index
     let lastUserIndex = -1;
@@ -429,7 +435,7 @@ export class OpenAIService implements LLMService {
       },
     ];
   }
-  
+
   private findPendingToolCalls(): Array<{ id: string; name: string }> {
     const pendingCalls: Array<{ id: string; name: string }> = [];
     const respondedIds = new Set<string>();
@@ -457,23 +463,27 @@ export class OpenAIService implements LLMService {
 
     return pendingCalls;
   }
-  
+
   private formatToolsForOpenAI(tools: McpTool[]): any[] {
-    return tools.map(tool => {
+    return tools.map((tool) => {
       // Convert tool to OpenAI function format
       const parameters = {
         type: 'object',
         properties: {},
         required: [],
       };
-      
+
       // Map tool parameters to JSON Schema format
-      if (tool.parameters && tool.parameters.properties && typeof tool.parameters.properties === 'object') {
+      if (
+        tool.parameters &&
+        tool.parameters.properties &&
+        typeof tool.parameters.properties === 'object'
+      ) {
         // Extract parameters from the properties object in inputSchema
         for (const [name, param] of Object.entries(tool.parameters.properties)) {
           let paramType = param.type || 'string';
           let paramEnum = undefined;
-          
+
           // Handle type conversion
           if (typeof paramType === 'string') {
             if (paramType.includes('number')) paramType = 'number';
@@ -488,12 +498,12 @@ export class OpenAIService implements LLMService {
               }
             }
           }
-          
+
           parameters.properties[name] = {
             type: paramType,
             description: param.description || `The ${name} parameter`,
           };
-          
+
           // Add items property for array types (required by OpenAI's API)
           if (paramType === 'array') {
             // Use the items property from the original schema if it exists
@@ -504,20 +514,20 @@ export class OpenAIService implements LLMService {
               parameters.properties[name].items = { type: 'string' };
             }
           }
-          
+
           // Handle enums if present
           if (paramEnum) {
             parameters.properties[name].enum = paramEnum;
           }
         }
-        
+
         // Use the required array from inputSchema if it exists
         if (Array.isArray(tool.parameters.required)) {
           parameters.required = [...tool.parameters.required];
         }
       }
-      
-      logger.silly("AFTER FORMATTING TOOL FOR OPENAI")
+
+      logger.silly('AFTER FORMATTING TOOL FOR OPENAI');
       logger.silly(`Tool: ${tool.name}`);
       logger.silly(`Description: ${tool.description}`);
       logger.silly(`Parameters: ${JSON.stringify(parameters)}`);
@@ -532,4 +542,4 @@ export class OpenAIService implements LLMService {
       };
     });
   }
-} 
+}

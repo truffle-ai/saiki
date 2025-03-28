@@ -10,14 +10,29 @@ const logLevels = {
   http: 3,
   verbose: 4,
   debug: 5,
-  silly: 6
+  silly: 6,
 };
 
 // Available chalk colors for message formatting
-type ChalkColor = 
-  'black' | 'red' | 'green' | 'yellow' | 'blue' | 'magenta' | 'cyan' | 'white' | 
-  'gray' | 'grey' | 'blackBright' | 'redBright' | 'greenBright' | 'yellowBright' | 
-  'blueBright' | 'magentaBright' | 'cyanBright' | 'whiteBright';
+type ChalkColor =
+  | 'black'
+  | 'red'
+  | 'green'
+  | 'yellow'
+  | 'blue'
+  | 'magenta'
+  | 'cyan'
+  | 'white'
+  | 'gray'
+  | 'grey'
+  | 'blackBright'
+  | 'redBright'
+  | 'greenBright'
+  | 'yellowBright'
+  | 'blueBright'
+  | 'magentaBright'
+  | 'cyanBright'
+  | 'whiteBright';
 
 // Custom format for console output
 const consoleFormat = winston.format.printf(({ level, message, timestamp, color }) => {
@@ -28,16 +43,17 @@ const consoleFormat = winston.format.printf(({ level, message, timestamp, color 
     http: chalk.cyan,
     verbose: chalk.magenta,
     debug: chalk.gray,
-    silly: chalk.gray.dim
+    silly: chalk.gray.dim,
   };
 
   const colorize = levelColorMap[level] || chalk.white;
-  
+
   // Apply color to message if specified
-  const formattedMessage = color && typeof color === 'string' && chalk[color as ChalkColor] 
-    ? chalk[color as ChalkColor](message) 
-    : message;
-  
+  const formattedMessage =
+    color && typeof color === 'string' && chalk[color as ChalkColor]
+      ? chalk[color as ChalkColor](message)
+      : message;
+
   return `${chalk.dim(timestamp)} ${colorize(level.toUpperCase())}: ${formattedMessage}`;
 });
 
@@ -79,9 +95,9 @@ export class Logger {
           format: winston.format.combine(
             winston.format.timestamp({ format: 'HH:mm:ss' }),
             consoleFormat
-          )
-        })
-      ]
+          ),
+        }),
+      ],
     });
   }
 
@@ -107,9 +123,8 @@ export class Logger {
   }
 
   debug(message: string | object, meta?: any, color?: ChalkColor) {
-    const formattedMessage = typeof message === 'string' 
-      ? message 
-      : JSON.stringify(message, null, 2);
+    const formattedMessage =
+      typeof message === 'string' ? message : JSON.stringify(message, null, 2);
     this.logger.debug(formattedMessage, { ...meta, color });
   }
 
@@ -241,4 +256,4 @@ export class Logger {
 }
 
 // Export a default instance with log level from environment
-export const logger = new Logger(); 
+export const logger = new Logger();

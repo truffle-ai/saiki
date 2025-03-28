@@ -22,7 +22,7 @@ export interface McpTool {
 export interface AiCliOptions {
   /** Path to the config file */
   configFile?: string;
-  
+
   /** Whether to display verbose output */
   verbose?: boolean;
 }

@@ -8,17 +8,17 @@ import { logger } from '../../utils/logger.js';
 export class ToolHelper {
   private mcpClientManager: MCPClientManager;
   private toolToClientMap: Map<string, IMCPClient> = new Map();
-  
+
   constructor(mcpClientManager: MCPClientManager) {
     this.mcpClientManager = mcpClientManager;
   }
-  
+
   /**
    * Get all available tools from all connected clients
    */
   async getAllTools(): Promise<McpTool[]> {
     const allTools: McpTool[] = [];
-    
+
     for (const [serverName, client] of this.mcpClientManager.getClients()) {
       try {
         logger.debug(`Getting tools from ${serverName}`);
@@ -32,10 +32,10 @@ export class ToolHelper {
         console.error(`Error getting tools from ${serverName}:`, error);
       }
     }
-    
+
     return allTools;
   }
-  
+
   /**
    * Execute a specific tool with the given arguments
    */
@@ -44,7 +44,7 @@ export class ToolHelper {
     if (!client) {
       throw new Error(`No client found for tool: ${toolName}`);
     }
-    
+
     return await client.callTool(toolName, args);
   }
-} 
+}
