@@ -37,7 +37,12 @@ export class MCPClientWrapper implements IMCPClientWrapper {
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
         if (config.type === 'stdio') {
             const stdioConfig: StdioServerConfig = config;
-            return this.connectViaStdio(stdioConfig.command, stdioConfig.args, stdioConfig.env, serverName);
+            return this.connectViaStdio(
+                stdioConfig.command,
+                stdioConfig.args,
+                stdioConfig.env,
+                serverName
+            );
         }
         if (config.type === 'sse') {
             throw new Error('SSE connections are not yet supported');

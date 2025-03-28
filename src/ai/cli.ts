@@ -78,13 +78,14 @@ export async function initializeAiCli(
  * @param mcpClientManager MCP client manager
  * @param llmService LLM service implementation
  */
-export async function runAiCli(
-    mcpClientManager: MCPClientManager,
-    llmService: ILLMService
-) {
+export async function runAiCli(mcpClientManager: MCPClientManager, llmService: ILLMService) {
     // Get model and provider info directly from the LLM service
     // const { provider, model } = llmService.getConfig();
-    logger.info(`Using model config:${JSON.stringify(llmService.getConfig(), null, 2)}`, null, 'yellow');
+    logger.info(
+        `Using model config:${JSON.stringify(llmService.getConfig(), null, 2)}`,
+        null,
+        'yellow'
+    );
 
     logger.debug(`Log level: ${logger.getLevel()}`);
     logger.info(`Connected servers: ${mcpClientManager.getClients().size}`, null, 'green');
@@ -179,4 +180,3 @@ export async function runAiCli(
         logger.error(`Error during initialization: ${error.message}`);
     }
 }
-

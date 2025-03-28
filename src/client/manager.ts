@@ -25,7 +25,6 @@ export class MCPClientManager implements IMCPClientManager {
      */
     async initialize(): Promise<void> {
         for (const [name, config] of Object.entries(this.serverConfigs)) {
-
             // Change this line to go back to old MCPClientWrapper
             // const client = new MCPClientWrapper();
             const client = new VercelMCPClientWrapper();

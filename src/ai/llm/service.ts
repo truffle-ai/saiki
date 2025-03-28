@@ -27,7 +27,6 @@ export class VercelLLMService implements ILLMService {
     }
 
     updateSystemContext(tools: McpTool[]): void {
-
         const toolDescriptions = tools
             .map((tool) => {
                 let description = `- ${tool.name}: ${tool.description || 'No description provided'}`;
@@ -74,7 +73,7 @@ export class VercelLLMService implements ILLMService {
                 logger.silly(`Tools: ${JSON.stringify(tools, null, 2)}`);
 
                 fullResponse = await this.generateText(tools, callbacks, MAX_ITERATIONS);
-                
+
                 // stream = await this.streamText(tools, callbacks, MAX_ITERATIONS);
 
                 // for await (const textPart of stream) {
@@ -105,7 +104,6 @@ export class VercelLLMService implements ILLMService {
         callbacks?: LLMCallbacks,
         maxSteps: number = 10
     ): Promise<string> {
-
         let stepIteration = 0;
         const response = await generateText({
             model: this.model,
@@ -116,8 +114,12 @@ export class VercelLLMService implements ILLMService {
                 stepIteration++;
                 logger.debug(`Step finished, step type: ${step.stepType}`);
                 logger.debug(`Step finished, step text: ${step.text}`);
-                logger.debug(`Step finished, step tool calls: ${JSON.stringify(step.toolCalls, null, 2)}`);
-                logger.debug(`Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`);
+                logger.debug(
+                    `Step finished, step tool calls: ${JSON.stringify(step.toolCalls, null, 2)}`
+                );
+                logger.debug(
+                    `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
+                );
 
                 if (step.stepType === 'tool-result') {
                     for (const toolResult of step.toolResults) {
@@ -139,13 +141,9 @@ export class VercelLLMService implements ILLMService {
 
         return fullResponse;
     }
-    
+
     // returns AsyncIterable<string> & ReadableStream<string>
-    async streamText(
-        tools: any,
-        callbacks?: LLMCallbacks,
-        maxSteps: number = 10
-    ): Promise<any> {
+    async streamText(tools: any, callbacks?: LLMCallbacks, maxSteps: number = 10): Promise<any> {
         let stepIteration = 0;
         // use vercel's streamText with mcp
         const response = streamText({
@@ -169,8 +167,12 @@ export class VercelLLMService implements ILLMService {
                 stepIteration++;
                 logger.debug(`Step finished, step type: ${step.stepType}`);
                 logger.debug(`Step finished, step text: ${step.text}`);
-                logger.debug(`Step finished, step tool calls: ${JSON.stringify(step.toolCalls, null, 2)}`);
-                logger.debug(`Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`);
+                logger.debug(
+                    `Step finished, step tool calls: ${JSON.stringify(step.toolCalls, null, 2)}`
+                );
+                logger.debug(
+                    `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
+                );
 
                 if (step.stepType === 'tool-result') {
                     for (const toolResult of step.toolResults) {
@@ -187,7 +189,9 @@ export class VercelLLMService implements ILLMService {
                 //logger.debug(`Stream finished: ${JSON.stringify(result, null, 2)}`);
                 logger.debug(`Stream finished, result finishReason: ${result.finishReason}`);
                 logger.debug(`Stream finished, result text: ${result.text}`);
-                logger.debug(`Stream finished, result tool calls: ${JSON.stringify( result.toolCalls, null, 2)}`);
+                logger.debug(
+                    `Stream finished, result tool calls: ${JSON.stringify(result.toolCalls, null, 2)}`
+                );
                 logger.debug(
                     `Stream finished, result tool results: ${JSON.stringify(
                         result.toolResults,

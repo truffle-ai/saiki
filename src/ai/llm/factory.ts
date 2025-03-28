@@ -28,10 +28,7 @@ export function createLLMService(
     }
 }
 
-export function createVercelModel(
-    provider: string,
-    model: string,
-): any {
+export function createVercelModel(provider: string, model: string): any {
     switch (provider.toLowerCase()) {
         case 'openai':
             return openai(model);
@@ -49,4 +46,3 @@ export function createVercelLLMService(
     const model: VercelLLM = createVercelModel(config.provider, config.model);
     return new VercelLLMService(mcpClientManager, model);
 }
-

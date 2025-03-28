@@ -65,7 +65,6 @@ export async function configExists(configPath?: string): Promise<boolean> {
     }
 }
 
-
 // LLM configuration type
 export type LLMConfig = {
     provider: string;

@@ -28,7 +28,7 @@ export interface ILLMService {
     completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string>;
 
     // Update the system message/context with available tools
-    updateSystemContext(tools: McpTool[]| any): void;
+    updateSystemContext(tools: McpTool[] | any): void;
 
     // Clear conversation history
     resetConversation(): void;

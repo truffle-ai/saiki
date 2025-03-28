@@ -1,11 +1,10 @@
 // import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 // import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { logger } from '../utils/logger.js';
-import { experimental_createMCPClient as createMCPClient} from 'ai';
-import { Experimental_StdioMCPTransport as StdioMCPTransport} from 'ai/mcp-stdio';
+import { experimental_createMCPClient as createMCPClient } from 'ai';
+import { Experimental_StdioMCPTransport as StdioMCPTransport } from 'ai/mcp-stdio';
 import { McpServerConfig, StdioServerConfig } from '../server/config.js';
 import { VercelMCPClient, VercelMCPTool, IMCPClientWrapper } from '../client/types.js';
-
 
 export class VercelMCPClientWrapper implements IMCPClientWrapper {
     // maps to vercel ai client
@@ -24,7 +23,12 @@ export class VercelMCPClientWrapper implements IMCPClientWrapper {
     async connect(config: McpServerConfig, serverName: string): Promise<VercelMCPClient> {
         if (config.type === 'stdio') {
             const stdioConfig: StdioServerConfig = config;
-            return this.connectViaStdio(stdioConfig.command, stdioConfig.args, stdioConfig.env, serverName);
+            return this.connectViaStdio(
+                stdioConfig.command,
+                stdioConfig.args,
+                stdioConfig.env,
+                serverName
+            );
         }
         if (config.type === 'sse') {
             throw new Error('SSE connections are not yet supported');
@@ -83,7 +87,6 @@ export class VercelMCPClientWrapper implements IMCPClientWrapper {
             this.isConnected = true;
 
             return this.client;
-
         } catch (error) {
             logger.error('Failed to create and connect to MCP client:', error);
             throw error;
