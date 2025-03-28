@@ -15,14 +15,3 @@ export interface McpTool {
     description?: string;
     parameters?: Record<string, McpToolParameter>;
 }
-
-/**
- * AI CLI Options
- */
-export interface AiCliOptions {
-    /** Path to the config file */
-    configFile?: string;
-
-    /** Whether to display verbose output */
-    verbose?: boolean;
-}

@@ -1,6 +1,5 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { AiCliOptions } from './types.js';
 import { MCPClientManager } from '../client/manager.js';
 import { logger } from '../utils/logger.js';
 import { LLMCallbacks, LLMService, LLMConfig } from './llm/types.js';
@@ -9,12 +8,10 @@ import { createLLMService } from './llm/factory.js';
 
 /**
  * Start AI-powered CLI with unified configuration
- * @param options CLI options
  * @param config Agent configuration including MCP servers and LLM settings
  * @param connectionMode Whether to enforce all connections must succeed ("strict") or allow partial success ("lenient")
  */
 export async function initializeAiCli(
-    options: AiCliOptions = {},
     config: AgentConfig,
     connectionMode: 'strict' | 'lenient' = 'lenient'
 ) {
@@ -23,7 +20,6 @@ export async function initializeAiCli(
         provider: config.llm?.provider || 'openai',
         model: config.llm?.model || 'gpt-4o-mini',
         apiKey: config.llm?.apiKey || '',
-        options: config.llm?.providerOptions,
     };
 
     // Get provider from config
@@ -62,7 +58,6 @@ export async function initializeAiCli(
         provider,
         apiKey,
         model: llmConfig.model,
-        options: llmConfig.options,
     };
 
     const llmService = createLLMService(llmServiceConfig, mcpClientManager);
@@ -71,7 +66,7 @@ export async function initializeAiCli(
 
     // Run AI CLI
     try {
-        await runAiCli(mcpClientManager, llmService, options);
+        await runAiCli(mcpClientManager, llmService);
     } catch (error) {
         logger.error(`Error running AI CLI: ${error.message}`);
         process.exit(1);
@@ -82,12 +77,10 @@ export async function initializeAiCli(
  * Run the AI CLI with the given LLM service
  * @param mcpClientManager MCP client manager
  * @param llmService LLM service implementation
- * @param options CLI options
  */
 export async function runAiCli(
     mcpClientManager: MCPClientManager,
-    llmService: LLMService,
-    options: AiCliOptions
+    llmService: LLMService
 ) {
     // Get model and provider info directly from the LLM service
     const { provider, model } = llmService.getConfig();
