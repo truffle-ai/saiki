@@ -11,7 +11,7 @@ export interface McpToolParameter {
  * MCP Tool
  */
 export interface McpTool {
-    name: string;
+    name?: string;
     description?: string;
     parameters?: Record<string, McpToolParameter>;
 }

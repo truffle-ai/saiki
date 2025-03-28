@@ -3,13 +3,28 @@ import path from 'path';
 import { logger } from '../utils/logger.js';
 
 /**
- * Configuration for an MCP server
+ * Configuration for stdio-based MCP server connections
  */
-export interface McpServerConfig {
+export interface StdioServerConfig {
+    type: 'stdio';
     command: string;
     args: string[];
     env?: Record<string, string>;
 }
+
+/**
+ * Configuration for SSE-based MCP server connections
+ */
+export interface SSEServerConfig {
+    type: 'sse';
+    url: string;
+    headers?: Record<string, string>;
+}
+
+/**
+ * Union type for MCP server configurations
+ */
+export type McpServerConfig = StdioServerConfig | SSEServerConfig;
 
 /**
  * Type for server configurations dictionary
@@ -50,15 +65,6 @@ export async function configExists(configPath?: string): Promise<boolean> {
     }
 }
 
-// Server configuration types
-export type ServerConfig = {
-    url: string;
-    auth?: {
-        username?: string;
-        password?: string;
-        token?: string;
-    };
-};
 
 // LLM configuration type
 export type LLMConfig = {

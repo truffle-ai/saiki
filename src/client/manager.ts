@@ -1,8 +1,10 @@
-import { IMCPClient, MCPClient } from './mcp-client.js';
+import { MCPClientWrapper } from './mcp-client.js';
 import { ServerConfigs } from '../server/config.js';
+import { VercelMCPClientWrapper } from './vercel-mcp-client.js';
+import { IMCPClientWrapper } from './types.js';
 
 export class MCPClientManager implements IMCPClientManager {
-    private clients: Map<string, IMCPClient> = new Map();
+    private clients: Map<string, IMCPClientWrapper> = new Map();
     private connectionErrors: { [key: string]: string } = {};
     private successfulServers: string[] = [];
     private connectionMode: 'strict' | 'lenient';
@@ -14,16 +16,22 @@ export class MCPClientManager implements IMCPClientManager {
         this.serverConfigs = serverConfigs;
     }
 
+    /**
+     * Initialize the client manager
+     * 1. Create a client
+     * 2. Initialize the client with connection
+     * 3. If initialization succeeds, add the client to clients map and successfulServers array
+     * 4. If initialization fails, add the error to connectionErrors map
+     */
     async initialize(): Promise<void> {
         for (const [name, config] of Object.entries(this.serverConfigs)) {
-            // 1. Create a client
-            // 2. Initialize the client with stdio connection
-            // 3. If initialization succeeds, add the client to clients map and successfulServers array
-            // 4. If initialization fails, add the error to connectionErrors map
-            const client = new MCPClient();
+
+            // Change this line to go back to old MCPClientWrapper
+            // const client = new MCPClientWrapper();
+            const client = new VercelMCPClientWrapper();
 
             try {
-                await client.connectViaStdio(config.command, config.args, config.env, name);
+                await client.connect(config, name);
                 this.clients.set(name, client);
                 this.successfulServers.push(name);
             } catch (error) {
@@ -41,7 +49,7 @@ export class MCPClientManager implements IMCPClientManager {
         }
     }
 
-    getClients(): Map<string, IMCPClient> {
+    getClients(): Map<string, IMCPClientWrapper> {
         return this.clients;
     }
 
@@ -57,6 +65,7 @@ export class MCPClientManager implements IMCPClientManager {
 }
 
 export interface IMCPClientManager {
-    getClients(): Map<string, IMCPClient>;
+    initialize(): Promise<void>;
+    getClients(): Map<string, IMCPClientWrapper>;
     disconnectAll(): void;
 }

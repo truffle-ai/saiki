@@ -2,9 +2,9 @@ import readline from 'readline';
 import chalk from 'chalk';
 import { MCPClientManager } from '../client/manager.js';
 import { logger } from '../utils/logger.js';
-import { LLMCallbacks, LLMService, LLMConfig } from './llm/types.js';
+import { LLMCallbacks, LLMConfig, ILLMService } from './llm/types.js';
 import { AgentConfig } from '../server/config.js';
-import { createLLMService } from './llm/factory.js';
+import { createLLMService, createVercelLLMService } from './llm/factory.js';
 
 /**
  * Start AI-powered CLI with unified configuration
@@ -60,7 +60,7 @@ export async function initializeAiCli(
         model: llmConfig.model,
     };
 
-    const llmService = createLLMService(llmServiceConfig, mcpClientManager);
+    const llmService = createVercelLLMService(llmServiceConfig, mcpClientManager);
 
     logger.debug('LLM service created');
 
@@ -80,11 +80,11 @@ export async function initializeAiCli(
  */
 export async function runAiCli(
     mcpClientManager: MCPClientManager,
-    llmService: LLMService
+    llmService: ILLMService
 ) {
     // Get model and provider info directly from the LLM service
-    const { provider, model } = llmService.getConfig();
-    logger.info(`Using ${provider} model: ${model}`, null, 'yellow');
+    // const { provider, model } = llmService.getConfig();
+    logger.info(`Using model config:${JSON.stringify(llmService.getConfig(), null, 2)}`, null, 'yellow');
 
     logger.debug(`Log level: ${logger.getLevel()}`);
     logger.info(`Connected servers: ${mcpClientManager.getClients().size}`, null, 'green');
@@ -99,15 +99,13 @@ export async function runAiCli(
         logger.info('Loading available tools...');
 
         // Using ToolHelper internal to LLMService instead of direct tool fetching
-        const tools = await getMCPTools(mcpClientManager);
-
-        logger.debug(`Received tools: ${tools.map((t) => t.name)}`);
+        const tools = await llmService.getAllTools();
 
         // Update system context with available tools
-        llmService.updateSystemContext(tools);
+        //llmService.updateSystemContext(tools);
 
         logger.info(
-            `Loaded ${tools.length} tools from ${mcpClientManager.getClients().size} MCP servers\n`
+            `Loaded ${Object.keys(tools).length} tools from ${mcpClientManager.getClients().size} MCP servers\n`
         );
         logger.info('AI Agent initialized successfully!', null, 'green');
         // Create readline interface
@@ -179,16 +177,3 @@ export async function runAiCli(
     }
 }
 
-// Helper function to get all MCP tools
-async function getMCPTools(mcpClientManager: MCPClientManager): Promise<any[]> {
-    const allTools: any[] = [];
-    for (const [name, client] of mcpClientManager.getClients()) {
-        try {
-            const tools = await client.listTools();
-            allTools.push(...tools);
-        } catch (error) {
-            logger.error(`Error getting tools from ${name}: ${error.message}`);
-        }
-    }
-    return allTools;
-}

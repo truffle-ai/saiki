@@ -1,28 +1,16 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+// import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+// import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { z } from 'zod';
-import { McpTool } from '../ai/types.js';
 import { logger } from '../utils/logger.js';
-import { IMCPClientWrapper } from './types.js';
-import { McpServerConfig } from '../server/config.js';
-import { StdioServerConfig } from '../server/config.js';
+import { experimental_createMCPClient as createMCPClient} from 'ai';
+import { Experimental_StdioMCPTransport as StdioMCPTransport} from 'ai/mcp-stdio';
+import { McpServerConfig, StdioServerConfig } from '../server/config.js';
+import { VercelMCPClient, VercelMCPTool, IMCPClientWrapper } from '../client/types.js';
 
-const ToolsListSchema = z.object({
-    tools: z.array(
-        z.object({
-            name: z.string(),
-            description: z.string().optional(),
-            inputSchema: z.any().optional(),
-        })
-    ),
-    nextCursor: z.string().optional(),
-});
 
-/**
- * Connection manager for MCP clients
- */
-export class MCPClientWrapper implements IMCPClientWrapper {
-    private client: Client | null = null;
+export class VercelMCPClientWrapper implements IMCPClientWrapper {
+    // maps to vercel ai client
+    private client: VercelMCPClient;
     private transport: any = null;
     private isConnected = false;
     private serverCommand: string | null = null;
@@ -30,14 +18,14 @@ export class MCPClientWrapper implements IMCPClientWrapper {
     private serverEnv: Record<string, string> | null = null;
     private serverSpawned = false;
     private serverPid: number | null = null;
-    private serverAlias: string | null = null;
+    private serverName: string | null = null;
 
     /**
      * Create a new MCP Client object
      */
     constructor() {}
 
-    async connect(config: McpServerConfig, serverName: string): Promise<Client> {
+    async connect(config: McpServerConfig, serverName: string): Promise<VercelMCPClient> {
         if (config.type === 'stdio') {
             const stdioConfig: StdioServerConfig = config;
             return this.connectViaStdio(stdioConfig.command, stdioConfig.args, stdioConfig.env, serverName);
@@ -53,19 +41,19 @@ export class MCPClientWrapper implements IMCPClientWrapper {
      * @param command Command to run
      * @param args Arguments for the command
      * @param env Environment variables
-     * @param serverAlias Optional server alias/name to show in logs
+     * @param serverName Optional server name to show in logs
      */
     async connectViaStdio(
         command: string,
         args: string[] = [],
         env?: Record<string, string>,
-        serverAlias?: string
-    ): Promise<Client> {
+        serverName?: string
+    ): Promise<VercelMCPClient> {
         // Store server details
         this.serverCommand = command;
         this.serverArgs = args;
         this.serverEnv = env || null;
-        this.serverAlias = serverAlias || null;
+        this.serverName = serverName || null;
 
         logger.info('');
         logger.info('=======================================');
@@ -78,45 +66,30 @@ export class MCPClientWrapper implements IMCPClientWrapper {
         }
         logger.info('=======================================\n');
 
-        const serverName = serverAlias
-            ? `"${serverAlias}" (${command} ${args.join(' ')})`
+        const serverInfo = serverName
+            ? `"${serverName}" (${command} ${args.join(' ')})`
             : `${command} ${args.join(' ')}`;
-        logger.info(`Connecting to MCP server: ${serverName}`);
-
-        // Create transport for stdio connection
-        // Note: StdioClientTransport doesn't directly expose the childProcess
-        // so we have to rely on transport events
-        this.transport = new StdioClientTransport({
-            command,
-            args,
-            env,
-        });
-
-        // We'll set server spawned to true after successful connection
-
-        // Create client
-        this.client = new Client(
-            { name: 'MCP-Example-Client', version: '1.0.0' },
-            {
-                capabilities: {
-                    tools: {},
-                },
-            }
-        );
+        logger.info(`Connecting to MCP server: ${serverInfo}`);
 
         try {
-            logger.info('Establishing connection...');
-            await this.client.connect(this.transport);
+            this.transport = new StdioMCPTransport({
+                command,
+                args,
+                env,
+            });
+            this.client = await createMCPClient({
+                transport: this.transport,
+            });
 
-            // If connection is successful, we know the server was spawned
             this.serverSpawned = true;
             logger.info(`✅ SERVER ${serverName} SPAWNED`);
             logger.info('Connection established!\n\n');
             this.isConnected = true;
 
             return this.client;
-        } catch (error: any) {
-            logger.error(`Failed to connect to MCP server ${serverName}:`, error.message);
+
+        } catch (error) {
+            logger.error('Failed to create and connect to MCP client:', error);
             throw error;
         }
     }
@@ -125,9 +98,9 @@ export class MCPClientWrapper implements IMCPClientWrapper {
      * Disconnect from the server
      */
     async disconnect(): Promise<void> {
-        if (this.transport && typeof this.transport.close === 'function') {
+        if (this.client && typeof this.client.close === 'function') {
             try {
-                await this.transport.close();
+                await this.client.close();
                 this.isConnected = false;
                 this.serverSpawned = false;
                 logger.info('Disconnected from MCP server');
@@ -181,22 +154,27 @@ export class MCPClientWrapper implements IMCPClientWrapper {
         }
     }
 
-    async listTools(): Promise<McpTool[]> {
-        try {
-            const response = await this.client.request(
-                { method: 'tools/list', params: {} },
-                ToolsListSchema
-            );
-            // logger.debug('Tools/list response:', response);
-            return response.tools.map((tool) => ({
-                name: tool.name,
-                description: tool.description || 'No description available',
-                parameters: tool.inputSchema || null,
-            }));
-        } catch (error) {
-            logger.error('Failed to list tools:', error);
-            return [];
-        }
+    // // Temp unused implementation
+    // async listTools(): Promise<McpTool[]> {
+    //     try {
+    //         const response = await this.client.request(
+    //             { method: 'tools/list', params: {} },
+    //             ToolsListSchema
+    //         );
+    //         // logger.debug('Tools/list response:', response);
+    //         return response.tools.map((tool) => ({
+    //             name: tool.name,
+    //             description: tool.description || 'No description available',
+    //             parameters: tool.inputSchema || null,
+    //         }));
+    //     } catch (error) {
+    //         logger.error('Failed to list tools:', error);
+    //         return [];
+    //     }
+    // }
+
+    async listTools(): Promise<VercelMCPTool[]> {
+        return this.client.tools();
     }
 
     /**
@@ -209,7 +187,7 @@ export class MCPClientWrapper implements IMCPClientWrapper {
     /**
      * Get the connected client
      */
-    getClient(): Client | null {
+    getClient(): VercelMCPClient | null {
         return this.client;
     }
 
@@ -222,7 +200,7 @@ export class MCPClientWrapper implements IMCPClientWrapper {
         command: string | null;
         args: string[] | null;
         env: Record<string, string> | null;
-        alias: string | null;
+        name: string | null;
     } {
         return {
             spawned: this.serverSpawned,
@@ -230,7 +208,7 @@ export class MCPClientWrapper implements IMCPClientWrapper {
             command: this.serverCommand,
             args: this.serverArgs,
             env: this.serverEnv,
-            alias: this.serverAlias,
+            name: this.serverName,
         };
     }
 
@@ -238,7 +216,7 @@ export class MCPClientWrapper implements IMCPClientWrapper {
      * Get the client instance once connected
      * @returns Promise with the MCP client
      */
-    async getConnectedClient(): Promise<Client> {
+    async getConnectedClient(): Promise<VercelMCPClient> {
         if (this.client && this.isConnected) {
             return this.client;
         }
@@ -252,7 +230,7 @@ export class MCPClientWrapper implements IMCPClientWrapper {
             this.serverCommand,
             this.serverArgs || [],
             this.serverEnv || undefined,
-            this.serverAlias || undefined
+            this.serverName || undefined
         );
     }
 }

@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { MCPClientManager } from '../../client/manager.js';
-import { LLMCallbacks, LLMService } from './types.js';
+import { LLMCallbacks, ILLMService } from './types.js';
 import { McpTool } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
@@ -29,7 +29,7 @@ TOOL_DESCRIPTIONS`;
 /**
  * OpenAI implementation of LLMService
  */
-export class OpenAIService implements LLMService {
+export class OpenAIService implements ILLMService {
     private openai: OpenAI;
     private model: string;
     private toolHelper: ToolHelper;
@@ -45,6 +45,10 @@ export class OpenAIService implements LLMService {
 
         // Initialize with system message
         this.conversationHistory = [{ role: 'system', content: INITIAL_SYSTEM_PROMPT }];
+    }
+
+    getAllTools(): Promise<any> {
+        return this.toolHelper.getAllTools();
     }
 
     updateSystemContext(tools: McpTool[]): void {

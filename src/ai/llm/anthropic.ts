@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { MCPClientManager } from '../../client/manager.js';
-import { LLMCallbacks, LLMService } from './types.js';
+import { LLMCallbacks, ILLMService } from './types.js';
 import { McpTool } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
@@ -8,7 +8,7 @@ import { logger } from '../../utils/logger.js';
 /**
  * Anthropic implementation of LLMService
  */
-export class AnthropicService implements LLMService {
+export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
     private toolHelper: ToolHelper;
@@ -19,6 +19,10 @@ export class AnthropicService implements LLMService {
         this.model = model || 'claude-3-sonnet-20240229';
         this.anthropic = new Anthropic({ apiKey });
         this.toolHelper = new ToolHelper(mcpClientManager);
+    }
+
+    getAllTools(): Promise<any> {
+        return this.toolHelper.getAllTools();
     }
 
     updateSystemContext(tools: McpTool[]): void {

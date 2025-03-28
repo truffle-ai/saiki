@@ -1,21 +1,24 @@
 {
     "mcpServers": {
         "desktopCommander": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@wonderwhy-er/desktop-commander"]
         },
         "filesystem": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-filesystem"]
         },
         "puppeteer": {
+            "type": "stdio",
             "command": "node",
             "args": ["/Users/karaj/.mcp/puppeteer/index.js"]
         }
     },
     "llm": {
-        "provider": "anthropic",
-        "model": "claude-3-5-sonnet-20240620",
-        "apiKey": "env:ANTHROPIC_API_KEY"
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "apiKey": "env:OPENAI_API_KEY"
     }
 }

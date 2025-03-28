@@ -20,18 +20,21 @@ export interface LLMCallbacks {
 /**
  * Core interface for LLM service implementations
  */
-export interface LLMService {
+export interface ILLMService {
     // Primary method for handling a user interaction from start to finish
     completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string>;
 
     // Update the system message/context with available tools
-    updateSystemContext(tools: McpTool[]): void;
+    updateSystemContext(tools: McpTool[]| any): void;
 
     // Clear conversation history
     resetConversation(): void;
 
+    // Get all available tools
+    getAllTools(): Promise<any>;
+
     // Get configuration information about the LLM service
-    getConfig(): { provider: string; model: string };
+    getConfig(): { provider: string; model: string } | { model: VercelLLM };
 }
 
 /**
@@ -43,3 +46,5 @@ export interface LLMConfig {
     model?: string;
     options?: Record<string, any>;
 }
+
+export type VercelLLM = any;

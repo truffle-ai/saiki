@@ -103,12 +103,12 @@ async function startAiClient() {
         logger.info('===============================================\n');
 
         // Convert CLI options to the format expected by initializeAiCli
-        const aiOptions = {
-            configFile: normalizedConfigPath,
-            verbose: verbose,
-        };
+        // const aiOptions = {
+        //     configFile: normalizedConfigPath,
+        //     verbose: verbose,
+        // };
 
-        await initializeAiCli(aiOptions, config, connectionMode);
+        await initializeAiCli(config, connectionMode);
     } catch (error) {
         logger.error('Error: Failed to load configuration from file');
         logger.error(error);
