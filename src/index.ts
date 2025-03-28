@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import path from 'path';
 import dotenv from 'dotenv';
 import { logger } from './utils/logger.js';
-import { initializeAiCli } from './ai/index.js';
+import { initializeAiCli } from './ai/cli.js';
 import { loadConfigFile } from './server/config.js';
 
 
