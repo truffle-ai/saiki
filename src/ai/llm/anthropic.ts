@@ -6,8 +6,7 @@ import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 
 /**
- * Anthropic Claude implementation of LLMService
- * UNTESTED AS OF NOW
+ * Anthropic implementation of LLMService
  */
 export class AnthropicService implements LLMService {
   private anthropic: Anthropic;
@@ -23,8 +22,8 @@ export class AnthropicService implements LLMService {
   }
   
   updateSystemContext(tools: McpTool[]): void {
-    // Create a system context string for Claude
-    // Claude doesn't use a system message like OpenAI, 
+    // Create a system context string for Anthropic modles
+    // They don't use a system message like OpenAI, 
     // but we can prepend this to the first user message
     
     const toolDescriptions = tools
@@ -40,7 +39,7 @@ export class AnthropicService implements LLMService {
       })
       .join('\n');
       
-    this.systemContext = `You are Claude, a helpful AI assistant with access to the following tools:\n\n${toolDescriptions}\n\nUse these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.`;
+    this.systemContext = `You are Omega, a helpful AI assistant with access to the following tools:\n\n${toolDescriptions}\n\nUse these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.`;
   }
   
   async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {
@@ -55,6 +54,8 @@ export class AnthropicService implements LLMService {
     // Get all tools
     const rawTools = await this.toolHelper.getAllTools();
     const formattedTools = this.formatToolsForClaude(rawTools);
+
+    logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
     
     // Notify thinking
     callbacks?.onThinking?.();
@@ -67,8 +68,10 @@ export class AnthropicService implements LLMService {
     try {
       while (iterationCount < MAX_ITERATIONS) {
         iterationCount++;
+        logger.debug(`Iteration ${iterationCount}`);
         
-        // Call Claude
+        logger.debug(`Messages: ${JSON.stringify(this.messages, null, 2)}`);
+
         const response = await this.anthropic.messages.create({
           model: this.model,
           messages: this.messages,
@@ -88,7 +91,7 @@ export class AnthropicService implements LLMService {
           }
         }
         
-        // Add Claude's response to the conversation
+        // Add response to the conversation
         this.messages.push({
           role: 'assistant',
           content: response.content
@@ -112,6 +115,7 @@ export class AnthropicService implements LLMService {
         for (const toolUse of toolUses) {
           const toolName = toolUse.name;
           const args = toolUse.input;
+          const toolUseId = toolUse.id; // Capture the tool use ID
           
           // Notify tool call
           callbacks?.onToolCall?.(toolName, args);
@@ -119,26 +123,60 @@ export class AnthropicService implements LLMService {
           // Execute tool
           try {
             const result = await this.toolHelper.executeTool(toolName, args);
-            toolResults.push({ toolName, result });
+            toolResults.push({ toolName, result, toolUseId }); // Store the ID with the result
             
             // Notify tool result
             callbacks?.onToolResult?.(toolName, result);
           } catch (error) {
             // Handle tool execution error
             const errorMessage = error instanceof Error ? error.message : String(error);
-            toolResults.push({ toolName, error: errorMessage });
+            toolResults.push({ toolName, error: errorMessage, toolUseId }); // Store the ID with the error
             
             callbacks?.onToolResult?.(toolName, { error: errorMessage });
           }
         }
         
-        // Add tool results as user messages
-        for (const { toolName, result, error } of toolResults) {
-          const content = error 
-            ? `Tool '${toolName}' failed with error: ${error}`
-            : `Tool '${toolName}' returned: ${JSON.stringify(result)}`;
+        // Add tool results as a single user message with properly formatted tool_result objects
+        if (toolResults.length > 0) {
+          // Helper function to extract text from tool results
+          const extractTextContent = (result: any): string => {
+            // If it's a string, return as-is
+            if (typeof result === 'string') {
+              return result;
+            }
+            
+            // Check for the specific structure {"content":[{"type":"text","text":"..."}]}
+            if (result && Array.isArray(result.content)) {
+              // Extract all text entries and join them
+              const textEntries = result.content
+                .filter(item => item.type === 'text' && item.text)
+                .map(item => item.text);
+              
+              if (textEntries.length > 0) {
+                return textEntries.join('\n');
+              }
+            }
+            
+            // For other object structures, stringify them
+            return JSON.stringify(result);
+          };
+
+          const contentArray = toolResults.map(({ toolName, result, error, toolUseId }) => {
+            const resultValue = error 
+              ? `Error: ${error}`
+              : extractTextContent(result);
+            
+            return {
+              type: "tool_result",
+              tool_use_id: toolUseId,
+              content: resultValue
+            };
+          });
           
-          this.messages.push({ role: 'user', content });
+          this.messages.push({ 
+            role: 'user', 
+            content: contentArray 
+          });
         }
         
         // Notify thinking for next iteration
@@ -152,7 +190,7 @@ export class AnthropicService implements LLMService {
     } catch (error) {
       // Handle API errors
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error('Error in Anthropic service:', errorMessage);
+      logger.error(`Error in Anthropic service: ${errorMessage}`);
       
       return `Error: ${errorMessage}`;
     }
@@ -176,38 +214,73 @@ export class AnthropicService implements LLMService {
   
   private formatToolsForClaude(tools: McpTool[]): any[] {
     return tools.map(tool => {
-      // Convert tool to Claude tool format
+      // Create input_schema structure (same as parameters in OpenAI)
+      const input_schema = {
+        type: 'object',
+        properties: {},
+        required: [],
+      };
+      
+      // Map tool parameters to JSON Schema format
+      if (tool.parameters && tool.parameters.properties && typeof tool.parameters.properties === 'object') {
+        // Extract parameters from the properties object
+        for (const [name, param] of Object.entries(tool.parameters.properties)) {
+          let paramType = param.type || 'string';
+          let paramEnum = undefined;
+          
+          // Handle type conversion
+          if (typeof paramType === 'string') {
+            if (paramType.includes('number')) paramType = 'number';
+            else if (paramType.includes('boolean')) paramType = 'boolean';
+            else if (paramType.includes('array')) paramType = 'array';
+            else if (paramType.includes('enum')) {
+              paramType = 'string';
+              // Extract enum values if they exist
+              const enumMatch = paramType.match(/\[(.*?)\]/);
+              if (enumMatch) {
+                paramEnum = enumMatch[1].split(',').map((v) => v.trim().replace(/["']/g, ''));
+              }
+            }
+          }
+          
+          input_schema.properties[name] = {
+            type: paramType,
+            description: param.description || `The ${name} parameter`,
+          };
+          
+          // Add items property for array types
+          if (paramType === 'array') {
+            // Use the items property from the original schema if it exists
+            if (param.items) {
+              input_schema.properties[name].items = param.items;
+            } else {
+              // Default to array of strings if no items specification is provided
+              input_schema.properties[name].items = { type: 'string' };
+            }
+          }
+          
+          // Handle enums if present
+          if (paramEnum) {
+            input_schema.properties[name].enum = paramEnum;
+          }
+        }
+        
+        // Use the required array from inputSchema if it exists
+        if (Array.isArray(tool.parameters.required)) {
+          input_schema.required = [...tool.parameters.required];
+        }
+      }
+      
+      logger.silly("AFTER FORMATTING TOOL FOR ANTHROPIC");
+      logger.silly(`Tool: ${tool.name}`);
+      logger.silly(`Description: ${tool.description}`);
+      logger.silly(`Input Schema: ${JSON.stringify(input_schema)}`);
+
+      // Return in Anthropic's expected format
       return {
         name: tool.name,
         description: tool.description || `Tool for ${tool.name}`,
-        input_schema: {
-          type: 'object',
-          properties: Object.entries(tool.parameters || {}).reduce(
-            (acc, [name, param]) => {
-              let paramType = 'string';
-              
-              // Convert possible type indicators
-              if (param.type?.includes('number')) {
-                paramType = 'number';
-              } else if (param.type?.includes('boolean')) {
-                paramType = 'boolean';
-              } else if (param.type?.includes('enum')) {
-                paramType = 'string';
-                // For enums, we could add an enum field here if needed
-              }
-              
-              acc[name] = {
-                type: paramType,
-                description: param.description || `The ${name} parameter`,
-              };
-              return acc;
-            },
-            {}
-          ),
-          required: Object.entries(tool.parameters || {})
-            .filter(([, param]) => !param.default)
-            .map(([name]) => name),
-        },
+        input_schema: input_schema,
       };
     });
   }

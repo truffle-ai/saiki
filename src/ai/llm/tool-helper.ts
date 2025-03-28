@@ -21,13 +21,13 @@ export class ToolHelper {
     
     for (const [serverName, client] of this.mcpClientManager.getClients()) {
       try {
-        logger.debug("Getting tools from ", serverName);
+        logger.debug(`Getting tools from ${serverName}`);
         const toolList = await client.listTools();
         for (const tool of toolList) {
           this.toolToClientMap.set(tool.name, client);
           allTools.push(tool);
         }
-        logger.debug("Updated tool list after getting tools", allTools);
+        logger.debug(`Updated tool list after getting tools: ${allTools}`);
       } catch (error) {
         console.error(`Error getting tools from ${serverName}:`, error);
       }

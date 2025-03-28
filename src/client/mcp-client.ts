@@ -130,7 +130,7 @@ export class MCPClient implements IMCPClient {
 
   async callTool(name: string, args: any): Promise<any> {
     try {
-      logger.debug(`Calling tool '${name}' with args:`, args);
+      logger.debug(`Calling tool '${name}' with args: ${JSON.stringify(args, null, 2)}`);
       
       // Parse args if it's a string (handle JSON strings)
       let toolArgs = args;
@@ -145,7 +145,7 @@ export class MCPClient implements IMCPClient {
       
       // Call the tool with properly formatted arguments
       const result = await this.client.callTool({ name, arguments: toolArgs });
-      logger.debug(`Tool '${name}' result:`, result);
+      logger.debug(`Tool '${name}' result: ${JSON.stringify(result, null, 2)}`);
       
       // Check for null or undefined result
       if (result === null || result === undefined) {
