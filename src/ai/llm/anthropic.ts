@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { MCPClientManager } from '../../client/manager.js';
+import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, LLMService } from './types.js';
 import { McpTool } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
@@ -15,10 +15,10 @@ export class AnthropicService implements LLMService {
     private messages: any[] = [];
     private systemContext: string = '';
 
-    constructor(mcpClientManager: MCPClientManager, apiKey: string, model?: string, options?: any) {
+    constructor(clientManager: ClientManager, apiKey: string, model?: string, _options?: any) {
         this.model = model || 'claude-3-sonnet-20240229';
         this.anthropic = new Anthropic({ apiKey });
-        this.toolHelper = new ToolHelper(mcpClientManager);
+        this.toolHelper = new ToolHelper(clientManager);
     }
 
     updateSystemContext(tools: McpTool[]): void {
@@ -112,26 +112,26 @@ export class AnthropicService implements LLMService {
                 const toolResults = [];
 
                 for (const toolUse of toolUses) {
-                    const toolName = toolUse.name;
+                    const _toolName = toolUse.name;
                     const args = toolUse.input;
                     const toolUseId = toolUse.id; // Capture the tool use ID
 
                     // Notify tool call
-                    callbacks?.onToolCall?.(toolName, args);
+                    callbacks?.onToolCall?.(_toolName, args);
 
                     // Execute tool
                     try {
-                        const result = await this.toolHelper.executeTool(toolName, args);
-                        toolResults.push({ toolName, result, toolUseId }); // Store the ID with the result
+                        const result = await this.toolHelper.executeTool(_toolName, args);
+                        toolResults.push({ toolName: _toolName, result, toolUseId }); // Store the ID with the result
 
                         // Notify tool result
-                        callbacks?.onToolResult?.(toolName, result);
+                        callbacks?.onToolResult?.(_toolName, result);
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
-                        toolResults.push({ toolName, error: errorMessage, toolUseId }); // Store the ID with the error
+                        toolResults.push({ toolName: _toolName, error: errorMessage, toolUseId }); // Store the ID with the error
 
-                        callbacks?.onToolResult?.(toolName, { error: errorMessage });
+                        callbacks?.onToolResult?.(_toolName, { error: errorMessage });
                     }
                 }
 
