@@ -1,5 +1,5 @@
 import { MCPClient } from './mcp-client.js';
-import { ServerConfigs } from '../server/config.js';
+import { ServerConfigs } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { Tool, ToolProvider } from './types.js';
 import { McpTool } from '../ai/types.js';

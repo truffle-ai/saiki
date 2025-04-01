@@ -5,7 +5,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
 import { initializeAiCli } from './cli.js';
-import { loadConfigFile } from '../src/server/config.js';
+import { loadConfigFile } from '../src/config/loader.js';
 
 // Load environment variables
 dotenv.config();

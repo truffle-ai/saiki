@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { ClientManager } from '../src/client/manager.js';
 import { logger } from '../src/utils/logger.js';
 import { LLMCallbacks, LLMService } from '../src/ai/llm/types.js';
-import { AgentConfig } from '../src/server/config.js';
+import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
 
 /**

@@ -2,7 +2,7 @@ import { ClientManager } from '../../client/manager.js';
 import { LLMConfig as LLMServiceConfig, LLMService } from './types.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
-import { LLMConfig as ConfigLLMConfig } from '../../server/config.js';
+import { LLMConfig as ConfigLLMConfig } from '../../config/types.js';
 import { logger } from '../../utils/logger.js';
 
 /**
