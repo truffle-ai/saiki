@@ -16,7 +16,7 @@ export class AnthropicService implements LLMService {
     private systemContext: string = '';
 
     constructor(clientManager: ClientManager, apiKey: string, model?: string, _options?: any) {
-        this.model = model || 'claude-3-sonnet-20240229';
+        this.model = model || 'claude-3-7-sonnet-20250219';
         this.anthropic = new Anthropic({ apiKey });
         this.toolHelper = new ToolHelper(clientManager);
     }

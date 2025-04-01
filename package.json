@@ -1,7 +1,7 @@
 {
-    "name": "mcp-connector",
+    "name": "saiki",
     "version": "0.1.0",
-    "description": "AI-powered CLI for interacting with MCP servers using natural language",
+    "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
     "main": "dist/app/index.js",
     "scripts": {
