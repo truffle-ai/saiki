@@ -1,21 +1,17 @@
 {
     "mcpServers": {
         "desktopCommander": {
-            "command": "npx",
+            "command": "C:\\Program Files\\nodejs\\npx.cmd",
             "args": ["-y", "@wonderwhy-er/desktop-commander"]
         },
         "filesystem": {
-            "command": "npx",
+            "command": "C:\\Program Files\\nodejs\\npx.cmd",
             "args": ["-y", "@modelcontextprotocol/server-filesystem"]
-        },
-        "puppeteer": {
-            "command": "node",
-            "args": ["/Users/karaj/.mcp/puppeteer/index.js"]
         }
     },
     "llm": {
-        "provider": "anthropic",
-        "model": "claude-3-5-sonnet-20240620",
-        "apiKey": "env:ANTHROPIC_API_KEY"
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "apiKey": "env:OPENAI_API_KEY"
     }
 }
