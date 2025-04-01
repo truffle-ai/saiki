@@ -8,7 +8,8 @@
         "rootDir": ".",
         "strict": false,
         "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+        "lib": ["ES2022", "DOM"]
     },
     "include": ["src/**/*", "app/**/*"],
     "exclude": ["node_modules"]

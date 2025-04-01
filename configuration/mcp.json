@@ -6,7 +6,11 @@
         },
         "filesystem": {
             "command": "C:\\Program Files\\nodejs\\npx.cmd",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem"]
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+        },
+        "puppeteer": {
+            "command": "C:\\Program Files\\nodejs\\node.exe",
+            "args": ["--loader", "ts-node/esm", "src/servers/puppeteerServer.ts"]
         }
     },
     "llm": {

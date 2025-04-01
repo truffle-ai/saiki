@@ -1,0 +1,732 @@
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ListToolsRequestSchema, CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
+import puppeteer, { Browser, Page, Dialog } from 'puppeteer-core';
+import { z, ZodSchema } from 'zod';
+
+// --- Configuration ---
+const CHROME_EXECUTABLE_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'; // Adjust if necessary
+
+// --- State --- (Define these at the top level)
+let browser: Browser | null = null;
+let page: Page | null = null;
+
+// --- Helper Functions --- (Define these at the top level)
+async function getBrowserPage(): Promise<{ browser: Browser; page: Page }> {
+    if (!browser || !browser.isConnected()) {
+        browser = await puppeteer.launch({
+            executablePath: CHROME_EXECUTABLE_PATH,
+            headless: false,
+        });
+        browser.on('disconnected', () => {
+            browser = null;
+            page = null;
+        });
+    }
+    // Ensure page exists or create a new one if browser exists but page doesn't/is closed
+    if (browser && (!page || page.isClosed())) {
+         const pages = await browser.pages();
+         // Use the first existing page, or create a new one if none exist
+         page = pages.length > 0 ? pages[0] : await browser.newPage();
+         await page.setViewport({ width: 1280, height: 800 });
+        page.on('dialog', async (dialog: Dialog) => {
+            try {
+                await dialog.dismiss();
+            } catch (_e) {
+                // Dialog dismiss error, continue silently
+            }
+        });
+    }
+    // If browser doesn't exist, this will throw implicitly, or explicitly:
+     if (!browser || !page) {
+         throw new Error("Browser or Page could not be initialized.");
+     }
+
+    return { browser, page };
+}
+
+// Define safeExecute at the top level
+async function safeExecute<T>(
+    action: (page: Page) => Promise<T>,
+    includePageInfo = true
+): Promise<{ success: boolean; data?: T; currentUrl?: string; title?: string; error?: string }> {
+    let currentPage: Page | null = null;
+    try {
+        // Ensure page is available before executing
+        const pageResult = await getBrowserPage();
+        currentPage = pageResult.page; // Use the obtained page
+
+        if (!currentPage || currentPage.isClosed()) {
+            throw new Error('Page is not available or closed.');
+        }
+        const result = await action(currentPage);
+        let pageInfo = {};
+        if (includePageInfo) {
+            const currentUrl = currentPage.url();
+            const title = await currentPage.title();
+            pageInfo = { currentUrl, title };
+        }
+        return { success: true, data: result, ...pageInfo };
+    } catch (error: any) {
+        let pageInfo = {};
+        // Check if currentPage was assigned and is not closed before accessing it
+        if (currentPage && !currentPage.isClosed() && includePageInfo) {
+            try {
+                const currentUrl = currentPage.url();
+                const title = await currentPage.title();
+                pageInfo = { currentUrl, title };
+            } catch (_pageInfoError) {
+                // Page info error, continue silently
+            }
+        }
+        return { success: false, error: error.message || String(error), ...pageInfo };
+    }
+}
+
+
+// --- Tool Definitions ---
+// Keep the tool definitions with schemas, but execution logic will move
+// into the CallToolRequest handler.
+
+const navigateTool = {
+    name: 'puppeteer_navigate',
+    description: 'Navigates the browser to a specified URL. Always include the full protocol (e.g., "https://").',
+    inputSchema: z.object({
+        url: z.string().url().describe('The full URL to navigate to (including https:// or http://).'),
+    }),
+    // Output format will be handled by the CallToolRequest handler returning CallToolResponseSchema structure
+    async executeLogic(input: { url: string }, pageInstance: Page) {
+        await pageInstance.goto(input.url, { waitUntil: 'networkidle2', timeout: 60000 });
+    },
+};
+
+const clickTool = {
+    name: 'puppeteer_click',
+    description: 'Clicks an element on the page matching the CSS selector. Ensures the element is visible and interactable.',
+    inputSchema: z.object({
+        selector: z.string().describe('A CSS selector targeting the element to click (e.g., "button#submit", "a.product-link").'),
+        forceVisible: z.boolean().optional().default(false).describe('Scroll element into view before attempting to click'),
+        index: z.number().optional().describe('Index of the element to click if multiple match (0-based)'),
+        waitAfter: z.number().optional().default(1000).describe('Milliseconds to wait after clicking')
+    }),
+    async executeLogic(input: { 
+        selector: string; 
+        forceVisible?: boolean;
+        index?: number;
+        waitAfter?: number
+    }, pageInstance: Page) {
+        
+        // First check if element exists at all
+        const elements = await pageInstance.$$(input.selector);
+        if (elements.length === 0) {
+            throw new Error(`No elements found matching selector: ${input.selector}`);
+        }
+        
+        // Determine which element to click
+        const elementIndex = input.index !== undefined ? input.index : 0;
+        if (elementIndex >= elements.length) {
+            throw new Error(`Index ${elementIndex} out of bounds (found ${elements.length} elements)`);
+        }
+        
+        // Method 1: Wait for selector and click
+        await pageInstance.waitForSelector(input.selector, { visible: true, timeout: 10000 });
+        
+        // Method 2: If needed, force element into view
+        if (input.forceVisible) {
+            await pageInstance.evaluate((selector, index) => {
+                const elements = document.querySelectorAll(selector);
+                if (elements[index]) {
+                    elements[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, input.selector, elementIndex);
+            
+            // Give time for scrolling to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Method 3: Try direct element click first
+        if (elements[elementIndex]) {
+            try {
+                // Use more reliable click method
+                await elements[elementIndex].click({ delay: 100 });
+            } catch (_error) {
+                // Method 4: Fall back to JS click if direct click fails
+                await pageInstance.evaluate((selector, index) => {
+                    const elements = document.querySelectorAll(selector);
+                    if (elements[index]) {
+                        (elements[index] as HTMLElement).click();
+                    }
+                }, input.selector, elementIndex);
+            }
+        }
+        
+        // Wait after clicking
+        await new Promise(resolve => setTimeout(resolve, input.waitAfter || 1000));
+    },
+};
+
+const typeTool = {
+    name: 'puppeteer_type',
+    description: 'Types text into an input field matching the CSS selector. Clears the field before typing by default.',
+    inputSchema: z.object({
+        selector: z.string().describe('A CSS selector targeting the input field (e.g., "input[name=\'username\']", "#search-box").'),
+        text: z.string().describe('The text to type into the field.'),
+        clearFirst: z.boolean().optional().default(true).describe('Whether to clear the field before typing.'),
+        delay: z.number().optional().default(50).describe('Delay in milliseconds between keystrokes for more human-like typing.'),
+    }),
+    async executeLogic(input: { selector: string; text: string; clearFirst?: boolean, delay?: number }, pageInstance: Page) {
+        await pageInstance.waitForSelector(input.selector, { visible: true, timeout: 30000 });
+        if (input.clearFirst) {
+             await pageInstance.focus(input.selector);
+             await pageInstance.keyboard.down('Control');
+             await pageInstance.keyboard.press('A');
+             await pageInstance.keyboard.up('Control');
+             await pageInstance.keyboard.press('Backspace');
+        }
+        await pageInstance.type(input.selector, input.text, { delay: input.delay });
+    }
+};
+
+
+const getContentTool = {
+    name: 'puppeteer_get_content',
+    description: 'Retrieves content from the current page. Can get full HTML, text content, or simplified structure of the whole page or a specific element.',
+    inputSchema: z.object({
+        selector: z.string().optional().describe('Optional CSS selector to get content from a specific element or area.'),
+        format: z.enum(['text', 'html', 'simplified_dom']).default('simplified_dom').describe('The format of the content to retrieve. "text" gets only text nodes, "html" gets raw innerHTML, "simplified_dom" attempts to provide a cleaner structure for LLM processing.'),
+        maxChars: z.number().optional().default(12000).describe('Maximum characters to return (default ~8000 tokens).'),
+        prioritizeContent: z.boolean().optional().default(true).describe('Intelligently prioritize main content when truncating.'),
+    }),
+    async executeLogic(input: { selector?: string; format?: 'text' | 'html' | 'simplified_dom'; maxChars?: number; prioritizeContent?: boolean }, pageInstance: Page): Promise<string> {
+        const format = input.format || 'simplified_dom';
+        const maxChars = input.maxChars || 12000; // ~8000 tokens
+        const prioritizeContent = input.prioritizeContent !== false;
+        
+        let content: string | null = null;
+        const targetSelector = input.selector || 'body';
+        
+        try {
+            await pageInstance.waitForSelector(targetSelector, { timeout: 10000 });
+        } catch {
+            // Target selector not found quickly, proceeding anyway
+        }
+
+        if (format === 'text') {
+            content = await pageInstance.$eval(targetSelector, (el: Element) => (el as HTMLElement).innerText);
+        } else if (format === 'html') {
+            content = await pageInstance.$eval(targetSelector, (el: Element) => el.innerHTML);
+        } else { // simplified_dom
+            content = await pageInstance.evaluate((selector: string, shouldPrioritize: boolean) => {
+                const element = document.querySelector(selector);
+                if (!element) return 'Element not found.';
+                
+                // Get the main content area if prioritizing and no specific selector
+                const isFullPage = selector === 'body';
+                let mainElement = element;
+                
+                if (shouldPrioritize && isFullPage) {
+                    // Try to find main content area
+                    const contentSelectors = [
+                        'main', 
+                        'article', 
+                        '[role="main"]', 
+                        '#content', 
+                        '.content', 
+                        '#main', 
+                        '.main'
+                    ];
+                    
+                    for (const contentSelector of contentSelectors) {
+                        const potentialMain = document.querySelector(contentSelector);
+                        if (potentialMain && potentialMain.textContent && potentialMain.textContent.length > 200) {
+                            mainElement = potentialMain;
+                            break;
+                        }
+                    }
+                }
+                
+                // Track element importance for smarter truncation
+                const importanceMap = new Map();
+                
+                function getElementImportance(el: Element) {
+                    // Higher is more important
+                    if (!el || !el.tagName) return 0;
+                    const tag = el.tagName.toLowerCase();
+                    
+                    // Prioritize headings and key content elements
+                    if (tag === 'h1') return 10;
+                    if (tag === 'h2') return 9;
+                    if (tag === 'h3') return 8;
+                    if (tag === 'title') return 10;
+                    if (tag === 'li' && el.parentElement && ['ol', 'ul'].includes(el.parentElement.tagName.toLowerCase())) return 7;
+                    if (tag === 'td' && el.textContent && el.textContent.length < 100) return 6;
+                    if (tag === 'p' && el.textContent && el.textContent.length > 100) return 7;
+                    if (tag === 'a' && (el as HTMLAnchorElement).href) return 5;
+                    if (tag === 'button') return 4;
+                    if (tag === 'input') return 4;
+                    if (tag === 'label') return 4;
+                    
+                    // Deprioritize less important elements
+                    if (['nav', 'footer', 'aside', 'header'].includes(tag)) return 2;
+                    if (tag === 'div') return 3;
+                    if (tag === 'span') return 2;
+                    
+                    return 1;
+                }
+                
+                function simplifyNode(node: Node, depth = 0) {
+                    if (!node) return '';
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const text = (node.textContent || '').trim();
+                        return text ? text : '';
+                    }
+                    
+                    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+                    
+                    const element = node as Element;
+                    const tagName = element.tagName.toLowerCase();
+                    
+                    // Skip non-content elements
+                    if (['script', 'style', 'noscript', 'svg', 'iframe', 'meta', 'link', 'head'].includes(tagName)) {
+                        return '';
+                    }
+                    
+                    // Check for hidden elements
+                    const style = window.getComputedStyle(element);
+                    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+                        return '';
+                    }
+                    
+                    // Check element importance for later prioritization
+                    const importance = getElementImportance(element);
+                    
+                    // Gather attributes that add meaning
+                    let attrs = '';
+                    if (tagName === 'img' && element.getAttribute('alt')) {
+                        attrs += ` alt="${element.getAttribute('alt')}"`;
+                    }
+                    if (tagName === 'a' && element.getAttribute('href')) {
+                        const href = element.getAttribute('href');
+                        // Only include non-fragment links
+                        if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+                            attrs += ` href="${href}"`;
+                        }
+                    }
+                    if (element.getAttribute('aria-label')) {
+                        attrs += ` aria-label="${element.getAttribute('aria-label')}"`;
+                    }
+                    if (element.getAttribute('role') && !['presentation', 'none'].includes(element.getAttribute('role') as string)) {
+                        attrs += ` role="${element.getAttribute('role')}"`;
+                    }
+                    
+                    // Process children
+                    let childrenContent = '';
+                    const childNodes = Array.from(element.childNodes).filter(child => {
+                        // Filter out comments and empty text nodes
+                        if (child.nodeType === Node.COMMENT_NODE) return false;
+                        if (child.nodeType === Node.TEXT_NODE && (!child.textContent || !child.textContent.trim())) return false;
+                        return true;
+                    });
+                    
+                    for (const child of childNodes) {
+                        childrenContent += simplifyNode(child, depth + 1) + ' ';
+                    }
+                    
+                    childrenContent = childrenContent.trim().replace(/\s+/g, ' ');
+                    
+                    // Skip empty wrappers unless they have meaningful attributes
+                    if (!childrenContent && !attrs && ['div', 'span', 'p'].includes(tagName)) {
+                        return '';
+                    }
+                    
+                    // For table cells, simplify further
+                    if (tagName === 'td' || tagName === 'th') {
+                        if (!childrenContent) return '';
+                        return `<${tagName}>${childrenContent}</${tagName}>`;
+                    }
+                    
+                    // For list items, add a bullet or number if at the right depth
+                    if (tagName === 'li') {
+                        const result = `<${tagName}>${childrenContent}</${tagName}>`;
+                        importanceMap.set(result, importance);
+                        return result;
+                    }
+                    
+                    // Special case for tables to make them more readable
+                    if (tagName === 'table') {
+                        return `<table>${childrenContent}</table>`;
+                    }
+                    
+                    // Regular element
+                    const result = `<${tagName}${attrs}>${childrenContent}</${tagName}>`;
+                    importanceMap.set(result, importance);
+                    return result;
+                }
+                
+                // Process the selected element
+                const simplified = simplifyNode(mainElement);
+                return simplified.replace(/\s+/g, ' ').trim();
+            }, targetSelector, prioritizeContent);
+        }
+
+        // Smart truncation when needed
+        if (content && content.length > maxChars) {
+            if (format === 'simplified_dom') {
+                // For DOM content, attempt to truncate at a sensible boundary
+                // Try to keep complete tags when possible
+                const truncPoint = content.lastIndexOf('</h', maxChars - 20) ||
+                                   content.lastIndexOf('</p>', maxChars - 20) ||
+                                   content.lastIndexOf('</li>', maxChars - 20) ||
+                                   content.lastIndexOf('. ', maxChars - 20);
+                
+                if (truncPoint > maxChars * 0.75) { // Only if we found a good breakpoint
+                    content = content.substring(0, truncPoint + 1) + 
+                              `... [truncated at ${truncPoint + 1} chars, original length: ${content.length}]`;
+                } else {
+                    // Fall back to standard truncation
+                    content = content.substring(0, maxChars) + 
+                              `... [truncated, original length: ${content.length}]`;
+                }
+            } else {
+                // For regular text, try to truncate at sentence boundaries
+                const truncPoint = content.lastIndexOf('. ', maxChars - 20);
+                if (truncPoint > maxChars * 0.75) {
+                    content = content.substring(0, truncPoint + 1) + 
+                              `... [truncated, original length: ${content.length}]`;
+                } else {
+                    content = content.substring(0, maxChars) + 
+                              `... [truncated, original length: ${content.length}]`;
+                }
+            }
+        }
+        
+        return content ?? '';
+    },
+};
+
+const scrollTool = {
+    name: 'puppeteer_scroll',
+    description: 'Scrolls the page window vertically.',
+    inputSchema: z.object({
+        direction: z.enum(['up', 'down', 'top', 'bottom']).describe('Direction to scroll: "up" (one screen), "down" (one screen), "top" (to the top), "bottom" (to the bottom).'),
+    }),
+    async executeLogic(input: { direction: 'up' | 'down' | 'top' | 'bottom' }, pageInstance: Page): Promise<{ scrollY: number }> { // Returns scrollY
+        await pageInstance.evaluate((direction: 'up' | 'down' | 'top' | 'bottom') => {
+            if (direction === 'down') window.scrollBy(0, window.innerHeight * 0.8);
+            else if (direction === 'up') window.scrollBy(0, -window.innerHeight * 0.8);
+            else if (direction === 'top') window.scrollTo(0, 0);
+            else if (direction === 'bottom') window.scrollTo(0, document.body.scrollHeight);
+        }, input.direction);
+        
+        // Add a longer wait after scrolling (500ms -> 1500ms) to allow content to load
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Let the page become idle after scrolling
+        try {
+            await pageInstance.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }).catch(() => {
+                // Ignore timeout, just wait the fixed time
+            });
+        } catch (_e) {
+            // Ignore any errors from waitForNetworkIdle
+        }
+        
+        const scrollY = await pageInstance.evaluate(() => window.scrollY);
+        return { scrollY }; // Return specific data
+    }
+};
+
+const waitForSelectorTool = {
+    name: 'puppeteer_wait_for_selector',
+    description: 'Waits for an element matching the CSS selector to appear in the DOM. Useful after clicks or navigations that dynamically load content.',
+    inputSchema: z.object({
+        selector: z.string().describe('CSS selector for the element to wait for.'),
+        timeout: z.number().optional().default(15000).describe('Maximum time in milliseconds to wait.'),
+        visible: z.boolean().optional().default(false).describe('Wait for the element to be visible (not just in DOM).'),
+    }),
+    async executeLogic(input: { selector: string; timeout?: number; visible?: boolean }, pageInstance: Page): Promise<{ found: boolean }> { // Returns found status
+        try {
+            await pageInstance.waitForSelector(input.selector, { timeout: input.timeout || 15000, visible: input.visible || false });
+            return { found: true };
+        } catch (waitError: any) {
+            if (waitError.name === 'TimeoutError') {
+                return { found: false }; // Return found: false on timeout
+            }
+            throw waitError; // Re-throw other errors to be caught by safeExecute
+        }
+    }
+};
+
+const checkForCaptchaTool = {
+    name: 'puppeteer_check_for_captcha',
+    description: 'Checks the current page for common signs of CAPTCHA challenges (e.g., reCAPTCHA, hCaptcha). Does not solve them.',
+    inputSchema: z.object({}), // No input needed
+    async executeLogic(input: Record<string, never>, pageInstance: Page): Promise<{ captchaDetected: boolean; details?: string }> { // Returns detection status
+        const captchaSelectors = [
+            'iframe[src*="recaptcha"]', 'iframe[src*="hcaptcha"]',
+            '[data-hcaptcha-widget-id]', '[data-sitekey]', 'div.g-recaptcha',
+         ];
+         let detected = false;
+         let details = '';
+         for (const selector of captchaSelectors) {
+            const element = await pageInstance.$(selector);
+            if (element) {
+                detected = true;
+                details = `Detected element matching selector: ${selector}`;
+                break;
+            }
+         }
+         return { captchaDetected: detected, details: detected ? details : undefined };
+    },
+};
+
+const elementExistsTool = {
+    name: 'puppeteer_element_exists',
+    description: 'Checks if an element matching the CSS selector exists on the page without waiting.',
+    inputSchema: z.object({
+        selector: z.string().describe('CSS selector to check')
+    }),
+    async executeLogic(input: { selector: string }, pageInstance: Page): Promise<{ exists: boolean; count: number }> {
+        const count = await pageInstance.$$eval(input.selector, els => els.length).catch(() => 0);
+        return { exists: count > 0, count };
+    }
+};
+
+const waitForLoadTool = {
+    name: 'puppeteer_wait_for_load',
+    description: 'Wait for the page to load completely with multiple waiting strategies.',
+    inputSchema: z.object({
+        strategy: z.enum(['networkidle', 'domcontentloaded', 'load', 'visual']).default('networkidle')
+            .describe('Waiting strategy: networkidle (wait for network to be idle), domcontentloaded (DOM ready), load (onload event), visual (wait for visual stability)'),
+        timeout: z.number().optional().default(15000).describe('Maximum time to wait in milliseconds'),
+    }),
+    async executeLogic(input: { 
+        strategy: 'networkidle' | 'domcontentloaded' | 'load' | 'visual'; 
+        timeout?: number 
+    }, pageInstance: Page): Promise<{ success: boolean }> {
+        const timeout = input.timeout || 15000;
+        
+        try {
+            if (input.strategy === 'networkidle') {
+                await Promise.race([
+                    pageInstance.waitForNetworkIdle({ idleTime: 500, timeout }),
+                    new Promise(r => setTimeout(r, timeout))
+                ]);
+            } else if (input.strategy === 'domcontentloaded') {
+                await pageInstance.waitForFunction('document.readyState !== "loading"', { timeout });
+            } else if (input.strategy === 'load') {
+                await pageInstance.waitForFunction('document.readyState === "complete"', { timeout });
+            } else if (input.strategy === 'visual') {
+                // Wait for visual stability by checking for layout shifts
+                await pageInstance.evaluate((waitTime) => {
+                    return new Promise(resolve => {
+                        let lastHeight = document.body.clientHeight;
+                        let stable = 0;
+                        
+                        const interval = setInterval(() => {
+                            const currentHeight = document.body.clientHeight;
+                            if (Math.abs(currentHeight - lastHeight) < 10) {
+                                stable++;
+                                if (stable >= 3) { // Stable for 3 consecutive checks
+                                    clearInterval(interval);
+                                    resolve(true);
+                                }
+                            } else {
+                                stable = 0;
+                            }
+                            lastHeight = currentHeight;
+                        }, 200);
+                        
+                        // Safety timeout
+                        setTimeout(() => {
+                            clearInterval(interval);
+                            resolve(false);
+                        }, waitTime);
+                    });
+                }, timeout);
+            }
+            
+            // Give a small breathing room after any wait strategy
+            await new Promise(r => setTimeout(r, 300));
+            return { success: true };
+        } catch (_error) {
+            return { success: false };
+        }
+    }
+};
+
+// Store tools in a map for easy lookup
+const availableTools: Record<string, { name: string; description: string; inputSchema: ZodSchema<any>; executeLogic: (input: any, page: Page) => Promise<any> }> = {
+    [navigateTool.name]: navigateTool,
+    [clickTool.name]: clickTool,
+    [typeTool.name]: typeTool,
+    [getContentTool.name]: getContentTool,
+    [scrollTool.name]: scrollTool,
+    [waitForSelectorTool.name]: waitForSelectorTool,
+    [checkForCaptchaTool.name]: checkForCaptchaTool,
+    [elementExistsTool.name]: elementExistsTool,
+    [waitForLoadTool.name]: waitForLoadTool,
+};
+
+
+// --- Server Initialization (using SDK structure) ---
+const server = new Server(
+    { name: "custom-puppeteer-server", version: "1.0.0" }, // Server info
+    { capabilities: { tools: {} } } // Declare tool capability
+);
+
+// Handle ListTools request
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const toolList = Object.values(availableTools).map(tool => {
+        // Basic conversion of Zod schema to JSON Schema format
+        const zodToJsonSchema = (schema: ZodSchema<any>) => {
+            // Very basic conversion for primitive types
+            const schemaDescription: Record<string, any> = { 
+                type: "object",
+                properties: {},
+                required: []
+            };
+            
+            // This is a simplified approach - for complex schemas you'd need a full converter
+            if (schema instanceof z.ZodObject) {
+                const shape = (schema as any)._def.shape();
+                for (const [key, value] of Object.entries(shape)) {
+                    // Cast value to any to access _def
+                    const zodValue = value as any;
+                    
+                    schemaDescription.properties[key] = { 
+                        type: zodValue._def.typeName === "ZodString" ? "string" : 
+                              zodValue._def.typeName === "ZodNumber" ? "number" :
+                              zodValue._def.typeName === "ZodBoolean" ? "boolean" : 
+                              zodValue._def.typeName === "ZodEnum" ? getEnumType(zodValue) : // Handle enums
+                              "object" // Use "object" instead of "any"
+                    };
+                    
+                    // Access description and isOptional safely with type assertion
+                    if (zodValue.description) {
+                        schemaDescription.properties[key].description = zodValue.description;
+                    }
+                    
+                    // Check if this field is required using type assertion
+                    if (typeof zodValue.isOptional === 'function' && !zodValue.isOptional()) {
+                        schemaDescription.required.push(key);
+                    }
+                }
+            }
+            
+            return schemaDescription;
+        };
+        
+        return {
+            name: tool.name,
+            description: tool.description,
+            // Use our simple converter instead of openapi
+            inputSchema: tool.inputSchema ? zodToJsonSchema(tool.inputSchema) : undefined,
+        };
+    });
+
+    return { tools: toolList };
+});
+
+// Handle CallTool request
+// Define the expected return type explicitly
+server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer<typeof CallToolResultSchema>> => {
+    const toolName = request.params.name;
+    const rawArgs = request.params.arguments ?? {};
+
+    const tool = availableTools[toolName];
+
+    if (!tool) {
+        return {
+            content: [{ type: "text", text: `Error: Unknown tool '${toolName}'` }],
+            isError: true,
+        };
+    }
+
+    try {
+        // Validate input arguments using the tool's Zod schema
+        const validatedArgs = tool.inputSchema.parse(rawArgs);
+
+        // Use safeExecute to wrap the tool's logic function
+        const result = await safeExecute(async (pageInstance) => {
+            // Pass validated args and the page instance to the specific tool logic
+            return tool.executeLogic(validatedArgs, pageInstance);
+        }, toolName !== scrollTool.name && toolName !== waitForSelectorTool.name && toolName !== checkForCaptchaTool.name);
+
+        // Format the result according to CallToolResultSchema (not ResponseSchema)
+        if (result.success) {
+            const responseText = typeof result.data === 'object'
+                ? JSON.stringify(result.data, null, 2)
+                : String(result.data ?? '');
+
+            const pageInfoText = (result.currentUrl || result.title)
+                ? `\nCurrent URL: ${result.currentUrl}\nPage Title: ${result.title}`
+                : '';
+
+            return {
+                content: [{ type: "text", text: `Tool '${toolName}' executed successfully.\nResult:\n${responseText}${pageInfoText}` }],
+                isError: false,
+            };
+        } else {
+            const pageInfoText = (result.currentUrl || result.title)
+                ? `\nLast known URL: ${result.currentUrl}\nLast known Title: ${result.title}`
+                : '';
+            return {
+                content: [{ type: "text", text: `Error executing tool '${toolName}': ${result.error}${pageInfoText}` }],
+                isError: true,
+            };
+        }
+
+    } catch (error: any) {
+        let errorMessage = `Error processing tool '${toolName}': `;
+        if (error instanceof z.ZodError) {
+            errorMessage += `Invalid input arguments: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`;
+        } else {
+            errorMessage += error.message || String(error);
+        }
+        
+        // Return error response conforming to CallToolResultSchema
+        return {
+            content: [{ type: "text", text: errorMessage }],
+            isError: true,
+        };
+    }
+});
+
+
+// --- Graceful Shutdown ---
+async function cleanup() {
+    if (browser) {
+        try {
+            await browser.close();
+        } catch (_error) {
+            // Ignore errors during cleanup
+        } finally {
+            browser = null;
+            page = null;
+        }
+    }
+}
+
+process.on('SIGINT', async () => { await cleanup(); process.exit(0); });
+process.on('SIGTERM', async () => { await cleanup(); process.exit(0); });
+
+// --- Start Listening (using SDK structure) ---
+async function runServer() {
+    const transport = new StdioServerTransport();
+    // Connect server to transport AFTER setting request handlers
+    await server.connect(transport);
+}
+
+runServer().catch((error: Error | any) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Server failed to start or connect: ${errorMessage}`);
+    process.exit(1);
+});
+
+// Add this helper function to handle enum types
+function getEnumType(enumSchema: any) {
+    const values = enumSchema._def.values;
+    // Check first value to determine type
+    return typeof values[0] === 'string' ? "string" : 
+           typeof values[0] === 'number' ? "number" : "string";
+}
