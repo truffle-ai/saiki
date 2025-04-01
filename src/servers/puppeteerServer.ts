@@ -554,6 +554,348 @@ const waitForLoadTool = {
     }
 };
 
+const downloadImageTool = {
+    name: 'puppeteer_download_image',
+    description: 'Downloads an image from a webpage to a local file. Can use either a direct image URL or extract an image via CSS selector.',
+    inputSchema: z.object({
+        imageUrl: z.string().optional().describe('Direct URL to the image file if known (e.g., "https://example.com/image.jpg").'),
+        selector: z.string().optional().describe('CSS selector to find the image element on the current page (e.g., "#main-product-image", ".hero img").'),
+        outputPath: z.string().describe('Full local path where the image should be saved (e.g., "C:/Users/username/Downloads/image.jpg").'),
+        attribute: z.string().optional().default('src').describe('Image attribute to extract the URL from if using selector (default: "src", alternatives: "data-src", "srcset", etc.).'),
+    }).refine(data => !!data.imageUrl || !!data.selector, {
+        message: "Either imageUrl or selector must be provided"
+    }),
+    
+    async executeLogic(input: { 
+        imageUrl?: string; 
+        selector?: string; 
+        outputPath: string; 
+        attribute?: string;
+    }, pageInstance: Page): Promise<{ success: boolean; savedTo?: string; size?: number }> {
+        // Ensure we have a URL - either directly provided or extracted from selector
+        let imageUrl = input.imageUrl;
+        
+        if (!imageUrl && input.selector) {
+            // Extract the image URL from the selector
+            try {
+                await pageInstance.waitForSelector(input.selector, { timeout: 5000 });
+                
+                imageUrl = await pageInstance.evaluate((selector, attribute) => {
+                    const imgElement = document.querySelector(selector) as HTMLImageElement;
+                    if (!imgElement) return null;
+                    
+                    // Try to get the best image URL depending on the attribute
+                    if (attribute === 'srcset') {
+                        // Parse srcset and get the highest resolution
+                        const srcset = imgElement.srcset;
+                        if (srcset) {
+                            const entries = srcset.split(',')
+                                .map(entry => {
+                                    const [url, width] = entry.trim().split(/\s+/);
+                                    // Extract numeric value from descriptor like "1200w"
+                                    const numWidth = width ? parseInt(width.replace(/\D/g, '')) : 0;
+                                    return { url, width: numWidth };
+                                })
+                                .sort((a, b) => b.width - a.width); // Sort by width descending
+                            
+                            if (entries.length > 0) return entries[0].url;
+                        }
+                    }
+                    
+                    // Fall back to the specified attribute
+                    return imgElement[attribute] || imgElement.getAttribute(attribute);
+                }, input.selector, input.attribute || 'src');
+                
+                if (!imageUrl) {
+                    throw new Error(`No image URL found in ${input.selector} with attribute ${input.attribute || 'src'}`);
+                }
+                
+                // If the URL is relative, convert to absolute
+                if (imageUrl.startsWith('/')) {
+                    const pageUrl = new URL(pageInstance.url());
+                    imageUrl = `${pageUrl.origin}${imageUrl}`;
+                } else if (!imageUrl.startsWith('http')) {
+                    const pageUrl = pageInstance.url();
+                    imageUrl = new URL(imageUrl, pageUrl).toString();
+                }
+            } catch (error: any) {
+                throw new Error(`Failed to extract image URL: ${error.message}`);
+            }
+        }
+        
+        if (!imageUrl) {
+            throw new Error('No image URL found or provided');
+        }
+        
+        // Use Node.js built-in modules for file operations
+        const fs = await import('fs');
+        const path = await import('path');
+        const https = await import('https');
+        const http = await import('http');
+        
+        // Create any necessary directories
+        const dir = path.dirname(input.outputPath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        // Choose the right protocol based on URL
+        const protocol = imageUrl.startsWith('https') ? https : http;
+        
+        try {
+            // Download the image using a Promise
+            const imageBuffer = await new Promise<Buffer>((resolve, reject) => {
+                protocol.get(imageUrl as string, (response) => {
+                    if (response.statusCode !== 200) {
+                        reject(new Error(`Failed to download image: HTTP ${response.statusCode}`));
+                        return;
+                    }
+                    
+                    const contentType = response.headers['content-type'];
+                    if (!contentType || !contentType.startsWith('image/')) {
+                        reject(new Error(`URL does not point to an image. Content-Type: ${contentType}`));
+                        return;
+                    }
+                    
+                    const chunks: Buffer[] = [];
+                    response.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+                    response.on('end', () => resolve(Buffer.concat(chunks)));
+                    response.on('error', reject);
+                }).on('error', reject);
+            });
+            
+            // Save the image to disk
+            fs.writeFileSync(input.outputPath, imageBuffer);
+            
+            return { 
+                success: true, 
+                savedTo: input.outputPath,
+                size: imageBuffer.length 
+            };
+        } catch (error: any) {
+            throw new Error(`Error downloading image: ${error.message}`);
+        }
+    }
+};
+
+const downloadFileTool = {
+    name: 'puppeteer_download_file',
+    description: 'Downloads any file from a URL to the local filesystem. Works with any file type (images, PDFs, ZIP, etc).',
+    inputSchema: z.object({
+        url: z.string().optional().describe('Direct URL to the file (e.g., "https://example.com/document.pdf").'),
+        selector: z.string().optional().describe('CSS selector for an element that links to or contains the file URL (e.g., "a.download-link", "button.download").'),
+        outputPath: z.string().describe('Full local path where the file should be saved (e.g., "C:/Users/username/Downloads/file.pdf").'),
+        attribute: z.string().optional().default('href').describe('Attribute to extract the URL from when using selector (default: "href" for links, can also be "src", "data-url", etc.).'),
+        clickToDownload: z.boolean().optional().default(false).describe('Whether to click the element and wait for a download instead of extracting the URL (for dynamic downloads).'),
+    }).refine(data => (!!data.url || !!data.selector || data.clickToDownload), {
+        message: "Either url, selector, or clickToDownload must be provided"
+    }),
+    
+    async executeLogic(input: { 
+        url?: string; 
+        selector?: string; 
+        outputPath: string; 
+        attribute?: string;
+        clickToDownload?: boolean;
+    }, pageInstance: Page): Promise<{ success: boolean; savedTo?: string; size?: number; fileType?: string }> {
+        // For click-to-download approach
+        if (input.clickToDownload && input.selector) {
+            try {
+                await pageInstance.waitForSelector(input.selector, { timeout: 10000 });
+                
+                // First create the directory if needed
+                const fs = await import('fs');
+                const path = await import('path');
+                const dir = path.dirname(input.outputPath);
+                
+                if (!fs.existsSync(dir)) {
+                    fs.mkdirSync(dir, { recursive: true });
+                }
+                
+                // Set up response interception to catch downloads
+                let downloadStarted = false;
+                let downloadCompleted = false;
+                let downloadResult: {path: string, size: number, type: string} | null = null;
+                
+                // Set up the CDP session before creating the promise
+                const client = await pageInstance.target().createCDPSession();
+                await client.send('Fetch.enable', {
+                    patterns: [{ urlPattern: '*' }],
+                });
+                
+                // Set up the event handler
+                client.on('Fetch.requestPaused', async (event) => {
+                    const response = await client.send('Fetch.getResponseBody', { requestId: event.requestId }).catch(() => null);
+                    
+                    // If we can get response body, check if it might be a file
+                    if (response) {
+                        const headers = event.responseHeaders || [];
+                        const contentTypeHeader = headers.find(h => h.name.toLowerCase() === 'content-disposition');
+                        const contentType = headers.find(h => h.name.toLowerCase() === 'content-type');
+                        
+                        // If this looks like a file download
+                        if (contentTypeHeader || 
+                            (contentType && !contentType.value.includes('text/html') && 
+                            !contentType.value.includes('application/json'))) {
+                            
+                            downloadStarted = true;
+                            let data: Buffer;
+                            
+                            // Decode based on response format
+                            if (response.base64Encoded) {
+                                data = Buffer.from(response.body, 'base64');
+                            } else {
+                                data = Buffer.from(response.body);
+                            }
+                            
+                            // Save the file
+                            fs.writeFileSync(input.outputPath, data);
+                            
+                            await client.send('Fetch.continueRequest', { requestId: event.requestId });
+                            
+                            downloadCompleted = true;
+                            downloadResult = {
+                                path: input.outputPath,
+                                size: data.length,
+                                type: contentType ? contentType.value : 'unknown'
+                            };
+                            return;
+                        }
+                    }
+                    
+                    // Continue with the request if we didn't capture it as a file
+                    await client.send('Fetch.continueRequest', { requestId: event.requestId });
+                });
+                
+                // Now create a non-async Promise
+                const downloadPromise = new Promise<{path: string, size: number, type: string}>((resolve, reject) => {
+                    // Check frequently if download completed
+                    const checkInterval = setInterval(() => {
+                        if (downloadCompleted && downloadResult) {
+                            clearInterval(checkInterval);
+                            clearTimeout(timeoutId);
+                            resolve(downloadResult);
+                        }
+                    }, 500);
+                    
+                    // Set a timeout to reject if no download starts
+                    const timeoutId = setTimeout(() => {
+                        clearInterval(checkInterval);
+                        if (!downloadStarted) {
+                            client.detach();
+                            reject(new Error('Download did not start within timeout period'));
+                        }
+                    }, 20000);
+                });
+                
+                // Click the element to trigger the download
+                await pageInstance.click(input.selector);
+                
+                // Wait for the download to complete
+                const result = await downloadPromise;
+                
+                return {
+                    success: true,
+                    savedTo: result.path,
+                    size: result.size,
+                    fileType: result.type
+                };
+                
+            } catch (error: any) {
+                throw new Error(`Error during click-to-download: ${error.message}`);
+            }
+        }
+        
+        // For direct URL approach
+        let fileUrl = input.url;
+        
+        // Extract URL from selector if needed
+        if (!fileUrl && input.selector) {
+            try {
+                await pageInstance.waitForSelector(input.selector, { timeout: 5000 });
+                
+                fileUrl = await pageInstance.evaluate((selector, attribute) => {
+                    const element = document.querySelector(selector);
+                    if (!element) return null;
+                    
+                    // Try to get the URL from the attribute
+                    return element.getAttribute(attribute) || 
+                           (element as any)[attribute] || 
+                           null;
+                }, input.selector, input.attribute || 'href');
+                
+                if (!fileUrl) {
+                    throw new Error(`No URL found in ${input.selector} with attribute ${input.attribute || 'href'}`);
+                }
+                
+                // If the URL is relative, convert to absolute
+                if (fileUrl.startsWith('/')) {
+                    const pageUrl = new URL(pageInstance.url());
+                    fileUrl = `${pageUrl.origin}${fileUrl}`;
+                } else if (!fileUrl.startsWith('http')) {
+                    const pageUrl = pageInstance.url();
+                    fileUrl = new URL(fileUrl, pageUrl).toString();
+                }
+            } catch (error: any) {
+                throw new Error(`Failed to extract file URL: ${error.message}`);
+            }
+        }
+        
+        if (!fileUrl) {
+            throw new Error('No file URL found or provided');
+        }
+        
+        // Use Node.js built-in modules for file operations
+        const fs = await import('fs');
+        const path = await import('path');
+        const https = await import('https');
+        const http = await import('http');
+        
+        // Create any necessary directories
+        const dir = path.dirname(input.outputPath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        // Choose the right protocol based on URL
+        const protocol = fileUrl.startsWith('https') ? https : http;
+        
+        try {
+            // Download the file using a Promise
+            const { buffer, contentType } = await new Promise<{buffer: Buffer, contentType?: string}>((resolve, reject) => {
+                protocol.get(fileUrl as string, (response) => {
+                    if (response.statusCode !== 200) {
+                        reject(new Error(`Failed to download file: HTTP ${response.statusCode}`));
+                        return;
+                    }
+                    
+                    const contentType = response.headers['content-type'];
+                    
+                    const chunks: Buffer[] = [];
+                    response.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+                    response.on('end', () => resolve({
+                        buffer: Buffer.concat(chunks),
+                        contentType
+                    }));
+                    response.on('error', reject);
+                }).on('error', reject);
+            });
+            
+            // Save the file to disk
+            fs.writeFileSync(input.outputPath, buffer);
+            
+            return { 
+                success: true, 
+                savedTo: input.outputPath,
+                size: buffer.length,
+                fileType: contentType
+            };
+        } catch (error: any) {
+            throw new Error(`Error downloading file: ${error.message}`);
+        }
+    }
+};
+
 // Store tools in a map for easy lookup
 const availableTools: Record<string, { name: string; description: string; inputSchema: ZodSchema<any>; executeLogic: (input: any, page: Page) => Promise<any> }> = {
     [navigateTool.name]: navigateTool,
@@ -565,6 +907,8 @@ const availableTools: Record<string, { name: string; description: string; inputS
     [checkForCaptchaTool.name]: checkForCaptchaTool,
     [elementExistsTool.name]: elementExistsTool,
     [waitForLoadTool.name]: waitForLoadTool,
+    [downloadImageTool.name]: downloadImageTool,
+    [downloadFileTool.name]: downloadFileTool,
 };
 
 

@@ -15,6 +15,7 @@ export default [
                 console: 'readonly',
                 process: 'readonly',
                 setTimeout: 'readonly',
+                clearTimeout: 'readonly',
                 global: 'readonly',
                 require: 'readonly',
                 __dirname: 'readonly',
@@ -23,10 +24,13 @@ export default [
                 window: 'readonly',
                 HTMLElement: 'readonly',
                 HTMLAnchorElement: 'readonly',
+                HTMLImageElement: 'readonly',
                 Element: 'readonly',
                 Node: 'readonly',
                 clearInterval: 'readonly',
                 setInterval: 'readonly',
+                Buffer: 'readonly',
+                URL: 'readonly'
             },
         },
         plugins: {
@@ -35,6 +39,7 @@ export default [
         rules: {
             'no-console': 'off',
             'no-unused-vars': 'off',
+            'no-async-promise-executor': 'off',
             '@typescript-eslint/explicit-module-boundary-types': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
