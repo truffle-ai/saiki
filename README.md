@@ -257,7 +257,3 @@ We'd love your help making Saiki better! Here are some ways to contribute:
 - [Smithery.ai](https://smithery.ai/) - Browse hundreds of ready-to-use MCP servers
 - [MCP Documentation](https://modelcontextprotocol.io/introduction) - Official MCP specification
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) - For building custom servers
-
-## 📜 License
-
-MIT
