@@ -127,14 +127,14 @@ export class MCPClient implements ToolProvider {
     async listPrompts(): Promise<string[]> {
         return [];
     }
-    async getPrompt(_name: string, _args?: any): Promise<string> {
+    async getPrompt(name: string, _args?: any): Promise<string> {
         return '';
     }
 
     async listResources(): Promise<string[]> {
         return [];
     }
-    async readResource(_url: string): Promise<string> {
+    async readResource(url: string): Promise<string> {
         return '';
     }
 
@@ -193,11 +193,6 @@ export class MCPClient implements ToolProvider {
             logger.error('Failed to list tools:', error);
             return [];
         }
-    }
-
-    // For backward compatibility
-    async listTools(): Promise<McpTool[]> {
-        return this.getTools();
     }
 
     /**

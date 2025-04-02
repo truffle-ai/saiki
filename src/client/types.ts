@@ -19,10 +19,3 @@ export interface ToolProvider {
    */
   disconnect?(): Promise<void>;
 }
-
-/**
- * A tool with its metadata
- */
-export interface Tool extends McpTool {
-  // Extended as needed
-} 

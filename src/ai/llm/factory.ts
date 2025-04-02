@@ -1,8 +1,8 @@
 import { ClientManager } from '../../client/manager.js';
-import { LLMConfig as LLMServiceConfig, LLMService } from './types.js';
+import { LLMService } from './types.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
-import { LLMConfig as ConfigLLMConfig } from '../../config/types.js';
+import { LLMConfig } from '../../config/types.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -10,7 +10,7 @@ import { logger } from '../../utils/logger.js';
  * @param config LLM configuration from the config file
  * @returns Valid API key or throws an error
  */
-function extractApiKey(config: ConfigLLMConfig): string {
+function extractApiKey(config: LLMConfig): string {
     const provider = config.provider;
     
     // Get API key from config or environment
@@ -42,29 +42,29 @@ function extractApiKey(config: ConfigLLMConfig): string {
  * Create an LLM service instance based on the provided configuration
  */
 export function createLLMService(
-    config: ConfigLLMConfig,
+    config: LLMConfig,
     clientManager: ClientManager
 ): LLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
     
-    // Convert config to service-compatible format
-    const serviceConfig: LLMServiceConfig = {
-        provider: config.provider,
-        apiKey,
-        model: config.model,
-        options: config.providerOptions
-    };
+    // // Convert config to service-compatible format
+    // const serviceConfig: LLMServiceConfig = {
+    //     provider: config.provider,
+    //     apiKey,
+    //     model: config.model,
+    //     options: config.providerOptions
+    // };
     
     switch (config.provider.toLowerCase()) {
         case 'openai':
-            return new OpenAIService(clientManager, serviceConfig.apiKey, serviceConfig.model, serviceConfig.options);
+            return new OpenAIService(clientManager, apiKey, config.model, config.providerOptions);
         case 'anthropic':
             return new AnthropicService(
                 clientManager,
-                serviceConfig.apiKey,
-                serviceConfig.model,
-                serviceConfig.options
+                apiKey,
+                config.model,
+                config.providerOptions
             );
         default:
             throw new Error(`Unsupported LLM provider: ${config.provider}`);

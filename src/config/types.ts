@@ -17,18 +17,6 @@ export interface McpServerConfig {
 export type ServerConfigs = Record<string, McpServerConfig>;
 
 /**
- * Server configuration types for HTTP servers
- */
-export type ServerConfig = {
-    url: string;
-    auth?: {
-        username?: string;
-        password?: string;
-        token?: string;
-    };
-};
-
-/**
  * LLM configuration type
  */
 export type LLMConfig = {
