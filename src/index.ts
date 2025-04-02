@@ -5,7 +5,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { logger } from './utils/logger.js';
 import { initializeAiCli } from './ai/cli.js';
-import { loadConfigFile } from './server/config.js';
+import { loadConfigFile, AgentConfig } from './server/config.js';
 
 // Load environment variables
 dotenv.config();
@@ -44,7 +44,6 @@ program.parse();
 const options = program.opts();
 const configFile = options.configFile;
 const connectionMode = options.strict ? 'strict' : ('lenient' as 'strict' | 'lenient');
-const verbose = options.verbose !== false;
 
 // Platform-independent path handling
 const normalizedConfigPath = path.normalize(configFile);
@@ -75,43 +74,23 @@ logger.info('');
 async function startAiClient() {
     try {
         // Load the agent configuration
-        const config = await loadConfigFile(normalizedConfigPath);
+        const config: AgentConfig = await loadConfigFile(normalizedConfigPath);
 
-        // Validate MCP servers section exists
-        if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
-            logger.error('Error: No MCP server configurations found in the provided file');
-            process.exit(1);
-        }
-        logger.info(
-            `Found ${Object.keys(config.mcpServers).length} server configurations in ${normalizedConfigPath}`,
-            null,
-            'green'
-        );
-
-        // Validate LLM section exists, use defaults if not
-        if (!config.llm) {
-            logger.info('No LLM configuration found, using defaults', null, 'yellow');
-            config.llm = {
-                provider: 'openai',
-                model: 'gpt-4o-mini',
-                apiKey: 'env:OPENAI_API_KEY',
-            };
-        }
+        validateAgentConfig(config);
 
         logger.info('===============================================');
         logger.info('Starting AI-powered MCP client...', null, 'cyanBright');
         logger.info('===============================================\n');
 
-        // Convert CLI options to the format expected by initializeAiCli
-        // const aiOptions = {
-        //     configFile: normalizedConfigPath,
-        //     verbose: verbose,
-        // };
-
         await initializeAiCli(config, connectionMode);
     } catch (error) {
-        logger.error('Error: Failed to load configuration from file');
-        logger.error(error);
+        logger.error(
+            `Error: Failed to initialize AI CLI from config file${normalizedConfigPath}: ${JSON.stringify(
+                error,
+                null,
+                2
+            )}`
+        );
         process.exit(1);
     }
 }
@@ -122,3 +101,29 @@ startAiClient().catch((error) => {
     logger.error(error);
     process.exit(1);
 });
+
+function validateAgentConfig(config: AgentConfig): void {
+    if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
+        throw new Error('No MCP server configurations provided');
+    }
+
+    // Validate LLM section exists, use defaults if not
+    if (!config.llm) {
+        logger.info('No LLM configuration found, using defaults', null, 'yellow');
+        config.llm = {
+            provider: 'openai',
+            model: 'gpt-4o-mini',
+            apiKey: 'env:OPENAI_API_KEY',
+        };
+    }
+
+    if (!config.llm.provider || !config.llm.model) {
+        throw new Error('LLM configuration must specify provider and model');
+    }
+
+    logger.info(
+        `Found ${Object.keys(config.mcpServers).length} server configurations`,
+        null,
+        'green'
+    );
+}

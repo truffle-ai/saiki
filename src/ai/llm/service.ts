@@ -55,9 +55,6 @@ export class VercelLLMService implements ILLMService {
         const tools: any = await this.toolHelper.getAllTools();
         logger.silly(`Tools: ${JSON.stringify(tools, null, 2)}`);
 
-        // Notify thinking
-        callbacks?.onThinking?.();
-
         // Maximum number of tool use iterations
         const MAX_ITERATIONS = 10;
         let iterationCount = 0;
@@ -67,25 +64,20 @@ export class VercelLLMService implements ILLMService {
         let stream: any;
         try {
             while (iterationCount < 1) {
+                callbacks?.onThinking?.();
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
                 logger.debug(`Messages: ${JSON.stringify(this.messages, null, 2)}`);
                 logger.silly(`Tools: ${JSON.stringify(tools, null, 2)}`);
 
                 fullResponse = await this.generateText(tools, callbacks, MAX_ITERATIONS);
-
-                // stream = await this.streamText(tools, callbacks, MAX_ITERATIONS);
-
-                // for await (const textPart of stream) {
-                //     fullResponse += textPart;
-                // }
-
+                
+                //fullResponse = await this.processStream(tools, callbacks, MAX_ITERATIONS);
                 // Notify thinking for next iteration
-                callbacks?.onThinking?.();
             }
 
             // If we reached max iterations
-            callbacks?.onResponse?.(fullResponse);
+            // callbacks?.onResponse?.(fullResponse);
             return (
                 fullResponse ||
                 'Reached maximum number of tool call iterations without a final response.'
@@ -137,8 +129,21 @@ export class VercelLLMService implements ILLMService {
 
         const fullResponse = response.text;
 
+        callbacks?.onResponse?.(fullResponse);
+
         this.messages.push({ role: 'assistant', content: fullResponse });
 
+        return fullResponse;
+    }
+
+    async processStream(tools: any, callbacks?: LLMCallbacks, maxSteps: number = 10): Promise<string> {
+        const stream = await this.streamText(tools, callbacks, maxSteps);
+        let fullResponse = '';
+        for await (const textPart of stream) {
+            fullResponse += textPart;
+            callbacks?.onChunk?.(textPart);
+        }
+        // callbacks?.onResponse?.(fullResponse);
         return fullResponse;
     }
 
@@ -152,12 +157,6 @@ export class VercelLLMService implements ILLMService {
             tools,
             onChunk: (chunk) => {
                 logger.debug(`Chunk type: ${chunk.chunk.type}`);
-                // Safely access textDelta if it exists
-                if ('textDelta' in chunk.chunk) {
-                    logger.debug(`Chunk text: ${chunk.chunk.textDelta}`);
-                    // Pass the textDelta to the callback if it exists
-                    callbacks?.onChunk?.(chunk.chunk.textDelta);
-                }
             },
             onError: (error) => {
                 logger.error(`Error in streamText: ${JSON.stringify(error, null, 2)}`);

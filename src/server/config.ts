@@ -4,6 +4,10 @@ import { logger } from '../utils/logger.js';
 
 /**
  * Configuration for stdio-based MCP server connections
+ * - type: Must be 'stdio'
+ * - command: The shell command to launch the server (e.g., 'node')
+ * - args: Array of arguments for the command (e.g., ['script.js'])
+ * - env: Optional environment variables for the server process
  */
 export interface StdioServerConfig {
     type: 'stdio';

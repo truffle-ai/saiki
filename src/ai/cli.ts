@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 import { LLMCallbacks, LLMConfig, ILLMService } from './llm/types.js';
 import { AgentConfig } from '../server/config.js';
 import { createLLMService, createVercelLLMService } from './llm/factory.js';
+import boxen from 'boxen';
 
 /**
  * Start AI-powered CLI with unified configuration
@@ -148,10 +149,39 @@ export async function runAiCli(mcpClientManager: MCPClientManager, llmService: I
                 }
 
                 try {
+                    let accumulatedResponse = '';
+                    let currentLines = 0;
                     // Create callbacks for progress indication (without spinner)
                     const callbacks: LLMCallbacks = {
-                        onChunk: (chunk) => {
-                            console.log(chunk);
+                        // onChunk: (text: string) => {
+                        //     process.stdout.write(text);
+                        // },
+                        onChunk: (text: string) => {
+                            // Append the new chunk to the accumulated response
+                            accumulatedResponse += text;
+                    
+                            // Generate the new box
+                            const box = boxen(chalk.white(accumulatedResponse), {
+                                padding: 1,
+                                borderColor: 'yellow',
+                                title: '🤖 AI Response',
+                                titleAlignment: 'center',
+                            });
+                            const newLines = box.split('\n').length;
+                    
+                            // Move cursor up to the start of the previous box (if it exists)
+                            if (currentLines > 0) {
+                                process.stdout.write(`\x1b[${currentLines}A`); // Move up currentLines
+                            }
+                    
+                            // Print the new box (this overwrites the old one)
+                            process.stdout.write(box);
+                    
+                            // Update the line count
+                            currentLines = newLines;
+                    
+                            // Move cursor to the end of the box to allow logs below
+                            process.stdout.write('\n');
                         },
                         onThinking: () => {
                             logger.info('AI thinking...');
