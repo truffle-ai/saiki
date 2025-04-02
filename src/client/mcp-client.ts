@@ -124,20 +124,6 @@ export class MCPClient implements ToolProvider {
         }
     }
 
-    async listPrompts(): Promise<string[]> {
-        return [];
-    }
-    async getPrompt(name: string, _args?: any): Promise<string> {
-        return '';
-    }
-
-    async listResources(): Promise<string[]> {
-        return [];
-    }
-    async readResource(url: string): Promise<string> {
-        return '';
-    }
-
     /**
      * Call a tool with given name and arguments
      * @param name Tool name
@@ -262,14 +248,6 @@ export interface IMCPClient {
         serverAlias?: string
     ): Promise<Client>;
     disconnect(): Promise<void>;
-
-    // Prompt Management
-    listPrompts(): Promise<string[]>;
-    getPrompt(name: string, args?: any): Promise<string>;
-
-    // Resource Management
-    listResources(): Promise<string[]>;
-    readResource(url: string): Promise<string>;
 
     // Tool Management
     callTool(name: string, args: any): Promise<any>;

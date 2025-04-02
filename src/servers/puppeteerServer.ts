@@ -3,9 +3,38 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema, CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import puppeteer, { Browser, Page, Dialog } from 'puppeteer-core';
 import { z, ZodSchema } from 'zod';
+import { platform } from 'os';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 // --- Configuration ---
-const CHROME_EXECUTABLE_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'; // Adjust if necessary
+// Cross-platform Chrome executable path detection
+function findChromePath(): string | undefined {
+    const defaultPaths = {
+        win32: [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
+            `${process.env.ProgramFiles}\\Google\\Chrome\\Application\\chrome.exe`,
+            `${process.env['ProgramFiles(x86)']}\\Google\\Chrome\\Application\\chrome.exe`,
+        ],
+        darwin: [
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            '/Applications/Chrome.app/Contents/MacOS/Chrome',
+        ],
+        linux: [
+            '/usr/bin/google-chrome',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/snap/bin/chromium',
+        ],
+    };
+
+    const currentPlatform = platform() as 'win32' | 'darwin' | 'linux';
+    const paths = defaultPaths[currentPlatform] || [];
+
+    return paths.find(path => existsSync(path));
+}
 
 // --- State --- (Define these at the top level)
 let browser: Browser | null = null;
@@ -14,10 +43,20 @@ let page: Page | null = null;
 // --- Helper Functions --- (Define these at the top level)
 async function getBrowserPage(): Promise<{ browser: Browser; page: Page }> {
     if (!browser || !browser.isConnected()) {
-        browser = await puppeteer.launch({
-            executablePath: CHROME_EXECUTABLE_PATH,
+        const chromePath = findChromePath();
+        
+        const launchOptions: any = {
             headless: false,
-        });
+        };
+        
+        if (chromePath) {
+            launchOptions.executablePath = chromePath;
+        } else {
+            console.warn('Chrome executable not found in common locations. Falling back to puppeteer detection.');
+            // Let puppeteer-core try to find Chrome on its own
+        }
+        
+        browser = await puppeteer.launch(launchOptions);
         browser.on('disconnected', () => {
             browser = null;
             page = null;
