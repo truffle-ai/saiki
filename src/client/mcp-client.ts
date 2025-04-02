@@ -153,7 +153,7 @@ export class MCPClient implements ToolProvider {
             if (typeof args === 'string') {
                 try {
                     toolArgs = JSON.parse(args);
-                } catch (_e) {
+                } catch {
                     // If it's not valid JSON, keep as string
                     toolArgs = { input: args };
                 }

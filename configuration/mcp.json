@@ -1,15 +1,15 @@
 {
     "mcpServers": {
         "desktopCommander": {
-            "command": "C:\\Program Files\\nodejs\\npx.cmd",
+            "command": "npx",
             "args": ["-y", "@wonderwhy-er/desktop-commander"]
         },
         "puppeteer": {
-            "command": "C:\\Program Files\\nodejs\\node.exe",
+            "command": "node",
             "args": ["--loader", "ts-node/esm", "src/servers/puppeteerServer.ts"]
         },
         "dockerServer": {
-            "command": "C:\\Program Files\\nodejs\\node.exe",
+            "command": "node",
             "args": ["--loader", "ts-node/esm", "src/servers/dockerServer.ts"]
         }
     },

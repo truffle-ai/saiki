@@ -39,7 +39,6 @@ export default [
         rules: {
             'no-console': 'off',
             'no-unused-vars': 'off',
-            'no-async-promise-executor': 'off',
             '@typescript-eslint/explicit-module-boundary-types': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],

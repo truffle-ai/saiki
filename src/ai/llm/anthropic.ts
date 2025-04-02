@@ -112,26 +112,26 @@ export class AnthropicService implements LLMService {
                 const toolResults = [];
 
                 for (const toolUse of toolUses) {
-                    const _toolName = toolUse.name;
+                    const toolName = toolUse.name;
                     const args = toolUse.input;
                     const toolUseId = toolUse.id; // Capture the tool use ID
 
                     // Notify tool call
-                    callbacks?.onToolCall?.(_toolName, args);
+                    callbacks?.onToolCall?.(toolName, args);
 
                     // Execute tool
                     try {
-                        const result = await this.toolHelper.executeTool(_toolName, args);
-                        toolResults.push({ toolName: _toolName, result, toolUseId }); // Store the ID with the result
+                        const result = await this.toolHelper.executeTool(toolName, args);
+                        toolResults.push({ toolName, result, toolUseId }); // Store the ID with the result
 
                         // Notify tool result
-                        callbacks?.onToolResult?.(_toolName, result);
+                        callbacks?.onToolResult?.(toolName, result);
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
-                        toolResults.push({ toolName: _toolName, error: errorMessage, toolUseId }); // Store the ID with the error
+                        toolResults.push({ toolName, error: errorMessage, toolUseId }); // Store the ID with the error
 
-                        callbacks?.onToolResult?.(_toolName, { error: errorMessage });
+                        callbacks?.onToolResult?.(toolName, { error: errorMessage });
                     }
                 }
 
