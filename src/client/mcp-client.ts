@@ -3,6 +3,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { z } from 'zod';
 import { McpTool } from '../ai/types.js';
 import { logger } from '../utils/logger.js';
+import { ToolProvider } from './types.js';
 
 const ToolsListSchema = z.object({
     tools: z.array(
@@ -18,7 +19,7 @@ const ToolsListSchema = z.object({
 /**
  * Connection manager for MCP clients
  */
-export class MCPClient implements IMCPClient {
+export class MCPClient implements ToolProvider {
     private client: Client | null = null;
     private transport: any = null;
     private isConnected = false;
@@ -123,20 +124,12 @@ export class MCPClient implements IMCPClient {
         }
     }
 
-    async listPrompts(): Promise<string[]> {
-        return [];
-    }
-    async getPrompt(name: string, args?: any): Promise<string> {
-        return '';
-    }
-
-    async listResources(): Promise<string[]> {
-        return [];
-    }
-    async readResource(url: string): Promise<string> {
-        return '';
-    }
-
+    /**
+     * Call a tool with given name and arguments
+     * @param name Tool name
+     * @param args Tool arguments
+     * @returns Result of the tool execution
+     */
     async callTool(name: string, args: any): Promise<any> {
         try {
             logger.debug(`Calling tool '${name}' with args: ${JSON.stringify(args, null, 2)}`);
@@ -146,7 +139,7 @@ export class MCPClient implements IMCPClient {
             if (typeof args === 'string') {
                 try {
                     toolArgs = JSON.parse(args);
-                } catch (e) {
+                } catch {
                     // If it's not valid JSON, keep as string
                     toolArgs = { input: args };
                 }
@@ -167,14 +160,16 @@ export class MCPClient implements IMCPClient {
         }
     }
 
-    // Temp unused implementation
-    async listTools(): Promise<McpTool[]> {
+    /**
+     * Get the list of tools provided by this client
+     * @returns Array of available tools
+     */
+    async getTools(): Promise<McpTool[]> {
         try {
             const response = await this.client.request(
                 { method: 'tools/list', params: {} },
                 ToolsListSchema
             );
-            // logger.debug('Tools/list response:', response);
             return response.tools.map((tool) => ({
                 name: tool.name,
                 description: tool.description || 'No description available',
@@ -253,14 +248,6 @@ export interface IMCPClient {
         serverAlias?: string
     ): Promise<Client>;
     disconnect(): Promise<void>;
-
-    // Prompt Management
-    listPrompts(): Promise<string[]>;
-    getPrompt(name: string, args?: any): Promise<string>;
-
-    // Resource Management
-    listResources(): Promise<string[]>;
-    readResource(url: string): Promise<string>;
 
     // Tool Management
     callTool(name: string, args: any): Promise<any>;

@@ -34,12 +34,12 @@ export interface LLMService {
     getConfig(): { provider: string; model: string };
 }
 
-/**
- * Configuration for creating an LLM service
- */
-export interface LLMConfig {
-    provider: string;
-    apiKey: string;
-    model?: string;
-    options?: Record<string, any>;
-}
+// /**
+//  * Configuration for creating an LLM service
+//  */
+// export interface LLMConfig {
+//     provider: string;
+//     apiKey: string;
+//     model?: string;
+//     options?: Record<string, any>;
+// }

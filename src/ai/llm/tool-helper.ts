@@ -1,16 +1,16 @@
-import { MCPClientManager } from '../../client/manager.js';
-import { IMCPClient } from '../../client/mcp-client.js';
+import { ClientManager } from '../../client/manager.js';
+import { ToolProvider } from '../../client/types.js';
 import { McpTool } from '../types.js';
 import { logger } from '../../utils/logger.js';
 /**
  * Utility class to help with tool management and execution
  */
 export class ToolHelper {
-    private mcpClientManager: MCPClientManager;
-    private toolToClientMap: Map<string, IMCPClient> = new Map();
+    private clientManager: ClientManager;
+    private toolToClientMap: Map<string, ToolProvider> = new Map();
 
-    constructor(mcpClientManager: MCPClientManager) {
-        this.mcpClientManager = mcpClientManager;
+    constructor(clientManager: ClientManager) {
+        this.clientManager = clientManager;
     }
 
     /**
@@ -19,10 +19,10 @@ export class ToolHelper {
     async getAllTools(): Promise<McpTool[]> {
         const allTools: McpTool[] = [];
 
-        for (const [serverName, client] of this.mcpClientManager.getClients()) {
+        for (const [serverName, client] of this.clientManager.getClients()) {
             try {
                 logger.debug(`Getting tools from ${serverName}`);
-                const toolList = await client.listTools();
+                const toolList = await client.getTools();
                 for (const tool of toolList) {
                     this.toolToClientMap.set(tool.name, client);
                     allTools.push(tool);

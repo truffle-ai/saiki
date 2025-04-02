@@ -3,9 +3,9 @@ import { existsSync } from 'fs';
 import { Command } from 'commander';
 import path from 'path';
 import dotenv from 'dotenv';
-import { logger } from './utils/logger.js';
-import { initializeAiCli } from './ai/cli.js';
-import { loadConfigFile } from './server/config.js';
+import { logger } from '../src/utils/logger.js';
+import { initializeAiCli } from './cli.js';
+import { loadConfigFile } from '../src/config/loader.js';
 
 // Load environment variables
 dotenv.config();
@@ -102,13 +102,7 @@ async function startAiClient() {
         logger.info('Starting AI-powered MCP client...', null, 'cyanBright');
         logger.info('===============================================\n');
 
-        // Convert CLI options to the format expected by initializeAiCli
-        const aiOptions = {
-            configFile: normalizedConfigPath,
-            verbose: verbose,
-        };
-
-        await initializeAiCli(aiOptions, config, connectionMode);
+        await initializeAiCli(config, connectionMode);
     } catch (error) {
         logger.error('Error: Failed to load configuration from file');
         logger.error(error);

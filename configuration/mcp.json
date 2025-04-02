@@ -4,18 +4,18 @@
             "command": "npx",
             "args": ["-y", "@wonderwhy-er/desktop-commander"]
         },
-        "filesystem": {
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem"]
-        },
         "puppeteer": {
             "command": "node",
-            "args": ["/Users/karaj/.mcp/puppeteer/index.js"]
+            "args": ["--loader", "ts-node/esm", "src/servers/puppeteerServer.ts"]
+        },
+        "dockerServer": {
+            "command": "node",
+            "args": ["--loader", "ts-node/esm", "src/servers/dockerServer.ts"]
         }
     },
     "llm": {
-        "provider": "anthropic",
-        "model": "claude-3-5-sonnet-20240620",
-        "apiKey": "env:ANTHROPIC_API_KEY"
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "apiKey": "env:OPENAI_API_KEY"
     }
 }
