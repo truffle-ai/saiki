@@ -1,21 +1,22 @@
 # Saiki
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
+  <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0">
   <img src="https://img.shields.io/badge/Node.js-16+-green.svg" alt="Node.js: 16+">
+  <a href="https://discord.gg/GwxwQs8CN5"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord"></a>
 </p>
 
 > Your command center for controlling computers, applications and services with natural language - connect once, command everything.
 
 ## 📑 Table of Contents
-- [🌟 Overview](#-overview)
-- [🚀 Getting Started](#-getting-started)
-- [💻 Use Cases](#-use-cases)
-- [⚙️ Configuration](#️-configuration)
-- [🔌 Extensions](#-extensions)
-- [📚 Documentation](#-documentation)
-- [🤝 Contributing](#-contributing)
-- [📜 License](#-license)
+- [🌟 Overview](#overview)
+- [🚀 Getting Started](#getting-started)
+- [💻 Use Cases](#use-cases)
+- [⚙️ Configuration](#configuration)
+- [🔌 Extensions](#extensions)
+- [📚 Documentation](#documentation)
+- [🤝 Contributing](#contributing)
+- [📜 License](#license)
 
 ## 🌟 Overview
 
@@ -151,6 +152,7 @@ For more detailed information:
 - [Configuration Guide](./configuration/configuration.md) - Detailed configuration options
 - [Example Usage](./docs/examples.md) - More usage examples
 - [Troubleshooting](./docs/troubleshooting.md) - Solutions to common issues
+- [Adding a New LLM Service](./src/ai/llm/README.md) - How to add support for new LLM providers
 
 ## 🤝 Contributing
 
@@ -167,3 +169,7 @@ Resources:
 - [Smithery.ai](https://smithery.ai/) - Browse MCP servers
 - [MCP Documentation](https://modelcontextprotocol.io/introduction)
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
+
+## 📜 License
+
+Saiki is licensed under the Elastic License 2.0 (ELv2). See the [LICENSE](./LICENSE) file for details.
