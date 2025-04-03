@@ -51,42 +51,42 @@ export class OpenAIService implements ILLMService {
     }
 
     updateSystemContext(tools: ToolSet): void {
-        // Create detailed tool descriptions as a flat list
-        const toolDescriptions = Object.entries(tools)
-            .map(([toolName, tool]) => {
-                let description = `- ${toolName}: ${tool.description || 'No description provided'}`;
-                if (tool.parameters) {
-                    // Type assertion for parameters
-                    const jsonSchemaParams = tool.parameters as any;
+        // // Create detailed tool descriptions as a flat list
+        // const toolDescriptions = Object.entries(tools)
+        //     .map(([toolName, tool]) => {
+        //         let description = `- ${toolName}: ${tool.description || 'No description provided'}`;
+        //         if (tool.parameters) {
+        //             // Type assertion for parameters
+        //             const jsonSchemaParams = tool.parameters as any;
                     
-                    if (jsonSchemaParams.properties && typeof jsonSchemaParams.properties === 'object') {
-                        description += '\n  Parameters:';
-                        for (const [paramName, paramRaw] of Object.entries(jsonSchemaParams.properties)) {
-                            // Type assertion to make TypeScript happy
-                            const param = paramRaw as any;
-                            description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
-                        }
-                        // Add required parameters info if available
-                        if (
-                            Array.isArray(jsonSchemaParams.required) &&
-                            jsonSchemaParams.required.length > 0
-                        ) {
-                            description += `\n  Required: ${jsonSchemaParams.required.join(', ')}`;
-                        }
-                    }
-                }
-                return description;
-            })
-            .join('\n\n'); // Add extra line between tools for readability
+        //             if (jsonSchemaParams.properties && typeof jsonSchemaParams.properties === 'object') {
+        //                 description += '\n  Parameters:';
+        //                 for (const [paramName, paramRaw] of Object.entries(jsonSchemaParams.properties)) {
+        //                     // Type assertion to make TypeScript happy
+        //                     const param = paramRaw as any;
+        //                     description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
+        //                 }
+        //                 // Add required parameters info if available
+        //                 if (
+        //                     Array.isArray(jsonSchemaParams.required) &&
+        //                     jsonSchemaParams.required.length > 0
+        //                 ) {
+        //                     description += `\n  Required: ${jsonSchemaParams.required.join(', ')}`;
+        //                 }
+        //             }
+        //         }
+        //         return description;
+        //     })
+        //     .join('\n\n'); // Add extra line between tools for readability
 
-        // Update the system message
-        this.conversationHistory[0].content = this.systemPromptTemplate.replace(
-            'TOOL_DESCRIPTIONS',
-            toolDescriptions
-        );
+        // // Update the system message
+        // this.conversationHistory[0].content = this.systemPromptTemplate.replace(
+        //     'TOOL_DESCRIPTIONS',
+        //     toolDescriptions
+        // );
 
         // Log the number of tools provided to help with debugging
-        logger.info(`Included ${Object.keys(tools).length} tools in system context`);
+        // logger.info(`Included ${Object.keys(tools).length} tools in system context`);
     }
 
     async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {

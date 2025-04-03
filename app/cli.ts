@@ -112,9 +112,6 @@ export async function runAiCli(
                     let currentLines = 0;
                     // Create callbacks for progress indication (without spinner)
                     const callbacks: LLMCallbacks = {
-                        // onChunk: (text: string) => {
-                        //     process.stdout.write(text);
-                        // },
                         onChunk: (text: string) => {
                             // Append the new chunk to the accumulated response
                             accumulatedResponse += text;

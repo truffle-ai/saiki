@@ -2,7 +2,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z, ZodSchema } from 'zod';
-import { execSync,ChildProcess } from 'child_process';
+import { execSync, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
