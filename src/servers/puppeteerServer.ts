@@ -5,7 +5,6 @@ import puppeteer, { Browser, Page, Dialog } from 'puppeteer-core';
 import { z, ZodSchema } from 'zod';
 import { platform } from 'os';
 import { existsSync } from 'fs';
-import { join } from 'path';
 
 // --- Configuration ---
 // Cross-platform Chrome executable path detection
@@ -71,8 +70,9 @@ async function getBrowserPage(): Promise<{ browser: Browser; page: Page }> {
         page.on('dialog', async (dialog: Dialog) => {
             try {
                 await dialog.dismiss();
-            } catch (_e) {
+            } catch (error) {
                 // Dialog dismiss error, continue silently
+                console.error(`Error dismissing dialog: ${error}`);
             }
         });
     }
@@ -114,8 +114,9 @@ async function safeExecute<T>(
                 const currentUrl = currentPage.url();
                 const title = await currentPage.title();
                 pageInfo = { currentUrl, title };
-            } catch (_pageInfoError) {
+            } catch (pageInfoError) {
                 // Page info error, continue silently
+                console.error(`Error getting page info: ${pageInfoError}`);
             }
         }
         return { success: false, error: error.message || String(error), ...pageInfo };
@@ -188,7 +189,8 @@ const clickTool = {
             try {
                 // Use more reliable click method
                 await elements[elementIndex].click({ delay: 100 });
-            } catch (_error) {
+            } catch (error) {
+                console.error(`Error clicking element directly: ${error}`);
                 // Method 4: Fall back to JS click if direct click fails
                 await pageInstance.evaluate((selector, index) => {
                     const elements = document.querySelectorAll(selector);
@@ -465,8 +467,9 @@ const scrollTool = {
             await pageInstance.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }).catch(() => {
                 // Ignore timeout, just wait the fixed time
             });
-        } catch (_e) {
+        } catch (error) {
             // Ignore any errors from waitForNetworkIdle
+            console.error(`Error waiting for network idle: ${error}`);
         }
         
         const scrollY = await pageInstance.evaluate(() => window.scrollY);
@@ -587,7 +590,7 @@ const waitForLoadTool = {
             // Give a small breathing room after any wait strategy
             await new Promise(r => setTimeout(r, 300));
             return { success: true };
-        } catch (_error) {
+        } catch {
             return { success: false };
         }
     }
@@ -1081,7 +1084,7 @@ async function cleanup() {
     if (browser) {
         try {
             await browser.close();
-        } catch (_error) {
+        } catch {
             // Ignore errors during cleanup
         } finally {
             browser = null;

@@ -1,6 +1,5 @@
 import { McpServerConfig } from '../config/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { Tool } from '../ai/types.js';
 import { ToolSet } from '../ai/types.js';
 
 // Defining types as any because we can't import the types from the SDK

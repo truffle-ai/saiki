@@ -35,7 +35,6 @@ export type McpServerConfig = StdioServerConfig | SSEServerConfig;
  */
 export type ServerConfigs = Record<string, McpServerConfig>;
 
-
 /**
  * LLM configuration type
  */

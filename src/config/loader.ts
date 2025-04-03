@@ -1,13 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { logger } from '../utils/logger.js';
-import { AgentConfig, ServerConfigs } from './types.js';
-
-// Default configuration paths
-const DEFAULT_CONFIG = {
-    dir: 'configuration',
-    file: 'mcp.json',
-};
+import { AgentConfig } from './types.js';
 
 /**
  * Load the complete agent configuration

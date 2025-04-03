@@ -2,11 +2,10 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z, ZodSchema } from 'zod';
-import { exec, execSync, spawn, ChildProcess } from 'child_process';
+import { execSync,ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { promisify } from 'util';
 
 // --- Configuration ---
 const DEFAULT_IMAGE = 'ubuntu:latest';
@@ -119,22 +118,22 @@ async function createContainer(image: string, name?: string): Promise<ContainerI
     }
 }
 
-async function getContainerInfo(nameOrId: string): Promise<ContainerInfo> {
-    try {
-        const output = runDockerCommand(['inspect', nameOrId]);
-        const info = JSON.parse(output)[0];
+// async function getContainerInfo(nameOrId: string): Promise<ContainerInfo> {
+//     try {
+//         const output = runDockerCommand(['inspect', nameOrId]);
+//         const info = JSON.parse(output)[0];
         
-        return {
-            id: info.Id,
-            name: info.Name.startsWith('/') ? info.Name.substring(1) : info.Name,
-            image: info.Config.Image,
-            status: info.State.Status,
-            createdAt: info.Created
-        };
-    } catch (error) {
-        throw new Error(`Container not found: ${nameOrId}`);
-    }
-}
+//         return {
+//             id: info.Id,
+//             name: info.Name.startsWith('/') ? info.Name.substring(1) : info.Name,
+//             image: info.Config.Image,
+//             status: info.State.Status,
+//             createdAt: info.Created
+//         };
+//     } catch (error) {
+//         throw new Error(`Container not found: ${nameOrId}`);
+//     }
+// }
 
 async function listContainers(): Promise<ContainerInfo[]> {
     try {
@@ -412,7 +411,7 @@ const listWorkspaceFilesTool = {
 // Check Docker is installed and running
 function checkDockerAvailable(): boolean {
     try {
-        const output = execSync('docker info', { 
+        execSync('docker info', { 
             encoding: 'utf-8',
             shell: IS_WINDOWS ? 'cmd.exe' : '/bin/sh'
         });
@@ -561,8 +560,9 @@ async function cleanup() {
         try {
             process.kill();
             runningProcesses.delete(id);
-        } catch (_error) {
+        } catch (error) {
             // Ignore errors during cleanup
+            console.error(`Error during cleanup: ${error}`);
         }
     }
     

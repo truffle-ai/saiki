@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
-import { Tool, ToolSet } from '../types.js';
+import { ToolSet } from '../types.js';
 import { logger } from '../../utils/logger.js';
 /**
  * Anthropic implementation of LLMService
@@ -165,7 +165,7 @@ export class AnthropicService implements ILLMService {
                     };
 
                     const contentArray = toolResults.map(
-                        ({ toolName, result, error, toolUseId }) => {
+                        ({ _, result, error, toolUseId }) => {
                             const resultValue = error
                                 ? `Error: ${error}`
                                 : extractTextContent(result);

@@ -78,8 +78,8 @@ export class VercelLLMService implements ILLMService {
         let iterationCount = 0;
         let fullResponse = '';
 
-        //let stream: AsyncIterable<string> & ReadableStream<string>;
-        let stream: any;
+        // let stream: AsyncIterable<string> & ReadableStream<string>;
+        // let stream: any;
         try {
             while (iterationCount < 1) {
                 callbacks?.onThinking?.();
@@ -93,8 +93,6 @@ export class VercelLLMService implements ILLMService {
                 // fullResponse = await this.processStream(tools, callbacks, MAX_ITERATIONS);
             }
 
-            // If we reached max iterations
-            // callbacks?.onResponse?.(fullResponse);
             return (
                 fullResponse ||
                 'Reached maximum number of tool call iterations without a final response.'
@@ -160,7 +158,7 @@ export class VercelLLMService implements ILLMService {
             fullResponse += textPart;
             callbacks?.onChunk?.(textPart);
         }
-        // callbacks?.onResponse?.(fullResponse);
+        callbacks?.onResponse?.(fullResponse);
         return fullResponse;
     }
 
