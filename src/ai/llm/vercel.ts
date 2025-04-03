@@ -10,7 +10,6 @@ import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
  * Vercel implementation of LLMService
  */
 export class VercelLLMService implements ILLMService {
-    // Model here maps to vercel AI model
     private model: VercelLLM;
     private maxTokens: number;
     private temperature: number;
@@ -90,9 +89,8 @@ export class VercelLLMService implements ILLMService {
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
                 
                 fullResponse = await this.generateText(formattedTools, callbacks, MAX_ITERATIONS);
-                
-                //fullResponse = await this.processStream(tools, callbacks, MAX_ITERATIONS);
-                // Notify thinking for next iteration
+                // Change this to processStream to use streaming
+                // fullResponse = await this.processStream(tools, callbacks, MAX_ITERATIONS);
             }
 
             // If we reached max iterations

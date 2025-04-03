@@ -4,7 +4,7 @@ import { LLMConfig } from '../../config/types.js';
 import { logger } from '../../utils/logger.js';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
-import { VercelLLMService } from './service.js'; 
+import { VercelLLMService } from './vercel.js';
 import { VercelLLM } from './types.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
@@ -66,7 +66,7 @@ function _createLLMService(
     }
 }
 
-function createVercelModel(provider: string, model: string): any {
+function _createVercelModel(provider: string, model: string): any {
     switch (provider.toLowerCase()) {
         case 'openai':
             return openai(model);
@@ -81,7 +81,7 @@ function _createVercelLLMService(
     config: LLMConfig,
     clientManager: ClientManager
 ): VercelLLMService {
-    const model: VercelLLM = createVercelModel(config.provider, config.model);
+    const model: VercelLLM = _createVercelModel(config.provider, config.model);
     return new VercelLLMService(clientManager, model);
 }
 

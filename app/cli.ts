@@ -60,6 +60,10 @@ export async function runAiCli(
         // Get all tools from the LLM service
         const tools = await clientManager.getAllTools();
 
+        // Update the system context with the available tools
+        logger.info('Updating system context...');
+        llmService.updateSystemContext(tools);
+
         logger.info(
             `Loaded ${Object.keys(tools).length} tools from ${clientManager.getClients().size} MCP servers\n`
         );

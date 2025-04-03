@@ -19,8 +19,11 @@ export async function initializeServices(
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
     logger.debug('MCP servers initialized');
 
-    const llmService = createLLMService(config.llm, clientManager, true);
-    logger.debug('LLM service created with vercel');
+    // Change vercel to false to use other LLM services
+    const vercel = true;
+    const llmService = createLLMService(config.llm, clientManager, vercel);
+
+    logger.debug('LLM service created');
 
     return { clientManager, llmService };
 } 
