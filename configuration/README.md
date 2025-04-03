@@ -1,0 +1,177 @@
+# Configuration Guide
+
+Saiki uses a JSON configuration file to define tool servers and AI settings. This guide provides detailed information on all available configuration options.
+
+## Configuration File Location
+
+By default, Saiki looks for a configuration file at `configuration/mcp.json` in the project directory. You can specify a different location using the `--config-file` command-line option:
+
+```bash
+npm start -- --config-file path/to/your/config.json
+```
+
+## Configuration Structure
+
+The configuration file has two main sections:
+
+1. `mcpServers`: Defines the tool servers to connect to
+2. `llm`: Configures the AI provider settings
+
+### Basic Example
+
+```json
+{
+    "mcpServers": {
+        "github": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github"],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "your-github-token"
+            }
+        },
+        "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+        }
+    },
+    "llm": {
+        "provider": "openai",
+        "model": "gpt-4",
+        "apiKey": "env:OPENAI_API_KEY"
+    }
+}
+```
+
+## Tool Server Configuration
+
+Each entry under `mcpServers` defines a tool server to connect to. The key (e.g., "github", "filesystem") is used as a friendly name for the server.
+
+### Server Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `command` | string | Yes | The executable to run |
+| `args` | string[] | No | Array of command-line arguments |
+| `env` | object | No | Environment variables for the server process |
+
+## LLM Configuration
+
+The `llm` section configures the AI provider settings.
+
+### LLM Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `provider` | string | Yes | AI provider (e.g., "openai", "anthropic") |
+| `model` | string | Yes | The model to use |
+| `apiKey` | string | Yes | API key or environment variable reference |
+| `providerOptions` | object | No | Provider-specific options like temperature and maxTokens |
+
+### API Key Configuration
+
+You can specify the API key directly or reference an environment variable:
+
+```json
+"apiKey": "sk-actual-api-key"  // Direct specification (not recommended)
+"apiKey": "env:OPENAI_API_KEY"  // Reference to environment variable
+```
+
+## Supported Tool Servers
+
+Here are some commonly used MCP-compatible tool servers:
+
+### GitHub
+
+```json
+"github": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-github"],
+    "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your-github-token"
+    }
+}
+```
+
+### Filesystem
+
+```json
+"filesystem": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+}
+```
+
+### Terminal
+
+```json
+"terminal": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-terminal"]
+}
+```
+
+### Desktop Commander
+
+```json
+"desktop": {
+    "command": "npx",
+    "args": ["-y", "@wonderwhy-er/desktop-commander"]
+}
+```
+
+## Command-Line Options
+
+Saiki supports several command-line options:
+
+| Option | Description |
+|--------|-------------|
+| `--config-file` | Specify a custom configuration file |
+| `--strict` | Require all connections to succeed |
+| `--verbose` | Enable verbose logging |
+| `--help` | Show help |
+
+## Complete Example
+
+Here's a comprehensive configuration example using multiple tool servers:
+
+```json
+{
+    "mcpServers": {
+        "github": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github"],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "your-github-token"
+            }
+        },
+        "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+        },
+        "terminal": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-terminal"]
+        },
+        "desktop": {
+            "command": "npx",
+            "args": ["-y", "@wonderwhy-er/desktop-commander"]
+        },
+        "custom": {
+            "command": "node",
+            "args": ["--loader", "ts-node/esm", "src/servers/customServer.ts"],
+            "env": {
+                "API_KEY": "your-api-key"
+            }
+        }
+    },
+    "llm": {
+        "provider": "openai",
+        "model": "gpt-4",
+        "apiKey": "env:OPENAI_API_KEY",
+        "providerOptions": {
+            "temperature": 0.7,
+            "maxTokens": 1000
+        }
+    }
+}
+``` 
