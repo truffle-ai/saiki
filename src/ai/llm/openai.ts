@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
-import { McpTool } from '../types.js';
+import { Tool } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 
@@ -47,11 +47,11 @@ export class OpenAIService implements ILLMService {
         this.conversationHistory = [{ role: 'system', content: INITIAL_SYSTEM_PROMPT }];
     }
 
-    getAllTools(): Promise<any> {
+    getAllTools(): Promise<Tool[]> {
         return this.toolHelper.getAllTools();
     }
 
-    updateSystemContext(tools: McpTool[]): void {
+    updateSystemContext(tools: Tool[]): void {
         // Create detailed tool descriptions as a flat list
         const toolDescriptions = tools
             .map((tool) => {
@@ -481,7 +481,8 @@ export class OpenAIService implements ILLMService {
         return pendingCalls;
     }
 
-    private formatToolsForOpenAI(tools: McpTool[]): any[] {
+    private formatToolsForOpenAI(tools: Tool[]): any[] {
+        logger.debug(`Formatting tools for OpenAI: ${JSON.stringify(tools, null, 2)}`);
         return tools.map((tool) => {
             // Convert tool to OpenAI function format
             const parameters = {

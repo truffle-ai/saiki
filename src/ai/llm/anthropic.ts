@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
-import { McpTool } from '../types.js';
+import { Tool } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 
@@ -25,7 +25,7 @@ export class AnthropicService implements ILLMService {
         return this.toolHelper.getAllTools();
     }
 
-    updateSystemContext(tools: McpTool[]): void {
+    updateSystemContext(tools: Tool[]): void {
         // Create a system context string for Anthropic modles
         // They don't use a system message like OpenAI,
         // but we can prepend this to the first user message
@@ -219,7 +219,7 @@ export class AnthropicService implements ILLMService {
         };
     }
 
-    private formatToolsForClaude(tools: McpTool[]): any[] {
+    private formatToolsForClaude(tools: Tool[]): any[] {
         return tools.map((tool) => {
             // Create input_schema structure (same as parameters in OpenAI)
             const input_schema = {

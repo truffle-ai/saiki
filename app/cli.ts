@@ -57,18 +57,14 @@ export async function runAiCli(
         // Get available tools from all connected servers
         logger.info('Loading available tools...');
 
-        // Get all tools from the manager
-        const tools = await clientManager.getAllTools();
-
-        logger.debug(`Received tools: ${tools.map((t) => t.name)}`);
-
-        // Update system context with available tools
-        //llmService.updateSystemContext(tools);
+        // Get all tools from the LLM service
+        const tools = await llmService.getAllTools();
 
         logger.info(
-            `Loaded ${tools.length} tools from ${clientManager.getClients().size} tool providers\n`
+            `Loaded ${Object.keys(tools).length} tools from ${clientManager.getClients().size} MCP servers\n`
         );
         logger.info('AI Agent initialized successfully!', null, 'green');
+
         // Create readline interface
         const rl = readline.createInterface({
             input: process.stdin,

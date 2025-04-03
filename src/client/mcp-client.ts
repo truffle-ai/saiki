@@ -1,10 +1,11 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { z } from 'zod';
-import { McpTool } from '../ai/types.js';
+import { Tool } from '../ai/types.js';
 import { logger } from '../utils/logger.js';
 import { IMCPClientWrapper } from './types.js';
 import { McpServerConfig, StdioServerConfig } from '../config/types.js';
+import { ToolSet } from '../ai/types.js';
 
 const ToolsListSchema = z.object({
     tools: z.array(
@@ -178,20 +179,28 @@ export class MCPClientWrapper implements IMCPClientWrapper {
      * Get the list of tools provided by this client
      * @returns Array of available tools
      */
-    async getTools(): Promise<McpTool[]> {
+    async getTools(): Promise<ToolSet> {
         try {
             const response = await this.client.request(
                 { method: 'tools/list', params: {} },
                 ToolsListSchema
             );
+            logger.info(`Tools obtained in MCP client: ${JSON.stringify(response.tools, null, 2)}`);
             return response.tools.map((tool) => ({
                 name: tool.name,
                 description: tool.description || 'No description available',
                 parameters: tool.inputSchema || null,
             }));
+            // return response.tools.reduce<ToolSet>((acc, tool) => {
+            //     acc[tool.name.toLowerCase()] = {
+            //       description: tool.description,
+            //       parameters: tool.inputSchema,
+            //     };
+            //     return acc;
+            // }, {});
         } catch (error) {
             logger.error('Failed to list tools:', error);
-            return [];
+            return {};
         }
     }
 

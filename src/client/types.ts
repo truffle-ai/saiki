@@ -1,10 +1,10 @@
 import { McpServerConfig } from '../config/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { McpTool } from '../ai/types.js';
+import { Tool } from '../ai/types.js';
+import { ToolSet } from '../ai/types.js';
 
 // Defining types as any because we can't import the types from the SDK
 export type VercelMCPClient = any;
-export type VercelMCPTool = any;
 
 export type IMCPClient = Client | VercelMCPClient;
 
@@ -15,7 +15,7 @@ export interface ToolProvider {
   /**
    * Get the list of tools provided by this client
    */
-  getTools(): Promise<McpTool[]>;
+  getTools(): Promise<ToolSet | Tool[]>;
   
   /**
    * Call a specific tool with the given arguments

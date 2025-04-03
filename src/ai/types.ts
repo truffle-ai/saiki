@@ -1,17 +1,16 @@
+
 /**
- * MCP Tool Parameter
+ * Tool
  */
-export interface McpToolParameter {
-    type?: string;
+export interface Tool {
+    name?: string;
     description?: string;
-    default?: any;
+    parameters?: any
 }
 
 /**
- * MCP Tool
+ * MCP Tool Set
  */
-export interface McpTool {
-    name?: string;
-    description?: string;
-    parameters?: Record<string, McpToolParameter>;
+export interface ToolSet {
+    [key: string]: Tool;
 }

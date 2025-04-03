@@ -1,4 +1,5 @@
-import { McpTool } from '../types.js';
+import { Tool } from '../types.js';
+import { ToolSet } from '../types.js';
 
 /**
  * Callbacks for LLM processing events
@@ -28,13 +29,13 @@ export interface ILLMService {
     completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string>;
 
     // Update the system message/context with available tools
-    updateSystemContext(tools: McpTool[] | any): void;
+    updateSystemContext(tools: Tool[] | any): void;
 
     // Clear conversation history
     resetConversation(): void;
 
     // Get all available tools
-    getAllTools(): Promise<any>;
+    getAllTools(): Promise<ToolSet>;
 
     // Get configuration information about the LLM service
     getConfig(): { provider: string; model: string } | { model: VercelLLM };

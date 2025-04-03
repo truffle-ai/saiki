@@ -1,13 +1,12 @@
 // import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 // import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { logger } from '../utils/logger.js';
-import { experimental_createMCPClient as createMCPClient } from 'ai';
+import { experimental_createMCPClient as createMCPClient, ToolSet } from 'ai';
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from 'ai/mcp-stdio';
 import { McpServerConfig, StdioServerConfig } from '../config/types.js';
-import { VercelMCPClient, VercelMCPTool, IMCPClientWrapper } from '../client/types.js';
+import { VercelMCPClient, IMCPClientWrapper } from '../client/types.js';
 
 export class VercelMCPClientWrapper implements IMCPClientWrapper {
-    // maps to vercel ai client
     private client: VercelMCPClient;
     private transport: any = null;
     private isConnected = false;
@@ -153,7 +152,7 @@ export class VercelMCPClientWrapper implements IMCPClientWrapper {
         }
     }
 
-    async getTools(): Promise<VercelMCPTool[]> {
+    async getTools(): Promise<ToolSet> {
         return this.client.tools();
     }
 

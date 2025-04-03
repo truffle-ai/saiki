@@ -1,8 +1,8 @@
 import { MCPClientWrapper } from './mcp-client.js';
+import { VercelMCPClientWrapper } from './vercel-mcp-client.js';
 import { ServerConfigs } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
-import { McpTool } from '../ai/types.js';
 
 export class ClientManager {
     private clients: Map<string, ToolProvider> = new Map();
@@ -21,54 +21,6 @@ export class ClientManager {
         logger.info(`Registered client: ${name}`);
     }
 
-    /**
-     * Get all tools from all registered clients
-     * @returns Array of all available tools
-     */
-    async getAllTools(): Promise<McpTool[]> {
-        const tools: McpTool[] = [];
-        for (const [name, client] of this.clients.entries()) {
-            try {
-                const clientTools = await client.getTools();
-                tools.push(...clientTools.map(tool => ({
-                    ...tool,
-                    description: tool.description || `Tool from client '${name}'`,
-                })));
-            } catch (error) {
-                const errorMsg = error instanceof Error ? error.message : String(error);
-                logger.error(`Failed to get tools from client '${name}': ${errorMsg}`);
-                this.connectionErrors[name] = errorMsg;
-            }
-        }
-        return tools;
-    }
-
-    /**
-     * Call a tool by name with the given arguments
-     * The first client that provides the tool will be used
-     * @param toolName Name of the tool to call
-     * @param args Arguments to pass to the tool
-     * @returns Result of the tool execution
-     */
-    async callTool(toolName: string, args: any): Promise<any> {
-        for (const [name, client] of this.clients.entries()) {
-            try {
-                const tools = await client.getTools();
-                if (tools.some(tool => tool.name === toolName)) {
-                    try {
-                        return await client.callTool(toolName, args);
-                    } catch (error) {
-                        const errorMsg = error instanceof Error ? error.message : String(error);
-                        logger.error(`Tool '${toolName}' call failed in client '${name}': ${errorMsg}`);
-                        return `Error executing tool '${toolName}': ${errorMsg}`;
-                    }
-                }
-            } catch (error) {
-                logger.error(`Failed to check tools in client '${name}'`);
-            }
-        }
-        return `Tool '${toolName}' not found in any registered client.`;
-    }
 
     /**
      * Initialize clients from server configurations
@@ -83,7 +35,8 @@ export class ClientManager {
         const successfulConnections: string[] = [];
 
         for (const [name, config] of Object.entries(serverConfigs)) {
-            const client = new MCPClientWrapper();
+            //const client = new MCPClientWrapper();
+            const client = new VercelMCPClientWrapper();
             try {
                 await client.connect(config, name);
                 this.registerClient(name, client);

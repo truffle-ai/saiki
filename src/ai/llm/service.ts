@@ -1,10 +1,11 @@
 import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
-import { McpTool } from '../types.js';
-import { ToolHelper } from './tool-helper.js';
+import { Tool } from '../types.js';
+import { VercelToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 import { streamText, generateText, CoreMessage } from 'ai';
 import { VercelLLM } from './types.js';
+import { ToolSet } from '../types.js';
 /**
  * Vercel generic implementation of LLMService
  */
@@ -13,20 +14,20 @@ export class VercelLLMService implements ILLMService {
     private model: VercelLLM;
     private maxTokens: number;
     private temperature: number;
-    private toolHelper: ToolHelper;
+    private toolHelper: VercelToolHelper;
     private messages: CoreMessage[] = [];
     private systemContext: string = '';
 
     constructor(clientManager: ClientManager, model: VercelLLM) {
         this.model = model;
-        this.toolHelper = new ToolHelper(clientManager);
+        this.toolHelper = new VercelToolHelper(clientManager);
     }
 
-    getAllTools(): Promise<any> {
+    getAllTools(): Promise<ToolSet> {
         return this.toolHelper.getAllTools();
     }
 
-    updateSystemContext(tools: McpTool[]): void {
+    updateSystemContext(tools: Tool[]): void {
         const toolDescriptions = tools
             .map((tool) => {
                 let description = `- ${tool.name}: ${tool.description || 'No description provided'}`;
