@@ -42,7 +42,7 @@ export class VercelLLMService implements ILLMService {
             })
             .join('\n');
 
-        this.systemContext = `You are Omega, a helpful AI assistant with access to the following tools:\n\n${toolDescriptions}\n\nUse these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.`;
+        this.systemContext = `You are Saiki, a helpful AI assistant with access to the following tools:\n\n${toolDescriptions}\n\nUse these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.`;
     }
 
     formatTools(tools: ToolSet): VercelToolSet {
