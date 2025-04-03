@@ -1,5 +1,5 @@
 import { ClientManager } from '../client/manager.js';
-import { LLMService } from '../ai/llm/types.js';
+import { ILLMService } from '../ai/llm/types.js';
 import { AgentConfig } from '../config/types.js';
 import { createLLMService } from '../ai/llm/factory.js';
 import { logger } from './logger.js';
@@ -13,14 +13,16 @@ import { logger } from './logger.js';
 export async function initializeServices(
     config: AgentConfig,
     connectionMode: 'strict' | 'lenient' = 'lenient'
-): Promise<{ clientManager: ClientManager; llmService: LLMService }> {
+): Promise<{ clientManager: ClientManager; llmService: ILLMService }> {
     // Initialize client manager with server configs from unified config
     const clientManager = new ClientManager();
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
     logger.debug('MCP servers initialized');
 
-    // Create LLM service using config from unified config
-    const llmService = createLLMService(config.llm, clientManager);
+    // Change vercel to false to use other LLM services
+    const vercel = true;
+    const llmService = createLLMService(config.llm, clientManager, vercel);
+
     logger.debug('LLM service created');
 
     return { clientManager, llmService };

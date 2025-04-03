@@ -2,9 +2,10 @@ import readline from 'readline';
 import chalk from 'chalk';
 import { ClientManager } from '../src/client/manager.js';
 import { logger } from '../src/utils/logger.js';
-import { LLMCallbacks, LLMService } from '../src/ai/llm/types.js';
+import { LLMCallbacks, ILLMService } from '../src/ai/llm/types.js';
 import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
+import boxen from 'boxen';
 
 /**
  * Start AI-powered CLI with unified configuration
@@ -34,11 +35,15 @@ export async function initializeAiCli(
  */
 export async function runAiCli(
     clientManager: ClientManager,
-    llmService: LLMService
+    llmService: ILLMService
 ) {
     // Get model and provider info directly from the LLM service
-    const { provider, model } = llmService.getConfig();
-    logger.info(`Using ${provider} model: ${model}`, null, 'yellow');
+    // const { provider, model } = llmService.getConfig();
+    logger.info(
+        `Using model config:${JSON.stringify(llmService.getConfig(), null, 2)}`,
+        null,
+        'yellow'
+    );
 
     logger.debug(`Log level: ${logger.getLevel()}`);
     logger.info(`Connected servers: ${clientManager.getClients().size}`, null, 'green');
@@ -52,18 +57,18 @@ export async function runAiCli(
         // Get available tools from all connected servers
         logger.info('Loading available tools...');
 
-        // Get all tools from the manager
+        // Get all tools from the LLM service
         const tools = await clientManager.getAllTools();
 
-        logger.debug(`Received tools: ${tools.map((t) => t.name)}`);
-
-        // Update system context with available tools
+        // Update the system context with the available tools
+        logger.info('Updating system context...');
         llmService.updateSystemContext(tools);
 
         logger.info(
-            `Loaded ${tools.length} tools from ${clientManager.getClients().size} tool providers\n`
+            `Loaded ${Object.keys(tools).length} tools from ${clientManager.getClients().size} MCP servers\n`
         );
         logger.info('AI Agent initialized successfully!', null, 'green');
+
         // Create readline interface
         const rl = readline.createInterface({
             input: process.stdin,
@@ -103,8 +108,37 @@ export async function runAiCli(
                 }
 
                 try {
+                    let accumulatedResponse = '';
+                    let currentLines = 0;
                     // Create callbacks for progress indication (without spinner)
                     const callbacks: LLMCallbacks = {
+                        onChunk: (text: string) => {
+                            // Append the new chunk to the accumulated response
+                            accumulatedResponse += text;
+                    
+                            // Generate the new box
+                            const box = boxen(chalk.white(accumulatedResponse), {
+                                padding: 1,
+                                borderColor: 'yellow',
+                                title: '🤖 AI Response',
+                                titleAlignment: 'center',
+                            });
+                            const newLines = box.split('\n').length;
+                    
+                            // Move cursor up to the start of the previous box (if it exists)
+                            if (currentLines > 0) {
+                                process.stdout.write(`\x1b[${currentLines}A`); // Move up currentLines
+                            }
+                    
+                            // Print the new box (this overwrites the old one)
+                            process.stdout.write(box);
+                    
+                            // Update the line count
+                            currentLines = newLines;
+                    
+                            // Move cursor to the end of the box to allow logs below
+                            process.stdout.write('\n');
+                        },
                         onThinking: () => {
                             logger.info('AI thinking...');
                         },

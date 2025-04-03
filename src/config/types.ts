@@ -3,13 +3,32 @@
  */
 
 /**
- * Configuration for an MCP server (tool provider)
+ * Configuration for stdio-based MCP server connections
+ * - type: Must be 'stdio'
+ * - command: The shell command to launch the server (e.g., 'node')
+ * - args: Array of arguments for the command (e.g., ['script.js'])
+ * - env: Optional environment variables for the server process
  */
-export interface McpServerConfig {
+export interface StdioServerConfig {
+    type: 'stdio';
     command: string;
     args: string[];
     env?: Record<string, string>;
 }
+
+/**
+ * Configuration for SSE-based MCP server connections
+ */
+export interface SSEServerConfig {
+    type: 'sse';
+    url: string;
+    headers?: Record<string, string>;
+}
+
+/**
+ * Union type for MCP server configurations
+ */
+export type McpServerConfig = StdioServerConfig | SSEServerConfig;
 
 /**
  * Type for server configurations dictionary

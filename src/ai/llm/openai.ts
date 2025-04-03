@@ -1,8 +1,7 @@
 import OpenAI from 'openai';
 import { ClientManager } from '../../client/manager.js';
-import { LLMCallbacks, LLMService } from './types.js';
-import { McpTool } from '../types.js';
-import { ToolHelper } from './tool-helper.js';
+import { LLMCallbacks, ILLMService } from './types.js';
+import { ToolSet } from '../types.js';
 import { logger } from '../../utils/logger.js';
 
 // System prompt constants
@@ -29,17 +28,17 @@ TOOL_DESCRIPTIONS`;
 /**
  * OpenAI implementation of LLMService
  */
-export class OpenAIService implements LLMService {
+export class OpenAIService implements ILLMService {
     private openai: OpenAI;
     private model: string;
-    private toolHelper: ToolHelper;
+    private clientManager: ClientManager;
     private conversationHistory: any[] = [];
     private systemPromptTemplate: string;
 
     constructor(clientManager: ClientManager, apiKey: string, model?: string, options?: any) {
         this.model = model || 'gpt-4o-mini';
         this.openai = new OpenAI({ apiKey });
-        this.toolHelper = new ToolHelper(clientManager);
+        this.clientManager = clientManager;
         this.systemPromptTemplate =
             options?.systemPromptTemplate || DETAILED_SYSTEM_PROMPT_TEMPLATE;
 
@@ -47,40 +46,47 @@ export class OpenAIService implements LLMService {
         this.conversationHistory = [{ role: 'system', content: INITIAL_SYSTEM_PROMPT }];
     }
 
-    updateSystemContext(tools: McpTool[]): void {
-        // Create detailed tool descriptions as a flat list
-        const toolDescriptions = tools
-            .map((tool) => {
-                let description = `- ${tool.name}: ${tool.description || 'No description provided'}`;
-                if (
-                    tool.parameters &&
-                    tool.parameters.properties &&
-                    typeof tool.parameters.properties === 'object'
-                ) {
-                    description += '\n  Parameters:';
-                    for (const [paramName, param] of Object.entries(tool.parameters.properties)) {
-                        description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
-                    }
-                    // Add required parameters info if available
-                    if (
-                        Array.isArray(tool.parameters.required) &&
-                        tool.parameters.required.length > 0
-                    ) {
-                        description += `\n  Required: ${tool.parameters.required.join(', ')}`;
-                    }
-                }
-                return description;
-            })
-            .join('\n\n'); // Add extra line between tools for readability
+    getAllTools(): Promise<ToolSet> {
+        return this.clientManager.getAllTools();
+    }
 
-        // Update the system message
-        this.conversationHistory[0].content = this.systemPromptTemplate.replace(
-            'TOOL_DESCRIPTIONS',
-            toolDescriptions
-        );
+    updateSystemContext(tools: ToolSet): void {
+        // // Create detailed tool descriptions as a flat list
+        // const toolDescriptions = Object.entries(tools)
+        //     .map(([toolName, tool]) => {
+        //         let description = `- ${toolName}: ${tool.description || 'No description provided'}`;
+        //         if (tool.parameters) {
+        //             // Type assertion for parameters
+        //             const jsonSchemaParams = tool.parameters as any;
+                    
+        //             if (jsonSchemaParams.properties && typeof jsonSchemaParams.properties === 'object') {
+        //                 description += '\n  Parameters:';
+        //                 for (const [paramName, paramRaw] of Object.entries(jsonSchemaParams.properties)) {
+        //                     // Type assertion to make TypeScript happy
+        //                     const param = paramRaw as any;
+        //                     description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
+        //                 }
+        //                 // Add required parameters info if available
+        //                 if (
+        //                     Array.isArray(jsonSchemaParams.required) &&
+        //                     jsonSchemaParams.required.length > 0
+        //                 ) {
+        //                     description += `\n  Required: ${jsonSchemaParams.required.join(', ')}`;
+        //                 }
+        //             }
+        //         }
+        //         return description;
+        //     })
+        //     .join('\n\n'); // Add extra line between tools for readability
+
+        // // Update the system message
+        // this.conversationHistory[0].content = this.systemPromptTemplate.replace(
+        //     'TOOL_DESCRIPTIONS',
+        //     toolDescriptions
+        // );
 
         // Log the number of tools provided to help with debugging
-        logger.info(`Included ${tools.length} tools in system context`);
+        // logger.info(`Included ${Object.keys(tools).length} tools in system context`);
     }
 
     async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {
@@ -88,7 +94,7 @@ export class OpenAIService implements LLMService {
         this.conversationHistory.push({ role: 'user', content: userInput });
 
         // Get all tools
-        const rawTools = await this.toolHelper.getAllTools();
+        const rawTools = await this.clientManager.getAllTools();
         const formattedTools = this.formatToolsForOpenAI(rawTools);
 
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
@@ -131,7 +137,7 @@ export class OpenAIService implements LLMService {
 
                     // Execute tool
                     try {
-                        const result = await this.toolHelper.executeTool(toolName, args);
+                        const result = await this.clientManager.executeTool(toolName, args);
 
                         // Register tool result with proper error handling
                         this.registerToolResult(toolName, result, toolCall.id);
@@ -477,8 +483,9 @@ export class OpenAIService implements LLMService {
         return pendingCalls;
     }
 
-    private formatToolsForOpenAI(tools: McpTool[]): any[] {
-        return tools.map((tool) => {
+    private formatToolsForOpenAI(tools: ToolSet): any[] {
+        logger.debug(`Formatting tools for OpenAI: ${JSON.stringify(tools, null, 2)}`);
+        return Object.entries(tools).map(([toolName, tool]) => {
             // Convert tool to OpenAI function format
             const parameters = {
                 type: 'object',
@@ -487,71 +494,74 @@ export class OpenAIService implements LLMService {
             };
 
             // Map tool parameters to JSON Schema format
-            if (
-                tool.parameters &&
-                tool.parameters.properties &&
-                typeof tool.parameters.properties === 'object'
-            ) {
-                // Extract parameters from the properties object in inputSchema
-                for (const [name, param] of Object.entries(tool.parameters.properties)) {
-                    let paramType = param.type || 'string';
-                    let paramEnum = undefined;
+            if (tool.parameters) {
+                // Type assertion for parameters
+                const jsonSchemaParams = tool.parameters as any;
+                
+                if (jsonSchemaParams.properties && typeof jsonSchemaParams.properties === 'object') {
+                    // Extract parameters from the properties object in inputSchema
+                    for (const [name, paramRaw] of Object.entries(jsonSchemaParams.properties)) {
+                        // Type assertion to make TypeScript happy
+                        const param = paramRaw as any;
+                        let paramType = param.type || 'string';
+                        let paramEnum = undefined;
 
-                    // Handle type conversion
-                    if (typeof paramType === 'string') {
-                        if (paramType.includes('number')) paramType = 'number';
-                        else if (paramType.includes('boolean')) paramType = 'boolean';
-                        else if (paramType.includes('array')) paramType = 'array';
-                        else if (paramType.includes('enum')) {
-                            paramType = 'string';
-                            // Extract enum values if they exist
-                            const enumMatch = paramType.match(/\[(.*?)\]/);
-                            if (enumMatch) {
-                                paramEnum = enumMatch[1]
-                                    .split(',')
-                                    .map((v) => v.trim().replace(/["']/g, ''));
+                        // Handle type conversion
+                        if (typeof paramType === 'string') {
+                            if (paramType.includes('number')) paramType = 'number';
+                            else if (paramType.includes('boolean')) paramType = 'boolean';
+                            else if (paramType.includes('array')) paramType = 'array';
+                            else if (paramType.includes('enum')) {
+                                paramType = 'string';
+                                // Extract enum values if they exist
+                                const enumMatch = paramType.match(/\[(.*?)\]/);
+                                if (enumMatch) {
+                                    paramEnum = enumMatch[1]
+                                        .split(',')
+                                        .map((v) => v.trim().replace(/["']/g, ''));
+                                }
                             }
                         }
-                    }
 
-                    parameters.properties[name] = {
-                        type: paramType,
-                        description: param.description || `The ${name} parameter`,
-                    };
+                        parameters.properties[name] = {
+                            type: paramType,
+                            description: param.description || `The ${name} parameter`,
+                        };
 
-                    // Add items property for array types (required by OpenAI's API)
-                    if (paramType === 'array') {
-                        // Use the items property from the original schema if it exists
-                        if (param.items) {
-                            parameters.properties[name].items = param.items;
-                        } else {
-                            // Default to array of strings if no items specification is provided
-                            parameters.properties[name].items = { type: 'string' };
+                        // Add items property for array types (required by OpenAI's API)
+                        if (paramType === 'array') {
+                            // Use the items property from the original schema if it exists
+                            if (param.items) {
+                                parameters.properties[name].items = param.items;
+                            } else {
+                                // Default to array of strings if no items specification is provided
+                                parameters.properties[name].items = { type: 'string' };
+                            }
+                        }
+
+                        // Handle enums if present
+                        if (paramEnum) {
+                            parameters.properties[name].enum = paramEnum;
                         }
                     }
 
-                    // Handle enums if present
-                    if (paramEnum) {
-                        parameters.properties[name].enum = paramEnum;
+                    // Use the required array from inputSchema if it exists
+                    if (Array.isArray(jsonSchemaParams.required)) {
+                        parameters.required = [...jsonSchemaParams.required];
                     }
-                }
-
-                // Use the required array from inputSchema if it exists
-                if (Array.isArray(tool.parameters.required)) {
-                    parameters.required = [...tool.parameters.required];
                 }
             }
 
             logger.silly('AFTER FORMATTING TOOL FOR OPENAI');
-            logger.silly(`Tool: ${tool.name}`);
+            logger.silly(`Tool: ${toolName}`);
             logger.silly(`Description: ${tool.description}`);
             logger.silly(`Parameters: ${JSON.stringify(parameters)}`);
 
             return {
                 type: 'function',
                 function: {
-                    name: tool.name,
-                    description: tool.description || `Tool for ${tool.name}`,
+                    name: toolName,
+                    description: tool.description || `Tool for ${toolName}`,
                     parameters,
                 },
             };

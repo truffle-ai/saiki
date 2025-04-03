@@ -1,14 +1,17 @@
 {
     "mcpServers": {
         "desktopCommander": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@wonderwhy-er/desktop-commander"]
         },
         "puppeteer": {
+            "type": "stdio",
             "command": "node",
             "args": ["--loader", "ts-node/esm", "src/servers/puppeteerServer.ts"]
         },
         "dockerServer": {
+            "type": "stdio",
             "command": "node",
             "args": ["--loader", "ts-node/esm", "src/servers/dockerServer.ts"]
         }

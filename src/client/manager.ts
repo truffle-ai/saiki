@@ -2,11 +2,11 @@ import { MCPClient } from './mcp-client.js';
 import { ServerConfigs } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
-import { McpTool } from '../ai/types.js';
 
 export class ClientManager {
     private clients: Map<string, ToolProvider> = new Map();
     private connectionErrors: { [key: string]: string } = {};
+    private toolToClientMap: Map<string, ToolProvider> = new Map();
 
     /**
      * Register a client that provides tools
@@ -22,52 +22,58 @@ export class ClientManager {
     }
 
     /**
-     * Get all tools from all registered clients
-     * @returns Array of all available tools
+     * Get all available tools from all connected clients
+     * @returns Promise resolving to a map of tool names to tool definitions
      */
-    async getAllTools(): Promise<McpTool[]> {
-        const tools: McpTool[] = [];
-        for (const [name, client] of this.clients.entries()) {
+    async getAllTools(): Promise<Record<string, any>> {
+        let allTools: Record<string, any> = {};
+        // Clear existing map to avoid stale entries
+        this.toolToClientMap.clear();
+
+        for (const [serverName, client] of this.clients.entries()) {
             try {
-                const clientTools = await client.getTools();
-                tools.push(...clientTools.map(tool => ({
-                    ...tool,
-                    description: tool.description || `Tool from client '${name}'`,
-                })));
+                logger.debug(`Getting tools from ${serverName}`);
+                const toolList = await client.getTools();
+                logger.silly(`Tool list: ${JSON.stringify(toolList, null, 2)}`);
+
+                // Map each tool to its provider client
+                for (const toolName in toolList) {
+                    this.toolToClientMap.set(toolName, client);
+                }
+
+                allTools = { ...allTools, ...toolList };
+                logger.debug(`Successfully got tools from ${serverName}`);
             } catch (error) {
-                const errorMsg = error instanceof Error ? error.message : String(error);
-                logger.error(`Failed to get tools from client '${name}': ${errorMsg}`);
-                this.connectionErrors[name] = errorMsg;
+                console.error(`Error getting tools from ${serverName}:`, error);
             }
         }
-        return tools;
+        logger.debug(`Successfully got all tools from all servers`, null, 'green');
+        logger.silly(`All tools: ${JSON.stringify(allTools, null, 2)}`);
+        return allTools;
     }
 
     /**
-     * Call a tool by name with the given arguments
-     * The first client that provides the tool will be used
-     * @param toolName Name of the tool to call
-     * @param args Arguments to pass to the tool
-     * @returns Result of the tool execution
+     * Get client that provides a specific tool
+     * @param toolName Name of the tool
+     * @returns The client that provides the tool, or undefined if not found
      */
-    async callTool(toolName: string, args: any): Promise<any> {
-        for (const [name, client] of this.clients.entries()) {
-            try {
-                const tools = await client.getTools();
-                if (tools.some(tool => tool.name === toolName)) {
-                    try {
-                        return await client.callTool(toolName, args);
-                    } catch (error) {
-                        const errorMsg = error instanceof Error ? error.message : String(error);
-                        logger.error(`Tool '${toolName}' call failed in client '${name}': ${errorMsg}`);
-                        return `Error executing tool '${toolName}': ${errorMsg}`;
-                    }
-                }
-            } catch (error) {
-                logger.error(`Failed to check tools in client '${name}'`);
-            }
+    getToolClient(toolName: string): ToolProvider | undefined {
+        return this.toolToClientMap.get(toolName);
+    }
+
+    /**
+     * Execute a specific tool with the given arguments
+     * @param toolName Name of the tool to execute
+     * @param args Arguments to pass to the tool
+     * @returns Promise resolving to the tool execution result
+     */
+    async executeTool(toolName: string, args: any): Promise<any> {
+        const client = this.getToolClient(toolName);
+        if (!client) {
+            throw new Error(`No client found for tool: ${toolName}`);
         }
-        return `Tool '${toolName}' not found in any registered client.`;
+
+        return await client.callTool(toolName, args);
     }
 
     /**
@@ -85,7 +91,7 @@ export class ClientManager {
         for (const [name, config] of Object.entries(serverConfigs)) {
             const client = new MCPClient();
             try {
-                await client.connectViaStdio(config.command, config.args, config.env, name);
+                await client.connect(config, name);
                 this.registerClient(name, client);
                 successfulConnections.push(name);
             } catch (error) {
@@ -97,7 +103,7 @@ export class ClientManager {
 
         // Check if we've met the requirements for connection mode
         const requiredSuccessfulConnections = 
-            connectionMode === 'strict' ? Object.keys(serverConfigs).length : 1;
+            connectionMode === 'strict' ? Object.keys(serverConfigs).length : Math.min(1, Object.keys(serverConfigs).length);
 
         if (successfulConnections.length < requiredSuccessfulConnections) {
             throw new Error(

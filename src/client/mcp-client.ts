@@ -1,10 +1,10 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { z } from 'zod';
-import { McpTool } from '../ai/types.js';
 import { logger } from '../utils/logger.js';
+import { McpServerConfig, StdioServerConfig } from '../config/types.js';
+import { ToolSet } from '../ai/types.js';
 import { ToolProvider } from './types.js';
-
 const ToolsListSchema = z.object({
     tools: z.array(
         z.object({
@@ -17,7 +17,7 @@ const ToolsListSchema = z.object({
 });
 
 /**
- * Connection manager for MCP clients
+ * Wrapper on top of Client class provided in model context protocol SDK, to add additional metadata about the server
  */
 export class MCPClient implements ToolProvider {
     private client: Client | null = null;
@@ -30,10 +30,23 @@ export class MCPClient implements ToolProvider {
     private serverPid: number | null = null;
     private serverAlias: string | null = null;
 
-    /**
-     * Create a new MCP Client object
-     */
     constructor() {}
+
+    async connect(config: McpServerConfig, serverName: string): Promise<Client> {
+        if (config.type === 'stdio') {
+            const stdioConfig: StdioServerConfig = config;
+            return this.connectViaStdio(
+                stdioConfig.command,
+                stdioConfig.args,
+                stdioConfig.env,
+                serverName
+            );
+        }
+        if (config.type === 'sse') {
+            throw new Error('SSE connections are not yet supported');
+            //return this.connectViaSSE(config.url, config.headers);
+        }
+    }
 
     /**
      * Connect to an MCP server via stdio
@@ -164,20 +177,22 @@ export class MCPClient implements ToolProvider {
      * Get the list of tools provided by this client
      * @returns Array of available tools
      */
-    async getTools(): Promise<McpTool[]> {
+    async getTools(): Promise<ToolSet> {
         try {
             const response = await this.client.request(
                 { method: 'tools/list', params: {} },
                 ToolsListSchema
             );
-            return response.tools.map((tool) => ({
-                name: tool.name,
-                description: tool.description || 'No description available',
-                parameters: tool.inputSchema || null,
-            }));
+            return response.tools.reduce<ToolSet>((acc, tool) => {
+                acc[tool.name.toLowerCase()] = {
+                  description: tool.description,
+                  parameters: tool.inputSchema,
+                };
+                return acc;
+            }, {});
         } catch (error) {
             logger.error('Failed to list tools:', error);
-            return [];
+            return {};
         }
     }
 
@@ -239,17 +254,3 @@ export class MCPClient implements ToolProvider {
     }
 }
 
-export interface IMCPClient {
-    // Connection Management
-    connectViaStdio(
-        command: string,
-        args: string[],
-        env?: Record<string, string>,
-        serverAlias?: string
-    ): Promise<Client>;
-    disconnect(): Promise<void>;
-
-    // Tool Management
-    callTool(name: string, args: any): Promise<any>;
-    listTools(): Promise<McpTool[]>;
-}
