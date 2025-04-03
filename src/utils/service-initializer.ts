@@ -2,7 +2,6 @@ import { ClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/types.js';
 import { AgentConfig } from '../config/types.js';
 import { createLLMService } from '../ai/llm/factory.js';
-import { createVercelLLMService } from '../ai/llm/factory.js';
 import { logger } from './logger.js';
 
 /**
@@ -20,9 +19,7 @@ export async function initializeServices(
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
     logger.debug('MCP servers initialized');
 
-    // Create LLM service using config from unified config
-    const llmService = createLLMService(config.llm, clientManager);
-    //const llmService = createVercelLLMService(config.llm, clientManager);
+    const llmService = createLLMService(config.llm, clientManager, true);
     logger.debug('LLM service created with vercel');
 
     return { clientManager, llmService };

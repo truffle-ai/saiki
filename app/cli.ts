@@ -58,7 +58,7 @@ export async function runAiCli(
         logger.info('Loading available tools...');
 
         // Get all tools from the LLM service
-        const tools = await llmService.getAllTools();
+        const tools = await clientManager.getAllTools();
 
         logger.info(
             `Loaded ${Object.keys(tools).length} tools from ${clientManager.getClients().size} MCP servers\n`

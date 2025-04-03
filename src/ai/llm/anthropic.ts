@@ -2,7 +2,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
 import { Tool, ToolSet } from '../types.js';
-import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 /**
  * Anthropic implementation of LLMService
@@ -10,18 +9,18 @@ import { logger } from '../../utils/logger.js';
 export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
-    private toolHelper: ToolHelper;
+    private clientManager: ClientManager;
     private messages: any[] = [];
     private systemContext: string = '';
 
     constructor(clientManager: ClientManager, apiKey: string, model?: string, _options?: any) {
         this.model = model || 'claude-3-7-sonnet-20250219';
         this.anthropic = new Anthropic({ apiKey });
-        this.toolHelper = new ToolHelper(clientManager);
+        this.clientManager = clientManager;
     }
 
     getAllTools(): Promise<any> {
-        return this.toolHelper.getAllTools();
+        return this.clientManager.getAllTools();
     }
 
     updateSystemContext(tools: ToolSet): void {
@@ -56,7 +55,7 @@ export class AnthropicService implements ILLMService {
         this.messages.push({ role: 'user', content: effectiveUserInput });
 
         // Get all tools
-        const rawTools = await this.toolHelper.getAllTools();
+        const rawTools = await this.clientManager.getAllTools();
         const formattedTools = this.formatToolsForClaude(rawTools);
 
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
@@ -126,7 +125,7 @@ export class AnthropicService implements ILLMService {
 
                     // Execute tool
                     try {
-                        const result = await this.toolHelper.executeTool(toolName, args);
+                        const result = await this.clientManager.executeTool(toolName, args);
                         toolResults.push({ toolName, result, toolUseId }); // Store the ID with the result
 
                         // Notify tool result

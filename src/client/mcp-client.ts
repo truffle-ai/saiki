@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
-import { IMCPClientWrapper } from './types.js';
+import { IMCPClientWrapper as IMCPClient } from './types.js';
 import { McpServerConfig, StdioServerConfig } from '../config/types.js';
 import { ToolSet } from '../ai/types.js';
 
@@ -20,7 +20,7 @@ const ToolsListSchema = z.object({
 /**
  * Wrapper on top of Client class provided in model context protocol SDK, to add additional metadata about the server
  */
-export class MCPClientWrapper implements IMCPClientWrapper {
+export class MCPClient implements IMCPClient {
     private client: Client | null = null;
     private transport: any = null;
     private isConnected = false;

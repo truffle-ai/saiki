@@ -44,7 +44,7 @@ function extractApiKey(config: LLMConfig): string {
 /**
  * Create an LLM service instance based on the provided configuration
  */
-export function createLLMService(
+function _createLLMService(
     config: LLMConfig,
     clientManager: ClientManager
 ): ILLMService {
@@ -66,7 +66,7 @@ export function createLLMService(
     }
 }
 
-export function createVercelModel(provider: string, model: string): any {
+function createVercelModel(provider: string, model: string): any {
     switch (provider.toLowerCase()) {
         case 'openai':
             return openai(model);
@@ -77,10 +77,23 @@ export function createVercelModel(provider: string, model: string): any {
     }
 }
 
-export function createVercelLLMService(
+function _createVercelLLMService(
     config: LLMConfig,
     clientManager: ClientManager
 ): VercelLLMService {
     const model: VercelLLM = createVercelModel(config.provider, config.model);
     return new VercelLLMService(clientManager, model);
+}
+
+
+export function createLLMService(
+    config: LLMConfig,
+    clientManager: ClientManager,
+    vercel: boolean = false
+): ILLMService {
+    if (vercel) {
+        return _createVercelLLMService(config, clientManager);
+    } else {
+        return _createLLMService(config, clientManager);
+    }
 }

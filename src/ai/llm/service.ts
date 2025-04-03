@@ -1,30 +1,30 @@
 import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
-import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 import { streamText, generateText, CoreMessage } from 'ai';
 import { VercelLLM } from './types.js';
 import { ToolSet} from '../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
+
 /**
- * Vercel generic implementation of LLMService
+ * Vercel implementation of LLMService
  */
 export class VercelLLMService implements ILLMService {
     // Model here maps to vercel AI model
     private model: VercelLLM;
     private maxTokens: number;
     private temperature: number;
-    private toolHelper: ToolHelper;
+    private clientManager: ClientManager;
     private messages: CoreMessage[] = [];
     private systemContext: string = '';
 
     constructor(clientManager: ClientManager, model: VercelLLM) {
         this.model = model;
-        this.toolHelper = new ToolHelper(clientManager);
+        this.clientManager = clientManager;
     }
 
     getAllTools(): Promise<ToolSet> {
-        return this.toolHelper.getAllTools();
+        return this.clientManager.getAllTools();
     }
 
     updateSystemContext(tools: ToolSet): void {
@@ -52,7 +52,7 @@ export class VercelLLMService implements ILLMService {
                 description: tools[toolName].description,
                 parameters: jsonSchema(tools[toolName].parameters as any),
                 execute: async (args: any) => {
-                    return await this.toolHelper.executeTool(toolName, args);
+                    return await this.clientManager.executeTool(toolName, args);
                 },
             };
             return acc;
@@ -68,7 +68,7 @@ export class VercelLLMService implements ILLMService {
         this.messages.push({ role: 'user', content: effectiveUserInput });
 
         // Get all tools
-        const tools: any = await this.toolHelper.getAllTools();
+        const tools: any = await this.clientManager.getAllTools();
          logger.silly(`[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`);
 
         const formattedTools = this.formatTools(tools);

@@ -2,7 +2,6 @@ import OpenAI from 'openai';
 import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
 import { ToolSet } from '../types.js';
-import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 
 // System prompt constants
@@ -32,14 +31,14 @@ TOOL_DESCRIPTIONS`;
 export class OpenAIService implements ILLMService {
     private openai: OpenAI;
     private model: string;
-    private toolHelper: ToolHelper;
+    private clientManager: ClientManager;
     private conversationHistory: any[] = [];
     private systemPromptTemplate: string;
 
     constructor(clientManager: ClientManager, apiKey: string, model?: string, options?: any) {
         this.model = model || 'gpt-4o-mini';
         this.openai = new OpenAI({ apiKey });
-        this.toolHelper = new ToolHelper(clientManager);
+        this.clientManager = clientManager;
         this.systemPromptTemplate =
             options?.systemPromptTemplate || DETAILED_SYSTEM_PROMPT_TEMPLATE;
 
@@ -48,7 +47,7 @@ export class OpenAIService implements ILLMService {
     }
 
     getAllTools(): Promise<ToolSet> {
-        return this.toolHelper.getAllTools();
+        return this.clientManager.getAllTools();
     }
 
     updateSystemContext(tools: ToolSet): void {
@@ -95,7 +94,7 @@ export class OpenAIService implements ILLMService {
         this.conversationHistory.push({ role: 'user', content: userInput });
 
         // Get all tools
-        const rawTools = await this.toolHelper.getAllTools();
+        const rawTools = await this.clientManager.getAllTools();
         const formattedTools = this.formatToolsForOpenAI(rawTools);
 
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
@@ -138,7 +137,7 @@ export class OpenAIService implements ILLMService {
 
                     // Execute tool
                     try {
-                        const result = await this.toolHelper.executeTool(toolName, args);
+                        const result = await this.clientManager.executeTool(toolName, args);
 
                         // Register tool result with proper error handling
                         this.registerToolResult(toolName, result, toolCall.id);
