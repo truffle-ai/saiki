@@ -21,9 +21,9 @@ export async function initializeServices(
     logger.debug('MCP servers initialized');
 
     // Create LLM service using config from unified config
-    //const llmService = createLLMService(config.llm, clientManager);
-    const llmService = createVercelLLMService(config.llm, clientManager);
-    logger.debug('LLM service created');
+    const llmService = createLLMService(config.llm, clientManager);
+    //const llmService = createVercelLLMService(config.llm, clientManager);
+    logger.debug('LLM service created with vercel');
 
     return { clientManager, llmService };
 } 

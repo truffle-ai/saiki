@@ -1,5 +1,4 @@
 import { MCPClientWrapper } from './mcp-client.js';
-import { VercelMCPClientWrapper } from './vercel-mcp-client.js';
 import { ServerConfigs } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
@@ -21,7 +20,6 @@ export class ClientManager {
         logger.info(`Registered client: ${name}`);
     }
 
-
     /**
      * Initialize clients from server configurations
      * @param serverConfigs Server configurations
@@ -35,8 +33,7 @@ export class ClientManager {
         const successfulConnections: string[] = [];
 
         for (const [name, config] of Object.entries(serverConfigs)) {
-            //const client = new MCPClientWrapper();
-            const client = new VercelMCPClientWrapper();
+            const client = new MCPClientWrapper();
             try {
                 await client.connect(config, name);
                 this.registerClient(name, client);
@@ -50,7 +47,7 @@ export class ClientManager {
 
         // Check if we've met the requirements for connection mode
         const requiredSuccessfulConnections = 
-            connectionMode === 'strict' ? Object.keys(serverConfigs).length : 1;
+            connectionMode === 'strict' ? Object.keys(serverConfigs).length : Math.min(1, Object.keys(serverConfigs).length);
 
         if (successfulConnections.length < requiredSuccessfulConnections) {
             throw new Error(

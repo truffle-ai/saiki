@@ -103,6 +103,7 @@ startAiClient().catch((error) => {
 });
 
 function validateAgentConfig(config: AgentConfig): void {
+    logger.info('Validating agent config', null, 'cyanBright');
     if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
         throw new Error('No MCP server configurations provided');
     }

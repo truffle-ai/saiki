@@ -2,10 +2,9 @@ import { ClientManager } from '../../client/manager.js';
 import { ToolProvider } from '../../client/types.js';
 import { logger } from '../../utils/logger.js';
 import { ToolSet } from '../types.js';
-import { Tool } from '../types.js';
 
 export interface IToolHelper {
-    getAllTools(): Promise<ToolSet | Tool[]>;
+    getAllTools(): Promise<ToolSet>;
     executeTool?(toolName: string, args: any): Promise<any>;
 }
 
@@ -22,18 +21,24 @@ export class ToolHelper implements IToolHelper {
     /**
      * Get all available tools from all connected clients
      */
-    async getAllTools(): Promise<Tool[]> {
+    async getAllTools(): Promise<ToolSet> {
         let allTools: any = {};
+        // Clear existing map to avoid stale entries
+        this.toolToClientMap.clear();
 
         for (const [serverName, client] of this.clientManager.getClients()) {
             try {
                 logger.debug(`Getting tools from ${serverName}`);
                 const toolList = await client.getTools();
-                for (const tool of toolList as Tool[]) {
-                    this.toolToClientMap.set(tool.name, client);
-                    allTools.push(tool);
+                logger.silly(`Tool list: ${JSON.stringify(toolList, null, 2)}`);
+
+                // Map each tool to its provider client
+                for (const toolName in toolList) {
+                    this.toolToClientMap.set(toolName, client);
                 }
-                logger.debug(`Updated tool list after getting tools: ${allTools}`);
+
+                allTools = { ...allTools, ...toolList };
+                logger.debug(`Successfully got tools from ${serverName}`);
             } catch (error) {
                 console.error(`Error getting tools from ${serverName}:`, error);
             }
@@ -53,35 +58,5 @@ export class ToolHelper implements IToolHelper {
         }
 
         return await client.callTool(toolName, args);
-    }
-}
-
-export class VercelToolHelper implements IToolHelper {
-    private clientManager: ClientManager;
-
-    constructor(clientManager: ClientManager) {
-        this.clientManager = clientManager;
-    }
-    /**
-     * Get all available tools from all connected clients
-     */
-    async getAllTools(): Promise<ToolSet> {
-        let allTools: any = {};
-
-        for (const [serverName, client] of this.clientManager.getClients()) {
-            try {
-                logger.debug(`Getting tools from ${serverName}`);
-                const toolList = await client.getTools();
-                logger.silly(`Tool list: ${JSON.stringify(toolList, null, 2)}`);
-
-                allTools = { ...allTools, ...toolList };
-                logger.debug(`Successfully got tools from ${serverName}`);
-            } catch (error) {
-                console.error(`Error getting tools from ${serverName}:`, error);
-            }
-        }
-        logger.debug(`Successfully got all tools from all servers`, null, 'green');
-        logger.silly(`All tools: ${JSON.stringify(allTools, null, 2)}`);
-        return allTools;
     }
 }

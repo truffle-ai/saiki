@@ -15,7 +15,7 @@ export interface ToolProvider {
   /**
    * Get the list of tools provided by this client
    */
-  getTools(): Promise<ToolSet | Tool[]>;
+  getTools(): Promise<ToolSet>;
   
   /**
    * Call a specific tool with the given arguments
@@ -35,7 +35,7 @@ export interface IMCPClientWrapper extends ToolProvider {
     // Connection Management
     connect(config: McpServerConfig, serverName: string): Promise<IMCPClient>;
 
-    // Prompt Management
+    // TODO: implement Prompt Management
     // listPrompts(): Promise<string[]>;
     // getPrompt(name: string, args?: any): Promise<string>;
 

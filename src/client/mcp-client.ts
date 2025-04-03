@@ -1,7 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { z } from 'zod';
-import { Tool } from '../ai/types.js';
 import { logger } from '../utils/logger.js';
 import { IMCPClientWrapper } from './types.js';
 import { McpServerConfig, StdioServerConfig } from '../config/types.js';
@@ -185,19 +184,13 @@ export class MCPClientWrapper implements IMCPClientWrapper {
                 { method: 'tools/list', params: {} },
                 ToolsListSchema
             );
-            logger.info(`Tools obtained in MCP client: ${JSON.stringify(response.tools, null, 2)}`);
-            return response.tools.map((tool) => ({
-                name: tool.name,
-                description: tool.description || 'No description available',
-                parameters: tool.inputSchema || null,
-            }));
-            // return response.tools.reduce<ToolSet>((acc, tool) => {
-            //     acc[tool.name.toLowerCase()] = {
-            //       description: tool.description,
-            //       parameters: tool.inputSchema,
-            //     };
-            //     return acc;
-            // }, {});
+            return response.tools.reduce<ToolSet>((acc, tool) => {
+                acc[tool.name.toLowerCase()] = {
+                  description: tool.description,
+                  parameters: tool.inputSchema,
+                };
+                return acc;
+            }, {});
         } catch (error) {
             logger.error('Failed to list tools:', error);
             return {};

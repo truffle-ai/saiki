@@ -1,10 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
-import { Tool } from '../types.js';
+import { Tool, ToolSet } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
-
 /**
  * Anthropic implementation of LLMService
  */
@@ -25,17 +24,19 @@ export class AnthropicService implements ILLMService {
         return this.toolHelper.getAllTools();
     }
 
-    updateSystemContext(tools: Tool[]): void {
+    updateSystemContext(tools: ToolSet): void {
         // Create a system context string for Anthropic modles
         // They don't use a system message like OpenAI,
         // but we can prepend this to the first user message
 
-        const toolDescriptions = tools
-            .map((tool) => {
-                let description = `- ${tool.name}: ${tool.description || 'No description provided'}`;
+        const toolDescriptions = Object.entries(tools)
+            .map(([toolName, tool]) => {
+                let description = `- ${toolName}: ${tool.description || 'No description provided'}`;
                 if (tool.parameters && Object.keys(tool.parameters).length > 0) {
                     description += '\n  Parameters:';
-                    for (const [paramName, param] of Object.entries(tool.parameters)) {
+                    for (const [paramName, paramRaw] of Object.entries(tool.parameters)) {
+                        // Type assertion to make TypeScript happy
+                        const param = paramRaw as any;
                         description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
                     }
                 }
@@ -219,8 +220,11 @@ export class AnthropicService implements ILLMService {
         };
     }
 
-    private formatToolsForClaude(tools: Tool[]): any[] {
-        return tools.map((tool) => {
+    // needs refactor
+    private formatToolsForClaude(tools: ToolSet): any[] {
+        // Convert the ToolSet object to an array of tools
+        // ToolSet is an object where keys are tool names and values are Tool objects
+        return Object.entries(tools).map(([toolName, tool]) => {
             // Create input_schema structure (same as parameters in OpenAI)
             const input_schema = {
                 type: 'object',
@@ -229,70 +233,74 @@ export class AnthropicService implements ILLMService {
             };
 
             // Map tool parameters to JSON Schema format
-            if (
-                tool.parameters &&
-                tool.parameters.properties &&
-                typeof tool.parameters.properties === 'object'
-            ) {
-                // Extract parameters from the properties object
-                for (const [name, param] of Object.entries(tool.parameters.properties)) {
-                    let paramType = param.type || 'string';
-                    let paramEnum = undefined;
+            if (tool.parameters) {
+                // The actual parameters structure appears to be a JSON Schema object
+                // which doesn't match the simple ToolParameters interface
+                const jsonSchemaParams = tool.parameters as any;
+                
+                if (jsonSchemaParams.properties && typeof jsonSchemaParams.properties === 'object') {
+                    // Extract parameters from the properties object
+                    for (const [name, paramRaw] of Object.entries(jsonSchemaParams.properties)) {
+                        // Type assertion to make TypeScript happy
+                        const param = paramRaw as any;
+                        let paramType = param.type || 'string';
+                        let paramEnum = undefined;
 
-                    // Handle type conversion
-                    if (typeof paramType === 'string') {
-                        if (paramType.includes('number')) paramType = 'number';
-                        else if (paramType.includes('boolean')) paramType = 'boolean';
-                        else if (paramType.includes('array')) paramType = 'array';
-                        else if (paramType.includes('enum')) {
-                            paramType = 'string';
-                            // Extract enum values if they exist
-                            const enumMatch = paramType.match(/\[(.*?)\]/);
-                            if (enumMatch) {
-                                paramEnum = enumMatch[1]
-                                    .split(',')
-                                    .map((v) => v.trim().replace(/["']/g, ''));
+                        // Handle type conversion
+                        if (typeof paramType === 'string') {
+                            if (paramType.includes('number')) paramType = 'number';
+                            else if (paramType.includes('boolean')) paramType = 'boolean';
+                            else if (paramType.includes('array')) paramType = 'array';
+                            else if (paramType.includes('enum')) {
+                                paramType = 'string';
+                                // Extract enum values if they exist
+                                const enumMatch = paramType.match(/\[(.*?)\]/);
+                                if (enumMatch) {
+                                    paramEnum = enumMatch[1]
+                                        .split(',')
+                                        .map((v) => v.trim().replace(/["']/g, ''));
+                                }
                             }
                         }
-                    }
 
-                    input_schema.properties[name] = {
-                        type: paramType,
-                        description: param.description || `The ${name} parameter`,
-                    };
+                        input_schema.properties[name] = {
+                            type: paramType,
+                            description: param.description || `The ${name} parameter`,
+                        };
 
-                    // Add items property for array types
-                    if (paramType === 'array') {
-                        // Use the items property from the original schema if it exists
-                        if (param.items) {
-                            input_schema.properties[name].items = param.items;
-                        } else {
-                            // Default to array of strings if no items specification is provided
-                            input_schema.properties[name].items = { type: 'string' };
+                        // Add items property for array types
+                        if (paramType === 'array') {
+                            // Use the items property from the original schema if it exists
+                            if (param.items) {
+                                input_schema.properties[name].items = param.items;
+                            } else {
+                                // Default to array of strings if no items specification is provided
+                                input_schema.properties[name].items = { type: 'string' };
+                            }
+                        }
+
+                        // Handle enums if present
+                        if (paramEnum) {
+                            input_schema.properties[name].enum = paramEnum;
                         }
                     }
 
-                    // Handle enums if present
-                    if (paramEnum) {
-                        input_schema.properties[name].enum = paramEnum;
+                    // Use the required array from inputSchema if it exists
+                    if (Array.isArray(jsonSchemaParams.required)) {
+                        input_schema.required = [...jsonSchemaParams.required];
                     }
-                }
-
-                // Use the required array from inputSchema if it exists
-                if (Array.isArray(tool.parameters.required)) {
-                    input_schema.required = [...tool.parameters.required];
                 }
             }
 
             logger.silly('AFTER FORMATTING TOOL FOR ANTHROPIC');
-            logger.silly(`Tool: ${tool.name}`);
+            logger.silly(`Tool: ${toolName}`);
             logger.silly(`Description: ${tool.description}`);
             logger.silly(`Input Schema: ${JSON.stringify(input_schema)}`);
 
             // Return in Anthropic's expected format
             return {
-                name: tool.name,
-                description: tool.description || `Tool for ${tool.name}`,
+                name: toolName,
+                description: tool.description || `Tool for ${toolName}`,
                 input_schema: input_schema,
             };
         });

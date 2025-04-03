@@ -1,11 +1,11 @@
 import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
-import { Tool } from '../types.js';
-import { VercelToolHelper } from './tool-helper.js';
+import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 import { streamText, generateText, CoreMessage } from 'ai';
 import { VercelLLM } from './types.js';
-import { ToolSet } from '../types.js';
+import { ToolSet} from '../types.js';
+import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 /**
  * Vercel generic implementation of LLMService
  */
@@ -14,26 +14,27 @@ export class VercelLLMService implements ILLMService {
     private model: VercelLLM;
     private maxTokens: number;
     private temperature: number;
-    private toolHelper: VercelToolHelper;
+    private toolHelper: ToolHelper;
     private messages: CoreMessage[] = [];
     private systemContext: string = '';
 
     constructor(clientManager: ClientManager, model: VercelLLM) {
         this.model = model;
-        this.toolHelper = new VercelToolHelper(clientManager);
+        this.toolHelper = new ToolHelper(clientManager);
     }
 
     getAllTools(): Promise<ToolSet> {
         return this.toolHelper.getAllTools();
     }
 
-    updateSystemContext(tools: Tool[]): void {
-        const toolDescriptions = tools
-            .map((tool) => {
-                let description = `- ${tool.name}: ${tool.description || 'No description provided'}`;
+    updateSystemContext(tools: ToolSet): void {
+        const toolDescriptions = Object.entries(tools)
+            .map(([toolName, tool]) => {
+                let description = `- ${toolName}: ${tool.description || 'No description provided'}`;
                 if (tool.parameters && Object.keys(tool.parameters).length > 0) {
                     description += '\n  Parameters:';
-                    for (const [paramName, param] of Object.entries(tool.parameters)) {
+                    for (const [paramName, paramRaw] of Object.entries(tool.parameters)) {
+                        const param = paramRaw as any;
                         description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
                     }
                 }
@@ -42,6 +43,20 @@ export class VercelLLMService implements ILLMService {
             .join('\n');
 
         this.systemContext = `You are Omega, a helpful AI assistant with access to the following tools:\n\n${toolDescriptions}\n\nUse these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.`;
+    }
+
+    formatTools(tools: ToolSet): VercelToolSet {
+        logger.debug(`Formatting tools for vercel`)
+        return Object.keys(tools).reduce<VercelToolSet>((acc, toolName) => {
+            acc[toolName] = {
+                description: tools[toolName].description,
+                parameters: jsonSchema(tools[toolName].parameters as any),
+                execute: async (args: any) => {
+                    return await this.toolHelper.executeTool(toolName, args);
+                },
+            };
+            return acc;
+        }, {});
     }
 
     async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {
@@ -54,7 +69,10 @@ export class VercelLLMService implements ILLMService {
 
         // Get all tools
         const tools: any = await this.toolHelper.getAllTools();
-        logger.silly(`Tools: ${JSON.stringify(tools, null, 2)}`);
+         logger.silly(`[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`);
+
+        const formattedTools = this.formatTools(tools);
+        logger.silly(`[VercelLLMService] Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
         // Maximum number of tool use iterations
         const MAX_ITERATIONS = 10;
@@ -69,9 +87,9 @@ export class VercelLLMService implements ILLMService {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
                 logger.debug(`Messages: ${JSON.stringify(this.messages, null, 2)}`);
-                logger.silly(`Tools: ${JSON.stringify(tools, null, 2)}`);
-
-                fullResponse = await this.generateText(tools, callbacks, MAX_ITERATIONS);
+                logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
+                
+                fullResponse = await this.generateText(formattedTools, callbacks, MAX_ITERATIONS);
                 
                 //fullResponse = await this.processStream(tools, callbacks, MAX_ITERATIONS);
                 // Notify thinking for next iteration
@@ -86,14 +104,14 @@ export class VercelLLMService implements ILLMService {
         } catch (error) {
             // Handle API errors
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error(`Error in vercel llm service: ${errorMessage}`);
+            logger.error(`Error in vercel llm service: ${error}`);
 
             return `Error: ${errorMessage}`;
         }
     }
 
     async generateText(
-        tools: any,
+        tools: VercelToolSet,
         callbacks?: LLMCallbacks,
         maxSteps: number = 10
     ): Promise<string> {
@@ -115,7 +133,7 @@ export class VercelLLMService implements ILLMService {
                 );
 
                 if (step.stepType === 'tool-result') {
-                    for (const toolResult of step.toolResults) {
+                    for (const toolResult of step.toolResults as any) {
                         callbacks?.onToolResult?.(toolResult.toolName, toolResult.result);
                     }
                 }
@@ -137,7 +155,7 @@ export class VercelLLMService implements ILLMService {
         return fullResponse;
     }
 
-    async processStream(tools: any, callbacks?: LLMCallbacks, maxSteps: number = 10): Promise<string> {
+    async processStream(tools: VercelToolSet, callbacks?: LLMCallbacks, maxSteps: number = 10): Promise<string> {
         const stream = await this.streamText(tools, callbacks, maxSteps);
         let fullResponse = '';
         for await (const textPart of stream) {
@@ -149,7 +167,7 @@ export class VercelLLMService implements ILLMService {
     }
 
     // returns AsyncIterable<string> & ReadableStream<string>
-    async streamText(tools: any, callbacks?: LLMCallbacks, maxSteps: number = 10): Promise<any> {
+    async streamText(tools: VercelToolSet, callbacks?: LLMCallbacks, maxSteps: number = 10): Promise<any> {
         let stepIteration = 0;
         // use vercel's streamText with mcp
         const response = streamText({
@@ -175,7 +193,7 @@ export class VercelLLMService implements ILLMService {
                 );
 
                 if (step.stepType === 'tool-result') {
-                    for (const toolResult of step.toolResults) {
+                    for (const toolResult of step.toolResults as any) {
                         callbacks?.onToolResult?.(toolResult.toolName, toolResult.result);
                     }
                 }
