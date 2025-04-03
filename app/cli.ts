@@ -1,10 +1,10 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { MCPClientManager } from '../client/manager.js';
-import { logger } from '../utils/logger.js';
-import { LLMCallbacks, LLMConfig, ILLMService } from './llm/types.js';
-import { AgentConfig } from '../server/config.js';
-import { createLLMService, createVercelLLMService } from './llm/factory.js';
+import { ClientManager } from '../src/client/manager.js';
+import { logger } from '../src/utils/logger.js';
+import { LLMCallbacks, ILLMService } from '../src/ai/llm/types.js';
+import { AgentConfig } from '../src/config/types.js';
+import { initializeServices } from '../src/utils/service-initializer.js';
 import boxen from 'boxen';
 
 /**
@@ -16,58 +16,12 @@ export async function initializeAiCli(
     config: AgentConfig,
     connectionMode: 'strict' | 'lenient' = 'lenient'
 ) {
-    // Extract LLM config with default values
-    const llmConfig: LLMConfig = {
-        provider: config.llm?.provider || 'openai',
-        model: config.llm?.model || 'gpt-4o-mini',
-        apiKey: config.llm?.apiKey || '',
-    };
-
-    // Get provider from config
-    const provider = llmConfig.provider;
-
-    // Get API key from config or environment
-    let apiKey = llmConfig.apiKey;
-    if (apiKey?.startsWith('env:')) {
-        // If the API key is specified as an environment variable reference
-        const envVarName = apiKey.substring(4);
-        apiKey = process.env[envVarName];
-    } else {
-        // Fall back to environment variables if not in config
-        const apiKeyEnvVar = provider === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY';
-        apiKey = apiKey || process.env[apiKeyEnvVar];
-    }
-
-    if (!apiKey) {
-        logger.error(`Error: API key for ${provider} not found`);
-        logger.error(
-            `Please set your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key in the config file or .env file`
-        );
-        process.exit(1);
-    }
-
-    logger.debug('Verified API key');
-
-    // Initialize client manager with server configs from unified config
-    const mcpClientManager = new MCPClientManager(config.mcpServers, connectionMode);
-    await mcpClientManager.initialize();
-
-    logger.debug('MCP servers initialized');
-
-    // Create LLM service using config from unified config
-    const llmServiceConfig: LLMConfig = {
-        provider,
-        apiKey,
-        model: llmConfig.model,
-    };
-
-    const llmService = createVercelLLMService(llmServiceConfig, mcpClientManager);
-
-    logger.debug('LLM service created');
-
-    // Run AI CLI
     try {
-        await runAiCli(mcpClientManager, llmService);
+        // Initialize services using the utility function
+        const { clientManager, llmService } = await initializeServices(config, connectionMode);
+        
+        // Run AI CLI
+        await runAiCli(clientManager, llmService);
     } catch (error) {
         logger.error(`Error running AI CLI: ${error.message}`);
         process.exit(1);
@@ -76,10 +30,13 @@ export async function initializeAiCli(
 
 /**
  * Run the AI CLI with the given LLM service
- * @param mcpClientManager MCP client manager
+ * @param clientManager Client manager with registered tool providers
  * @param llmService LLM service implementation
  */
-export async function runAiCli(mcpClientManager: MCPClientManager, llmService: ILLMService) {
+export async function runAiCli(
+    clientManager: ClientManager,
+    llmService: ILLMService
+) {
     // Get model and provider info directly from the LLM service
     // const { provider, model } = llmService.getConfig();
     logger.info(
@@ -89,9 +46,9 @@ export async function runAiCli(mcpClientManager: MCPClientManager, llmService: I
     );
 
     logger.debug(`Log level: ${logger.getLevel()}`);
-    logger.info(`Connected servers: ${mcpClientManager.getClients().size}`, null, 'green');
+    logger.info(`Connected servers: ${clientManager.getClients().size}`, null, 'green');
     logger.error(
-        `Failed connections: ${Object.keys(mcpClientManager.getFailedConnections()).length}. Ignoring in lenient mode.\n`,
+        `Failed connections: ${Object.keys(clientManager.getFailedConnections()).length}. Ignoring in lenient mode.\n`,
         null,
         'red'
     );
@@ -100,14 +57,16 @@ export async function runAiCli(mcpClientManager: MCPClientManager, llmService: I
         // Get available tools from all connected servers
         logger.info('Loading available tools...');
 
-        // Using ToolHelper internal to LLMService instead of direct tool fetching
-        const tools = await llmService.getAllTools();
+        // Get all tools from the manager
+        const tools = await clientManager.getAllTools();
+
+        logger.debug(`Received tools: ${tools.map((t) => t.name)}`);
 
         // Update system context with available tools
         //llmService.updateSystemContext(tools);
 
         logger.info(
-            `Loaded ${Object.keys(tools).length} tools from ${mcpClientManager.getClients().size} MCP servers\n`
+            `Loaded ${tools.length} tools from ${clientManager.getClients().size} tool providers\n`
         );
         logger.info('AI Agent initialized successfully!', null, 'green');
         // Create readline interface

@@ -1,14 +1,14 @@
 {
-    "name": "mcp-connector",
+    "name": "saiki",
     "version": "0.1.0",
-    "description": "AI-powered CLI for interacting with MCP servers using natural language",
+    "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
-    "main": "dist/index.js",
+    "main": "dist/app/index.js",
     "scripts": {
         "clean": "rimraf dist",
         "prebuild": "npm run lint",
         "build": "npm run clean && tsc",
-        "start": "node dist/index.js",
+        "start": "node dist/app/index.js",
         "dev": "tsc --watch",
         "lint": "eslint . --ext .ts",
         "lint:fix": "eslint . --ext .ts --fix",
@@ -39,6 +39,7 @@
         "express": "^4.18.2",
         "openai": "^4.89.0",
         "ora": "^7.0.1",
+        "puppeteer-core": "^24.4.0",
         "readline-sync": "^1.4.10",
         "winston": "^3.17.0",
         "zod": "^3.22.4"

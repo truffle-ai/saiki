@@ -4,8 +4,7 @@ import { z } from 'zod';
 import { McpTool } from '../ai/types.js';
 import { logger } from '../utils/logger.js';
 import { IMCPClientWrapper } from './types.js';
-import { McpServerConfig } from '../server/config.js';
-import { StdioServerConfig } from '../server/config.js';
+import { McpServerConfig, StdioServerConfig } from '../config/types.js';
 
 const ToolsListSchema = z.object({
     tools: z.array(
@@ -19,7 +18,7 @@ const ToolsListSchema = z.object({
 });
 
 /**
- * Connection manager for MCP clients
+ * Wrapper on top of Client class provided in model context protocol SDK, to add additional metadata about the server
  */
 export class MCPClientWrapper implements IMCPClientWrapper {
     private client: Client | null = null;
@@ -139,20 +138,12 @@ export class MCPClientWrapper implements IMCPClientWrapper {
         }
     }
 
-    async listPrompts(): Promise<string[]> {
-        return [];
-    }
-    async getPrompt(name: string, args?: any): Promise<string> {
-        return '';
-    }
-
-    async listResources(): Promise<string[]> {
-        return [];
-    }
-    async readResource(url: string): Promise<string> {
-        return '';
-    }
-
+    /**
+     * Call a tool with given name and arguments
+     * @param name Tool name
+     * @param args Tool arguments
+     * @returns Result of the tool execution
+     */
     async callTool(name: string, args: any): Promise<any> {
         try {
             logger.debug(`Calling tool '${name}' with args: ${JSON.stringify(args, null, 2)}`);
@@ -162,7 +153,7 @@ export class MCPClientWrapper implements IMCPClientWrapper {
             if (typeof args === 'string') {
                 try {
                     toolArgs = JSON.parse(args);
-                } catch (e) {
+                } catch {
                     // If it's not valid JSON, keep as string
                     toolArgs = { input: args };
                 }
@@ -183,13 +174,16 @@ export class MCPClientWrapper implements IMCPClientWrapper {
         }
     }
 
-    async listTools(): Promise<McpTool[]> {
+    /**
+     * Get the list of tools provided by this client
+     * @returns Array of available tools
+     */
+    async getTools(): Promise<McpTool[]> {
         try {
             const response = await this.client.request(
                 { method: 'tools/list', params: {} },
                 ToolsListSchema
             );
-            // logger.debug('Tools/list response:', response);
             return response.tools.map((tool) => ({
                 name: tool.name,
                 description: tool.description || 'No description available',
@@ -258,3 +252,4 @@ export class MCPClientWrapper implements IMCPClientWrapper {
         );
     }
 }
+

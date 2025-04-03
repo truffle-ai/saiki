@@ -1,33 +1,47 @@
-import { McpServerConfig } from '../server/config.js';
+import { McpServerConfig } from '../config/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpTool } from '../ai/types.js';
 
-// Defining types as any because we don't know what the actual types are
+// Defining types as any because we can't import the types from the SDK
 export type VercelMCPClient = any;
 export type VercelMCPTool = any;
 
 export type IMCPClient = Client | VercelMCPClient;
 
-export interface IMCPClientWrapper {
+/**
+ * Interface for any provider of tools
+ */
+export interface ToolProvider {
+  /**
+   * Get the list of tools provided by this client
+   */
+  getTools(): Promise<McpTool[]>;
+  
+  /**
+   * Call a specific tool with the given arguments
+   */
+  callTool(toolName: string, args: any): Promise<any>;
+  
+  /**
+   * Disconnect the client (if applicable)
+   */
+  disconnect?(): Promise<void>;
+}
+
+/**
+ * Interface for MCP clients specifically, that can provide tools
+ */
+export interface IMCPClientWrapper extends ToolProvider {
     // Connection Management
     connect(config: McpServerConfig, serverName: string): Promise<IMCPClient>;
-    connectViaStdio(
-        command: string,
-        args: string[],
-        env?: Record<string, string>,
-        serverAlias?: string
-    ): Promise<IMCPClient>;
-    disconnect(): Promise<void>;
 
     // Prompt Management
-    listPrompts(): Promise<string[]>;
-    getPrompt(name: string, args?: any): Promise<string>;
+    // listPrompts(): Promise<string[]>;
+    // getPrompt(name: string, args?: any): Promise<string>;
 
     // Resource Management
-    listResources(): Promise<string[]>;
-    readResource(url: string): Promise<string>;
-
-    // Tool Management
-    callTool(name: string, args: any): Promise<any>;
-    listTools(): Promise<McpTool[]>;
+    // listResources(): Promise<string[]>;
+    // readResource(url: string): Promise<string>;
 }
+
+

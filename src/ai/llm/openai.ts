@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { MCPClientManager } from '../../client/manager.js';
+import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
 import { McpTool } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
@@ -36,10 +36,10 @@ export class OpenAIService implements ILLMService {
     private conversationHistory: any[] = [];
     private systemPromptTemplate: string;
 
-    constructor(mcpClientManager: MCPClientManager, apiKey: string, model?: string, options?: any) {
+    constructor(clientManager: ClientManager, apiKey: string, model?: string, options?: any) {
         this.model = model || 'gpt-4o-mini';
         this.openai = new OpenAI({ apiKey });
-        this.toolHelper = new ToolHelper(mcpClientManager);
+        this.toolHelper = new ToolHelper(clientManager);
         this.systemPromptTemplate =
             options?.systemPromptTemplate || DETAILED_SYSTEM_PROMPT_TEMPLATE;
 

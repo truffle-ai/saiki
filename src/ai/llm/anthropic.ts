@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { MCPClientManager } from '../../client/manager.js';
+import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
 import { McpTool } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
@@ -15,10 +15,10 @@ export class AnthropicService implements ILLMService {
     private messages: any[] = [];
     private systemContext: string = '';
 
-    constructor(mcpClientManager: MCPClientManager, apiKey: string, model?: string, options?: any) {
-        this.model = model || 'claude-3-sonnet-20240229';
+    constructor(clientManager: ClientManager, apiKey: string, model?: string, _options?: any) {
+        this.model = model || 'claude-3-7-sonnet-20250219';
         this.anthropic = new Anthropic({ apiKey });
-        this.toolHelper = new ToolHelper(mcpClientManager);
+        this.toolHelper = new ToolHelper(clientManager);
     }
 
     getAllTools(): Promise<any> {

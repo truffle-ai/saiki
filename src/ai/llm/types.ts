@@ -40,14 +40,4 @@ export interface ILLMService {
     getConfig(): { provider: string; model: string } | { model: VercelLLM };
 }
 
-/**
- * Configuration for creating an LLM service
- */
-export interface LLMConfig {
-    provider: string;
-    apiKey: string;
-    model?: string;
-    options?: Record<string, any>;
-}
-
 export type VercelLLM = any;

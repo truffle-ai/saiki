@@ -3,7 +3,7 @@
 import { logger } from '../utils/logger.js';
 import { experimental_createMCPClient as createMCPClient } from 'ai';
 import { Experimental_StdioMCPTransport as StdioMCPTransport } from 'ai/mcp-stdio';
-import { McpServerConfig, StdioServerConfig } from '../server/config.js';
+import { McpServerConfig, StdioServerConfig } from '../config/types.js';
 import { VercelMCPClient, VercelMCPTool, IMCPClientWrapper } from '../client/types.js';
 
 export class VercelMCPClientWrapper implements IMCPClientWrapper {
@@ -109,19 +109,19 @@ export class VercelMCPClientWrapper implements IMCPClientWrapper {
         }
     }
 
-    async listPrompts(): Promise<string[]> {
-        return [];
-    }
-    async getPrompt(name: string, args?: any): Promise<string> {
-        return '';
-    }
+    // async listPrompts(): Promise<string[]> {
+    //     return [];
+    // }
+    // async getPrompt(name: string, args?: any): Promise<string> {
+    //     return '';
+    // }
 
-    async listResources(): Promise<string[]> {
-        return [];
-    }
-    async readResource(url: string): Promise<string> {
-        return '';
-    }
+    // async listResources(): Promise<string[]> {
+    //     return [];
+    // }
+    // async readResource(url: string): Promise<string> {
+    //     return '';
+    // }
 
     async callTool(name: string, args: any): Promise<any> {
         try {
@@ -153,7 +153,7 @@ export class VercelMCPClientWrapper implements IMCPClientWrapper {
         }
     }
 
-    async listTools(): Promise<VercelMCPTool[]> {
+    async getTools(): Promise<VercelMCPTool[]> {
         return this.client.tools();
     }
 

@@ -5,15 +5,15 @@
             "command": "npx",
             "args": ["-y", "@wonderwhy-er/desktop-commander"]
         },
-        "filesystem": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem"]
-        },
         "puppeteer": {
             "type": "stdio",
             "command": "node",
-            "args": ["/Users/karaj/.mcp/puppeteer/index.js"]
+            "args": ["--loader", "ts-node/esm", "src/servers/puppeteerServer.ts"]
+        },
+        "dockerServer": {
+            "type": "stdio",
+            "command": "node",
+            "args": ["--loader", "ts-node/esm", "src/servers/dockerServer.ts"]
         }
     },
     "llm": {

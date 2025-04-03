@@ -1,4 +1,4 @@
-import { MCPClientManager } from '../../client/manager.js';
+import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
 import { McpTool } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
@@ -17,9 +17,9 @@ export class VercelLLMService implements ILLMService {
     private messages: CoreMessage[] = [];
     private systemContext: string = '';
 
-    constructor(mcpClientManager: MCPClientManager, model: VercelLLM) {
+    constructor(clientManager: ClientManager, model: VercelLLM) {
         this.model = model;
-        this.toolHelper = new ToolHelper(mcpClientManager);
+        this.toolHelper = new ToolHelper(clientManager);
     }
 
     getAllTools(): Promise<any> {

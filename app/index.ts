@@ -3,10 +3,10 @@ import { existsSync } from 'fs';
 import { Command } from 'commander';
 import path from 'path';
 import dotenv from 'dotenv';
-import { logger } from './utils/logger.js';
-import { initializeAiCli } from './ai/cli.js';
-import { loadConfigFile, AgentConfig } from './server/config.js';
-
+import { logger } from '../src/utils/logger.js';
+import { initializeAiCli } from './cli.js';
+import { loadConfigFile } from '../src/config/loader.js';
+import { AgentConfig } from '../src/config/types.js';
 // Load environment variables
 dotenv.config();
 

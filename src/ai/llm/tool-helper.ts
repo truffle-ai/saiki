@@ -1,15 +1,15 @@
-import { MCPClientManager } from '../../client/manager.js';
-import { IMCPClientWrapper } from '../../client/types.js';
+import { ClientManager } from '../../client/manager.js';
+import { ToolProvider } from '../../client/types.js';
 import { logger } from '../../utils/logger.js';
 /**
  * Utility class to help with tool management and execution
  */
 export class ToolHelper {
-    private mcpClientManager: MCPClientManager;
-    private toolToClientMap: Map<string, IMCPClientWrapper> = new Map();
+    private clientManager: ClientManager;
+    private toolToClientMap: Map<string, ToolProvider> = new Map();
 
-    constructor(mcpClientManager: MCPClientManager) {
-        this.mcpClientManager = mcpClientManager;
+    constructor(clientManager: ClientManager) {
+        this.clientManager = clientManager;
     }
     /**
      * Get all available tools from all connected clients
@@ -17,14 +17,15 @@ export class ToolHelper {
     async getAllTools(): Promise<any> {
         let allTools: any = {};
 
-        for (const [serverName, client] of this.mcpClientManager.getClients()) {
+        for (const [serverName, client] of this.clientManager.getClients()) {
             try {
                 logger.debug(`Getting tools from ${serverName}`);
-                const toolList = await client.listTools();
-                logger.silly(`Tool list: ${JSON.stringify(toolList, null, 2)}`);
-
-                allTools = { ...allTools, ...toolList };
-                logger.debug(`Successfully got tools from ${serverName}`);
+                const toolList = await client.getTools();
+                for (const tool of toolList) {
+                    this.toolToClientMap.set(tool.name, client);
+                    allTools.push(tool);
+                }
+                logger.debug(`Updated tool list after getting tools: ${allTools}`);
             } catch (error) {
                 console.error(`Error getting tools from ${serverName}:`, error);
             }
