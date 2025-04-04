@@ -84,7 +84,7 @@ export class MCPClient implements ToolProvider {
         if (env) {
             logger.info('Environment:');
             Object.entries(env).forEach(([key, value]) => {
-                logger.info(`  ${key}=${value}`);
+                logger.info(`  ${key}= [value hidden]`);
             });
         }
         logger.info('=======================================\n');
