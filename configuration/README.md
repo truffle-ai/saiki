@@ -63,7 +63,7 @@ Tool servers can either be local servers (stdio) or remote servers (sse)
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `type` | string | Yes | The type of the server, needs to be 'stdio' |
+| `type` | string | Yes | The type of the server, needs to be 'sse' |
 | `url` | string | Yes | The url of the server |
 | `headers` | map | No | Optional headers for the url |
 
