@@ -17,6 +17,7 @@ Your command center for controlling computers, applications and services with na
 - [🔌 Extensions](#extensions)
 - [📚 Documentation](#documentation)
 - [🤝 Contributing](#contributing)
+- [⭐ Community & Support](#community--support)
 
 ## 🌟 Overview
 
