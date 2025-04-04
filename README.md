@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/Backed_by-Y_Combinator-orange" alt="Backed by YC">
 </p>
 
-> Your command center for controlling computers, applications and services with natural language - connect once, command everything.
+Your command center for controlling computers, applications and services with natural language - connect once, command everything.
 
 ## 📑 Table of Contents
 - [🌟 Overview](#overview)
