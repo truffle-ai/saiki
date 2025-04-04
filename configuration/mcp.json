@@ -17,10 +17,6 @@
                 "ts-node/esm",
                 "src/servers/puppeteerServer.ts"
             ]
-        },
-        "github": {
-            "type": "sse",
-            "url": "https://mcp.composio.dev/github/repulsive-itchy-alarm-JdUKPY"
         }
     },
     "llm": {
