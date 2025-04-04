@@ -35,8 +35,15 @@ export class MCPClient implements ToolProvider {
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
         if (config.type === 'stdio') {
             const stdioConfig: StdioServerConfig = config;
+            
+            // Auto-resolve npx path on Windows
+            let command = stdioConfig.command;
+            if (process.platform === 'win32' && command === 'npx') {
+                command = 'C:\\Program Files\\nodejs\\npx.cmd';
+            }
+                
             return this.connectViaStdio(
-                stdioConfig.command,
+                command,
                 stdioConfig.args,
                 stdioConfig.env,
                 serverName
