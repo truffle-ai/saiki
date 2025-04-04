@@ -85,7 +85,7 @@ async function startAiClient() {
         await initializeAiCli(config, connectionMode);
     } catch (error) {
         logger.error(
-            `Error: Failed to initialize AI CLI from config file${normalizedConfigPath}: ${JSON.stringify(
+            `Error: Failed to initialize AI CLI from config file ${normalizedConfigPath}: ${JSON.stringify(
                 error,
                 null,
                 2
