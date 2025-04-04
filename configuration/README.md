@@ -23,6 +23,7 @@ The configuration file has two main sections:
 {
     "mcpServers": {
         "github": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-github"],
             "env": {
@@ -30,6 +31,7 @@ The configuration file has two main sections:
             }
         },
         "filesystem": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
         }
@@ -50,6 +52,7 @@ Each entry under `mcpServers` defines a tool server to connect to. The key (e.g.
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
+| `type` | string | Yes | The type of the server |
 | `command` | string | Yes | The executable to run |
 | `args` | string[] | No | Array of command-line arguments |
 | `env` | object | No | Environment variables for the server process |
@@ -76,6 +79,10 @@ You can specify the API key directly or reference an environment variable:
 "apiKey": "env:OPENAI_API_KEY"  // Reference to environment variable
 ```
 
+### Windows Support
+
+On Windows systems, some commands like `npx` may have different paths. The system attempts to automatically detect and uses the correct paths for these commands on Windows. If you run into any issues during server initialization, you may need to adjust the path to your `npx.cmd` in `src/client/mcp-client.ts`
+
 ## Supported Tool Servers
 
 Here are some commonly used MCP-compatible tool servers:
@@ -84,6 +91,7 @@ Here are some commonly used MCP-compatible tool servers:
 
 ```json
 "github": {
+    "type": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-github"],
     "env": {
@@ -96,6 +104,7 @@ Here are some commonly used MCP-compatible tool servers:
 
 ```json
 "filesystem": {
+    "type": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
 }
@@ -105,6 +114,7 @@ Here are some commonly used MCP-compatible tool servers:
 
 ```json
 "terminal": {
+    "type": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-terminal"]
 }
@@ -114,8 +124,22 @@ Here are some commonly used MCP-compatible tool servers:
 
 ```json
 "desktop": {
+    "type": "stdio",
     "command": "npx",
     "args": ["-y", "@wonderwhy-er/desktop-commander"]
+}
+```
+
+### Custom Server
+
+```json
+"custom": {
+    "type": "stdio",
+    "command": "node",
+    "args": ["--loader", "ts-node/esm", "src/servers/customServer.ts"],
+    "env": {
+        "API_KEY": "your-api-key"
+    }
 }
 ```
 
@@ -138,6 +162,7 @@ Here's a comprehensive configuration example using multiple tool servers:
 {
     "mcpServers": {
         "github": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-github"],
             "env": {
@@ -145,18 +170,22 @@ Here's a comprehensive configuration example using multiple tool servers:
             }
         },
         "filesystem": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
         },
         "terminal": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-terminal"]
         },
         "desktop": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@wonderwhy-er/desktop-commander"]
         },
         "custom": {
+            "type": "stdio",
             "command": "node",
             "args": ["--loader", "ts-node/esm", "src/servers/customServer.ts"],
             "env": {
