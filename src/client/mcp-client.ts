@@ -80,7 +80,7 @@ export class MCPClient implements ToolProvider {
         if (env) {
             logger.info('Environment:');
             Object.entries(env).forEach(([key, value]) => {
-                logger.info(`  ${key}=${value}`);
+                logger.info(`  ${key}= [value hidden]`);
             });
         }
         logger.info('=======================================\n');
@@ -90,13 +90,17 @@ export class MCPClient implements ToolProvider {
             : `${command} ${args.join(' ')}`;
         logger.info(`Connecting to MCP server: ${serverName}`);
 
-        // Create transport for stdio connection
-        // Note: StdioClientTransport doesn't directly expose the childProcess
-        // so we have to rely on transport events
+        // Create a properly expanded environment by combining process.env with the provided env
+        const expandedEnv = {
+            ...process.env,
+            ...(env || {})
+        };
+
+        // Create transport for stdio connection with expanded environment
         this.transport = new StdioClientTransport({
             command,
             args,
-            env,
+            env: expandedEnv as Record<string, string>,
         });
 
         // We'll set server spawned to true after successful connection
