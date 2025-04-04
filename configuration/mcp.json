@@ -1,22 +1,8 @@
 {
     "mcpServers": {
-        "filesystem": {
-            "type": "stdio",
-            "command": "npx",
-            "args": [
-                "-y", 
-                "@modelcontextprotocol/server-filesystem", 
-                "."
-            ]
-        },
-        "puppeteer": {
-            "type": "stdio",
-            "command": "node",
-            "args": [
-                "--loader",
-                "ts-node/esm",
-                "src/servers/puppeteerServer.ts"
-            ]
+        "github_remote": {
+            "type": "sse",
+            "url": "https://mcp.composio.dev/github/repulsive-itchy-alarm-JdUKPY"
         }
     },
     "llm": {

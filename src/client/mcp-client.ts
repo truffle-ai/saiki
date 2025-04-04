@@ -1,8 +1,9 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
-import { McpServerConfig, StdioServerConfig } from '../config/types.js';
+import { McpServerConfig, StdioServerConfig, SSEServerConfig } from '../config/types.js';
 import { ToolSet } from '../ai/types.js';
 import { ToolProvider } from './types.js';
 const ToolsListSchema = z.object({
@@ -49,9 +50,12 @@ export class MCPClient implements ToolProvider {
                 serverName
             );
         }
-        if (config.type === 'sse') {
-            throw new Error('SSE connections are not yet supported');
-            //return this.connectViaSSE(config.url, config.headers);
+        else if (config.type === 'sse') {
+            const sseConfig: SSEServerConfig = config;
+            return this.connectViaSSE(sseConfig.url, sseConfig.headers);
+        }
+        else {
+            throw new Error(`Unsupported server type`);
         }
     }
 
@@ -90,26 +94,18 @@ export class MCPClient implements ToolProvider {
             : `${command} ${args.join(' ')}`;
         logger.info(`Connecting to MCP server: ${serverName}`);
 
-        // Create transport for stdio connection
-        // Note: StdioClientTransport doesn't directly expose the childProcess
-        // so we have to rely on transport events
         this.transport = new StdioClientTransport({
             command,
             args,
             env,
         });
 
-        // We'll set server spawned to true after successful connection
-
-        // Create client
-        this.client = new Client(
-            { name: 'MCP-Example-Client', version: '1.0.0' },
-            {
-                capabilities: {
-                    tools: {},
-                },
-            }
-        );
+        this.client = new Client({
+            name: 'Saiki-stdio-mcp-client',
+            version: '1.0.0'
+        }, {
+            capabilities: { tools: {} }
+        })
 
         try {
             logger.info('Establishing connection...');
@@ -117,13 +113,42 @@ export class MCPClient implements ToolProvider {
 
             // If connection is successful, we know the server was spawned
             this.serverSpawned = true;
-            logger.info(`✅ SERVER ${serverName} SPAWNED`);
+            logger.info(`✅ Stdio SERVER ${serverName} SPAWNED`);
             logger.info('Connection established!\n\n');
             this.isConnected = true;
 
             return this.client;
         } catch (error: any) {
             logger.error(`Failed to connect to MCP server ${serverName}:`, error.message);
+            throw error;
+        }
+    }
+
+    async connectViaSSE(url: string, headers: Record<string, string>): Promise<Client> {
+        logger.info(`Connecting to SSE MCP server at url: ${url}`);
+
+        this.transport = new SSEClientTransport(new URL(url));
+
+        this.client = new Client({
+            name: 'Saiki-sse-mcp-client',
+            version: '1.0.0'
+        }, {
+            capabilities: { tools: {} }
+        })
+
+        try {
+            logger.info('Establishing connection...');
+            await this.client.connect(this.transport);
+            // If connection is successful, we know the server was spawned
+            this.serverSpawned = true;
+            logger.info(`✅ SSE SERVER ${url} SPAWNED`);
+            logger.info('Connection established!\n\n');
+            this.isConnected = true;
+
+            return this.client;
+        }
+        catch (error: any) {
+            logger.error(`Failed to connect to SSE MCP server ${url}:`, error.message);
             throw error;
         }
     }
@@ -166,6 +191,7 @@ export class MCPClient implements ToolProvider {
             }
 
             // Call the tool with properly formatted arguments
+
             const result = await this.client.callTool({ name, arguments: toolArgs });
             logger.debug(`Tool '${name}' result: ${JSON.stringify(result, null, 2)}`);
 
@@ -191,7 +217,7 @@ export class MCPClient implements ToolProvider {
                 ToolsListSchema
             );
             return response.tools.reduce<ToolSet>((acc, tool) => {
-                acc[tool.name.toLowerCase()] = {
+                acc[tool.name] = {
                   description: tool.description,
                   parameters: tool.inputSchema,
                 };
