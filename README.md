@@ -4,6 +4,7 @@
   <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0">
   <img src="https://img.shields.io/badge/Node.js-16+-green.svg" alt="Node.js: 16+">
   <a href="https://discord.gg/GwxwQs8CN5"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord"></a>
+  <img src="https://img.shields.io/badge/Backed_by-Y_Combinator-orange" alt="Backed by YC">
 </p>
 
 > Your command center for controlling computers, applications and services with natural language - connect once, command everything.
@@ -20,14 +21,14 @@
 
 ## 🌟 Overview
 
-Saiki is an AI Agent that makes it easy to use computers, applications and services using natural language. You type what you want to do and Saiki figures out which tools to use and how to execute them correctly.
+Saiki is an AI Agent created by Truffle AI, that makes it easy to use computers, applications and services using natural language. You type what you want to do and Saiki figures out which tools to use and how to execute them correctly.
 
 What makes Saiki powerful for developers:
 
-1. **Build Custom Agents**: Connect one or more tools to create specialized agents for your specific workflows and domains. Saiki's modular design means you can add exactly the capabilities you need.
+1. **Flexible Integrations**: Easily connect multiple existing systems and services to Saiki using Model Context Protocol (MCP) servers. Integrate with GitHub, filesystem operations, terminal commands, and more without complex setup. Saiki's modular design means you can add exactly the capabilities you need. More on this [here](https://github.com/truffle-ai/saiki/edit/release/docs/README.md#-extensions)
 
-2. **Flexible Integration**: Easily connect to existing systems and services using the Model Context Protocol (MCP). Integrate with GitHub, filesystem operations, terminal commands, and more without complex setups.
-
+2. **In-built Orchestration**: Once you've configured your servers and start using Saiki, it will automatically figure out when and how to use the tools to accomplish your task.
+   
 3. **Customizable Interfaces**: Create tailored interfaces for your specific use cases - from CLI to web interfaces. Saiki's architecture separates the AI logic from the presentation layer.
 
 Saiki eliminates the need to learn different syntaxes or switch between multiple tools. Whether you're automating development workflows, creating specialized assistants, or building productivity tools, Saiki provides the foundation you need.
@@ -37,18 +38,19 @@ Saiki eliminates the need to learn different syntaxes or switch between multiple
 ### Prerequisites
 - Node.js 16+
 - npm
-- OpenAI API key
+- OpenAI/Anthropic API key
 
 ### Quick Start
 
 1. **Install and build:**
 ```bash
-git clone <repository-url> && cd saiki
+git clone https://github.com/truffle-ai/saiki/ && cd saiki
 npm install
 npm run build
 ```
 
 2. **Configure your API key:**
+Create a .env file and add your API key
 ```bash
 echo "OPENAI_API_KEY=your_openai_api_key_here" > .env
 ```
@@ -100,6 +102,7 @@ Saiki uses a simple JSON configuration file (`configuration/mcp.json`) to define
 {
     "mcpServers": {
         "github": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-github"],
             "env": {
@@ -107,6 +110,7 @@ Saiki uses a simple JSON configuration file (`configuration/mcp.json`) to define
             }
         },
         "filesystem": {
+            "type": "stdio",
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
         }
@@ -123,7 +127,7 @@ Saiki uses a simple JSON configuration file (`configuration/mcp.json`) to define
 }
 ```
 
-Use a custom configuration file:
+You can use `configuration/mcp.json` directly, or you can use a custom configuration file:
 ```bash
 npm start -- --config-file path/to/your/config.json
 ```
@@ -132,7 +136,7 @@ npm start -- --config-file path/to/your/config.json
 
 Saiki's power comes from its extensibility. You can easily add new capabilities by:
 
-1. **Using Existing Tool Servers**: Connect pre-built MCP-compatible servers like GitHub, filesystem, terminal, etc.
+1. **Using Existing Tool Servers**: Connect pre-built MCP-compatible servers for services GitHub, filesystem, terminal, etc. [Smithery.ai](https://smithery.ai/) has a large set of pre-built MCP servers.
 
 2. **Creating Custom Servers**: Build your own tool servers to add specialized functionality.
 
