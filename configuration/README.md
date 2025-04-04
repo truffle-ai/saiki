@@ -48,14 +48,24 @@ The configuration file has two main sections:
 
 Each entry under `mcpServers` defines a tool server to connect to. The key (e.g., "github", "filesystem") is used as a friendly name for the server.
 
-### Server Options
+Tool servers can either be local servers (stdio) or remote servers (sse)
+
+### Stdio Server Options
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `type` | string | Yes | The type of the server |
+| `type` | string | Yes | The type of the server, needs to be 'stdio' |
 | `command` | string | Yes | The executable to run |
 | `args` | string[] | No | Array of command-line arguments |
 | `env` | object | No | Environment variables for the server process |
+
+### SSE Server Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `type` | string | Yes | The type of the server, needs to be 'stdio' |
+| `url` | string | Yes | The url of the server |
+| `headers` | map | No | Optional headers for the url |
 
 ## LLM Configuration
 
@@ -81,7 +91,7 @@ You can specify the API key directly or reference an environment variable:
 
 ### Windows Support
 
-On Windows systems, some commands like `npx` may have different paths. The system attempts to automatically detect and uses the correct paths for these commands on Windows. If you run into any issues during server initialization, you may need to adjust the path to your `npx.cmd` in `src/client/mcp-client.ts`
+On Windows systems, some commands like `npx` may have different paths. The system attempts to automatically detect and uses the correct paths for these commands on Windows. If you run into any issues during server initialization, you may need to adjust the path to your `npx` command.
 
 ## Supported Tool Servers
 
@@ -140,6 +150,19 @@ Here are some commonly used MCP-compatible tool servers:
     "env": {
         "API_KEY": "your-api-key"
     }
+}
+```
+
+### Remote Server
+
+This example uses a remote github server provided by composio.
+The URL is just a placeholder which won't work out of the box since the URL is customized per user.
+Go to mcp.composio.dev to get your own MCP server URL.
+
+```json
+"custom": {
+    "type": "sse",
+    "url": "https://mcp.composio.dev/github/repulsive-itchy-alarm-ABCDE"
 }
 ```
 
