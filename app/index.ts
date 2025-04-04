@@ -33,7 +33,7 @@ if (!existsSync('.env')) {
 program
     .name('mcp-cli')
     .description('AI-powered CLI for interacting with MCP servers')
-    .option('-c, --config-file <path>', 'Path to config file', 'configuration/mcp.json')
+    .option('-c, --config-file <path>', 'Path to config file', 'configuration/agent.yml')
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .version('0.1.0');

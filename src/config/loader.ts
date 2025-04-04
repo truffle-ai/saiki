@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { parse as parseYaml } from 'yaml';
 import { AgentConfig } from './types.js';
 
 /**
@@ -16,10 +17,15 @@ export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
 
         // Read and parse the config file
         const fileContent = await fs.readFile(absolutePath, 'utf-8');
-        const config = JSON.parse(fileContent);
-
-        return config;
+        
+        try {
+            // Parse YAML content
+            const config = parseYaml(fileContent);
+            return config;
+        } catch (parseError) {
+            throw new Error(`Failed to parse YAML: ${parseError.message}`);
+        }
     } catch (error) {
-        throw new Error(`Failed to load config file: ${error}`);
+        throw new Error(`Failed to load config file: ${error instanceof Error ? error.message : String(error)}`);
     }
 } 
