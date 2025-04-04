@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0">
   <img src="https://img.shields.io/badge/Node.js-16+-green.svg" alt="Node.js: 16+">
   <a href="https://discord.gg/GwxwQs8CN5"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord"></a>
-  <img src="https://img.shields.io/badge/Backed_by-Y_Combinator-orange" alt="Backed by YC">
+  <a href="https://trytruffle.ai"><img src="https://img.shields.io/badge/Backed_by-Y_Combinator-orange" alt="Backed by YC"></a>
 </p>
 
 Your command center for controlling computers, applications and services with natural language - connect once, command everything.
@@ -17,11 +17,10 @@ Your command center for controlling computers, applications and services with na
 - [🔌 Extensions](#extensions)
 - [📚 Documentation](#documentation)
 - [🤝 Contributing](#contributing)
-- [📜 License](#license)
 
 ## 🌟 Overview
 
-Saiki is an AI Agent created by Truffle AI, that makes it easy to use computers, applications and services using natural language. You type what you want to do and Saiki figures out which tools to use and how to execute them correctly.
+Saiki is an AI Agent that makes it easy to use computers, applications and services using natural language. You type what you want to do and Saiki figures out which tools to use and how to execute them correctly.
 
 What makes Saiki powerful for developers:
 
@@ -174,6 +173,14 @@ Resources:
 - [MCP Documentation](https://modelcontextprotocol.io/introduction)
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 
-## 📜 License
+## ⭐ Community & Support
 
-Saiki is licensed under the Elastic License 2.0 (ELv2). See the [LICENSE](./LICENSE) file for details.
+Saiki was built by the team at [Truffle AI](https://trytruffle.ai).
+
+Saiki is better with you! Join our Discord whether you want to say hello, share your projects, ask questions, or get help setting things up:
+
+[![Join our Discord server](https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat)](https://discord.gg/GwxwQs8CN5)
+
+If you find Saiki useful, please consider giving it a star on GitHub! 
+
+
