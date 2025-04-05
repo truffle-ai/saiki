@@ -28,8 +28,8 @@ export interface ILLMService {
     // Primary method for handling a user interaction from start to finish
     completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string>;
 
-    // Update the system message/context with available tools
-    updateSystemContext(tools: Tool[] | any): void;
+    // Update the system message/context
+    updateSystemContext(newSystemPrompt: string): void;
 
     // Clear conversation history
     resetConversation(): void;

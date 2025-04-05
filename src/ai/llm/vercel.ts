@@ -17,31 +17,23 @@ export class VercelLLMService implements ILLMService {
     private messages: CoreMessage[] = [];
     private systemContext: string = '';
 
-    constructor(clientManager: ClientManager, model: VercelLLM) {
+    constructor(
+        clientManager: ClientManager, 
+        model: VercelLLM,
+        systemPrompt: string
+    ) {
         this.model = model;
         this.clientManager = clientManager;
+        this.systemContext = systemPrompt;
+        logger.debug(`[VercelLLMService] System context: ${this.systemContext}`);
     }
 
     getAllTools(): Promise<ToolSet> {
         return this.clientManager.getAllTools();
     }
 
-    updateSystemContext(tools: ToolSet): void {
-        // const toolDescriptions = Object.entries(tools)
-        //     .map(([toolName, tool]) => {
-        //         let description = `- ${toolName}: ${tool.description || 'No description provided'}`;
-        //         if (tool.parameters && Object.keys(tool.parameters).length > 0) {
-        //             description += '\n  Parameters:';
-        //             for (const [paramName, paramRaw] of Object.entries(tool.parameters)) {
-        //                 const param = paramRaw as any;
-        //                 description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
-        //             }
-        //         }
-        //         return description;
-        //     })
-        //     .join('\n');
-
-        this.systemContext = `You are Saiki, a helpful AI assistant with access to tools.\n\nUse these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.`;
+    updateSystemContext(newSystemPrompt: string): void {
+        this.systemContext = newSystemPrompt;
     }
 
     formatTools(tools: ToolSet): VercelToolSet {

@@ -19,4 +19,10 @@ mcpServers:
 llm:
   provider: openai
   model: gpt-4o-mini
+  # you can update the system prompt to change the behavior of the llm
+  systemPrompt: |
+    You are Saiki, a helpful AI assistant with access to tools.
+    Use these tools when appropriate to answer user queries.
+    You can use multiple tools in sequence to solve complex problems.
+    After each tool result, determine if you need more information or can provide a final answer.
   apiKey: env:OPENAI_API_KEY

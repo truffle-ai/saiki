@@ -53,10 +53,17 @@ function _createLLMService(
     
     switch (config.provider.toLowerCase()) {
         case 'openai':
-            return new OpenAIService(clientManager, apiKey, config.model, config.providerOptions);
+            return new OpenAIService(
+                clientManager, 
+                config.systemPrompt,    
+                apiKey, 
+                config.model,
+                config.providerOptions
+            );
         case 'anthropic':
             return new AnthropicService(
                 clientManager,
+                config.systemPrompt,
                 apiKey,
                 config.model,
                 config.providerOptions
@@ -82,7 +89,7 @@ function _createVercelLLMService(
     clientManager: ClientManager
 ): VercelLLMService {
     const model: VercelLLM = _createVercelModel(config.provider, config.model);
-    return new VercelLLMService(clientManager, model);
+    return new VercelLLMService(clientManager, model, config.systemPrompt);
 }
 
 

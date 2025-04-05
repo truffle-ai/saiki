@@ -41,6 +41,7 @@ export type ServerConfigs = Record<string, McpServerConfig>;
 export type LLMConfig = {
     provider: string;
     model: string;
+    systemPrompt: string;
     apiKey?: string;
     providerOptions?: Record<string, any>;
 };

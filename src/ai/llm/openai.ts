@@ -5,8 +5,6 @@ import { ToolSet } from '../types.js';
 import { logger } from '../../utils/logger.js';
 
 // System prompt constants
-const INITIAL_SYSTEM_PROMPT =
-    'You are an AI assistant with access to MCP tools from multiple servers. Your job is to help users accomplish their tasks using the available tools. You can chain multiple tools together to solve complex problems. Always analyze each tool result carefully to determine next steps.';
 
 const DETAILED_SYSTEM_PROMPT_TEMPLATE = `You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks by calling appropriate tools.
 
@@ -35,58 +33,28 @@ export class OpenAIService implements ILLMService {
     private conversationHistory: any[] = [];
     private systemPromptTemplate: string;
 
-    constructor(clientManager: ClientManager, apiKey: string, model?: string, options?: any) {
+    constructor(
+        clientManager: ClientManager, 
+        systemPrompt: string,
+        apiKey: string, 
+        model?: string,
+        providerOptions?: any
+    ) {
         this.model = model || 'gpt-4o-mini';
         this.openai = new OpenAI({ apiKey });
         this.clientManager = clientManager;
-        this.systemPromptTemplate =
-            options?.systemPromptTemplate || DETAILED_SYSTEM_PROMPT_TEMPLATE;
+        this.systemPromptTemplate = systemPrompt || DETAILED_SYSTEM_PROMPT_TEMPLATE;
 
         // Initialize with system message
-        this.conversationHistory = [{ role: 'system', content: INITIAL_SYSTEM_PROMPT }];
+        this.conversationHistory = [{ role: 'system', content: this.systemPromptTemplate }];
     }
 
     getAllTools(): Promise<ToolSet> {
         return this.clientManager.getAllTools();
     }
 
-    updateSystemContext(tools: ToolSet): void {
-        // // Create detailed tool descriptions as a flat list
-        // const toolDescriptions = Object.entries(tools)
-        //     .map(([toolName, tool]) => {
-        //         let description = `- ${toolName}: ${tool.description || 'No description provided'}`;
-        //         if (tool.parameters) {
-        //             // Type assertion for parameters
-        //             const jsonSchemaParams = tool.parameters as any;
-                    
-        //             if (jsonSchemaParams.properties && typeof jsonSchemaParams.properties === 'object') {
-        //                 description += '\n  Parameters:';
-        //                 for (const [paramName, paramRaw] of Object.entries(jsonSchemaParams.properties)) {
-        //                     // Type assertion to make TypeScript happy
-        //                     const param = paramRaw as any;
-        //                     description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
-        //                 }
-        //                 // Add required parameters info if available
-        //                 if (
-        //                     Array.isArray(jsonSchemaParams.required) &&
-        //                     jsonSchemaParams.required.length > 0
-        //                 ) {
-        //                     description += `\n  Required: ${jsonSchemaParams.required.join(', ')}`;
-        //                 }
-        //             }
-        //         }
-        //         return description;
-        //     })
-        //     .join('\n\n'); // Add extra line between tools for readability
-
-        // // Update the system message
-        // this.conversationHistory[0].content = this.systemPromptTemplate.replace(
-        //     'TOOL_DESCRIPTIONS',
-        //     toolDescriptions
-        // );
-
-        // Log the number of tools provided to help with debugging
-        // logger.info(`Included ${Object.keys(tools).length} tools in system context`);
+    updateSystemContext(newSystemPrompt: string): void {
+        this.systemPromptTemplate = newSystemPrompt;
     }
 
     async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {
