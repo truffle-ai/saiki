@@ -1,13 +1,13 @@
 # Configuration Guide
 
-Saiki uses a JSON configuration file to define tool servers and AI settings. This guide provides detailed information on all available configuration options.
+Saiki uses a YAML configuration file to define tool servers and AI settings. This guide provides detailed information on all available configuration options.
 
 ## Configuration File Location
 
-By default, Saiki looks for a configuration file at `configuration/mcp.json` in the project directory. You can specify a different location using the `--config-file` command-line option:
+By default, Saiki looks for a configuration file at `configuration/saiki.yml` in the project directory. You can specify a different location using the `--config-file` command-line option:
 
 ```bash
-npm start -- --config-file path/to/your/config.json
+npm start -- --config-file path/to/your/config.yml
 ```
 
 ## Configuration Structure
@@ -19,29 +19,27 @@ The configuration file has two main sections:
 
 ### Basic Example
 
-```json
-{
-    "mcpServers": {
-        "github": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-github"],
-            "env": {
-                "GITHUB_PERSONAL_ACCESS_TOKEN": "your-github-token"
-            }
-        },
-        "filesystem": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-        }
-    },
-    "llm": {
-        "provider": "openai",
-        "model": "gpt-4",
-        "apiKey": "env:OPENAI_API_KEY"
-    }
-}
+```yaml
+mcpServers:
+  github:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-github"
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: your-github-token
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+llm:
+  provider: openai
+  model: gpt-4
+  apiKey: env:OPENAI_API_KEY
 ```
 
 ## Tool Server Configuration
@@ -84,9 +82,9 @@ The `llm` section configures the AI provider settings.
 
 You can specify the API key directly or reference an environment variable:
 
-```json
-"apiKey": "sk-actual-api-key"  // Direct specification (not recommended)
-"apiKey": "env:OPENAI_API_KEY"  // Reference to environment variable
+```yaml
+apiKey: sk-actual-api-key  # Direct specification (not recommended)
+apiKey: env:OPENAI_API_KEY  # Reference to environment variable
 ```
 
 ### Windows Support
@@ -99,58 +97,63 @@ Here are some commonly used MCP-compatible tool servers:
 
 ### GitHub
 
-```json
-"github": {
-    "type": "stdio",
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-github"],
-    "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "your-github-token"
-    }
-}
+```yaml
+github:
+  type: stdio
+  command: npx
+  args:
+    - -y
+    - "@modelcontextprotocol/server-github"
+  env:
+    GITHUB_PERSONAL_ACCESS_TOKEN: your-github-token
 ```
 
 ### Filesystem
 
-```json
-"filesystem": {
-    "type": "stdio",
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-}
+```yaml
+filesystem:
+  type: stdio
+  command: npx
+  args:
+    - -y
+    - "@modelcontextprotocol/server-filesystem"
+    - .
 ```
 
 ### Terminal
 
-```json
-"terminal": {
-    "type": "stdio",
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-terminal"]
-}
+```yaml
+terminal:
+  type: stdio
+  command: npx
+  args:
+    - -y
+    - "@modelcontextprotocol/server-terminal"
 ```
 
 ### Desktop Commander
 
-```json
-"desktop": {
-    "type": "stdio",
-    "command": "npx",
-    "args": ["-y", "@wonderwhy-er/desktop-commander"]
-}
+```yaml
+desktop:
+  type: stdio
+  command: npx
+  args:
+    - -y
+    - "@wonderwhy-er/desktop-commander"
 ```
 
 ### Custom Server
 
-```json
-"custom": {
-    "type": "stdio",
-    "command": "node",
-    "args": ["--loader", "ts-node/esm", "src/servers/customServer.ts"],
-    "env": {
-        "API_KEY": "your-api-key"
-    }
-}
+```yaml
+custom:
+  type: stdio
+  command: node
+  args:
+    - --loader
+    - ts-node/esm
+    - src/servers/customServer.ts
+  env:
+    API_KEY: your-api-key
 ```
 
 ### Remote Server
@@ -159,11 +162,10 @@ This example uses a remote github server provided by composio.
 The URL is just a placeholder which won't work out of the box since the URL is customized per user.
 Go to mcp.composio.dev to get your own MCP server URL.
 
-```json
-"custom": {
-    "type": "sse",
-    "url": "https://mcp.composio.dev/github/repulsive-itchy-alarm-ABCDE"
-}
+```yaml
+github-remote:
+  type: sse
+  url: https://mcp.composio.dev/github/repulsive-itchy-alarm-ABCDE
 ```
 
 ## Command-Line Options
@@ -181,49 +183,46 @@ Saiki supports several command-line options:
 
 Here's a comprehensive configuration example using multiple tool servers:
 
-```json
-{
-    "mcpServers": {
-        "github": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-github"],
-            "env": {
-                "GITHUB_PERSONAL_ACCESS_TOKEN": "your-github-token"
-            }
-        },
-        "filesystem": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-        },
-        "terminal": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-terminal"]
-        },
-        "desktop": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@wonderwhy-er/desktop-commander"]
-        },
-        "custom": {
-            "type": "stdio",
-            "command": "node",
-            "args": ["--loader", "ts-node/esm", "src/servers/customServer.ts"],
-            "env": {
-                "API_KEY": "your-api-key"
-            }
-        }
-    },
-    "llm": {
-        "provider": "openai",
-        "model": "gpt-4",
-        "apiKey": "env:OPENAI_API_KEY",
-        "providerOptions": {
-            "temperature": 0.7,
-            "maxTokens": 1000
-        }
-    }
-}
+```yaml
+mcpServers:
+  github:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-github"
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: your-github-token
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+  terminal:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-terminal"
+  desktop:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@wonderwhy-er/desktop-commander"
+  custom:
+    type: stdio
+    command: node
+    args:
+      - --loader
+      - ts-node/esm
+      - src/servers/customServer.ts
+    env:
+      API_KEY: your-api-key
+llm:
+  provider: openai
+  model: gpt-4
+  apiKey: env:OPENAI_API_KEY
 ``` 

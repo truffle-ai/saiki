@@ -1,8 +1,8 @@
 # Saiki
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Status-Beta-orange" alt="Status: Beta">
   <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0">
-  <img src="https://img.shields.io/badge/Node.js-16+-green.svg" alt="Node.js: 16+">
   <a href="https://discord.gg/GwxwQs8CN5"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord"></a>
   <a href="https://trytruffle.ai"><img src="https://img.shields.io/badge/Backed_by-Y_Combinator-orange" alt="Backed by YC"></a>
 </p>
@@ -96,47 +96,43 @@ Here are some examples of what you can do with Saiki:
 
 ## ⚙️ Configuration
 
-Saiki uses a simple JSON configuration file (`configuration/mcp.json`) to define which tools you want to connect:
+Saiki uses a YAML configuration file (`configuration/saiki.yml`) to define which tools and LLM model you want to connect:
 
-```json
-{
-    "mcpServers": {
-        "github": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-github"],
-            "env": {
-                "GITHUB_PERSONAL_ACCESS_TOKEN": "your-github-token"
-            }
-        },
-        "filesystem": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-        }
-    },
-    "llm": {
-        "provider": "openai",
-        "model": "gpt-4",
-        "apiKey": "env:OPENAI_API_KEY",
-        "providerOptions": {
-            "temperature": 0.7,
-            "maxTokens": 1000
-        }
-    }
-}
+```yaml
+mcpServers:
+  github:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-github"
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: your-github-token
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+llm:
+  provider: openai
+  model: gpt-4
+  apiKey: env:OPENAI_API_KEY
 ```
 
-You can use `configuration/mcp.json` directly, or you can use a custom configuration file:
+You can use `configuration/saiki.yml` directly, or you can use a custom configuration file:
 ```bash
-npm start -- --config-file path/to/your/config.json
+npm start -- --config-file path/to/your/config.yml
 ```
+
+For detailed configuration options and examples, see the [Configuration Guide](./configuration/README.md).
 
 ## 🔌 Extensions
 
 Saiki's power comes from its extensibility. You can easily add new capabilities by:
 
-1. **Using Existing Tool Servers**: Connect pre-built MCP-compatible servers for services GitHub, filesystem, terminal, etc. [Smithery.ai](https://smithery.ai/) has a large set of pre-built MCP servers.
+1. **Using Existing Tool Servers**: Connect pre-built MCP-compatible servers for services GitHub, filesystem, terminal, etc. [Smithery.ai](https://smithery.ai/) has a large set of pre-built MCP servers. [Composio](https://mcp.composio.dev/) has MCP servers with in-built managed auth.
 
 2. **Creating Custom Servers**: Build your own tool servers to add specialized functionality.
 
@@ -153,7 +149,7 @@ For creating custom servers, check out the [MCP Documentation](https://github.co
 For more detailed information:
 
 - [Architecture Overview](./docs/architecture.md) - How Saiki works under the hood
-- [Configuration Guide](./configuration/configuration.md) - Detailed configuration options
+- [Configuration Guide](./configuration/README.md) - Detailed configuration options
 - [Example Usage](./docs/examples.md) - More usage examples
 - [Troubleshooting](./docs/troubleshooting.md) - Solutions to common issues
 - [Adding a New LLM Service](./src/ai/llm/README.md) - How to add support for new LLM providers

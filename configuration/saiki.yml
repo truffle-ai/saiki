@@ -1,0 +1,22 @@
+# describes the mcp servers to use
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+  puppeteer:
+    type: stdio
+    command: node
+    args:
+      - --loader
+      - ts-node/esm
+      - src/servers/puppeteerServer.ts
+
+# describes the llm configuration
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  apiKey: env:OPENAI_API_KEY

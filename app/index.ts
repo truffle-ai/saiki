@@ -31,9 +31,9 @@ if (!existsSync('.env')) {
 
 // Setup command line options
 program
-    .name('mcp-cli')
+    .name('saiki')
     .description('AI-powered CLI for interacting with MCP servers')
-    .option('-c, --config-file <path>', 'Path to config file', 'configuration/mcp.json')
+    .option('-c, --config-file <path>', 'Path to config file', 'configuration/saiki.yml')
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .version('0.1.0');
@@ -85,7 +85,7 @@ async function startAiClient() {
         await initializeAiCli(config, connectionMode);
     } catch (error) {
         logger.error(
-            `Error: Failed to initialize AI CLI from config file${normalizedConfigPath}: ${JSON.stringify(
+            `Error: Failed to initialize AI CLI from config file ${normalizedConfigPath}: ${JSON.stringify(
                 error,
                 null,
                 2
