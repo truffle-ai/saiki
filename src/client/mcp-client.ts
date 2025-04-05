@@ -127,8 +127,15 @@ export class MCPClient implements ToolProvider {
     async connectViaSSE(url: string, headers: Record<string, string>): Promise<Client> {
         logger.info(`Connecting to SSE MCP server at url: ${url}`);
 
-        this.transport = new SSEClientTransport(new URL(url));
-
+        this.transport = new SSEClientTransport(new URL(url), {
+            // For regular HTTP requests 
+            requestInit: {
+                headers: headers
+            }
+            // Need to implement eventSourceInit for SSE events.
+        });
+        
+        logger.debug(`[connectViaSSE] SSE transport: ${JSON.stringify(this.transport, null, 2)}`);
         this.client = new Client({
             name: 'Saiki-sse-mcp-client',
             version: '1.0.0'
