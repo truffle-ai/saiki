@@ -1,8 +1,8 @@
 # Saiki
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Status-Beta-orange" alt="Status: Beta">
   <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0">
-  <img src="https://img.shields.io/badge/Node.js-16+-green.svg" alt="Node.js: 16+">
   <a href="https://discord.gg/GwxwQs8CN5"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord"></a>
   <a href="https://trytruffle.ai"><img src="https://img.shields.io/badge/Backed_by-Y_Combinator-orange" alt="Backed by YC"></a>
 </p>
