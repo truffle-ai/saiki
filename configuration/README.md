@@ -168,19 +168,6 @@ github-remote:
   url: https://mcp.composio.dev/github/repulsive-itchy-alarm-ABCDE
 ```
 
-### Remote Server
-
-This example uses a remote github server provided by composio.
-The URL is just a placeholder which won't work out of the box since the URL is customized per user.
-Go to mcp.composio.dev to get your own MCP server URL.
-
-```json
-"custom": {
-    "type": "sse",
-    "url": "https://mcp.composio.dev/github/repulsive-itchy-alarm-ABCDE"
-}
-```
-
 ## Command-Line Options
 
 Saiki supports several command-line options:
