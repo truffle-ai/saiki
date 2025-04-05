@@ -13,37 +13,25 @@ export class AnthropicService implements ILLMService {
     private messages: any[] = [];
     private systemContext: string = '';
 
-    constructor(clientManager: ClientManager, apiKey: string, model?: string, _options?: any) {
+    constructor(
+        clientManager: ClientManager,
+        systemPrompt: string,
+        apiKey: string, 
+        model?: string, 
+        providerOptions?: any
+    ) {
         this.model = model || 'claude-3-7-sonnet-20250219';
         this.anthropic = new Anthropic({ apiKey });
         this.clientManager = clientManager;
+        this.systemContext = systemPrompt;
     }
 
     getAllTools(): Promise<any> {
         return this.clientManager.getAllTools();
     }
 
-    updateSystemContext(tools: ToolSet): void {
-        // Create a system context string for Anthropic modles
-        // They don't use a system message like OpenAI,
-        // but we can prepend this to the first user message
-
-        // const toolDescriptions = Object.entries(tools)
-        //     .map(([toolName, tool]) => {
-        //         let description = `- ${toolName}: ${tool.description || 'No description provided'}`;
-        //         if (tool.parameters && Object.keys(tool.parameters).length > 0) {
-        //             description += '\n  Parameters:';
-        //             for (const [paramName, paramRaw] of Object.entries(tool.parameters)) {
-        //                 // Type assertion to make TypeScript happy
-        //                 const param = paramRaw as any;
-        //                 description += `\n    - ${paramName}: ${param.description || 'No description'} ${param.type ? `(${param.type})` : ''}`;
-        //             }
-        //         }
-        //         return description;
-        //     })
-        //     .join('\n');
-
-        this.systemContext = `You are Saiki, a helpful AI assistant with access to tools.\n\nUse these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.`;
+    updateSystemContext(newSystemPrompt: string): void {
+        this.systemContext = newSystemPrompt;
     }
 
     async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {

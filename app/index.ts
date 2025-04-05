@@ -114,12 +114,19 @@ function validateAgentConfig(config: AgentConfig): void {
         config.llm = {
             provider: 'openai',
             model: 'gpt-4o-mini',
+            systemPrompt: 'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.',
             apiKey: 'env:OPENAI_API_KEY',
         };
     }
 
     if (!config.llm.provider || !config.llm.model) {
         throw new Error('LLM configuration must specify provider and model');
+    }
+    
+    // If no system prompt is provided, use a default one
+    if (!config.llm.systemPrompt) {
+        logger.info('No system prompt found, using default', null, 'yellow');
+        config.llm.systemPrompt = 'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.';
     }
 
     logger.info(
