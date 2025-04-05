@@ -4,7 +4,7 @@ Saiki uses a YAML configuration file to define tool servers and AI settings. Thi
 
 ## Configuration File Location
 
-By default, Saiki looks for a configuration file at `configuration/agent.yml` in the project directory. You can specify a different location using the `--config-file` command-line option:
+By default, Saiki looks for a configuration file at `configuration/saiki.yml` in the project directory. You can specify a different location using the `--config-file` command-line option:
 
 ```bash
 npm start -- --config-file path/to/your/config.yml

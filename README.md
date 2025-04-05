@@ -96,7 +96,7 @@ Here are some examples of what you can do with Saiki:
 
 ## ⚙️ Configuration
 
-Saiki uses a YAML configuration file (`configuration/agent.yml`) to define which tools you want to connect:
+Saiki uses a YAML configuration file (`configuration/saiki.yml`) to define which tools and LLM model you want to connect:
 
 ```yaml
 mcpServers:
@@ -121,7 +121,7 @@ llm:
   apiKey: env:OPENAI_API_KEY
 ```
 
-You can use `configuration/agent.yml` directly, or you can use a custom configuration file:
+You can use `configuration/saiki.yml` directly, or you can use a custom configuration file:
 ```bash
 npm start -- --config-file path/to/your/config.yml
 ```
