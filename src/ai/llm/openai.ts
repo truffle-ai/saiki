@@ -55,6 +55,11 @@ export class OpenAIService implements ILLMService {
 
     updateSystemContext(newSystemPrompt: string): void {
         this.systemPromptTemplate = newSystemPrompt;
+        if (this.conversationHistory.length === 0) {
+            this.conversationHistory.push({ role: 'system', content: this.systemPromptTemplate });
+        } else {
+            this.conversationHistory[0].content = this.systemPromptTemplate;
+        }
     }
 
     async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {
