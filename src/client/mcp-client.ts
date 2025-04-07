@@ -84,7 +84,7 @@ export class MCPClient implements ToolProvider {
         if (env) {
             logger.info('Environment:');
             Object.entries(env).forEach(([key, value]) => {
-                logger.info(`  ${key}= [value hidden]`);
+                logger.info(` ${key}=${value}`);
             });
         }
         logger.info('=======================================\n');
@@ -94,17 +94,10 @@ export class MCPClient implements ToolProvider {
             : `${command} ${args.join(' ')}`;
         logger.info(`Connecting to MCP server: ${serverName}`);
 
-        // Create a properly expanded environment by combining process.env with the provided env
-        const expandedEnv = {
-            ...process.env,
-            ...(env || {})
-        };
-
-        // Create transport for stdio connection with expanded environment
         this.transport = new StdioClientTransport({
             command,
             args,
-            env: expandedEnv as Record<string, string>,
+            env,
         });
 
         this.client = new Client({
