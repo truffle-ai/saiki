@@ -66,6 +66,8 @@ That's it! You're now ready to interact with Saiki through the command line.
 
 Prompt: "can you summarize my emails, convert it into highlights and send it to me on Slack?"
 
+This example uses the [Slack MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/slack) and the GMail MCP from [Composio](https://mcp.composio.dev/). Complete the setup in `configuration/examples/email_slack.yml` and then run:
+
 ```
 npm start -- --config-file .\configuration\examples\email_slack.yml
 ```
