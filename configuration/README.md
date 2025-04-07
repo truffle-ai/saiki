@@ -73,7 +73,7 @@ The `llm` section configures the AI provider settings.
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `provider` | string | Yes | AI provider (e.g., "openai", "anthropic") |
+| `provider` | string | Yes | AI provider (e.g., "openai", "anthropic", "google") |
 | `model` | string | Yes | The model to use |
 | `apiKey` | string | Yes | API key or environment variable reference |
 | `providerOptions` | object | No | Provider-specific options like temperature and maxTokens |
@@ -85,6 +85,30 @@ You can specify the API key directly or reference an environment variable:
 ```yaml
 apiKey: sk-actual-api-key  # Direct specification (not recommended)
 apiKey: env:OPENAI_API_KEY  # Reference to environment variable
+```
+
+#### Openai example
+```yaml
+llm:
+  provider: openai
+  model: gpt-4o
+  apiKey: env:OPENAI_API_KEY
+```
+
+#### Anthropic example
+```yaml
+llm:
+  provider: anthropic
+  model: claude-3-7-sonnet-20250219
+  apiKey: env:ANTHROPIC_API_KEY
+```
+
+#### Google example
+```yaml
+llm:
+  provider: google
+  model: gemini-1.5-pro
+  apiKey: env:GOOGLE_GENERATIVE_AI_API_KEY
 ```
 
 ### Windows Support

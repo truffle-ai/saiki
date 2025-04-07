@@ -3,7 +3,8 @@ import { ILLMService } from './types.js';
 import { LLMConfig } from '../../config/types.js';
 import { logger } from '../../utils/logger.js';
 import { openai } from '@ai-sdk/openai';
-import { anthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI, google } from '@ai-sdk/google';
+import { createAnthropic, anthropic } from '@ai-sdk/anthropic';
 import { VercelLLMService } from './vercel.js';
 import { VercelLLM } from './types.js';
 import { OpenAIService } from './openai.js';
@@ -79,6 +80,8 @@ function _createVercelModel(provider: string, model: string): any {
             return openai(model);
         case 'anthropic':
             return anthropic(model);
+        case 'google':
+            return google(model);
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);
     }
