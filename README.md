@@ -142,7 +142,7 @@ Popular tool servers:
 - Terminal: Run shell commands
 - Desktop Commander: Control desktop applications
 
-For creating custom servers, check out the [MCP Documentation](https://github.com/microsoft/MCP/blob/main/specification/specification.md).
+For creating custom servers, check out the [MCP Documentation](https://modelcontextprotocol.io/introduction).
 
 ## 📚 Documentation
 
@@ -150,8 +150,6 @@ For more detailed information:
 
 - [Architecture Overview](./docs/architecture.md) - How Saiki works under the hood
 - [Configuration Guide](./configuration/README.md) - Detailed configuration options
-- [Example Usage](./docs/examples.md) - More usage examples
-- [Troubleshooting](./docs/troubleshooting.md) - Solutions to common issues
 - [Adding a New LLM Service](./src/ai/llm/README.md) - How to add support for new LLM providers
 
 ## 🤝 Contributing
