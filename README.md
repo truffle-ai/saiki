@@ -66,7 +66,11 @@ That's it! You're now ready to interact with Saiki through the command line.
 
 Prompt: "can you summarize my emails, convert it into highlights and send it to me on Slack?"
 
-[![Saiki Email + Slack agent](assets\email_slack_demo.gif)](https://youtu.be/a1TV7xTiC4g)
+```
+npm start -- --config-file .\configuration\examples\email_slack.yml
+```
+
+[![Saiki Email + Slack agent](assets/email_slack_demo.gif)](https://youtu.be/a1TV7xTiC4g)
 
 ## 💻 Use Cases
 
