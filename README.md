@@ -1,13 +1,13 @@
 # Saiki
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Beta-orange" alt="Status: Beta">
+  <img src="https://img.shields.io/badge/Status-Beta-yellow" alt="Status: Beta">
   <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0">
   <a href="https://discord.gg/GwxwQs8CN5"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord"></a>
   <a href="https://trytruffle.ai"><img src="https://img.shields.io/badge/Backed_by-Y_Combinator-orange" alt="Backed by YC"></a>
 </p>
 
-Your command center for controlling computers, applications and services with natural language - connect once, command everything.
+**Use natural language to control your tools, apps, and services — connect once, command everything.**
 
 ## 📑 Table of Contents
 - [🌟 Overview](#overview)
@@ -21,17 +21,17 @@ Your command center for controlling computers, applications and services with na
 
 ## 🌟 Overview
 
-Saiki is an AI Agent that makes it easy to use computers, applications and services using natural language. You type what you want to do and Saiki figures out which tools to use and how to execute them correctly.
+Saiki is a flexible AI agent that lets you take actions across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to use and how to use them.
 
-What makes Saiki powerful for developers:
+Why developers use Saiki:
 
-1. **Flexible Integrations**: Easily connect multiple existing systems and services to Saiki using Model Context Protocol (MCP) servers. Integrate with GitHub, filesystem operations, terminal commands, and more without complex setup. Saiki's modular design means you can add exactly the capabilities you need. More on this [here](https://github.com/truffle-ai/saiki/edit/release/docs/README.md#-extensions)
+1. **Open, hackable, flexible** – Saiki connects to anything via MCP. Drop in tool servers for GitHub, terminal, filesystem — or build your own. You can even bring your own LLMs. It's modular by design & requires minimal set up.
 
-2. **In-built Orchestration**: Once you've configured your servers and start using Saiki, it will automatically figure out when and how to use the tools to accomplish your task.
+2. **Built-in Orchestration**: Once you've configured your servers and start using Saiki, it figures out which tools to use, in what order, and how to call them to get the job done.
    
-3. **Customizable Interfaces**: Create tailored interfaces for your specific use cases - from CLI to web interfaces. Saiki's architecture separates the AI logic from the presentation layer.
+3. **Customizable Interfaces**: Use it in a CLI, wrap it in a web app, or embed it into your own stack. Saiki separates AI logic from the UI so you can build around it, not within it.
 
-Saiki eliminates the need to learn different syntaxes or switch between multiple tools. Whether you're automating development workflows, creating specialized assistants, or building productivity tools, Saiki provides the foundation you need.
+Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs.
 
 ## 🚀 Getting Started
 
