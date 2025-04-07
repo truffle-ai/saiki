@@ -107,7 +107,7 @@ llm:
 ```yaml
 llm:
   provider: google
-  model: gemini-1.5-pro
+  model: gemini-2.0-flash
   apiKey: env:GOOGLE_GENERATIVE_AI_API_KEY
 ```
 
