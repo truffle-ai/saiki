@@ -69,7 +69,7 @@ Prompt: "can you summarize my emails, convert it into highlights and send it to 
 This example uses the [Slack MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/slack) and the GMail MCP from [Composio](https://mcp.composio.dev/). Complete the setup in `configuration/examples/email_slack.yml` and then run:
 
 ```
-npm start -- --config-file .\configuration\examples\email_slack.yml
+npm start -- --config-file ./configuration/examples/email_slack.yml
 ```
 
 [![Saiki Email + Slack agent](assets/email_slack_demo.gif)](https://youtu.be/a1TV7xTiC4g)
