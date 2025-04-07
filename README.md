@@ -126,6 +126,8 @@ You can use `configuration/saiki.yml` directly, or you can use a custom configur
 npm start -- --config-file path/to/your/config.yml
 ```
 
+In order to use a different llm provider, change the llm section in the config.
+
 For detailed configuration options and examples, see the [Configuration Guide](./configuration/README.md).
 
 ## 🔌 Extensions
