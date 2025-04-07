@@ -104,7 +104,7 @@ export class MCPClient implements ToolProvider {
         this.transport = new StdioClientTransport({
             command,
             args,
-            env: expandedEnv as Record<string, string>,
+            env,
         });
 
         this.client = new Client(
