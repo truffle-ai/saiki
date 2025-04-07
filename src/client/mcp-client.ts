@@ -94,10 +94,17 @@ export class MCPClient implements ToolProvider {
             : `${command} ${args.join(' ')}`;
         logger.info(`Connecting to MCP server: ${serverName}`);
 
+        // Create a properly expanded environment by combining process.env with the provided env
+        const expandedEnv = {
+            ...process.env,
+            ...(env || {})
+        };
+
+        // Create transport for stdio connection with expanded environment
         this.transport = new StdioClientTransport({
             command,
             args,
-            env,
+            env: expandedEnv as Record<string, string>,
         });
 
         this.client = new Client({
