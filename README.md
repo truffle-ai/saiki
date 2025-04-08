@@ -64,7 +64,7 @@ That's it! You're now ready to interact with Saiki through the command line.
 
 ## Examples
 
-Prompt: "can you summarize my emails, convert it into highlights and send it to me on Slack?"
+### Prompt: "can you summarize my emails, convert it into highlights and send it to me on Slack?"
 
 This example uses the [Slack MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/slack) and the GMail MCP from [Composio](https://mcp.composio.dev/). Complete the setup in `configuration/examples/email_slack.yml` and then run:
 
@@ -73,6 +73,17 @@ npm start -- --config-file ./configuration/examples/email_slack.yml
 ```
 
 [![Saiki Email + Slack agent](assets/email_slack_demo.gif)](https://youtu.be/a1TV7xTiC4g)
+
+### Prompt: "design a landing page for yourself by looking at the README.md in '/saiki'. I like vibrant colors"
+
+This example uses the [filesystem](https://github.com/smithery-ai/reference-servers/tree/main/src/filesystem) and puppeteer server(/src/servers/puppeteerServer.ts). 
+
+```
+npm start -- --config-file ./configuration/examples/website_designer.yml
+```
+
+![Saiki: Website designer agent](assets/website_demo.gif)
+
 
 ## 💻 Use Cases
 
