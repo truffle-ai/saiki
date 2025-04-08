@@ -10,14 +10,15 @@
 **Use natural language to control your tools, apps, and services — connect once, command everything.**
 
 ## 📑 Table of Contents
-- [🌟 Overview](#overview)
-- [🚀 Getting Started](#getting-started)
-- [💻 Use Cases](#use-cases)
-- [⚙️ Configuration](#configuration)
-- [🔌 Extensions](#extensions)
-- [📚 Documentation](#documentation)
-- [🤝 Contributing](#contributing)
-- [⭐ Community & Support](#community--support)
+- [Overview](#-overview)
+- [Getting Started](#-getting-started)
+- [Examples](#-examples)
+- [Use Cases](#-use-cases)
+- [Configuration](#️-configuration)
+- [Extensions](#-extensions)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [Community & Support](#-community--support)
 
 ## 🌟 Overview
 
