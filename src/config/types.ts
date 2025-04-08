@@ -53,4 +53,4 @@ export type AgentConfig = {
     mcpServers: ServerConfigs;
     llm: LLMConfig;
     [key: string]: any; // Allow for future extensions
-}; 
+};

@@ -3,7 +3,7 @@ import { ILLMService } from './types.js';
 import { logger } from '../../utils/logger.js';
 import { streamText, generateText, CoreMessage } from 'ai';
 import { VercelLLM } from './types.js';
-import { ToolSet} from '../types.js';
+import { ToolSet } from '../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
 
@@ -19,11 +19,7 @@ export class VercelLLMService implements ILLMService {
     private systemContext: string = '';
     private eventEmitter: EventEmitter;
 
-    constructor(
-        clientManager: ClientManager, 
-        model: VercelLLM,
-        systemPrompt: string
-    ) {
+    constructor(clientManager: ClientManager, model: VercelLLM, systemPrompt: string) {
         this.model = model;
         this.clientManager = clientManager;
         this.eventEmitter = new EventEmitter();
@@ -50,7 +46,7 @@ export class VercelLLMService implements ILLMService {
     }
 
     formatTools(tools: ToolSet): VercelToolSet {
-        logger.debug(`Formatting tools for vercel`)
+        logger.debug(`Formatting tools for vercel`);
         return Object.keys(tools).reduce<VercelToolSet>((acc, toolName) => {
             acc[toolName] = {
                 description: tools[toolName].description,
@@ -64,16 +60,19 @@ export class VercelLLMService implements ILLMService {
     }
 
     async completeTask(userInput: string): Promise<string> {
-
         // Add user message
         this.messages.push({ role: 'user', content: userInput });
 
         // Get all tools
         const tools: any = await this.clientManager.getAllTools();
-        logger.silly(`[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`);
+        logger.silly(
+            `[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`
+        );
 
         const formattedTools = this.formatTools(tools);
-        logger.silly(`[VercelLLMService] Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
+        logger.silly(
+            `[VercelLLMService] Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`
+        );
 
         // Maximum number of tool use iterations
         const MAX_ITERATIONS = 10;
@@ -89,7 +88,7 @@ export class VercelLLMService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
                 logger.debug(`Messages: ${JSON.stringify(this.messages, null, 2)}`);
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
-                
+
                 fullResponse = await this.generateText(formattedTools, MAX_ITERATIONS);
                 // Change this to processStream to use streaming
                 // fullResponse = await this.processStream(formattedTools, MAX_ITERATIONS);
@@ -103,15 +102,15 @@ export class VercelLLMService implements ILLMService {
             // Handle API errors
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in vercel llm service: ${error}`);
-            this.eventEmitter.emit('error', error instanceof Error ? error : new Error(errorMessage));
+            this.eventEmitter.emit(
+                'error',
+                error instanceof Error ? error : new Error(errorMessage)
+            );
             return `Error: ${errorMessage}`;
         }
     }
 
-    async generateText(
-        tools: VercelToolSet,
-        maxSteps: number = 10
-    ): Promise<string> {
+    async generateText(tools: VercelToolSet, maxSteps: number = 10): Promise<string> {
         let stepIteration = 0;
 
         const response = await generateText({
@@ -132,7 +131,11 @@ export class VercelLLMService implements ILLMService {
 
                 if (step.stepType === 'tool-result') {
                     for (const toolResult of step.toolResults as any) {
-                        this.eventEmitter.emit('toolResult', toolResult.toolName, toolResult.result);
+                        this.eventEmitter.emit(
+                            'toolResult',
+                            toolResult.toolName,
+                            toolResult.result
+                        );
                     }
                 }
                 if (step.toolCalls) {
@@ -179,7 +182,10 @@ export class VercelLLMService implements ILLMService {
             },
             onError: (error) => {
                 logger.error(`Error in streamText: ${JSON.stringify(error, null, 2)}`);
-                this.eventEmitter.emit('error', error instanceof Error ? error : new Error(String(error)));
+                this.eventEmitter.emit(
+                    'error',
+                    error instanceof Error ? error : new Error(String(error))
+                );
             },
             onStepFinish: (step) => {
                 logger.debug(`Step iteration: ${stepIteration}`);
@@ -195,7 +201,11 @@ export class VercelLLMService implements ILLMService {
 
                 if (step.stepType === 'tool-result') {
                     for (const toolResult of step.toolResults as any) {
-                        this.eventEmitter.emit('toolResult', toolResult.toolName, toolResult.result);
+                        this.eventEmitter.emit(
+                            'toolResult',
+                            toolResult.toolName,
+                            toolResult.result
+                        );
                     }
                 }
                 if (step.toolCalls) {

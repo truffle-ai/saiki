@@ -17,7 +17,7 @@ export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
 
         // Read and parse the config file
         const fileContent = await fs.readFile(absolutePath, 'utf-8');
-        
+
         try {
             // Parse YAML content
             const config = parseYaml(fileContent);
@@ -26,6 +26,8 @@ export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
             throw new Error(`Failed to parse YAML: ${parseError.message}`);
         }
     } catch (error) {
-        throw new Error(`Failed to load config file: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+            `Failed to load config file: ${error instanceof Error ? error.message : String(error)}`
+        );
     }
-} 
+}

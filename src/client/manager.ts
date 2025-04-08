@@ -101,8 +101,10 @@ export class ClientManager {
         }
 
         // Check if we've met the requirements for connection mode
-        const requiredSuccessfulConnections = 
-            connectionMode === 'strict' ? Object.keys(serverConfigs).length : Math.min(1, Object.keys(serverConfigs).length);
+        const requiredSuccessfulConnections =
+            connectionMode === 'strict'
+                ? Object.keys(serverConfigs).length
+                : Math.min(1, Object.keys(serverConfigs).length);
 
         if (successfulConnections.length < requiredSuccessfulConnections) {
             throw new Error(

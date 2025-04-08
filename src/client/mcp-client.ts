@@ -36,25 +36,18 @@ export class MCPClient implements ToolProvider {
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
         if (config.type === 'stdio') {
             const stdioConfig: StdioServerConfig = config;
-            
+
             // Auto-resolve npx path on Windows
             let command = stdioConfig.command;
             if (process.platform === 'win32' && command === 'npx') {
                 command = 'C:\\Program Files\\nodejs\\npx.cmd';
             }
-                
-            return this.connectViaStdio(
-                command,
-                stdioConfig.args,
-                stdioConfig.env,
-                serverName
-            );
-        }
-        else if (config.type === 'sse') {
+
+            return this.connectViaStdio(command, stdioConfig.args, stdioConfig.env, serverName);
+        } else if (config.type === 'sse') {
             const sseConfig: SSEServerConfig = config;
             return this.connectViaSSE(sseConfig.url, sseConfig.headers);
-        }
-        else {
+        } else {
             throw new Error(`Unsupported server type`);
         }
     }
@@ -97,7 +90,7 @@ export class MCPClient implements ToolProvider {
         // Create a properly expanded environment by combining process.env with the provided env
         const expandedEnv = {
             ...process.env,
-            ...(env || {})
+            ...(env || {}),
         };
 
         // Create transport for stdio connection with expanded environment
@@ -107,12 +100,15 @@ export class MCPClient implements ToolProvider {
             env: expandedEnv as Record<string, string>,
         });
 
-        this.client = new Client({
-            name: 'Saiki-stdio-mcp-client',
-            version: '1.0.0'
-        }, {
-            capabilities: { tools: {} }
-        })
+        this.client = new Client(
+            {
+                name: 'Saiki-stdio-mcp-client',
+                version: '1.0.0',
+            },
+            {
+                capabilities: { tools: {} },
+            }
+        );
 
         try {
             logger.info('Establishing connection...');
@@ -135,20 +131,23 @@ export class MCPClient implements ToolProvider {
         logger.info(`Connecting to SSE MCP server at url: ${url}`);
 
         this.transport = new SSEClientTransport(new URL(url), {
-            // For regular HTTP requests 
+            // For regular HTTP requests
             requestInit: {
-                headers: headers
-            }
+                headers: headers,
+            },
             // Need to implement eventSourceInit for SSE events.
         });
-        
+
         logger.debug(`[connectViaSSE] SSE transport: ${JSON.stringify(this.transport, null, 2)}`);
-        this.client = new Client({
-            name: 'Saiki-sse-mcp-client',
-            version: '1.0.0'
-        }, {
-            capabilities: { tools: {} }
-        })
+        this.client = new Client(
+            {
+                name: 'Saiki-sse-mcp-client',
+                version: '1.0.0',
+            },
+            {
+                capabilities: { tools: {} },
+            }
+        );
 
         try {
             logger.info('Establishing connection...');
@@ -160,8 +159,7 @@ export class MCPClient implements ToolProvider {
             this.isConnected = true;
 
             return this.client;
-        }
-        catch (error: any) {
+        } catch (error: any) {
             logger.error(`Failed to connect to SSE MCP server ${url}:`, error.message);
             throw error;
         }
@@ -232,8 +230,8 @@ export class MCPClient implements ToolProvider {
             );
             return response.tools.reduce<ToolSet>((acc, tool) => {
                 acc[tool.name] = {
-                  description: tool.description,
-                  parameters: tool.inputSchema,
+                    description: tool.description,
+                    parameters: tool.inputSchema,
                 };
                 return acc;
             }, {});
@@ -300,4 +298,3 @@ export class MCPClient implements ToolProvider {
         );
     }
 }
-

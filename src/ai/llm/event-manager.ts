@@ -35,33 +35,33 @@ export class AgentEventManager {
     private setupEventListeners(): void {
         logger.debug('Setting up event listeners...');
         const emitter = this.llmService.getEventEmitter();
-        
+
         emitter.on('thinking', () => {
-            this.subscribers.forEach(sub => sub.onThinking?.());
+            this.subscribers.forEach((sub) => sub.onThinking?.());
         });
-        
+
         emitter.on('chunk', (text: string) => {
-            this.subscribers.forEach(sub => sub.onChunk?.(text));
+            this.subscribers.forEach((sub) => sub.onChunk?.(text));
         });
-        
+
         emitter.on('toolCall', (toolName: string, args: any) => {
-            this.subscribers.forEach(sub => sub.onToolCall?.(toolName, args));
+            this.subscribers.forEach((sub) => sub.onToolCall?.(toolName, args));
         });
-        
+
         emitter.on('toolResult', (toolName: string, result: any) => {
-            this.subscribers.forEach(sub => sub.onToolResult?.(toolName, result));
+            this.subscribers.forEach((sub) => sub.onToolResult?.(toolName, result));
         });
-        
+
         emitter.on('response', (text: string) => {
-            this.subscribers.forEach(sub => sub.onResponse?.(text));
+            this.subscribers.forEach((sub) => sub.onResponse?.(text));
         });
-        
+
         emitter.on('error', (error: Error) => {
-            this.subscribers.forEach(sub => sub.onError?.(error));
+            this.subscribers.forEach((sub) => sub.onError?.(error));
         });
-        
+
         emitter.on('conversationReset', () => {
-            this.subscribers.forEach(sub => sub.onConversationReset?.());
+            this.subscribers.forEach((sub) => sub.onConversationReset?.());
         });
     }
-} 
+}

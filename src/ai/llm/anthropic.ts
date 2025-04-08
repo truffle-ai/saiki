@@ -17,8 +17,8 @@ export class AnthropicService implements ILLMService {
     constructor(
         clientManager: ClientManager,
         systemPrompt: string,
-        apiKey: string, 
-        model?: string, 
+        apiKey: string,
+        model?: string
     ) {
         this.model = model || 'claude-3-7-sonnet-20250219';
         this.anthropic = new Anthropic({ apiKey });
@@ -157,19 +157,15 @@ export class AnthropicService implements ILLMService {
                         return JSON.stringify(result);
                     };
 
-                    const contentArray = toolResults.map(
-                        ({ _, result, error, toolUseId }) => {
-                            const resultValue = error
-                                ? `Error: ${error}`
-                                : extractTextContent(result);
+                    const contentArray = toolResults.map(({ _, result, error, toolUseId }) => {
+                        const resultValue = error ? `Error: ${error}` : extractTextContent(result);
 
-                            return {
-                                type: 'tool_result',
-                                tool_use_id: toolUseId,
-                                content: resultValue,
-                            };
-                        }
-                    );
+                        return {
+                            type: 'tool_result',
+                            tool_use_id: toolUseId,
+                            content: resultValue,
+                        };
+                    });
 
                     this.messages.push({
                         role: 'user',
@@ -192,7 +188,10 @@ export class AnthropicService implements ILLMService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in Anthropic service: ${errorMessage}`);
 
-            this.eventEmitter.emit('error', error instanceof Error ? error : new Error(errorMessage));
+            this.eventEmitter.emit(
+                'error',
+                error instanceof Error ? error : new Error(errorMessage)
+            );
             return `Error: ${errorMessage}`;
         }
     }
@@ -231,8 +230,11 @@ export class AnthropicService implements ILLMService {
                 // The actual parameters structure appears to be a JSON Schema object
                 // which doesn't match the simple ToolParameters interface
                 const jsonSchemaParams = tool.parameters as any;
-                
-                if (jsonSchemaParams.properties && typeof jsonSchemaParams.properties === 'object') {
+
+                if (
+                    jsonSchemaParams.properties &&
+                    typeof jsonSchemaParams.properties === 'object'
+                ) {
                     // Extract parameters from the properties object
                     for (const [name, paramRaw] of Object.entries(jsonSchemaParams.properties)) {
                         // Type assertion to make TypeScript happy

@@ -11,20 +11,20 @@ export type IMCPClient = Client | VercelMCPClient;
  * Interface for any provider of tools
  */
 export interface ToolProvider {
-  /**
-   * Get the list of tools provided by this client
-   */
-  getTools(): Promise<ToolSet>;
-  
-  /**
-   * Call a specific tool with the given arguments
-   */
-  callTool(toolName: string, args: any): Promise<any>;
-  
-  /**
-   * Disconnect the client (if applicable)
-   */
-  disconnect?(): Promise<void>;
+    /**
+     * Get the list of tools provided by this client
+     */
+    getTools(): Promise<ToolSet>;
+
+    /**
+     * Call a specific tool with the given arguments
+     */
+    callTool(toolName: string, args: any): Promise<any>;
+
+    /**
+     * Disconnect the client (if applicable)
+     */
+    disconnect?(): Promise<void>;
 }
 
 /**
@@ -42,5 +42,3 @@ export interface IMCPClientWrapper extends ToolProvider {
     // listResources(): Promise<string[]>;
     // readResource(url: string): Promise<string>;
 }
-
-
