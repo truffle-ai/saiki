@@ -10,14 +10,15 @@
 **Use natural language to control your tools, apps, and services — connect once, command everything.**
 
 ## 📑 Table of Contents
-- [🌟 Overview](#overview)
-- [🚀 Getting Started](#getting-started)
-- [💻 Use Cases](#use-cases)
-- [⚙️ Configuration](#configuration)
-- [🔌 Extensions](#extensions)
-- [📚 Documentation](#documentation)
-- [🤝 Contributing](#contributing)
-- [⭐ Community & Support](#community--support)
+- [Overview](#-overview)
+- [Getting Started](#-getting-started)
+- [Examples](#-examples)
+- [Use Cases](#-use-cases)
+- [Configuration](#️-configuration)
+- [Extensions](#-extensions)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [Community & Support](#-community--support)
 
 ## 🌟 Overview
 
@@ -62,17 +63,42 @@ npm start
 
 That's it! You're now ready to interact with Saiki through the command line.
 
-## Examples
+## 🎯 Examples
 
-Prompt: "can you summarize my emails, convert it into highlights and send it to me on Slack?"
+### 📧 Email Summary to Slack
+**Task:** "Summarize my emails, convert them into highlights and send them to Slack"
 
-This example uses the [Slack MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/slack) and the GMail MCP from [Composio](https://mcp.composio.dev/). Complete the setup in `configuration/examples/email_slack.yml` and then run:
+This example demonstrates integration between Slack and Gmail using:
+- [Slack MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/slack)
+- [Gmail MCP](https://mcp.composio.dev/) (via Composio)
 
-```
+**Setup & Run:**
+```bash
+# Configure email_slack.yml first
 npm start -- --config-file ./configuration/examples/email_slack.yml
 ```
 
-[![Saiki Email + Slack agent](assets/email_slack_demo.gif)](https://youtu.be/a1TV7xTiC4g)
+<div align="center">
+  <a href="https://youtu.be/a1TV7xTiC4g">
+    <img src="assets/email_slack_demo.gif" alt="Saiki Email + Slack agent demo" />
+  </a>
+</div>
+
+### 🎨 AI Website Designer
+**Task:** "Design a landing page for yourself by looking at the README.md in '/saiki'. I like vibrant colors"
+
+This example showcases automatic website generation using:
+- [Filesystem MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/filesystem)
+- Built-in Puppeteer server (`/src/servers/puppeteerServer.ts`)
+
+**Setup & Run:**
+```bash
+npm start -- --config-file ./configuration/examples/website_designer.yml
+```
+
+<div align="center">
+  <img src="assets/website_demo.gif" alt="Saiki: Website designer agent demo" />
+</div>
 
 ## 💻 Use Cases
 
