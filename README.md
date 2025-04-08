@@ -76,7 +76,7 @@ npm start -- --config-file ./configuration/examples/email_slack.yml
 
 ### Prompt: "design a landing page for yourself by looking at the README.md in '/saiki'. I like vibrant colors"
 
-This example uses the [filesystem](https://github.com/smithery-ai/reference-servers/tree/main/src/filesystem) and puppeteer server(/src/servers/puppeteerServer.ts). 
+This example uses the [filesystem](https://github.com/smithery-ai/reference-servers/tree/main/src/filesystem) and puppeteer server(/src/servers/puppeteerServer.ts). Saiki creates a simple landing page and intelligently opens the webpage to show the preview.
 
 ```
 npm start -- --config-file ./configuration/examples/website_designer.yml
