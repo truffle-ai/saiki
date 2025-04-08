@@ -1,8 +1,9 @@
 import OpenAI from 'openai';
 import { ClientManager } from '../../client/manager.js';
-import { LLMCallbacks, ILLMService } from './types.js';
+import { ILLMService } from './types.js';
 import { ToolSet } from '../types.js';
 import { logger } from '../../utils/logger.js';
+import { EventEmitter } from 'events';
 
 // System prompt constants
 
@@ -32,13 +33,13 @@ export class OpenAIService implements ILLMService {
     private clientManager: ClientManager;
     private conversationHistory: any[] = [];
     private systemPromptTemplate: string;
-
+    private eventEmitter: EventEmitter;
+    
     constructor(
         clientManager: ClientManager, 
         systemPrompt: string,
         apiKey: string, 
         model?: string,
-        providerOptions?: any
     ) {
         this.model = model || 'gpt-4o-mini';
         this.openai = new OpenAI({ apiKey });
@@ -47,6 +48,11 @@ export class OpenAIService implements ILLMService {
 
         // Initialize with system message
         this.conversationHistory = [{ role: 'system', content: this.systemPromptTemplate }];
+        this.eventEmitter = new EventEmitter();
+    }
+
+    getEventEmitter(): EventEmitter {
+        return this.eventEmitter;
     }
 
     getAllTools(): Promise<ToolSet> {
@@ -62,7 +68,7 @@ export class OpenAIService implements ILLMService {
         }
     }
 
-    async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {
+    async completeTask(userInput: string): Promise<string> {
         // Add user message to history
         this.conversationHistory.push({ role: 'user', content: userInput });
 
@@ -73,7 +79,7 @@ export class OpenAIService implements ILLMService {
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
         // Notify thinking
-        callbacks?.onThinking?.();
+        this.eventEmitter.emit('thinking');
 
         // Maximum number of tool use iterations
         const MAX_ITERATIONS = 10;
@@ -89,7 +95,7 @@ export class OpenAIService implements ILLMService {
                 // If there are no tool calls, we're done
                 if (!message.tool_calls || message.tool_calls.length === 0) {
                     const responseText = message.content || '';
-                    callbacks?.onResponse?.(responseText);
+                    this.eventEmitter.emit('response', responseText);
                     return responseText;
                 }
 
@@ -106,7 +112,7 @@ export class OpenAIService implements ILLMService {
                     }
 
                     // Notify tool call
-                    callbacks?.onToolCall?.(toolName, args);
+                    this.eventEmitter.emit('toolCall', toolName, args);
 
                     // Execute tool
                     try {
@@ -116,7 +122,7 @@ export class OpenAIService implements ILLMService {
                         this.registerToolResult(toolName, result, toolCall.id);
 
                         // Notify tool result
-                        callbacks?.onToolResult?.(toolName, result);
+                        this.eventEmitter.emit('toolResult', toolName, result);
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -124,7 +130,7 @@ export class OpenAIService implements ILLMService {
                         // Register error result
                         this.registerToolResult(toolName, { error: errorMessage }, toolCall.id);
 
-                        callbacks?.onToolResult?.(toolName, { error: errorMessage });
+                        this.eventEmitter.emit('toolResult', toolName, { error: errorMessage });
                     }
                 }
 
@@ -139,7 +145,7 @@ export class OpenAIService implements ILLMService {
                 }
 
                 // Notify thinking for next iteration
-                callbacks?.onThinking?.();
+                this.eventEmitter.emit('thinking');
             }
 
             // If we reached max iterations, return the last message
@@ -149,7 +155,7 @@ export class OpenAIService implements ILLMService {
 
             const finalResponse =
                 lastMessage?.content || 'Task completed but reached maximum iterations.';
-            callbacks?.onResponse?.(finalResponse);
+            this.eventEmitter.emit('response', finalResponse);
             return finalResponse;
         } catch (error) {
             // Handle API errors
@@ -162,6 +168,7 @@ export class OpenAIService implements ILLMService {
                 content: `Error: ${errorMessage}`,
             });
 
+            this.eventEmitter.emit('error', error instanceof Error ? error : new Error(errorMessage));
             return `Error: ${errorMessage}`;
         }
     }
@@ -169,6 +176,7 @@ export class OpenAIService implements ILLMService {
     resetConversation(): void {
         // Keep only the system message
         this.conversationHistory = this.conversationHistory.slice(0, 1);
+        this.eventEmitter.emit('conversationReset');
     }
 
     /**

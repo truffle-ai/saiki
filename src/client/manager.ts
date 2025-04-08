@@ -34,7 +34,6 @@ export class ClientManager {
             try {
                 logger.debug(`Getting tools from ${serverName}`);
                 const toolList = await client.getTools();
-                logger.silly(`Tool list: ${JSON.stringify(toolList, null, 2)}`);
 
                 // Map each tool to its provider client
                 for (const toolName in toolList) {
