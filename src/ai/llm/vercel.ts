@@ -26,8 +26,8 @@ export class VercelLLMService implements ILLMService {
     ) {
         this.model = model;
         this.clientManager = clientManager;
-        this.systemContext = systemPrompt;
         this.eventEmitter = new EventEmitter();
+        this.updateSystemContext(systemPrompt);
         logger.debug(`[VercelLLMService] System context: ${this.systemContext}`);
     }
 
@@ -41,6 +41,12 @@ export class VercelLLMService implements ILLMService {
 
     updateSystemContext(newSystemPrompt: string): void {
         this.systemContext = newSystemPrompt;
+        // Check if the first message is a system message and update it, or add a new one
+        if (this.messages.length > 0 && this.messages[0].role === 'system') {
+            this.messages[0].content = newSystemPrompt;
+        } else {
+            this.messages.unshift({ role: 'system', content: newSystemPrompt });
+        }
     }
 
     formatTools(tools: ToolSet): VercelToolSet {
@@ -58,12 +64,9 @@ export class VercelLLMService implements ILLMService {
     }
 
     async completeTask(userInput: string): Promise<string> {
-        // Prepend system context to first message or use standalone
-        const effectiveUserInput =
-            this.messages.length === 0 ? `${this.systemContext}\n\n${userInput}` : userInput;
 
         // Add user message
-        this.messages.push({ role: 'user', content: effectiveUserInput });
+        this.messages.push({ role: 'user', content: userInput });
 
         // Get all tools
         const tools: any = await this.clientManager.getAllTools();
@@ -110,6 +113,7 @@ export class VercelLLMService implements ILLMService {
         maxSteps: number = 10
     ): Promise<string> {
         let stepIteration = 0;
+
         const response = await generateText({
             model: this.model,
             messages: this.messages,
