@@ -3,8 +3,8 @@ import { ILLMService } from './types.js';
 import { LLMConfig } from '../../config/types.js';
 import { logger } from '../../utils/logger.js';
 import { openai } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI, google } from '@ai-sdk/google';
-import { createAnthropic, anthropic } from '@ai-sdk/anthropic';
+import { google } from '@ai-sdk/google';
+import { anthropic } from '@ai-sdk/anthropic';
 import { VercelLLMService } from './vercel.js';
 import { VercelLLM } from './types.js';
 import { OpenAIService } from './openai.js';
@@ -59,7 +59,6 @@ function _createLLMService(
                 config.systemPrompt,    
                 apiKey, 
                 config.model,
-                config.providerOptions
             );
         case 'anthropic':
             return new AnthropicService(
@@ -67,7 +66,6 @@ function _createLLMService(
                 config.systemPrompt,
                 apiKey,
                 config.model,
-                config.providerOptions
             );
         default:
             throw new Error(`Unsupported LLM provider: ${config.provider}`);

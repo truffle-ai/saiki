@@ -1,4 +1,3 @@
-import { Tool } from '../types.js';
 import { ToolSet } from '../types.js';
 import { EventEmitter } from 'events';
 

@@ -55,8 +55,7 @@ export async function runAiCli(
 
     try {
         // Set up event management
-
-        logger.info('Setting up event manager...');
+        logger.info('Setting up event manager and cli logging...');
         const eventManager = new AgentEventManager(llmService);
         const cliSubscriber = new CLISubscriber();
         eventManager.registerSubscriber(cliSubscriber);

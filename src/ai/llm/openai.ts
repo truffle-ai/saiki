@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { ClientManager } from '../../client/manager.js';
-import { LLMCallbacks, ILLMService } from './types.js';
+import { ILLMService } from './types.js';
 import { ToolSet } from '../types.js';
 import { logger } from '../../utils/logger.js';
 import { EventEmitter } from 'events';
@@ -40,7 +40,6 @@ export class OpenAIService implements ILLMService {
         systemPrompt: string,
         apiKey: string, 
         model?: string,
-        providerOptions?: any
     ) {
         this.model = model || 'gpt-4o-mini';
         this.openai = new OpenAI({ apiKey });

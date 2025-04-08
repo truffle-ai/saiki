@@ -1,5 +1,5 @@
 import { ClientManager } from '../../client/manager.js';
-import { LLMCallbacks, ILLMService } from './types.js';
+import { ILLMService } from './types.js';
 import { logger } from '../../utils/logger.js';
 import { streamText, generateText, CoreMessage } from 'ai';
 import { VercelLLM } from './types.js';

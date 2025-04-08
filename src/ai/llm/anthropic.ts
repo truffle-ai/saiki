@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ClientManager } from '../../client/manager.js';
-import { LLMCallbacks, ILLMService } from './types.js';
+import { ILLMService } from './types.js';
 import { ToolSet } from '../types.js';
 import { logger } from '../../utils/logger.js';
 import { EventEmitter } from 'events';
@@ -19,7 +19,6 @@ export class AnthropicService implements ILLMService {
         systemPrompt: string,
         apiKey: string, 
         model?: string, 
-        providerOptions?: any
     ) {
         this.model = model || 'claude-3-7-sonnet-20250219';
         this.anthropic = new Anthropic({ apiKey });
