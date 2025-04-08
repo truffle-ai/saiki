@@ -3,6 +3,7 @@ import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
 import { ToolSet } from '../types.js';
 import { logger } from '../../utils/logger.js';
+import { EventEmitter } from 'events';
 /**
  * Anthropic implementation of LLMService
  */
@@ -12,7 +13,7 @@ export class AnthropicService implements ILLMService {
     private clientManager: ClientManager;
     private messages: any[] = [];
     private systemContext: string = '';
-
+    private eventEmitter: EventEmitter;
     constructor(
         clientManager: ClientManager,
         systemPrompt: string,
@@ -24,6 +25,10 @@ export class AnthropicService implements ILLMService {
         this.anthropic = new Anthropic({ apiKey });
         this.clientManager = clientManager;
         this.systemContext = systemPrompt;
+    }
+
+    getEventEmitter(): EventEmitter {
+        return this.eventEmitter;
     }
 
     getAllTools(): Promise<any> {

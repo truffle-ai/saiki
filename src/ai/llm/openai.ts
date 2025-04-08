@@ -3,6 +3,7 @@ import { ClientManager } from '../../client/manager.js';
 import { LLMCallbacks, ILLMService } from './types.js';
 import { ToolSet } from '../types.js';
 import { logger } from '../../utils/logger.js';
+import { EventEmitter } from 'events';
 
 // System prompt constants
 
@@ -32,7 +33,8 @@ export class OpenAIService implements ILLMService {
     private clientManager: ClientManager;
     private conversationHistory: any[] = [];
     private systemPromptTemplate: string;
-
+    private eventEmitter: EventEmitter;
+    
     constructor(
         clientManager: ClientManager, 
         systemPrompt: string,
@@ -47,6 +49,11 @@ export class OpenAIService implements ILLMService {
 
         // Initialize with system message
         this.conversationHistory = [{ role: 'system', content: this.systemPromptTemplate }];
+        this.eventEmitter = new EventEmitter();
+    }
+
+    getEventEmitter(): EventEmitter {
+        return this.eventEmitter;
     }
 
     getAllTools(): Promise<ToolSet> {
