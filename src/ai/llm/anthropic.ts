@@ -25,6 +25,7 @@ export class AnthropicService implements ILLMService {
         this.anthropic = new Anthropic({ apiKey });
         this.clientManager = clientManager;
         this.systemContext = systemPrompt;
+        this.eventEmitter = new EventEmitter();
     }
 
     getEventEmitter(): EventEmitter {
@@ -39,7 +40,7 @@ export class AnthropicService implements ILLMService {
         this.systemContext = newSystemPrompt;
     }
 
-    async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {
+    async completeTask(userInput: string): Promise<string> {
         // Prepend system context to first message or use standalone
         const effectiveUserInput =
             this.messages.length === 0 ? `${this.systemContext}\n\n${userInput}` : userInput;
@@ -54,7 +55,7 @@ export class AnthropicService implements ILLMService {
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
         // Notify thinking
-        callbacks?.onThinking?.();
+        this.eventEmitter.emit('thinking');
 
         // Maximum number of tool use iterations
         const MAX_ITERATIONS = 10;
@@ -96,7 +97,7 @@ export class AnthropicService implements ILLMService {
                 // If no tools were used, we're done
                 if (toolUses.length === 0) {
                     fullResponse += textContent;
-                    callbacks?.onResponse?.(fullResponse);
+                    this.eventEmitter.emit('response', fullResponse);
                     return fullResponse;
                 }
 
@@ -114,7 +115,7 @@ export class AnthropicService implements ILLMService {
                     const toolUseId = toolUse.id; // Capture the tool use ID
 
                     // Notify tool call
-                    callbacks?.onToolCall?.(toolName, args);
+                    this.eventEmitter.emit('toolCall', toolName, args);
 
                     // Execute tool
                     try {
@@ -122,13 +123,13 @@ export class AnthropicService implements ILLMService {
                         toolResults.push({ toolName, result, toolUseId }); // Store the ID with the result
 
                         // Notify tool result
-                        callbacks?.onToolResult?.(toolName, result);
+                        this.eventEmitter.emit('toolResult', toolName, result);
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
                         toolResults.push({ toolName, error: errorMessage, toolUseId }); // Store the ID with the error
 
-                        callbacks?.onToolResult?.(toolName, { error: errorMessage });
+                        this.eventEmitter.emit('toolResult', toolName, { error: errorMessage });
                     }
                 }
 
@@ -178,11 +179,11 @@ export class AnthropicService implements ILLMService {
                 }
 
                 // Notify thinking for next iteration
-                callbacks?.onThinking?.();
+                this.eventEmitter.emit('thinking');
             }
 
             // If we reached max iterations
-            callbacks?.onResponse?.(fullResponse);
+            this.eventEmitter.emit('response', fullResponse);
             return (
                 fullResponse ||
                 'Reached maximum number of tool call iterations without a final response.'
@@ -192,6 +193,7 @@ export class AnthropicService implements ILLMService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in Anthropic service: ${errorMessage}`);
 
+            this.eventEmitter.emit('error', error instanceof Error ? error : new Error(errorMessage));
             return `Error: ${errorMessage}`;
         }
     }
@@ -199,6 +201,7 @@ export class AnthropicService implements ILLMService {
     resetConversation(): void {
         // Clear all messages
         this.messages = [];
+        this.eventEmitter.emit('conversationReset');
     }
 
     /**
