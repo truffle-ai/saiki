@@ -83,7 +83,7 @@ export class MCPClient implements ToolProvider {
         logger.info(`MCP SERVER: ${command} ${args.join(' ')}`, null, 'magenta');
         if (env) {
             logger.info('Environment:');
-            Object.entries(env).forEach(([key, value]) => {
+            Object.entries(env).forEach(([key, _]) => {
                 logger.info(`  ${key}= [value hidden]`);
             });
         }

@@ -2,10 +2,11 @@ import readline from 'readline';
 import chalk from 'chalk';
 import { ClientManager } from '../src/client/manager.js';
 import { logger } from '../src/utils/logger.js';
-import { LLMCallbacks, ILLMService } from '../src/ai/llm/types.js';
+import { ILLMService } from '../src/ai/llm/types.js';
 import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
-import boxen from 'boxen';
+import { AgentEventManager } from '../src/ai/llm/event-manager.js';
+import { CLISubscriber } from './cli-subscriber.js';
 
 /**
  * Start AI-powered CLI with unified configuration
@@ -38,7 +39,6 @@ export async function runAiCli(
     llmService: ILLMService
 ) {
     // Get model and provider info directly from the LLM service
-    // const { provider, model } = llmService.getConfig();
     logger.info(
         `Using model config:${JSON.stringify(llmService.getConfig(), null, 2)}`,
         null,
@@ -54,12 +54,15 @@ export async function runAiCli(
     );
 
     try {
+        // Set up event management
+        logger.info('Setting up event manager and cli logging...');
+        const eventManager = new AgentEventManager(llmService);
+        const cliSubscriber = new CLISubscriber();
+        eventManager.registerSubscriber(cliSubscriber);
+
         // Get available tools from all connected servers
         logger.info('Loading available tools...');
-
-        // Get all tools from the LLM service
         const tools = await clientManager.getAllTools();
-
         logger.info(
             `Loaded ${Object.keys(tools).length} tools from ${clientManager.getClients().size} MCP servers\n`
         );
@@ -92,9 +95,9 @@ export async function runAiCli(
 
                 if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
                     logger.warn('Exiting AI CLI. Goodbye!');
+                    eventManager.removeSubscriber(cliSubscriber);
                     rl.close();
                     process.exit(0);
-                    break;
                 }
 
                 if (userInput.toLowerCase() === 'clear') {
@@ -104,58 +107,14 @@ export async function runAiCli(
                 }
 
                 try {
-                    let accumulatedResponse = '';
-                    let currentLines = 0;
-                    // Create callbacks for progress indication (without spinner)
-                    const callbacks: LLMCallbacks = {
-                        onChunk: (text: string) => {
-                            // Append the new chunk to the accumulated response
-                            accumulatedResponse += text;
-                    
-                            // Generate the new box
-                            const box = boxen(chalk.white(accumulatedResponse), {
-                                padding: 1,
-                                borderColor: 'yellow',
-                                title: '🤖 AI Response',
-                                titleAlignment: 'center',
-                            });
-                            const newLines = box.split('\n').length;
-                    
-                            // Move cursor up to the start of the previous box (if it exists)
-                            if (currentLines > 0) {
-                                process.stdout.write(`\x1b[${currentLines}A`); // Move up currentLines
-                            }
-                    
-                            // Print the new box (this overwrites the old one)
-                            process.stdout.write(box);
-                    
-                            // Update the line count
-                            currentLines = newLines;
-                    
-                            // Move cursor to the end of the box to allow logs below
-                            process.stdout.write('\n');
-                        },
-                        onThinking: () => {
-                            logger.info('AI thinking...');
-                        },
-                        onToolCall: (toolName, args) => {
-                            logger.toolCall(toolName, args);
-                        },
-                        onToolResult: (toolName, result) => {
-                            logger.toolResult(result);
-                        },
-                        onResponse: (response) => {
-                            logger.displayAIResponse({ content: response });
-                        },
-                    };
-
-                    // Use the high-level method to handle the entire interaction
-                    await llmService.completeTask(userInput, callbacks);
+                    // Simply call completeTask - all updates happen via events
+                    await llmService.completeTask(userInput);
                 } catch (error) {
                     logger.error(`Error in processing input: ${error.message}`);
                 }
             }
         } finally {
+            eventManager.removeSubscriber(cliSubscriber);
             rl.close();
         }
     } catch (error) {
