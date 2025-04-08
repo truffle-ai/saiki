@@ -16,7 +16,7 @@ import { AnthropicService } from './anthropic.js';
  */
 function extractApiKey(config: LLMConfig): string {
     const provider = config.provider;
-    
+
     // Get API key from config or environment
     let apiKey = config.apiKey || '';
     if (apiKey.startsWith('env:')) {
@@ -37,7 +37,7 @@ function extractApiKey(config: LLMConfig): string {
         );
         throw new Error(errorMsg);
     }
-    
+
     logger.debug('Verified API key');
     return apiKey;
 }
@@ -45,28 +45,15 @@ function extractApiKey(config: LLMConfig): string {
 /**
  * Create an LLM service instance based on the provided configuration
  */
-function _createLLMService(
-    config: LLMConfig,
-    clientManager: ClientManager
-): ILLMService {
+function _createLLMService(config: LLMConfig, clientManager: ClientManager): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
-    
+
     switch (config.provider.toLowerCase()) {
         case 'openai':
-            return new OpenAIService(
-                clientManager, 
-                config.systemPrompt,    
-                apiKey, 
-                config.model,
-            );
+            return new OpenAIService(clientManager, config.systemPrompt, apiKey, config.model);
         case 'anthropic':
-            return new AnthropicService(
-                clientManager,
-                config.systemPrompt,
-                apiKey,
-                config.model,
-            );
+            return new AnthropicService(clientManager, config.systemPrompt, apiKey, config.model);
         default:
             throw new Error(`Unsupported LLM provider: ${config.provider}`);
     }
@@ -92,7 +79,6 @@ function _createVercelLLMService(
     const model: VercelLLM = _createVercelModel(config.provider, config.model);
     return new VercelLLMService(clientManager, model, config.systemPrompt);
 }
-
 
 export function createLLMService(
     config: LLMConfig,

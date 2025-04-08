@@ -34,12 +34,12 @@ export class OpenAIService implements ILLMService {
     private conversationHistory: any[] = [];
     private systemPromptTemplate: string;
     private eventEmitter: EventEmitter;
-    
+
     constructor(
-        clientManager: ClientManager, 
+        clientManager: ClientManager,
         systemPrompt: string,
-        apiKey: string, 
-        model?: string,
+        apiKey: string,
+        model?: string
     ) {
         this.model = model || 'gpt-4o-mini';
         this.openai = new OpenAI({ apiKey });
@@ -168,7 +168,10 @@ export class OpenAIService implements ILLMService {
                 content: `Error: ${errorMessage}`,
             });
 
-            this.eventEmitter.emit('error', error instanceof Error ? error : new Error(errorMessage));
+            this.eventEmitter.emit(
+                'error',
+                error instanceof Error ? error : new Error(errorMessage)
+            );
             return `Error: ${errorMessage}`;
         }
     }
@@ -478,8 +481,11 @@ export class OpenAIService implements ILLMService {
             if (tool.parameters) {
                 // Type assertion for parameters
                 const jsonSchemaParams = tool.parameters as any;
-                
-                if (jsonSchemaParams.properties && typeof jsonSchemaParams.properties === 'object') {
+
+                if (
+                    jsonSchemaParams.properties &&
+                    typeof jsonSchemaParams.properties === 'object'
+                ) {
                     // Extract parameters from the properties object in inputSchema
                     for (const [name, paramRaw] of Object.entries(jsonSchemaParams.properties)) {
                         // Type assertion to make TypeScript happy
