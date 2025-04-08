@@ -101,9 +101,17 @@ export class MCPClient implements ToolProvider {
         };
 
         // Create transport for stdio connection with expanded environment
+        // Create a properly expanded environment by combining process.env with the provided env
+        const expandedEnv = {
+            ...process.env,
+            ...(env || {})
+        };
+
+        // Create transport for stdio connection with expanded environment
         this.transport = new StdioClientTransport({
             command,
             args,
+            env: expandedEnv as Record<string, string>,
             env: expandedEnv as Record<string, string>,
         });
 
