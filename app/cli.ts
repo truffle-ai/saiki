@@ -5,7 +5,7 @@ import { logger } from '../src/utils/logger.js';
 import { ILLMService } from '../src/ai/llm/types.js';
 import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
-import { AgentEventManager } from '../src/ai/llm/event-manager.js';
+import { AgentEventManager } from '../src/ai/llm/events/event-manager.js';
 import { CLISubscriber } from './cli-subscriber.js';
 
 /**

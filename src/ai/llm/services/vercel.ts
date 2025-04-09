@@ -1,13 +1,13 @@
-import { ClientManager } from '../../client/manager.js';
-import { ILLMService } from './types.js';
-import { logger } from '../../utils/logger.js';
+import { ClientManager } from '../../../client/manager.js';
+import { ILLMService } from '../types.js';
+import { logger } from '../../../utils/logger.js';
 import { streamText, generateText, CoreMessage } from 'ai';
-import { VercelLLM } from './types.js';
-import { ToolSet } from '../types.js';
+import { VercelLLM } from '../types.js';
+import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
-import { MessageManager } from './message/manager.js';
-import { VercelFormatter } from './message/formatters/vercel.js';
+import { MessageManager } from '../message/manager.js';
+import { VercelFormatter } from '../message/formatters/vercel.js';
 
 /**
  * Vercel implementation of LLMService

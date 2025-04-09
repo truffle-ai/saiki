@@ -1,5 +1,5 @@
-import { ILLMService, AgentSubscriber } from './types.js';
-import { logger } from '../../utils/logger.js';
+import { ILLMService, AgentSubscriber } from '../types.js';
+import { logger } from '../../../utils/logger.js';
 /**
  * Manages event subscriptions and distribution for the LLM service
  */

@@ -53,7 +53,7 @@ export interface LLMService {
 
 ## Step 2: Create Your Service Implementation
 
-1. Create a new file in the `src/ai/llm` directory (e.g., `your-provider.ts`).
+1. Create a new file in the `src/ai/llm/services` directory (e.g., `your-provider.ts`).
 2. Install the necessary SDK for your LLM provider:
    ```bash
    npm install your-provider-sdk
@@ -63,12 +63,12 @@ export interface LLMService {
 ```typescript
 import YourProviderSDK from 'your-provider-sdk';
 import { ClientManager } from '../../client/manager.js';
-import { LLMCallbacks, LLMService } from './types.js';
+import { LLMCallbacks, ILLMService } from './types.js';
 import { McpTool } from '../types.js';
 import { ToolHelper } from './tool-helper.js';
 import { logger } from '../../utils/logger.js';
 
-export class YourProviderService implements LLMService {
+export class YourProviderService implements ILLMService {
     private client: YourProviderSDK;
     private model: string;
     private toolHelper: ToolHelper;

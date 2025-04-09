@@ -2,7 +2,27 @@ import { IMessageFormatter } from '../formatter.js';
 import { InternalMessage } from '../types.js';
 import { logger } from '../../../../utils/logger.js';
 
+/**
+ * Message formatter for Anthropic's Claude API.
+ * 
+ * Converts the internal message format to Anthropic's specific structure, which has 
+ * notable differences in handling tool calls and tool results:
+ * - Anthropic uses a content array with different types (text, tool_use, tool_result)
+ * - Tool results are sent as user messages with special content structure
+ * - System prompts are not included in the messages array but sent separately
+ */
 export class AnthropicFormatter implements IMessageFormatter {
+    /**
+     * Formats internal messages into Anthropic's Claude API format
+     * 
+     * Handles the complex logic of:
+     * 1. Ensuring tool calls are paired with their results
+     * 2. Creating the correct nested content structure
+     * 3. Converting tool results to Anthropic's expected format
+     * 
+     * @param history Array of internal messages to format
+     * @returns Array of messages formatted for Anthropic's API
+     */
     format(history: Readonly<InternalMessage[]>): any[] {
         const formatted = [];
         
@@ -129,6 +149,15 @@ export class AnthropicFormatter implements IMessageFormatter {
         return formatted;
     }
 
+    /**
+     * Returns the system prompt for Anthropic's API
+     * 
+     * Anthropic doesn't include the system prompt in messages array
+     * but passes it as a separate parameter
+     * 
+     * @param systemPrompt The system prompt to format
+     * @returns The system prompt without any modification
+     */
     getSystemPrompt(systemPrompt: string | null): string | null {
         // Anthropic uses system prompt as a separate parameter, no need for any formatting
         return systemPrompt;

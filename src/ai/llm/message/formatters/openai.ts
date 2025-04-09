@@ -1,7 +1,22 @@
 import { IMessageFormatter } from '../formatter.js';
 import { InternalMessage } from '../types.js';
 
+/**
+ * Message formatter for OpenAI's Chat Completion API.
+ * 
+ * Converts the internal message format to OpenAI's specific structure:
+ * - System prompt is included in the messages array
+ * - Tool calls use the tool_calls property with a structure matching OpenAI's API
+ * - Tool results use the 'tool' role with tool_call_id and name
+ */
 export class OpenAIFormatter implements IMessageFormatter {
+    /**
+     * Formats internal messages into OpenAI's Chat Completion API format
+     * 
+     * @param history Array of internal messages to format
+     * @param systemPrompt System prompt to include at the beginning of messages
+     * @returns Array of messages formatted for OpenAI's API
+     */
     format(history: Readonly<InternalMessage[]>, systemPrompt: string | null): any[] {
         const formatted = [];
         
@@ -62,7 +77,13 @@ export class OpenAIFormatter implements IMessageFormatter {
         return formatted;
     }
     
-    // OpenAI includes the system prompt in the messages array
+    /**
+     * OpenAI handles system prompts in the messages array
+     * This method returns null since the system prompt is already
+     * included directly in the formatted messages.
+     * 
+     * @returns null as OpenAI doesn't need a separate system prompt
+     */
     getSystemPrompt(): null {
         return null;
     }
