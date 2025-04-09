@@ -9,7 +9,7 @@ import { InternalMessage } from '../types.js';
  * - Tool calls use the tool_calls property with a structure matching OpenAI's API
  * - Tool results use the 'tool' role with tool_call_id and name
  */
-export class OpenAIFormatter implements IMessageFormatter {
+export class OpenAIMessageFormatter implements IMessageFormatter {
     /**
      * Formats internal messages into OpenAI's Chat Completion API format
      * 

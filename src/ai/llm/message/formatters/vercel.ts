@@ -12,7 +12,7 @@ import { InternalMessage } from '../types.js';
  * Note: Vercel's implementation is different from OpenAI's standard,
  * particularly in its handling of function calls and responses.
  */
-export class VercelFormatter implements IMessageFormatter {
+export class VercelMessageFormatter implements IMessageFormatter {
     /**
      * Formats internal messages into Vercel AI SDK format
      * 

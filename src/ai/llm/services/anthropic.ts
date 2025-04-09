@@ -5,7 +5,7 @@ import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../message/manager.js';
-import { AnthropicFormatter } from '../message/formatters/anthropic.js';
+import { AnthropicMessageFormatter } from '../message/formatters/anthropic.js';
 import { TokenizerFactory } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 
@@ -29,7 +29,7 @@ export class AnthropicService implements ILLMService {
         this.anthropic = new Anthropic({ apiKey });
         this.clientManager = clientManager;
         
-        const formatter = new AnthropicFormatter();
+        const formatter = new AnthropicMessageFormatter();
         
         const tokenizer = TokenizerFactory.createTokenizer('anthropic', this.model);
 

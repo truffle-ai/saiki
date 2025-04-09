@@ -6,7 +6,7 @@ import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../message/manager.js';
-import { VercelFormatter } from '../message/formatters/vercel.js';
+import { VercelMessageFormatter } from '../message/formatters/vercel.js';
 import { TokenizerFactory } from '../tokenizer/factory.js';
 import { getProviderFromModel, getMaxTokens } from '../tokenizer/utils.js';
 
@@ -32,7 +32,7 @@ export class VercelLLMService implements ILLMService {
         const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
 
         // Use vercel formatter to match the message format vercel expects
-        const formatter = new VercelFormatter();
+        const formatter = new VercelMessageFormatter();
 
         // Update MessageManager initialization
         this.messageManager = new MessageManager(

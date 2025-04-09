@@ -11,7 +11,7 @@ import { logger } from '../../../../utils/logger.js';
  * - Tool results are sent as user messages with special content structure
  * - System prompts are not included in the messages array but sent separately
  */
-export class AnthropicFormatter implements IMessageFormatter {
+export class AnthropicMessageFormatter implements IMessageFormatter {
     /**
      * Formats internal messages into Anthropic's Claude API format
      * 
