@@ -50,21 +50,16 @@ export class MessageManager {
      */
     constructor(
         formatter: IMessageFormatter,
-        systemPrompt?: string,
-        maxTokens?: number,
-        tokenizer?: ITokenizer
+        systemPrompt: string,
+        maxTokens: number,
+        tokenizer: ITokenizer
     ) {
         this.formatter = formatter;
         if (systemPrompt) {
             this.setSystemPrompt(systemPrompt);
         }
-        this.maxTokens = maxTokens ?? null;
-        this.tokenizer = tokenizer ?? null;
-
-        // Warning if max tokens set but no tokenizer
-        if (this.maxTokens && !this.tokenizer) {
-            logger.warn("MessageManager: maxTokens is set but no tokenizer provided. Token limit cannot be enforced, and compression is disabled.");
-        }
+        this.maxTokens = maxTokens;
+        this.tokenizer = tokenizer;
     }
 
     /**
