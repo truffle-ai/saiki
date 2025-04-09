@@ -1,6 +1,7 @@
 import { ITokenizer, TokenizationError } from './types.js';
 import { OpenAITokenizer } from './openai.js';
 import { AnthropicTokenizer } from './anthropic.js';
+import { GoogleTokenizer } from './google.js';
 
 export class TokenizerFactory {
     /**
@@ -18,6 +19,8 @@ export class TokenizerFactory {
             case 'anthropic':
                 // Anthropic tokenizer approximation doesn't depend on model currently
                 return new AnthropicTokenizer();
+            case 'google':
+                return new GoogleTokenizer(model);
             // Add cases for other providers here
             default:
                 throw new TokenizationError(`No tokenizer implementation available for provider: ${provider}`);
