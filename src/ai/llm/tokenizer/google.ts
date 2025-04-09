@@ -1,5 +1,4 @@
 import { ITokenizer, TokenizationError } from './types.js';
-// Removed: import { GoogleGenerativeAI } from '@google/generative-ai';
 
 /**
  * Tokenizer for Google Gemini models - CURRENTLY USING APPROXIMATION.
@@ -12,7 +11,6 @@ import { ITokenizer, TokenizationError } from './types.js';
  */
 export class GoogleTokenizer implements ITokenizer {
     private modelName: string;
-    //private genAI: GoogleGenerativeAI;
 
     /**
      * Initializes the tokenizer for a specific Google Gemini model.
