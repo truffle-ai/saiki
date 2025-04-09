@@ -3,7 +3,7 @@ import { InternalMessage } from '../types.js';
 import { logger } from '../../../../utils/logger.js';
 
 export class AnthropicFormatter implements IMessageFormatter {
-    format(history: Readonly<InternalMessage[]>, systemPrompt: string | null): any[] {
+    format(history: Readonly<InternalMessage[]>): any[] {
         const formatted = [];
         
         // We need to track tool calls and their associated results
@@ -130,7 +130,7 @@ export class AnthropicFormatter implements IMessageFormatter {
     }
 
     getSystemPrompt(systemPrompt: string | null): string | null {
-        // Anthropic uses system prompt as a separate parameter
+        // Anthropic uses system prompt as a separate parameter, no need for any formatting
         return systemPrompt;
     }
 } 

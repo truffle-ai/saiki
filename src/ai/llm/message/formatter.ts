@@ -7,7 +7,7 @@ export interface IMessageFormatter {
      * @param systemPrompt The system prompt, if any
      * @returns The message history structured for the target API
      */
-    format(history: Readonly<InternalMessage[]>, systemPrompt: string | null): any[];
+    format(history: Readonly<InternalMessage[]>, systemPrompt?: string | null): any[];
 
     /**
      * Optional: Some formatters might need separate system prompt handling
