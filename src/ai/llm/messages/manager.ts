@@ -12,7 +12,8 @@ import { logger } from '../../../utils/logger.js';
  * - Storing and validating conversation messages
  * - Managing the system prompt
  * - Formatting messages for specific LLM providers through an injected formatter
- * - Optionally counting tokens and applying compression strategies if limits are exceeded
+ * - Optionally counting tokens using a provided tokenizer
+ * - Applying compression strategies sequentially if token limits are exceeded
  * - Providing access to conversation history
  */
 export class MessageManager {
@@ -53,9 +54,9 @@ export class MessageManager {
      * 
      * @param formatter Formatter implementation for the target LLM provider
      * @param systemPrompt Optional system prompt to initialize the conversation
-     * @param maxTokens Optional maximum token limit for the conversation. Compression requires a tokenizer.
-     * @param tokenizer Optional tokenizer implementation. Required for token counting and compression.
-     * @param compressionStrategies Optional array of compression strategies to apply sequentially. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
+     * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
+     * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
+     * @param compressionStrategies Optional array of compression strategies to apply sequentially when maxTokens is exceeded. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
      */
     constructor(
         formatter: IMessageFormatter,
@@ -77,8 +78,9 @@ export class MessageManager {
     }
 
     /**
-     * Adds a message to the conversation history
-     * Performs validation based on message role and required fields
+     * Adds a message to the conversation history.
+     * Performs validation based on message role and required fields.
+     * Note: Compression based on token limits is applied lazily when calling `getFormattedMessages`, not immediately upon adding.
      * 
      * @param message The message to add to the history
      * @throws Error if message validation fails
@@ -123,7 +125,7 @@ export class MessageManager {
         }
 
         this.history.push(message);
-        // Note: Compression is now handled lazily in getFormattedMessages
+        // Note: Compression is currently handled lazily in getFormattedMessages
     }
 
     /**
@@ -245,9 +247,9 @@ export class MessageManager {
 
     /**
      * Gets the conversation history formatted for the target LLM provider.
-     * Applies compression strategies if a tokenizer and maxTokens are set, 
-     * and the current token count exceeds the limit.
-     * Uses the injected formatter to convert internal messages to the provider's format.
+     * Applies compression strategies sequentially if the manager is configured with a `maxTokens` limit 
+     * and a `tokenizer`, and the current token count exceeds the limit. Compression happens *before* formatting.
+     * Uses the injected formatter to convert internal messages (potentially compressed) to the provider's format.
      * 
      * @returns Formatted messages ready to send to the LLM provider API
      * @throws Error if formatting or compression fails critically
