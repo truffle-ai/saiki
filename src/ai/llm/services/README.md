@@ -7,344 +7,364 @@ This guide explains how to add support for a new Large Language Model (LLM) prov
 Saiki uses an abstraction layer to interact with different LLM providers:
 
 ```
-                     ┌─────────────┐
-                     │ LLM Factory │
-                     └──────┬──────┘
-                            │
-                            ▼
-           ┌───────────────────────────────┐
-           │        LLM Interface          │
-           │      (LLMService type)        │
-           └───────────────────────────────┘
-                            │
-                  ┌─────────┴─────────┐
-                  │                   │
-          ┌───────▼────────┐  ┌───────▼────────┐
-          │  OpenAIService │  │AnthropicService│
-          └────────────────┘  └────────────────┘
++-----------------+      +---------------------+      +---------------------+
+|  Client Manager |----->|     LLM Factory     |<-----|       Config        |
+| (Tool Execution)|      +----------+----------+      +---------------------+
++--------+--------+                 |
+         |                         ▼
+         |        +----------------------------------+
+         |        |         LLM Interface            |
+         +------->|       (ILLMService type)         |
+                  +-----------------+----------------+
+                                    |
+                      +-------------+-------------+
+                      |                           |
+            +---------▼----------+     +----------▼---------+
+            |   OpenAIService    |     |  AnthropicService  |  ... (Other Providers)
+            | (Uses MessageMgr)  |     | (Uses MessageMgr)  |
+            +--------------------+     +--------------------+
 ```
 
 The main components are:
 
-1. **LLM Interface (`LLMService`)** - Defines the contract that all LLM implementations must follow.
-2. **Provider Implementations** - Each provider (e.g., OpenAI, Anthropic) has its own implementation.
-3. **Factory** - Creates the appropriate service based on configuration.
-4. **Tool Helper** - Manages the tools available to the model.
+1.  **LLM Interface (`ILLMService`)** - Defines the contract that all LLM implementations must follow. It handles task completion, context updates, conversation state, and event emission.
+2.  **Provider Implementations** - Each provider (e.g., OpenAI, Anthropic) has its own implementation of `ILLMService`. These services interact with the provider's specific API.
+3.  **Factory (`factory.ts`)** - Creates the appropriate service (`OpenAIService`, `AnthropicService`, etc.) based on configuration (`LLMConfig`). It also handles API key extraction and can optionally create services compatible with the Vercel AI SDK.
+4.  **Client Manager (`client/manager.ts`)** - Manages the available tools (getting definitions, executing them). LLM services use the `ClientManager` to get tool information and execute tool calls requested by the LLM.
+5.  **Message Manager (`messages/manager.ts`)** - Manages the conversation history, formats messages according to the provider's requirements (using specific formatters), handles system prompts, applies compression strategies, and manages token limits. Each LLM service instance typically has its own `MessageManager`.
+6.  **Event Emitter (`EventEmitter`)** - Used by LLM services to emit events during the task completion lifecycle (e.g., `thinking`, `toolCall`, `toolResult`, `response`, `error`). This allows other parts of the application to react to the LLM's progress.
 
-## Step 1: Understand the LLMService Interface
 
-Every LLM implementation must implement the `LLMService` interface defined in `types.ts`:
+## Overview of Implementation Steps
+
+Adding a new LLM provider involves these main steps:
+
+1.  **Choose LLM & Install SDK:** Select the provider and install its Node.js/TypeScript SDK.
+2.  **Implement/Select Formatter:** Ensure a message formatter (`IMessageFormatter`) exists for the provider's API structure.
+3.  **Implement/Select Tokenizer & Utilities:** Ensure a tokenizer (`ITokenizer`) and token limit information (`getMaxTokens`) are available for the chosen model(s).
+4.  **Choose/Implement Compression Strategy(ies):** Decide which context compression strategies (`ICompressionStrategy`) the `MessageManager` should use if the token limit is exceeded.
+5.  **Create `ILLMService` Implementation:** Build the core service class, integrating the SDK, `MessageManager`, `ClientManager`, and handling the API interaction logic.
+6.  **Update Factory:** Modify the `factory.ts` to recognize and instantiate your new service.
+7.  **Test:** Configure and run Saiki to test your new provider integration.
+
+Let's look at each step in more detail.
+
+## Step 1: Choose LLM & Install SDK
+
+*   Select the Large Language Model provider you want to integrate (e.g., Google Gemini, Cohere, Mistral).
+*   Find and install their official Node.js/TypeScript SDK:
+    ```bash
+    npm install @provider/sdk-library
+    ```
+
+## Step 2: Implement/Select Message Formatter (`IMessageFormatter`)
+
+*   **Role:** Translates Saiki's internal message history (`InternalMessage[]`) into the specific array format required by your chosen LLM provider's API.
+*   **Location:** `src/ai/llm/messages/formatters/`
+*   **Action:**
+    *   Check if a suitable formatter already exists (e.g., `OpenAIMessageFormatter`, `AnthropicMessageFormatter`).
+    *   If not, create a new class (e.g., `YourProviderMessageFormatter.ts`) that implements the `IMessageFormatter` interface from `./types.ts`.
+    *   Implement the `formatMessages` method to perform the required transformation based on the provider's API documentation (e.g., mapping roles, handling content types).
+    *   Implement `formatSystemPrompt` if the provider handles system prompts separately from the main message list.
+
+## Step 3: Implement/Select Tokenizer (`ITokenizer`) & Utilities
+
+*   **Role:** Counts tokens in text according to the specific model's tokenization scheme. This is crucial for the `MessageManager` to manage the context window and apply compression strategies when the token limit is exceeded.
+*   **Location:** `src/ai/llm/tokenizer/`
+*   **Action:**
+    1.  **Check/Add Tokenizer Logic:** Find a library or method (often part of the provider's SDK) to count tokens for your model. Integrate this into the `createTokenizer` function in `factory.ts` if possible, associating it with your provider name (e.g., `'your-provider-name'`). Alternatively, you can directly instantiate the tokenizer within your service constructor.
+    2.  **Update `getMaxTokens`:** Add your model's maximum context window size (token limit) to the `getMaxTokens` function in `utils.ts`. This allows the system to calculate appropriate limits for `MessageManager`.
+    *   Ensure your tokenizer implementation conforms to the `ITokenizer` interface from `./types.ts` (primarily the `countTokens(text: string): number` method).
+
+## Step 4: Choose/Implement Compression Strategy(ies) (`ICompressionStrategy`)
+
+*   **Role:** Defines how the `MessageManager` should reduce the token count of the conversation history when it exceeds the `maxTokens` limit. Strategies are applied sequentially until the history fits.
+*   **Location:** `src/ai/llm/messages/compression/`
+*   **Action:**
+    *   Review the existing strategies: `OldestRemovalStrategy.ts` (removes oldest messages) and `MiddleRemovalStrategy.ts` (attempts to remove messages between the first user message and the latest messages).
+    *   Decide which strategy or sequence of strategies is appropriate for your provider/use case. The default sequence used by `MessageManager` is `[MiddleRemovalStrategy, OldestRemovalStrategy]`.
+    *   If necessary, implement a custom strategy by creating a class that implements the `ICompressionStrategy` interface from `./types.ts`, defining the `compress(messages: InternalMessage[], maxTokens: number, tokenizer: ITokenizer): InternalMessage[]` method.
+    *   You will pass your chosen strategy instance(s) to the `MessageManager` constructor in the next step.
+
+## Step 5: Create `ILLMService` Implementation
+
+This is the core step where you tie everything together.
+
+1.  **Create the Service File:** Create `src/ai/llm/services/your-provider.ts`.
+2.  **Implement the Class:**
 
 ```typescript
-export interface LLMService {
-    // Process a user request and return a response
-    completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string>;
-    
-    // Update the system context with available tools
-    updateSystemContext(tools: McpTool[]): void;
-    
-    // Clear conversation history
-    resetConversation(): void;
-    
-    // Get configuration info
-    getConfig(): { provider: string; model: string };
-}
-```
-
-## Step 2: Create Your Service Implementation
-
-1. Create a new file in the `src/ai/llm/services` directory (e.g., `your-provider.ts`).
-2. Install the necessary SDK for your LLM provider:
-   ```bash
-   npm install your-provider-sdk
-   ```
-3. Implement the `LLMService` interface. Here's a template:
-
-```typescript
-import YourProviderSDK from 'your-provider-sdk';
-import { ClientManager } from '../../client/manager.js';
-import { LLMCallbacks, ILLMService } from './types.js';
-import { McpTool } from '../types.js';
-import { ToolHelper } from './tool-helper.js';
-import { logger } from '../../utils/logger.js';
+import YourProviderSDK from '@provider/sdk-library'; // Your provider's SDK
+import { ClientManager } from '../../../client/manager.js';
+import { ILLMService } from './types.js';
+import { ToolSet } from '../../types.js';
+import { logger } from '../../../utils/logger.js';
+import { EventEmitter } from 'events';
+import { MessageManager } from '../messages/manager.js';
+import { YourProviderMessageFormatter } from '../messages/formatters/your-provider.js'; // Your formatter
+import { createTokenizer } from '../tokenizer/factory.js'; // Or direct tokenizer import
+import { ITokenizer } from '../tokenizer/types.js';
+import { getMaxTokens } from '../tokenizer/utils.js';
+import { ICompressionStrategy } from '../messages/compression/types.js';
+import { OldestRemovalStrategy, MiddleRemovalStrategy } from '../messages/compression/index.js'; // Example strategies
 
 export class YourProviderService implements ILLMService {
-    private client: YourProviderSDK;
+    private providerClient: YourProviderSDK; // Provider SDK instance
     private model: string;
-    private toolHelper: ToolHelper;
-    private conversationHistory: any[] = [];
-    
-    constructor(clientManager: ClientManager, apiKey: string, model?: string, options?: any) {
-        this.model = model || 'default-model-name';
-        this.client = new YourProviderSDK({ apiKey });
-        this.toolHelper = new ToolHelper(clientManager);
-        
-        // Initialize conversation history or state
-        // This will vary based on how your provider handles conversations
+    private clientManager: ClientManager; // Passed in from factory
+    private messageManager: MessageManager; // Manages history, formatting, compression
+    private eventEmitter: EventEmitter; // For emitting lifecycle events
+    private tokenizer: ITokenizer; // Tokenizer instance
+
+    constructor(
+        clientManager: ClientManager, // Provided by factory
+        systemPrompt: string,      // Provided by factory from config
+        apiKey: string,          // Provided by factory
+        model?: string,           // Provided by factory from config
+        // Optionally pass specific compression strategies if not using default
+        compressionStrategies: ICompressionStrategy[] = [
+            new MiddleRemovalStrategy(), 
+            new OldestRemovalStrategy()
+        ] 
+    ) {
+        this.model = model || 'default-your-provider-model';
+        this.providerClient = new YourProviderSDK({ apiKey });
+        this.clientManager = clientManager;
+        this.eventEmitter = new EventEmitter();
+
+        // --- Initialize Tokenizer ---
+        // Preferably use the factory
+        this.tokenizer = createTokenizer('your-provider-name', this.model); 
+        // Alternatively: Instantiate directly if not using factory
+        // this.tokenizer = new YourSpecificTokenizerLibrary(); 
+
+        // --- Initialize Message Manager ---
+        const formatter = new YourProviderMessageFormatter();
+        const rawMaxTokens = getMaxTokens('your-provider-name', this.model);
+        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9); // Safety margin
+
+        this.messageManager = new MessageManager(
+            formatter,
+            systemPrompt,
+            maxTokensWithMargin,
+            this.tokenizer, // Pass the instantiated tokenizer
+            compressionStrategies // Pass chosen compression strategies
+        );
+
+        logger.info(`Initialized YourProviderService with model ${this.model}`);
     }
-    
-    updateSystemContext(tools: McpTool[]): void {
-        // Format tool descriptions for your provider
-        // Set system instructions
-        // This will depend on how your provider handles system instructions
+
+    // --- Implement ILLMService Methods ---
+
+    getEventEmitter(): EventEmitter {
+        return this.eventEmitter;
     }
-    
-    async completeTask(userInput: string, callbacks?: LLMCallbacks): Promise<string> {
-        // 1. Add user input to conversation
-        // 2. Get all tools
-        // 3. Format tools for your provider
-        // 4. Call the provider's API
-        // 5. Process tool calls if needed (may require iterations)
-        // 6. Return the final response
-        
-        // Example basic implementation:
-        try {
-            // Add user message
-            this.addUserMessage(userInput);
-            
-            // Get and format tools
-            const rawTools = await this.toolHelper.getAllTools();
-            const formattedTools = this.formatToolsForProvider(rawTools);
-            
-            // Notify that we're processing
-            callbacks?.onThinking?.();
-            
-            // Call the API
-            const response = await this.client.chat.completions.create({
-                model: this.model,
-                messages: this.conversationHistory,
-                tools: formattedTools,
-                // Other provider-specific options
-            });
-            
-            // Handle tool calls if your provider supports them
-            // This will often require a loop to handle multiple tool calls
-            
-            // Extract the response
-            const responseText = this.extractResponseText(response);
-            
-            // Add assistant response to history
-            this.addAssistantResponse(response);
-            
-            // Notify with final response
-            callbacks?.onResponse?.(responseText);
-            return responseText;
-        } catch (error) {
-            // Handle API errors
-            logger.error(`Error in Your Provider service: ${error}`);
-            return `Error: ${error instanceof Error ? error.message : String(error)}`;
-        }
+
+    getAllTools(): Promise<ToolSet> {
+        return this.clientManager.getAllTools();
+    }
+
+    updateSystemContext(newSystemPrompt: string): void {
+        this.messageManager.setSystemPrompt(newSystemPrompt);
+        logger.debug('System context updated.');
     }
     
     resetConversation(): void {
-        // Clear conversation history
-        // Keep only system messages if applicable
+        this.messageManager.reset();
+        this.eventEmitter.emit('conversationReset');
+        logger.debug('Conversation reset.');
     }
     
-    getConfig(): { provider: string; model: string } {
+    getConfig(): { provider: string; model: string; [key: string]: any } {
+        const configuredMaxTokens = (this.messageManager as any).maxTokens; 
         return {
             provider: 'your-provider-name',
-            model: this.model
+            model: this.model,
+            configuredMaxTokens: configuredMaxTokens,
+            modelMaxTokens: getMaxTokens('your-provider-name', this.model)
         };
     }
-    
-    // Add private helper methods as needed
-    private formatToolsForProvider(tools: McpTool[]): any[] {
-        // Convert Saiki's tool format to the format expected by your provider
-        return tools.map(tool => {
-            // Provider-specific transformation
+
+    async completeTask(userInput: string): Promise<string> {
+        this.messageManager.addUserMessage(userInput);
+        const rawTools = await this.clientManager.getAllTools();
+        const formattedTools = this.formatToolsForProvider(rawTools);
+        
+        this.eventEmitter.emit('thinking');
+        logger.debug('Starting completeTask loop');
+
+        const MAX_ITERATIONS = 10;
+        let iterationCount = 0;
+        let finalResponseText = '';
+
+        try {
+            while (iterationCount < MAX_ITERATIONS) {
+                iterationCount++;
+                logger.debug(`LLM Iteration ${iterationCount}`);
+
+                // Get formatted messages (compression applied if needed)
+                const messages = this.messageManager.getFormattedMessages();
+                const systemPrompt = this.messageManager.getFormattedSystemPrompt(); // Use if needed by provider
+
+                logger.silly("Messages sent to provider:", messages);
+                logger.silly("Formatted tools:", formattedTools);
+
+                // --- Call Provider API ---
+                const response = await this.providerClient.someApiCall({ // Replace with actual SDK call
+                    model: this.model,
+                    messages: messages,
+                    system: systemPrompt, // If applicable
+                    tools: formattedTools,
+                    // ... other provider options
+                });
+                logger.silly("Raw response from provider:", response);
+
+                // --- Process Response --- 
+                const { textContent, toolCalls } = this.parseProviderResponse(response);
+                logger.silly("Parsed response:", { textContent, toolCalls });
+
+                // Add assistant message (handles text and/or tool calls)
+                this.messageManager.addAssistantMessage(textContent, toolCalls);
+
+                // --- Handle Tool Calls (if any) --- 
+                if (!toolCalls || toolCalls.length === 0) {
+                    logger.debug('No tool calls. Task complete.');
+                    finalResponseText = textContent || '';
+                    this.eventEmitter.emit('response', finalResponseText);
+                    return finalResponseText; // Exit loop and return
+                }
+                
+                // Optional: Accumulate intermediate text if provider sends text alongside tool calls
+                if (textContent) {
+                    finalResponseText += textContent + '\n'; 
+                }
+
+                logger.debug(`Processing ${toolCalls.length} tool calls.`);
+                for (const toolCall of toolCalls) { 
+                    const toolName = toolCall.function.name;
+                    const toolCallId = toolCall.id;
+                    let args: any = {};
+                    try {
+                        args = JSON.parse(toolCall.function.arguments);
+                    } catch (e) {
+                        logger.error(`Failed to parse arguments for tool ${toolName}: ${toolCall.function.arguments}`, e);
+                        this.messageManager.addToolResult(toolCallId, toolName, { error: `Invalid arguments format: ${e}` });
+                        this.eventEmitter.emit('toolResult', toolName, { error: `Invalid arguments format: ${e}` });
+                        continue; // Skip executing this tool call
+                    }
+
+                    this.eventEmitter.emit('toolCall', toolName, args);
+                    let result: any;
+                    try {
+                        result = await this.clientManager.executeTool(toolName, args);
+                        logger.debug(`Tool ${toolName} executed successfully.`);
+                        this.messageManager.addToolResult(toolCallId, toolName, result);
+                        this.eventEmitter.emit('toolResult', toolName, result);
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
+                        result = { error: errorMessage }; 
+                        this.messageManager.addToolResult(toolCallId, toolName, result);
+                        this.eventEmitter.emit('toolResult', toolName, result);
+                    }
+                }
+                
+                // Prepare for next iteration
+                this.eventEmitter.emit('thinking'); 
+
+            } // End while loop
+
+            // Max iterations reached
+            logger.warn(`Reached maximum iterations (${MAX_ITERATIONS}).`);
+            const maxIterResponse = finalResponseText || 'Reached maximum tool call iterations without a final answer.';
+            this.eventEmitter.emit('response', maxIterResponse);
+            return maxIterResponse;
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error(`Error during completeTask execution: ${errorMessage}`, { error });
+            this.eventEmitter.emit('error', error instanceof Error ? error : new Error(errorMessage));
+            // Consider adding the error to message history if appropriate for the provider
+            // this.messageManager.addAssistantMessage(`Error processing request: ${errorMessage}`);
+            return `Error processing request: ${errorMessage}`;
+        }
+    }
+
+    // --- Private Helper Methods --- 
+
+    // Translates Saiki's internal ToolSet into the provider's specific format
+    private formatToolsForProvider(tools: ToolSet): any[] { // Return type depends on provider SDK
+        logger.debug(`Formatting ${Object.keys(tools).length} tools for provider.`);
+        return Object.entries(tools).map(([toolName, toolDefinition]) => {
+            // *** Provider-Specific Transformation Logic Here ***
+            return {
+                name: toolName,
+                description: toolDefinition.description,
+                input_schema: toolDefinition.parameters || { type: 'object', properties: {} } 
+                // Add/modify fields based on provider's requirements
+            };
         });
     }
-    
-    // Other helper methods as needed
-}
-```
 
-## Step 3: Update the Factory
+    // Parses the raw response from the provider's API 
+    private parseProviderResponse(response: any): { textContent: string | null; toolCalls: any[] | null } {
+         // *** Provider-Specific Parsing Logic Here ***
+         // Needs to extract:
+         // 1. The main textual response (if any)
+         // 2. Any tool call requests, formatted into the structure MessageManager expects:
+         //    { id: string, type: 'function', function: { name: string, arguments: string } }[]
+         
+         // Example structure (adapt heavily):
+         let textContent: string | null = response?.choices?.[0]?.message?.content || null;
+         let toolCalls: any[] | null = response?.choices?.[0]?.message?.tool_calls || null; 
 
-Modify `factory.ts` to support your new provider:
+         // If textContent and toolCalls are mixed (like Anthropic), parse and separate them.
+         // Ensure tool call 'arguments' are stringified JSON.
 
-1. Import your new service class:
-   ```typescript
-   import { YourProviderService } from './your-provider.js';
-   ```
-
-2. Add your provider to the `createLLMService` function:
-   ```typescript
-   export function createLLMService(
-       config: LLMConfig,
-       clientManager: ClientManager
-   ): LLMService {
-       // Extract and validate API key
-       const apiKey = extractApiKey(config);
-       
-       switch (config.provider.toLowerCase()) {
-           case 'openai':
-               return new OpenAIService(clientManager, apiKey, config.model, config.providerOptions);
-           case 'anthropic':
-               return new AnthropicService(clientManager, apiKey, config.model, config.providerOptions);
-           case 'your-provider-name':
-               return new YourProviderService(clientManager, apiKey, config.model, config.providerOptions);
-           default:
-               throw new Error(`Unsupported LLM provider: ${config.provider}`);
+         return { textContent, toolCalls };
        }
    }
    ```
 
-3. If needed, update the `extractApiKey` function to handle your provider:
-   ```typescript
-   function extractApiKey(config: LLMConfig): string {
-       const provider = config.provider;
-       
-       // Get API key from config or environment
-       let apiKey = config.apiKey || '';
-       if (apiKey.startsWith('env:')) {
-           // If the API key is specified as an environment variable reference
-           const envVarName = apiKey.substring(4);
-           apiKey = process.env[envVarName] || '';
-       } else {
-           // Fall back to environment variables if not in config
-           const apiKeyEnvVar = getApiKeyEnvVar(provider);
-           apiKey = apiKey || process.env[apiKeyEnvVar] || '';
-       }
-       
-       // ...validation and error handling
-       
-       return apiKey;
-   }
-   
-   function getApiKeyEnvVar(provider: string): string {
-       switch (provider.toLowerCase()) {
-           case 'openai': return 'OPENAI_API_KEY';
-           case 'anthropic': return 'ANTHROPIC_API_KEY';
-           case 'your-provider-name': return 'YOUR_PROVIDER_API_KEY';
-           default: return `${provider.toUpperCase()}_API_KEY`;
-       }
-   }
+## Step 6: Update the Factory (`factory.ts`)
+
+The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service based on the configuration.
+
+1.  **Import Your Service:** Add `import { YourProviderService } from './your-provider.js';` at the top.
+2.  **Add to `_createLLMService`:** Add a `case` for your provider name in the `switch` statement within the `_createLLMService` function:
+    ```typescript
+    case 'your-provider-name':
+        return new YourProviderService(clientManager, config.systemPrompt, apiKey, config.model);
+    ```
+3.  **Update API Key Env Var (If Needed):** If your provider uses a standard environment variable name different from `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, update the `switch` statement within the `extractApiKey` function (or the `getApiKeyEnvVarName` helper if used) to include your provider's key name.
+    ```typescript
+    case 'your-provider-name': apiKeyEnvVar = 'YOUR_PROVIDER_API_KEY'; break;
+    ```
+4.  **Optional: Add Vercel AI SDK Support:** If your provider is supported by `@ai-sdk` and you want to enable Vercel mode, import its SDK function (e.g., `import { yourProvider } from '@ai-sdk/your-provider';`) and add a case to `_createVercelModel`:
+    ```typescript
+     case 'your-provider-name': return yourProvider(model);
+    ```
+
+## Step 7: Test Your Implementation
+
+1.  **Configure `saiki.yml`:** Update your configuration file to use your new provider:
+   ```yaml
+   # your-provider configuration
+   llm:
+     provider: your-provider-name
+     model: your-model-name
+     # you can update the system prompt to change the behavior of the llm
+     systemPrompt: |
+       Optional: Your custom system prompt.
+     apiKey: env:YOUR_PROVIDER_API_KEY
    ```
+2.  **Set API Key:** Ensure the API key is available either directly in the config (not recommended for production) or in your environment variables (e.g., in a `.env` file loaded by your application).
+3.  **Run Saiki:** Start the application (`npm start` or similar).
+4.  **Test Thoroughly:**
+    *   Send simple prompts.
+    *   Send prompts designed to trigger tool usage.
+    *   Send long conversations to test context window limits and compression.
+    *   Monitor the logs (set log level to `debug` or `silly` for detailed info during development).
+    *   Check for expected events from the `EventEmitter` if applicable.
 
-## Step 4: Implement Tool Handling
-
-Tools are a critical part of the LLM service. Each provider has its own way of handling tool definitions and tool calls.
-
-Your implementation needs to:
-
-1. Format the tools for your provider's API in `updateSystemContext` and/or in the completion call
-2. Process the tool calls from the provider's response
-3. Use the `ToolHelper` to execute the tools
-4. Handle the results and make them available to the next model request
-
-Study how this is done in `openai.ts` and `anthropic.ts` for examples of different approaches.
-
-## Step 5: Test Your Implementation
-
-1. Update your `mcp.json` configuration to use your new provider:
-   ```json
-   {
-     "llm": {
-       "provider": "your-provider-name",
-       "model": "your-model-name",
-       "apiKey": "env:YOUR_PROVIDER_API_KEY",
-       "providerOptions": {
-         // Any specific options for your provider
-       }
-     }
-   }
-   ```
-
-2. Make sure your API key is set in the environment or `.env` file.
-
-3. Run Saiki and test various tool interactions.
-
-## Tips for Different Providers
-
-### Handling Conversation State
-
-Different LLM providers handle conversation state differently:
-
-- **OpenAI**: Uses an array of message objects with roles
-- **Anthropic**: Similar to OpenAI but with slight differences in message structure
-- **Others**: May have completely different mechanisms
-
-Adapt your implementation to match your provider's approach.
-
-### System Instructions
-
-Providers also vary in how they handle system instructions:
-
-- **OpenAI**: Supports a dedicated "system" role in messages
-- **Anthropic**: Requires prepending system instructions to the first user message
-- **Others**: May have specific parameters or different approaches
-
-### Tool Definitions
-
-The format for defining tools varies widely:
-
-- **OpenAI**: Uses a "functions" structure with JSON Schema
-- **Anthropic**: Has its own "tools" format
-- **Others**: May have different structures or capabilities
-
-You'll need to translate Saiki's tool format to your provider's expected format.
-
-## Example: Implementation Patterns
-
-For inspiration, look at how the existing implementations handle key challenges:
-
-### OpenAI Tool Handling Pattern
-
-```typescript
-// 1. Format tools for OpenAI
-private formatToolsForOpenAI(tools: McpTool[]): any[] {
-    return tools.map(tool => ({
-        type: 'function',
-        function: {
-            name: tool.name,
-            description: tool.description,
-            parameters: tool.parameters || { type: 'object', properties: {} }
-        }
-    }));
-}
-
-// 2. Process tool calls
-for (const toolCall of message.tool_calls) {
-    const toolName = toolCall.function.name;
-    const args = JSON.parse(toolCall.function.arguments);
-    
-    // 3. Execute tool
-    const result = await this.toolHelper.executeTool(toolName, args);
-    
-    // 4. Register result for next iteration
-    this.registerToolResult(toolName, result, toolCall.id);
-}
-```
-
-### Anthropic Tool Handling Pattern
-
-```typescript
-// 1. Format tools for Anthropic
-private formatToolsForClaude(tools: McpTool[]): any[] {
-    return tools.map(tool => ({
-        name: tool.name,
-        description: tool.description || '',
-        input_schema: tool.parameters || { type: 'object', properties: {} }
-    }));
-}
-
-// 2. Process tool uses
-for (const toolUse of toolUses) {
-    const toolName = toolUse.name;
-    const args = toolUse.input;
-    
-    // 3. Execute tool
-    const result = await this.toolHelper.executeTool(toolName, args);
-    
-    // 4. Format result for next iteration
-    contentArray.push({
-        type: 'tool_result',
-        tool_use_id: toolUse.id,
-        content: resultValue
-    });
-}
-```
-
-By following these patterns and understanding your LLM provider's specific requirements, you can successfully integrate a new AI service into Saiki. 
+By following these steps, you should be able to successfully integrate a new LLM provider into Saiki's extensible architecture. 
