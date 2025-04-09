@@ -1,5 +1,5 @@
 import { ClientManager } from '../client/manager.js';
-import { ILLMService } from '../ai/llm/types.js';
+import { ILLMService } from '../ai/llm/services/types.js';
 import { AgentConfig } from '../config/types.js';
 import { createLLMService } from '../ai/llm/services/factory.js';
 import { logger } from './logger.js';

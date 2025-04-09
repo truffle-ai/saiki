@@ -1,4 +1,4 @@
-import { ITokenizer, TokenizationError } from './tokenizer.js';
+import { ITokenizer, TokenizationError } from './types.js';
 import { OpenAITokenizer } from './openai.js';
 import { AnthropicTokenizer } from './anthropic.js';
 

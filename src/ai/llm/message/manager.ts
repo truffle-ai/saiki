@@ -1,6 +1,6 @@
 import { IMessageFormatter } from './formatter.js';
 import { InternalMessage } from './types.js';
-import { ITokenizer } from '../tokenizer/tokenizer.js';
+import { ITokenizer } from '../tokenizer/types.js';
 
 // Consider adding a proper logger instance later
 const logger = console; 

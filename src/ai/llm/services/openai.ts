@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from '../types.js';
+import { ILLMService } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';

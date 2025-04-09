@@ -1,4 +1,4 @@
-import { ITokenizer } from './tokenizer.js';
+import { ITokenizer } from './types.js';
 
 /**
  * Placeholder tokenizer for Anthropic models.

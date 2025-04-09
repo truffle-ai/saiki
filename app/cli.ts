@@ -2,7 +2,7 @@ import readline from 'readline';
 import chalk from 'chalk';
 import { ClientManager } from '../src/client/manager.js';
 import { logger } from '../src/utils/logger.js';
-import { ILLMService } from '../src/ai/llm/types.js';
+import { ILLMService } from '../src/ai/llm/services/types.js';
 import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
 import { AgentEventManager } from '../src/ai/llm/events/event-manager.js';

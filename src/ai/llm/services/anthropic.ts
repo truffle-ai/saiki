@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from '../types.js';
+import { ILLMService } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
@@ -8,6 +8,7 @@ import { MessageManager } from '../message/manager.js';
 import { AnthropicFormatter } from '../message/formatters/anthropic.js';
 import { TokenizerFactory } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
+import { LLMCallbacks } from '../types.js';
 
 /**
  * Anthropic implementation of LLMService

@@ -1,4 +1,4 @@
-import { ITokenizer, TokenizationError } from './tokenizer.js';
+import { ITokenizer, TokenizationError } from './types.js';
 import { encoding_for_model, TiktokenModel } from 'tiktoken';
 
 /**

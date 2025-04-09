@@ -1,5 +1,5 @@
 import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from '../types.js';
+import { ILLMService } from './types.js';
 import { logger } from '../../../utils/logger.js';
 import { streamText, generateText, CoreMessage, LanguageModelV1 } from 'ai';
 import { ToolSet } from '../../types.js';
