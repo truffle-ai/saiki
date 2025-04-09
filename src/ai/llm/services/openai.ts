@@ -4,8 +4,8 @@ import { ILLMService } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
-import { MessageManager } from '../message/manager.js';
-import { OpenAIMessageFormatter } from '../message/formatters/openai.js';
+import { MessageManager } from '../messages/manager.js';
+import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 

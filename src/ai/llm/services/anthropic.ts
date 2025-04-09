@@ -4,8 +4,8 @@ import { ILLMService } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
-import { MessageManager } from '../message/manager.js';
-import { AnthropicMessageFormatter } from '../message/formatters/anthropic.js';
+import { MessageManager } from '../messages/manager.js';
+import { AnthropicMessageFormatter } from '../messages/formatters/anthropic.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 

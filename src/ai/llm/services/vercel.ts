@@ -5,8 +5,8 @@ import { streamText, generateText, CoreMessage, LanguageModelV1 } from 'ai';
 import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
-import { MessageManager } from '../message/manager.js';
-import { VercelMessageFormatter } from '../message/formatters/vercel.js';
+import { MessageManager } from '../messages/manager.js';
+import { VercelMessageFormatter } from '../messages/formatters/vercel.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getProviderFromModel, getMaxTokens } from '../tokenizer/utils.js';
 
