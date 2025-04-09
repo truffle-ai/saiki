@@ -1,14 +1,14 @@
-import { ClientManager } from '../../client/manager.js';
-import { ILLMService } from './types.js';
-import { LLMConfig } from '../../config/types.js';
-import { logger } from '../../utils/logger.js';
+import { ClientManager } from '../../../client/manager.js';
+import { ILLMService } from '../types.js';
+import { LLMConfig } from '../../../config/types.js';
+import { logger } from '../../../utils/logger.js';
 import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
 import { anthropic } from '@ai-sdk/anthropic';
-import { VercelLLMService } from './services/vercel.js';
-import { VercelLLM } from './types.js';
-import { OpenAIService } from './services/openai.js';
-import { AnthropicService } from './services/anthropic.js';
+import { VercelLLMService } from './vercel.js';
+import { VercelLLM } from '../types.js';
+import { OpenAIService } from './openai.js';
+import { AnthropicService } from './anthropic.js';
 /**
  * Extract and validate API key from config or environment variables
  * @param config LLM configuration from the config file
