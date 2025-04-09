@@ -1,3 +1,4 @@
+import { LanguageModelV1 } from 'ai';
 import { ToolSet } from '../types.js';
 import { EventEmitter } from 'events';
 
@@ -64,10 +65,9 @@ export interface ILLMService {
     getAllTools(): Promise<ToolSet>;
 
     // Get configuration information about the LLM service
-    getConfig(): { provider: string; model: string } | { model: VercelLLM };
+    getConfig(): { provider: string; model: string } | { model: LanguageModelV1 };
 
     // Get event emitter for subscribing to events
     getEventEmitter(): EventEmitter;
 }
 
-export type VercelLLM = any;

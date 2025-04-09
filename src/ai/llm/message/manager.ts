@@ -1,5 +1,9 @@
 import { IMessageFormatter } from './formatter.js';
 import { InternalMessage } from './types.js';
+import { ITokenizer } from '../tokenizer/tokenizer.js';
+
+// Consider adding a proper logger instance later
+const logger = console; 
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -7,6 +11,7 @@ import { InternalMessage } from './types.js';
  * - Storing and validating conversation messages
  * - Managing the system prompt
  * - Formatting messages for specific LLM providers through an injected formatter
+ * - Optionally counting tokens and applying compression strategies if limits are exceeded
  * - Providing access to conversation history
  */
 export class MessageManager {
@@ -31,22 +36,35 @@ export class MessageManager {
     private maxTokens: number | null = null;
 
     /**
+     * Tokenizer used for counting tokens and enabling compression (if specified)
+     */
+    private tokenizer: ITokenizer | null = null;
+
+    /**
      * Creates a new MessageManager instance
      * 
      * @param formatter Formatter implementation for the target LLM provider
      * @param systemPrompt Optional system prompt to initialize the conversation
-     * @param maxTokens Optional maximum token limit for the conversation
+     * @param maxTokens Optional maximum token limit for the conversation. Compression requires a tokenizer.
+     * @param tokenizer Optional tokenizer implementation. Required for token counting and compression.
      */
     constructor(
         formatter: IMessageFormatter,
         systemPrompt?: string,
-        maxTokens?: number
+        maxTokens?: number,
+        tokenizer?: ITokenizer
     ) {
         this.formatter = formatter;
         if (systemPrompt) {
             this.setSystemPrompt(systemPrompt);
         }
         this.maxTokens = maxTokens ?? null;
+        this.tokenizer = tokenizer ?? null;
+
+        // Warning if max tokens set but no tokenizer
+        if (this.maxTokens && !this.tokenizer) {
+            logger.warn("MessageManager: maxTokens is set but no tokenizer provided. Token limit cannot be enforced, and compression is disabled.");
+        }
     }
 
     /**
@@ -86,7 +104,7 @@ export class MessageManager {
                 break;
             case 'system':
                 // System messages should ideally be handled via setSystemPrompt
-                console.warn("MessageManager: Adding system message directly to history. Use setSystemPrompt instead.");
+                logger.warn("MessageManager: Adding system message directly to history. Use setSystemPrompt instead.");
                 if (typeof message.content !== 'string' || message.content.trim() === '') {
                     throw new Error("MessageManager: System message content must be a non-empty string.");
                 }
@@ -96,7 +114,7 @@ export class MessageManager {
         }
 
         this.history.push(message);
-        // TODO: Add pruning logic if maxTokens is exceeded (requires tokenizer)
+        // Note: Compression is now handled lazily in getFormattedMessages
     }
 
     /**
@@ -170,19 +188,71 @@ export class MessageManager {
     }
 
     /**
-     * Gets the conversation history formatted for the target LLM provider
-     * Uses the injected formatter to convert internal messages to the provider's format
+     * Counts total tokens in current conversation including system prompt.
+     * Requires a tokenizer to be configured.
+     * @returns Total token count or null if no tokenizer is available.
+     */
+    countTotalTokens(): number | null {
+        if (!this.tokenizer) return null;
+        
+        let total = 0;
+        const overheadPerMessage = 4; // Approximation for message format overhead
+
+        try {
+            // Count system prompt
+            if (this.systemPrompt) {
+                total += this.tokenizer.countTokens(this.systemPrompt);
+            }
+            
+            // Count each message
+            for (const message of this.history) {
+                if (message.content) {
+                    total += this.tokenizer.countTokens(message.content);
+                }
+                
+                // Count tool calls if present
+                if (message.toolCalls) {
+                    for (const call of message.toolCalls) {
+                        total += this.tokenizer.countTokens(call.function.name);
+                        // Ensure arguments exist and are strings before counting
+                        if (call.function.arguments) {
+                           total += this.tokenizer.countTokens(call.function.arguments);
+                        }
+                    }
+                }
+                 // Add overhead for each message structure
+                 total += overheadPerMessage;
+            }
+
+        } catch (error) {
+            logger.error("MessageManager: Error counting tokens:", error);
+            // Decide on error handling: return null, throw, or return current total?
+            // Returning null indicates counting failed.
+            return null; 
+        }
+        
+        return total;
+    }
+
+    /**
+     * Gets the conversation history formatted for the target LLM provider.
+     * Applies compression strategies if a tokenizer and maxTokens are set, 
+     * and the current token count exceeds the limit.
+     * Uses the injected formatter to convert internal messages to the provider's format.
      * 
      * @returns Formatted messages ready to send to the LLM provider API
-     * @throws Error if formatting fails
+     * @throws Error if formatting or compression fails critically
      */
     getFormattedMessages(): any[] {
+        // Apply compression if needed *before* formatting
+        this.compressHistoryIfNeeded();
+        
         try {
-            // Pass a read-only view of history to the formatter
+            // Pass a read-only view of the potentially compressed history to the formatter
             return this.formatter.format([...this.history], this.systemPrompt);
         } catch (error) {
-            console.error("Error formatting messages:", error);
-            throw new Error(`Failed to format messages: ${error}`);
+            logger.error("Error formatting messages:", error);
+            throw new Error(`Failed to format messages: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
@@ -220,5 +290,106 @@ export class MessageManager {
      */
     getHistory(): Readonly<InternalMessage[]> {
         return [...this.history];
+    }
+
+    // --- Private Compression Methods ---
+
+    /**
+     * Checks if history compression is needed based on token count and applies strategies.
+     */
+    private compressHistoryIfNeeded(): void {
+        // Compression requires both maxTokens and a tokenizer
+        if (!this.maxTokens || !this.tokenizer) return;
+        
+        let currentTotalTokens = this.countTotalTokens();
+        logger.debug(`MessageManager: Checking if history compression is needed.`);        
+        // If counting failed or we are within limits, do nothing
+        if (currentTotalTokens === null || currentTotalTokens <= this.maxTokens) {
+            logger.debug(`MessageManager: History compression not needed. Current token count: ${currentTotalTokens}, Max tokens: ${this.maxTokens}`);
+            return;
+        }
+        
+        logger.debug(`MessageManager: History exceeds token limit (${currentTotalTokens} > ${this.maxTokens}). Applying compression.`);
+
+        const initialLength = this.history.length;
+        
+        // Strategy 1: Remove messages from the middle
+        this.applyMiddleRemovalCompression();
+        
+        // Recalculate tokens after first strategy
+        currentTotalTokens = this.countTotalTokens();
+        if (currentTotalTokens !== null && currentTotalTokens <= this.maxTokens) {
+            logger.debug(`MessageManager: Compression (Middle Removal) successful. New count: ${currentTotalTokens}, Messages removed: ${initialLength - this.history.length}`);
+            return; 
+        }
+        
+        // If still over limit (or counting failed again), apply more aggressive pruning
+        if (currentTotalTokens === null || currentTotalTokens > this.maxTokens) {
+            if (currentTotalTokens !== null) { // Log only if we know we're still over
+                 logger.debug(`MessageManager: Still over limit (${currentTotalTokens} > ${this.maxTokens}). Applying oldest removal.`);
+            }
+            this.applyOldestRemovalCompression();
+        }
+
+        // Final check and logging
+        currentTotalTokens = this.countTotalTokens();
+        if (currentTotalTokens !== null && currentTotalTokens <= this.maxTokens) {
+             logger.debug(`MessageManager: Compression (Oldest Removal) successful. New count: ${currentTotalTokens}, Total messages removed: ${initialLength - this.history.length}`);
+        } else if (currentTotalTokens !== null) {
+             logger.warn(`MessageManager: Compression finished, but still over token limit (${currentTotalTokens} > ${this.maxTokens}). History length: ${this.history.length}`);
+        } else {
+            logger.error("MessageManager: Token counting failed after compression.");
+        }
+    }
+    
+    /**
+     * Compression Strategy 1: Remove messages from the middle of the conversation.
+     * Preserves the first few messages (system context) and the most recent messages (current context).
+     */
+    private applyMiddleRemovalCompression(): void {
+        if (!this.maxTokens || !this.tokenizer) return; // Should not happen if called from compressHistoryIfNeeded
+
+        const preserveStart = 4; // Keep the first ~2 exchanges (adjust as needed)
+        const preserveEnd = 5;   // Keep the last ~2-3 exchanges (adjust as needed)
+        const minLengthForMiddleRemoval = preserveStart + preserveEnd + 1; // Need at least one message to remove in the middle
+
+        if (this.history.length < minLengthForMiddleRemoval) {
+            logger.debug("MessageManager: History too short for middle removal strategy.");
+            return; // Not enough messages to apply this strategy meaningfully
+        }
+        
+        // Start removing from the oldest message *after* the initial preserved block
+        let removalIndex = preserveStart; 
+        
+        while (this.history.length >= minLengthForMiddleRemoval) {
+            const currentTokens = this.countTotalTokens();
+            // Stop if we are within limits or counting failed
+            if (currentTokens === null || currentTokens <= this.maxTokens) break;
+            // Stop if removing this message would merge the start and end preservation blocks
+            if (removalIndex >= this.history.length - preserveEnd) break; 
+
+            // Remove the message at the current removal index
+            this.history.splice(removalIndex, 1);
+            // Do NOT increment removalIndex, as the next message slides into its place.
+        }
+    }
+    
+    /**
+     * Compression Strategy 2: Remove the oldest messages (after the system prompt).
+     * This is a more aggressive approach used if middle removal isn't enough.
+     */
+    private applyOldestRemovalCompression(): void {
+         if (!this.maxTokens || !this.tokenizer) return; // Safety check
+
+         const minMessagesToKeep = 4; // Always keep at least the last few messages (adjust as needed)
+
+         while (this.history.length > minMessagesToKeep) {
+             const currentTokens = this.countTotalTokens();
+             // Stop if we are within limits or counting failed
+             if (currentTokens === null || currentTokens <= this.maxTokens) break;
+
+             // Remove the oldest message (index 0)
+             this.history.shift(); 
+         }
     }
 } 

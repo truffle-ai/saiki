@@ -1,35 +1,48 @@
 import { ClientManager } from '../../../client/manager.js';
 import { ILLMService } from '../types.js';
 import { logger } from '../../../utils/logger.js';
-import { streamText, generateText, CoreMessage } from 'ai';
-import { VercelLLM } from '../types.js';
+import { streamText, generateText, CoreMessage, LanguageModelV1 } from 'ai';
 import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../message/manager.js';
 import { VercelFormatter } from '../message/formatters/vercel.js';
+import { TokenizerFactory } from '../tokenizer/factory.js';
+import { getProviderFromModel, getMaxTokens } from '../tokenizer/utils.js';
 
 /**
- * Vercel implementation of LLMService
+ * Vercel implementation of LLMService (Generic/Multi-Provider)
  */
 export class VercelLLMService implements ILLMService {
-    private model: VercelLLM;
-    private maxTokens: number;
-    private temperature: number;
+    private model: LanguageModelV1;
+    private provider: string;
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
 
-    constructor(clientManager: ClientManager, model: VercelLLM, systemPrompt: string) {
+    constructor(clientManager: ClientManager, model: LanguageModelV1, systemPrompt: string) {
         this.model = model;
         this.clientManager = clientManager;
         this.eventEmitter = new EventEmitter();
         
-        // Initialize MessageManager with VercelFormatter
+        // Detect provider, get tokenizer, and max tokens
+        this.provider = getProviderFromModel(this.model.modelId);
+        const tokenizer = TokenizerFactory.createTokenizer(this.provider, this.model.modelId);
+        const rawMaxTokens = getMaxTokens(this.provider, this.model.modelId);
+        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
+
+        // Use vercel formatter to match the message format vercel expects
         const formatter = new VercelFormatter();
-        this.messageManager = new MessageManager(formatter, systemPrompt);
+
+        // Update MessageManager initialization
+        this.messageManager = new MessageManager(
+            formatter,
+            systemPrompt,
+            maxTokensWithMargin,
+            tokenizer
+        );
         
-        logger.debug(`[VercelLLMService] System context: ${systemPrompt}`);
+        logger.debug(`[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, formatter: VercelFormatter, maxTokens (adjusted): ${maxTokensWithMargin}`);
     }
 
     getEventEmitter(): EventEmitter {
@@ -87,11 +100,19 @@ export class VercelLLMService implements ILLMService {
                 // Get formatted messages from message manager
                 const formattedMessages = this.messageManager.getFormattedMessages();
                 
-                logger.debug(`Messages: ${JSON.stringify(formattedMessages, null, 2)}`);
+                logger.debug(`Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`);
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
+                // Estimate tokens before sending (optional)
+                const currentTokens = this.messageManager.countTotalTokens();
+                if (currentTokens !== null) {
+                    logger.debug(`Estimated tokens being sent to Vercel provider: ${currentTokens}`);
+                }
+
+                // Choose between generateText or processStream
+                // generateText waits for the full response, processStream handles chunks
                 fullResponse = await this.generateText(formattedMessages, formattedTools, MAX_ITERATIONS);
-                // Change this to processStream to use streaming
+                // OR
                 // fullResponse = await this.processStream(formattedMessages, formattedTools, MAX_ITERATIONS);
             }
 
@@ -102,12 +123,12 @@ export class VercelLLMService implements ILLMService {
         } catch (error) {
             // Handle API errors
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error(`Error in vercel llm service: ${error}`);
+            logger.error(`Error in Vercel LLM service execution: ${errorMessage}`, { error });
             this.eventEmitter.emit(
                 'error',
                 error instanceof Error ? error : new Error(errorMessage)
             );
-            return `Error: ${errorMessage}`;
+            return `Error processing request: ${errorMessage}`;
         }
     }
 
@@ -132,7 +153,7 @@ export class VercelLLMService implements ILLMService {
 
                 // Process tool calls
                 if (step.toolCalls && step.toolCalls.length > 0) {
-                    // Don't add assistant message with tool calls to history
+                    // For now, don't add assistant message with tool calls to history
                     // Just emit the events
                     for (const toolCall of step.toolCalls) {
                         this.eventEmitter.emit('toolCall', toolCall.toolName, toolCall.args);
@@ -142,7 +163,7 @@ export class VercelLLMService implements ILLMService {
                 // Process tool results
                 if (step.stepType === 'tool-result' && step.toolResults) {
                     for (const toolResult of step.toolResults as any) {
-                        // Don't add tool results to message manager
+                        // For now, don't add tool results to message manager
                         // Just emit the events
                         this.eventEmitter.emit(
                             'toolResult',
@@ -253,9 +274,10 @@ export class VercelLLMService implements ILLMService {
             // temperature: this.temperature,
         });
 
-        logger.silly(`Response: ${JSON.stringify(response, null, 2)}`);
+        logger.silly(`streamText response object: ${JSON.stringify(response, null, 2)}`);
 
-        return response.textStream;
+        // Return the textStream part for processStream to iterate over
+        return response.textStream; 
     }
 
     resetConversation(): void {
@@ -267,9 +289,13 @@ export class VercelLLMService implements ILLMService {
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information
      */
-    getConfig(): { model: VercelLLM } {
+    getConfig(): { provider: string; model: LanguageModelV1; [key: string]: any } {
+        const configuredMaxTokens = (this.messageManager as any).maxTokens;
         return {
+            provider: `vercel:${this.provider}`,
             model: this.model,
+            configuredMaxTokens: configuredMaxTokens,
+            modelMaxTokens: getMaxTokens(this.provider, this.model.modelId)
         };
     }
 }

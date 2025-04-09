@@ -6,6 +6,8 @@ import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../message/manager.js';
 import { AnthropicFormatter } from '../message/formatters/anthropic.js';
+import { TokenizerFactory } from '../tokenizer/factory.js';
+import { getMaxTokens } from '../tokenizer/utils.js';
 
 /**
  * Anthropic implementation of LLMService
@@ -27,9 +29,19 @@ export class AnthropicService implements ILLMService {
         this.anthropic = new Anthropic({ apiKey });
         this.clientManager = clientManager;
         
-        // Initialize MessageManager with AnthropicFormatter
         const formatter = new AnthropicFormatter();
-        this.messageManager = new MessageManager(formatter, systemPrompt);
+        
+        const tokenizer = TokenizerFactory.createTokenizer('anthropic', this.model);
+
+        const rawMaxTokens = getMaxTokens('anthropic', this.model);
+        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9); 
+
+        this.messageManager = new MessageManager(
+            formatter, 
+            systemPrompt, 
+            maxTokensWithMargin, 
+            tokenizer
+        );
         
         this.eventEmitter = new EventEmitter();
     }
@@ -147,6 +159,7 @@ export class AnthropicService implements ILLMService {
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
+                        logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
                         
                         // Add error as tool result
                         this.messageManager.addToolResult(toolUseId, toolName, { error: errorMessage });
@@ -160,6 +173,7 @@ export class AnthropicService implements ILLMService {
             }
 
             // If we reached max iterations
+            logger.warn(`Reached maximum iterations (${MAX_ITERATIONS}) for task.`);
             this.eventEmitter.emit('response', fullResponse);
             return (
                 fullResponse ||
@@ -168,13 +182,13 @@ export class AnthropicService implements ILLMService {
         } catch (error) {
             // Handle API errors
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error(`Error in Anthropic service: ${errorMessage}`);
+            logger.error(`Error in Anthropic service API call: ${errorMessage}`, { error });
 
             this.eventEmitter.emit(
                 'error',
                 error instanceof Error ? error : new Error(errorMessage)
             );
-            return `Error: ${errorMessage}`;
+            return `Error processing request: ${errorMessage}`;
         }
     }
 
@@ -189,19 +203,18 @@ export class AnthropicService implements ILLMService {
      * @returns Configuration object with provider and model information
      */
     getConfig(): { provider: string; model: string; [key: string]: any } {
+        const configuredMaxTokens = (this.messageManager as any).maxTokens;
         return {
             provider: 'anthropic',
             model: this.model,
+            configuredMaxTokens: configuredMaxTokens,
+            modelMaxTokens: getMaxTokens('anthropic', this.model)
         };
     }
 
-    // needs refactor
     private formatToolsForClaude(tools: ToolSet): any[] {
-        // Convert the ToolSet object to an array of tools
-        // ToolSet is an object where keys are tool names and values are Tool objects
         return Object.entries(tools).map(([toolName, tool]) => {
-            // Create input_schema structure (same as parameters in OpenAI)
-            const input_schema = {
+            const input_schema: { type: string; properties: any; required: string[] } = {
                 type: 'object',
                 properties: {},
                 required: [],
@@ -210,61 +223,25 @@ export class AnthropicService implements ILLMService {
             // Map tool parameters to JSON Schema format
             if (tool.parameters) {
                 // The actual parameters structure appears to be a JSON Schema object
-                // which doesn't match the simple ToolParameters interface
-                const jsonSchemaParams = tool.parameters as any;
+                const jsonSchemaParams = tool.parameters as any; 
 
-                if (
-                    jsonSchemaParams.properties &&
-                    typeof jsonSchemaParams.properties === 'object'
-                ) {
-                    // Extract parameters from the properties object
-                    for (const [name, paramRaw] of Object.entries(jsonSchemaParams.properties)) {
-                        // Type assertion to make TypeScript happy
-                        const param = paramRaw as any;
-                        let paramType = param.type || 'string';
-                        let paramEnum = undefined;
-
-                        // Handle type conversion
-                        if (typeof paramType === 'string') {
-                            if (paramType.includes('number')) paramType = 'number';
-                            else if (paramType.includes('boolean')) paramType = 'boolean';
-                            else if (paramType.includes('array')) paramType = 'array';
-                            else if (paramType.includes('enum')) {
-                                paramType = 'string';
-                                if (param.enum && Array.isArray(param.enum)) {
-                                    paramEnum = param.enum;
-                                }
-                            } else paramType = 'string';
-                        }
-
-                        // Add to input_schema properties
-                        (input_schema.properties as any)[name] = {
-                            type: paramType,
-                            description: param.description || `Parameter ${name}`,
-                        };
-
-                        // Add enum values if present
-                        if (paramEnum) {
-                            (input_schema.properties as any)[name].enum = paramEnum;
-                        }
-
-                        // Check if required
-                        if (
-                            jsonSchemaParams.required &&
-                            Array.isArray(jsonSchemaParams.required) &&
-                            jsonSchemaParams.required.includes(name)
-                        ) {
-                            (input_schema.required as string[]).push(name);
-                        }
+                if (jsonSchemaParams.type === 'object' && jsonSchemaParams.properties) {
+                    input_schema.properties = jsonSchemaParams.properties;
+                    if (Array.isArray(jsonSchemaParams.required)) {
+                        input_schema.required = jsonSchemaParams.required;
                     }
+                } else {
+                    logger.warn(`Unexpected parameters format for tool ${toolName}:`, jsonSchemaParams);
                 }
+            } else {
+                // Handle case where tool might have no parameters
+                 logger.debug(`Tool ${toolName} has no defined parameters.`);
             }
 
-            // Format the tool for Claude
             return {
                 name: toolName,
-                description: tool.description || `Execute the ${toolName} tool`,
-                input_schema,
+                description: tool.description,
+                input_schema: input_schema,
             };
         });
     }

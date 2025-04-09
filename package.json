@@ -42,6 +42,7 @@
         "ora": "^7.0.1",
         "puppeteer-core": "^24.4.0",
         "readline-sync": "^1.4.10",
+        "tiktoken": "^1.0.20",
         "winston": "^3.17.0",
         "yaml": "^2.7.1",
         "zod": "^3.22.4"
