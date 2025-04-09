@@ -3,7 +3,7 @@ import { ITokenizer } from './types.js';
 /**
  * Placeholder tokenizer for Anthropic models.
  * Uses a rough approximation based on character count.
- * IMPORTANT: This is not accurate and should be replaced
+ * TODO: IMPORTANT: This is not accurate and should be replaced
  * with a better implementation or official library when available.
  */
 export class AnthropicTokenizer implements ITokenizer {
