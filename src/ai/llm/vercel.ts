@@ -6,6 +6,8 @@ import { VercelLLM } from './types.js';
 import { ToolSet } from '../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
+import { MessageManager } from './message/manager.js';
+import { VercelFormatter } from './message/formatters/vercel.js';
 
 /**
  * Vercel implementation of LLMService
@@ -15,16 +17,19 @@ export class VercelLLMService implements ILLMService {
     private maxTokens: number;
     private temperature: number;
     private clientManager: ClientManager;
-    private messages: CoreMessage[] = [];
-    private systemContext: string = '';
+    private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
 
     constructor(clientManager: ClientManager, model: VercelLLM, systemPrompt: string) {
         this.model = model;
         this.clientManager = clientManager;
         this.eventEmitter = new EventEmitter();
-        this.updateSystemContext(systemPrompt);
-        logger.debug(`[VercelLLMService] System context: ${this.systemContext}`);
+        
+        // Initialize MessageManager with VercelFormatter
+        const formatter = new VercelFormatter();
+        this.messageManager = new MessageManager(formatter, systemPrompt);
+        
+        logger.debug(`[VercelLLMService] System context: ${systemPrompt}`);
     }
 
     getEventEmitter(): EventEmitter {
@@ -36,13 +41,7 @@ export class VercelLLMService implements ILLMService {
     }
 
     updateSystemContext(newSystemPrompt: string): void {
-        this.systemContext = newSystemPrompt;
-        // Check if the first message is a system message and update it, or add a new one
-        if (this.messages.length > 0 && this.messages[0].role === 'system') {
-            this.messages[0].content = newSystemPrompt;
-        } else {
-            this.messages.unshift({ role: 'system', content: newSystemPrompt });
-        }
+        this.messageManager.setSystemPrompt(newSystemPrompt);
     }
 
     formatTools(tools: ToolSet): VercelToolSet {
@@ -61,7 +60,7 @@ export class VercelLLMService implements ILLMService {
 
     async completeTask(userInput: string): Promise<string> {
         // Add user message
-        this.messages.push({ role: 'user', content: userInput });
+        this.messageManager.addUserMessage(userInput);
 
         // Get all tools
         const tools: any = await this.clientManager.getAllTools();
@@ -79,19 +78,21 @@ export class VercelLLMService implements ILLMService {
         let iterationCount = 0;
         let fullResponse = '';
 
-        // let stream: AsyncIterable<string> & ReadableStream<string>;
-        // let stream: any;
         try {
             while (iterationCount < 1) {
                 this.eventEmitter.emit('thinking');
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
-                logger.debug(`Messages: ${JSON.stringify(this.messages, null, 2)}`);
+                
+                // Get formatted messages from message manager
+                const formattedMessages = this.messageManager.getFormattedMessages();
+                
+                logger.debug(`Messages: ${JSON.stringify(formattedMessages, null, 2)}`);
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
-                fullResponse = await this.generateText(formattedTools, MAX_ITERATIONS);
+                fullResponse = await this.generateText(formattedMessages, formattedTools, MAX_ITERATIONS);
                 // Change this to processStream to use streaming
-                // fullResponse = await this.processStream(formattedTools, MAX_ITERATIONS);
+                // fullResponse = await this.processStream(formattedMessages, formattedTools, MAX_ITERATIONS);
             }
 
             return (
@@ -110,12 +111,12 @@ export class VercelLLMService implements ILLMService {
         }
     }
 
-    async generateText(tools: VercelToolSet, maxSteps: number = 10): Promise<string> {
+    async generateText(messages: CoreMessage[], tools: VercelToolSet, maxSteps: number = 10): Promise<string> {
         let stepIteration = 0;
 
         const response = await generateText({
             model: this.model,
-            messages: this.messages,
+            messages: messages,
             tools,
             onStepFinish: (step) => {
                 logger.debug(`Step iteration: ${stepIteration}`);
@@ -129,18 +130,25 @@ export class VercelLLMService implements ILLMService {
                     `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
                 );
 
-                if (step.stepType === 'tool-result') {
+                // Process tool calls
+                if (step.toolCalls && step.toolCalls.length > 0) {
+                    // Don't add assistant message with tool calls to history
+                    // Just emit the events
+                    for (const toolCall of step.toolCalls) {
+                        this.eventEmitter.emit('toolCall', toolCall.toolName, toolCall.args);
+                    }
+                }
+
+                // Process tool results
+                if (step.stepType === 'tool-result' && step.toolResults) {
                     for (const toolResult of step.toolResults as any) {
+                        // Don't add tool results to message manager
+                        // Just emit the events
                         this.eventEmitter.emit(
                             'toolResult',
                             toolResult.toolName,
                             toolResult.result
                         );
-                    }
-                }
-                if (step.toolCalls) {
-                    for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit('toolCall', toolCall.toolName, toolCall.args);
                     }
                 }
             },
@@ -149,30 +157,35 @@ export class VercelLLMService implements ILLMService {
 
         const fullResponse = response.text;
 
+        // Add final assistant message
+        this.messageManager.addAssistantMessage(fullResponse);
+        
         this.eventEmitter.emit('response', fullResponse);
-        this.messages.push({ role: 'assistant', content: fullResponse });
-
         return fullResponse;
     }
 
-    async processStream(tools: VercelToolSet, maxSteps: number = 10): Promise<string> {
-        const stream = await this.streamText(tools, maxSteps);
+    async processStream(messages: CoreMessage[], tools: VercelToolSet, maxSteps: number = 10): Promise<string> {
+        const stream = await this.streamText(messages, tools, maxSteps);
         let fullResponse = '';
         for await (const textPart of stream) {
             fullResponse += textPart;
             // this.eventEmitter.emit('chunk', textPart);
         }
+        
+        // Add final assistant message, might not be needed
+        this.messageManager.addAssistantMessage(fullResponse);
+        
         this.eventEmitter.emit('response', fullResponse);
         return fullResponse;
     }
 
     // returns AsyncIterable<string> & ReadableStream<string>
-    async streamText(tools: VercelToolSet, maxSteps: number = 10): Promise<any> {
+    async streamText(messages: CoreMessage[], tools: VercelToolSet, maxSteps: number = 10): Promise<any> {
         let stepIteration = 0;
         // use vercel's streamText with mcp
         const response = streamText({
             model: this.model,
-            messages: this.messages,
+            messages: messages,
             tools,
             onChunk: (chunk) => {
                 logger.debug(`Chunk type: ${chunk.chunk.type}`);
@@ -199,18 +212,25 @@ export class VercelLLMService implements ILLMService {
                     `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
                 );
 
-                if (step.stepType === 'tool-result') {
+                // Process tool calls
+                if (step.toolCalls && step.toolCalls.length > 0) {
+                    // Don't add assistant message with tool calls to history
+                    // Just emit the events
+                    for (const toolCall of step.toolCalls) {
+                        this.eventEmitter.emit('toolCall', toolCall.toolName, toolCall.args);
+                    }
+                }
+
+                // Process tool results
+                if (step.stepType === 'tool-result' && step.toolResults) {
                     for (const toolResult of step.toolResults as any) {
+                        // Don't add tool results to message manager
+                        // Just emit the events
                         this.eventEmitter.emit(
                             'toolResult',
                             toolResult.toolName,
                             toolResult.result
                         );
-                    }
-                }
-                if (step.toolCalls) {
-                    for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit('toolCall', toolCall.toolName, toolCall.args);
                     }
                 }
             },
@@ -239,7 +259,7 @@ export class VercelLLMService implements ILLMService {
     }
 
     resetConversation(): void {
-        this.messages = [];
+        this.messageManager.reset();
         this.eventEmitter.emit('conversationReset');
     }
 

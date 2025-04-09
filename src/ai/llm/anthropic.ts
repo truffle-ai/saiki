@@ -4,6 +4,9 @@ import { ILLMService } from './types.js';
 import { ToolSet } from '../types.js';
 import { logger } from '../../utils/logger.js';
 import { EventEmitter } from 'events';
+import { MessageManager } from './message/manager.js';
+import { AnthropicFormatter } from './message/formatters/anthropic.js';
+
 /**
  * Anthropic implementation of LLMService
  */
@@ -11,9 +14,9 @@ export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
     private clientManager: ClientManager;
-    private messages: any[] = [];
-    private systemContext: string = '';
+    private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+
     constructor(
         clientManager: ClientManager,
         systemPrompt: string,
@@ -23,7 +26,11 @@ export class AnthropicService implements ILLMService {
         this.model = model || 'claude-3-7-sonnet-20250219';
         this.anthropic = new Anthropic({ apiKey });
         this.clientManager = clientManager;
-        this.systemContext = systemPrompt;
+        
+        // Initialize MessageManager with AnthropicFormatter
+        const formatter = new AnthropicFormatter();
+        this.messageManager = new MessageManager(formatter, systemPrompt);
+        
         this.eventEmitter = new EventEmitter();
     }
 
@@ -36,16 +43,12 @@ export class AnthropicService implements ILLMService {
     }
 
     updateSystemContext(newSystemPrompt: string): void {
-        this.systemContext = newSystemPrompt;
+        this.messageManager.setSystemPrompt(newSystemPrompt);
     }
 
     async completeTask(userInput: string): Promise<string> {
-        // Prepend system context to first message or use standalone
-        const effectiveUserInput =
-            this.messages.length === 0 ? `${this.systemContext}\n\n${userInput}` : userInput;
-
-        // Add user message
-        this.messages.push({ role: 'user', content: effectiveUserInput });
+        // Add user message to message manager
+        this.messageManager.addUserMessage(userInput);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();
@@ -66,11 +69,16 @@ export class AnthropicService implements ILLMService {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
-                logger.debug(`Messages: ${JSON.stringify(this.messages, null, 2)}`);
+                // Get formatted messages from message manager
+                const messages = this.messageManager.getFormattedMessages();
+                const systemPrompt = this.messageManager.getFormattedSystemPrompt();
+                
+                logger.debug(`Messages: ${JSON.stringify(messages, null, 2)}`);
 
                 const response = await this.anthropic.messages.create({
                     model: this.model,
-                    messages: this.messages,
+                    messages: messages,
+                    system: systemPrompt,
                     tools: formattedTools,
                     max_tokens: 4096,
                 });
@@ -87,11 +95,24 @@ export class AnthropicService implements ILLMService {
                     }
                 }
 
-                // Add response to the conversation
-                this.messages.push({
-                    role: 'assistant',
-                    content: response.content,
-                });
+                // Process assistant message
+                if (toolUses.length > 0) {
+                    // Transform all tool uses into the format expected by MessageManager
+                    const formattedToolCalls = toolUses.map(toolUse => ({
+                        id: toolUse.id,
+                        type: 'function' as const,
+                        function: {
+                            name: toolUse.name,
+                            arguments: JSON.stringify(toolUse.input)
+                        }
+                    }));
+                    
+                    // Add assistant message with all tool calls
+                    this.messageManager.addAssistantMessage(textContent, formattedToolCalls);
+                } else {
+                    // Add regular assistant message
+                    this.messageManager.addAssistantMessage(textContent);
+                }
 
                 // If no tools were used, we're done
                 if (toolUses.length === 0) {
@@ -106,12 +127,10 @@ export class AnthropicService implements ILLMService {
                 }
 
                 // Handle tool uses
-                const toolResults = [];
-
                 for (const toolUse of toolUses) {
                     const toolName = toolUse.name;
                     const args = toolUse.input;
-                    const toolUseId = toolUse.id; // Capture the tool use ID
+                    const toolUseId = toolUse.id;
 
                     // Notify tool call
                     this.eventEmitter.emit('toolCall', toolName, args);
@@ -119,58 +138,21 @@ export class AnthropicService implements ILLMService {
                     // Execute tool
                     try {
                         const result = await this.clientManager.executeTool(toolName, args);
-                        toolResults.push({ toolName, result, toolUseId }); // Store the ID with the result
+                        
+                        // Add tool result to message manager
+                        this.messageManager.addToolResult(toolUseId, toolName, result);
 
                         // Notify tool result
                         this.eventEmitter.emit('toolResult', toolName, result);
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
-                        toolResults.push({ toolName, error: errorMessage, toolUseId }); // Store the ID with the error
+                        
+                        // Add error as tool result
+                        this.messageManager.addToolResult(toolUseId, toolName, { error: errorMessage });
 
                         this.eventEmitter.emit('toolResult', toolName, { error: errorMessage });
                     }
-                }
-
-                // Add tool results as a single user message with properly formatted tool_result objects
-                if (toolResults.length > 0) {
-                    // Helper function to extract text from tool results
-                    const extractTextContent = (result: any): string => {
-                        // If it's a string, return as-is
-                        if (typeof result === 'string') {
-                            return result;
-                        }
-
-                        // Check for the specific structure {"content":[{"type":"text","text":"..."}]}
-                        if (result && Array.isArray(result.content)) {
-                            // Extract all text entries and join them
-                            const textEntries = result.content
-                                .filter((item) => item.type === 'text' && item.text)
-                                .map((item) => item.text);
-
-                            if (textEntries.length > 0) {
-                                return textEntries.join('\n');
-                            }
-                        }
-
-                        // For other object structures, stringify them
-                        return JSON.stringify(result);
-                    };
-
-                    const contentArray = toolResults.map(({ _, result, error, toolUseId }) => {
-                        const resultValue = error ? `Error: ${error}` : extractTextContent(result);
-
-                        return {
-                            type: 'tool_result',
-                            tool_use_id: toolUseId,
-                            content: resultValue,
-                        };
-                    });
-
-                    this.messages.push({
-                        role: 'user',
-                        content: contentArray,
-                    });
                 }
 
                 // Notify thinking for next iteration
@@ -197,8 +179,8 @@ export class AnthropicService implements ILLMService {
     }
 
     resetConversation(): void {
-        // Clear all messages
-        this.messages = [];
+        // Reset the message manager
+        this.messageManager.reset();
         this.eventEmitter.emit('conversationReset');
     }
 
@@ -249,55 +231,40 @@ export class AnthropicService implements ILLMService {
                             else if (paramType.includes('array')) paramType = 'array';
                             else if (paramType.includes('enum')) {
                                 paramType = 'string';
-                                // Extract enum values if they exist
-                                const enumMatch = paramType.match(/\[(.*?)\]/);
-                                if (enumMatch) {
-                                    paramEnum = enumMatch[1]
-                                        .split(',')
-                                        .map((v) => v.trim().replace(/["']/g, ''));
+                                if (param.enum && Array.isArray(param.enum)) {
+                                    paramEnum = param.enum;
                                 }
-                            }
+                            } else paramType = 'string';
                         }
 
-                        input_schema.properties[name] = {
+                        // Add to input_schema properties
+                        (input_schema.properties as any)[name] = {
                             type: paramType,
-                            description: param.description || `The ${name} parameter`,
+                            description: param.description || `Parameter ${name}`,
                         };
 
-                        // Add items property for array types
-                        if (paramType === 'array') {
-                            // Use the items property from the original schema if it exists
-                            if (param.items) {
-                                input_schema.properties[name].items = param.items;
-                            } else {
-                                // Default to array of strings if no items specification is provided
-                                input_schema.properties[name].items = { type: 'string' };
-                            }
-                        }
-
-                        // Handle enums if present
+                        // Add enum values if present
                         if (paramEnum) {
-                            input_schema.properties[name].enum = paramEnum;
+                            (input_schema.properties as any)[name].enum = paramEnum;
                         }
-                    }
 
-                    // Use the required array from inputSchema if it exists
-                    if (Array.isArray(jsonSchemaParams.required)) {
-                        input_schema.required = [...jsonSchemaParams.required];
+                        // Check if required
+                        if (
+                            jsonSchemaParams.required &&
+                            Array.isArray(jsonSchemaParams.required) &&
+                            jsonSchemaParams.required.includes(name)
+                        ) {
+                            (input_schema.required as string[]).push(name);
+                        }
                     }
                 }
             }
 
-            logger.silly('AFTER FORMATTING TOOL FOR ANTHROPIC');
-            logger.silly(`Tool: ${toolName}`);
-            logger.silly(`Description: ${tool.description}`);
-            logger.silly(`Input Schema: ${JSON.stringify(input_schema)}`);
-
-            // Return in Anthropic's expected format
+            // Format the tool for Claude
             return {
                 name: toolName,
-                description: tool.description || `Tool for ${toolName}`,
-                input_schema: input_schema,
+                description: tool.description || `Execute the ${toolName} tool`,
+                input_schema,
             };
         });
     }
