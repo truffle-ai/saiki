@@ -1,4 +1,4 @@
-import { IMessageFormatter } from '../formatter.js';
+import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
 
 /**

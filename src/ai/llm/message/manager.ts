@@ -1,4 +1,4 @@
-import { IMessageFormatter } from './formatter.js';
+import { IMessageFormatter } from './formatters/types.js';
 import { InternalMessage } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 

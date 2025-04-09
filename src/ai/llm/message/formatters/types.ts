@@ -1,4 +1,4 @@
-import { InternalMessage } from './types.js';
+import { InternalMessage } from '../types.js';
 
 /**
  * Interface for converting internal message format to LLM provider-specific formats.
@@ -26,4 +26,4 @@ export interface IMessageFormatter {
      * @returns The formatted system prompt or null/undefined if not needed
      */
     getSystemPrompt?(systemPrompt: string | null): string | null | undefined;
-} 
+}
