@@ -4,9 +4,7 @@ import { ITokenizer } from '../tokenizer/types.js';
 import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
-
-// Consider adding a proper logger instance later
-const logger = console; 
+import { logger } from '../../../utils/logger.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
