@@ -8,7 +8,6 @@ import { MessageManager } from '../message/manager.js';
 import { AnthropicFormatter } from '../message/formatters/anthropic.js';
 import { TokenizerFactory } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
-import { LLMCallbacks } from '../types.js';
 
 /**
  * Anthropic implementation of LLMService
