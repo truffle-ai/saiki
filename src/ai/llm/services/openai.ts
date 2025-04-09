@@ -6,7 +6,7 @@ import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../message/manager.js';
 import { OpenAIMessageFormatter } from '../message/formatters/openai.js';
-import { TokenizerFactory } from '../tokenizer/factory.js';
+import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 
 // System prompt constants
@@ -50,7 +50,7 @@ export class OpenAIService implements ILLMService {
         
         // Initialize Formatter, Tokenizer, and get Max Tokens
         const formatter = new OpenAIMessageFormatter();
-        const tokenizer = TokenizerFactory.createTokenizer('openai', this.model);
+        const tokenizer = createTokenizer('openai', this.model);
         const rawMaxTokens = getMaxTokens('openai', this.model);
         const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
 

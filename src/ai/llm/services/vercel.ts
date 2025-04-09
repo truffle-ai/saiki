@@ -7,11 +7,11 @@ import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../message/manager.js';
 import { VercelMessageFormatter } from '../message/formatters/vercel.js';
-import { TokenizerFactory } from '../tokenizer/factory.js';
+import { createTokenizer } from '../tokenizer/factory.js';
 import { getProviderFromModel, getMaxTokens } from '../tokenizer/utils.js';
 
 /**
- * Vercel implementation of LLMService (Generic/Multi-Provider)
+ * Vercel implementation of LLMService
  */
 export class VercelLLMService implements ILLMService {
     private model: LanguageModelV1;
@@ -27,7 +27,7 @@ export class VercelLLMService implements ILLMService {
         
         // Detect provider, get tokenizer, and max tokens
         this.provider = getProviderFromModel(this.model.modelId);
-        const tokenizer = TokenizerFactory.createTokenizer(this.provider, this.model.modelId);
+        const tokenizer = createTokenizer(this.provider, this.model.modelId);
         const rawMaxTokens = getMaxTokens(this.provider, this.model.modelId);
         const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
 
