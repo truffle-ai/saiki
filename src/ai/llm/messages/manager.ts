@@ -1,6 +1,9 @@
 import { IMessageFormatter } from './formatters/types.js';
 import { InternalMessage } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
+import { ICompressionStrategy } from './compression/types.js';
+import { MiddleRemovalStrategy } from './compression/middle-removal.js';
+import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 
 // Consider adding a proper logger instance later
 const logger = console; 
@@ -41,18 +44,30 @@ export class MessageManager {
     private tokenizer: ITokenizer | null = null;
 
     /**
+     * The sequence of compression strategies to apply when maxTokens is exceeded.
+     * The order in this array matters, as strategies are applied sequentially until
+     * the token count is within the limit.
+     */
+    private compressionStrategies: ICompressionStrategy[];
+
+    /**
      * Creates a new MessageManager instance
      * 
      * @param formatter Formatter implementation for the target LLM provider
      * @param systemPrompt Optional system prompt to initialize the conversation
      * @param maxTokens Optional maximum token limit for the conversation. Compression requires a tokenizer.
      * @param tokenizer Optional tokenizer implementation. Required for token counting and compression.
+     * @param compressionStrategies Optional array of compression strategies to apply sequentially. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
      */
     constructor(
         formatter: IMessageFormatter,
-        systemPrompt: string,
-        maxTokens: number,
-        tokenizer: ITokenizer
+        systemPrompt: string | null = null,
+        maxTokens: number | null = null,
+        tokenizer: ITokenizer | null = null,
+        compressionStrategies: ICompressionStrategy[] = [
+            new MiddleRemovalStrategy(),
+            new OldestRemovalStrategy(),
+        ]
     ) {
         this.formatter = formatter;
         if (systemPrompt) {
@@ -60,6 +75,7 @@ export class MessageManager {
         }
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
+        this.compressionStrategies = compressionStrategies;
     }
 
     /**
@@ -287,8 +303,6 @@ export class MessageManager {
         return [...this.history];
     }
 
-    // --- Private Compression Methods ---
-
     /**
      * Checks if history compression is needed based on token count and applies strategies.
      */
@@ -304,87 +318,47 @@ export class MessageManager {
             return;
         }
         
-        logger.debug(`MessageManager: History exceeds token limit (${currentTotalTokens} > ${this.maxTokens}). Applying compression.`);
+        logger.info(`MessageManager: History exceeds token limit (${currentTotalTokens} > ${this.maxTokens}). Applying compression strategies sequentially.`);
 
         const initialLength = this.history.length;
         
-        // Strategy 1: Remove messages from the middle
-        this.applyMiddleRemovalCompression();
-        
-        // Recalculate tokens after first strategy
-        currentTotalTokens = this.countTotalTokens();
-        if (currentTotalTokens !== null && currentTotalTokens <= this.maxTokens) {
-            logger.debug(`MessageManager: Compression (Middle Removal) successful. New count: ${currentTotalTokens}, Messages removed: ${initialLength - this.history.length}`);
-            return; 
-        }
-        
-        // If still over limit (or counting failed again), apply more aggressive pruning
-        if (currentTotalTokens === null || currentTotalTokens > this.maxTokens) {
-            if (currentTotalTokens !== null) { // Log only if we know we're still over
-                 logger.debug(`MessageManager: Still over limit (${currentTotalTokens} > ${this.maxTokens}). Applying oldest removal.`);
+        // Iterate through the configured compression strategies
+        for (const strategy of this.compressionStrategies) {
+            const strategyName = strategy.constructor.name; // Get the class name for logging
+            logger.debug(`MessageManager: Applying ${strategyName}...`);
+
+            try {
+                // Pass a copy of the history to avoid potential side effects within the strategy
+                // The strategy should return the new, potentially compressed, history
+                this.history = strategy.compress([...this.history], this.tokenizer, this.maxTokens);
+            } catch (error) {
+                 logger.error(`MessageManager: Error applying ${strategyName}:`, error);
+                 // Decide if we should stop or try the next strategy. Let's stop for now.
+                 break; 
             }
-            this.applyOldestRemovalCompression();
+
+            // Recalculate tokens after applying the strategy
+            currentTotalTokens = this.countTotalTokens();
+            const messagesRemoved = initialLength - this.history.length;
+
+            // If counting failed or we are now within limits, stop applying strategies
+            if (currentTotalTokens === null) {
+                 logger.error(`MessageManager: Token counting failed after applying ${strategyName}. Stopping compression.`);
+                 break;
+            } else if (currentTotalTokens <= this.maxTokens) {
+                 logger.debug(`MessageManager: Compression successful after ${strategyName}. New count: ${currentTotalTokens}, Total messages removed: ${messagesRemoved}`);
+                 break; // Stop applying further strategies
+            } else {
+                 logger.debug(`MessageManager: Still over limit (${currentTotalTokens} > ${this.maxTokens}) after ${strategyName}. Proceeding to next strategy if any.`);
+            }
         }
 
-        // Final check and logging
-        currentTotalTokens = this.countTotalTokens();
-        if (currentTotalTokens !== null && currentTotalTokens <= this.maxTokens) {
-             logger.debug(`MessageManager: Compression (Oldest Removal) successful. New count: ${currentTotalTokens}, Total messages removed: ${initialLength - this.history.length}`);
-        } else if (currentTotalTokens !== null) {
-             logger.warn(`MessageManager: Compression finished, but still over token limit (${currentTotalTokens} > ${this.maxTokens}). History length: ${this.history.length}`);
-        } else {
-            logger.error("MessageManager: Token counting failed after compression.");
+        // Final check and logging (after all strategies have been attempted or loop was broken)
+        if (currentTotalTokens !== null && currentTotalTokens > this.maxTokens) {
+             logger.warn(`MessageManager: Compression strategies finished, but still over token limit (${currentTotalTokens} > ${this.maxTokens}). History length: ${this.history.length}`);
+        } else if (currentTotalTokens === null && this.history.length < initialLength) {
+            // If counting failed but we did remove messages, log that
+            logger.error("MessageManager: Token counting failed after attempting compression.");
         }
-    }
-    
-    /**
-     * Compression Strategy 1: Remove messages from the middle of the conversation.
-     * Preserves the first few messages (system context) and the most recent messages (current context).
-     */
-    private applyMiddleRemovalCompression(): void {
-        if (!this.maxTokens || !this.tokenizer) return; // Should not happen if called from compressHistoryIfNeeded
-
-        const preserveStart = 4; // Keep the first ~2 exchanges (adjust as needed)
-        const preserveEnd = 5;   // Keep the last ~2-3 exchanges (adjust as needed)
-        const minLengthForMiddleRemoval = preserveStart + preserveEnd + 1; // Need at least one message to remove in the middle
-
-        if (this.history.length < minLengthForMiddleRemoval) {
-            logger.debug("MessageManager: History too short for middle removal strategy.");
-            return; // Not enough messages to apply this strategy meaningfully
-        }
-        
-        // Start removing from the oldest message *after* the initial preserved block
-        let removalIndex = preserveStart; 
-        
-        while (this.history.length >= minLengthForMiddleRemoval) {
-            const currentTokens = this.countTotalTokens();
-            // Stop if we are within limits or counting failed
-            if (currentTokens === null || currentTokens <= this.maxTokens) break;
-            // Stop if removing this message would merge the start and end preservation blocks
-            if (removalIndex >= this.history.length - preserveEnd) break; 
-
-            // Remove the message at the current removal index
-            this.history.splice(removalIndex, 1);
-            // Do NOT increment removalIndex, as the next message slides into its place.
-        }
-    }
-    
-    /**
-     * Compression Strategy 2: Remove the oldest messages (after the system prompt).
-     * This is a more aggressive approach used if middle removal isn't enough.
-     */
-    private applyOldestRemovalCompression(): void {
-         if (!this.maxTokens || !this.tokenizer) return; // Safety check
-
-         const minMessagesToKeep = 4; // Always keep at least the last few messages (adjust as needed)
-
-         while (this.history.length > minMessagesToKeep) {
-             const currentTokens = this.countTotalTokens();
-             // Stop if we are within limits or counting failed
-             if (currentTokens === null || currentTokens <= this.maxTokens) break;
-
-             // Remove the oldest message (index 0)
-             this.history.shift(); 
-         }
     }
 } 
