@@ -47,7 +47,7 @@ export class OpenAIService implements ILLMService {
         this.model = model || 'gpt-4o-mini';
         this.openai = new OpenAI({ apiKey });
         this.clientManager = clientManager;
-        
+
         // Initialize Formatter, Tokenizer, and get Max Tokens
         const formatter = new OpenAIMessageFormatter();
         const tokenizer = createTokenizer('openai', this.model);
@@ -56,12 +56,12 @@ export class OpenAIService implements ILLMService {
 
         // Initialize MessageManager with OpenAIFormatter
         this.messageManager = new MessageManager(
-            formatter, 
+            formatter,
             systemPrompt || DETAILED_SYSTEM_PROMPT_TEMPLATE,
             maxTokensWithMargin,
             tokenizer
         );
-        
+
         this.eventEmitter = new EventEmitter();
     }
 
@@ -104,10 +104,10 @@ export class OpenAIService implements ILLMService {
                 // If there are no tool calls, we're done
                 if (!message.tool_calls || message.tool_calls.length === 0) {
                     const responseText = message.content || '';
-                    
+
                     // Add assistant message to history
                     this.messageManager.addAssistantMessage(responseText);
-                    
+
                     this.eventEmitter.emit('response', responseText);
                     return responseText;
                 }
@@ -125,7 +125,9 @@ export class OpenAIService implements ILLMService {
                         args = JSON.parse(toolCall.function.arguments);
                     } catch (e) {
                         logger.error(`Error parsing arguments for ${toolName}:`, e);
-                        this.messageManager.addToolResult(toolCall.id, toolName, { error: `Failed to parse arguments: ${e}` });
+                        this.messageManager.addToolResult(toolCall.id, toolName, {
+                            error: `Failed to parse arguments: ${e}`,
+                        });
                         continue;
                     }
 
@@ -147,7 +149,9 @@ export class OpenAIService implements ILLMService {
                         logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
 
                         // Add error as tool result
-                        this.messageManager.addToolResult(toolCall.id, toolName, { error: errorMessage });
+                        this.messageManager.addToolResult(toolCall.id, toolName, {
+                            error: errorMessage,
+                        });
 
                         this.eventEmitter.emit('toolResult', toolName, { error: errorMessage });
                     }
@@ -192,7 +196,7 @@ export class OpenAIService implements ILLMService {
             provider: 'openai',
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens: getMaxTokens('openai', this.model)
+            modelMaxTokens: getMaxTokens('openai', this.model),
         };
     }
 
@@ -203,18 +207,18 @@ export class OpenAIService implements ILLMService {
 
         // Add a log of tools size
         logger.debug(`Tools size in getAIResponseWithRetries: ${tools.length}`);
-        
+
         while (attempts < MAX_ATTEMPTS) {
             attempts++;
 
             try {
                 // Get formatted messages from message manager
                 const formattedMessages = this.messageManager.getFormattedMessages();
-                
+
                 logger.silly(
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`
                 );
-                
+
                 const currentTokens = this.messageManager.countTotalTokens();
                 if (currentTokens !== null) {
                     logger.debug(`Estimated tokens being sent to OpenAI: ${currentTokens}`);
@@ -236,7 +240,7 @@ export class OpenAIService implements ILLMService {
                 // Get the response message
                 const message = response.choices[0].message;
                 if (!message) {
-                     throw new Error("Received empty message from OpenAI API");
+                    throw new Error('Received empty message from OpenAI API');
                 }
                 return message;
             } catch (error) {
@@ -247,19 +251,23 @@ export class OpenAIService implements ILLMService {
                 );
 
                 if (apiError.status === 400 && apiError.error?.code === 'context_length_exceeded') {
-                    logger.warn(`Context length exceeded. MessageManager compression might not be sufficient. Error details: ${JSON.stringify(apiError.error)}`);
+                    logger.warn(
+                        `Context length exceeded. MessageManager compression might not be sufficient. Error details: ${JSON.stringify(apiError.error)}`
+                    );
                 }
-                
+
                 if (attempts >= MAX_ATTEMPTS) {
-                    logger.error(`Failed to get response from OpenAI after ${MAX_ATTEMPTS} attempts.`);
+                    logger.error(
+                        `Failed to get response from OpenAI after ${MAX_ATTEMPTS} attempts.`
+                    );
                     throw error;
                 }
-                
-                await new Promise(resolve => setTimeout(resolve, 500 * attempts)); 
+
+                await new Promise((resolve) => setTimeout(resolve, 500 * attempts));
             }
         }
-        
-        throw new Error("Failed to get response after maximum retry attempts");
+
+        throw new Error('Failed to get response after maximum retry attempts');
     }
 
     private formatToolsForOpenAI(tools: ToolSet): any[] {

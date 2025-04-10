@@ -74,10 +74,16 @@ export class MiddleRemovalStrategy implements ICompressionStrategy {
             }
         } else {
             // Not enough messages to perform middle removal based on preserve counts
-             console.warn("MiddleRemovalStrategy: Not enough messages to apply middle removal based on preserve counts. History length:", totalMessages, "PreserveStart:", this.preserveStart, "PreserveEnd:", this.preserveEnd);
+            console.warn(
+                'MiddleRemovalStrategy: Not enough messages to apply middle removal based on preserve counts. History length:',
+                totalMessages,
+                'PreserveStart:',
+                this.preserveStart,
+                'PreserveEnd:',
+                this.preserveEnd
+            );
             return history; // Cannot compress further with this strategy under these constraints
         }
-
 
         let currentHistory = [...history];
         let currentTokenCount = initialTokenCount;
@@ -87,7 +93,7 @@ export class MiddleRemovalStrategy implements ICompressionStrategy {
         while (currentTokenCount > maxHistoryTokens && removableIndices.length > 0) {
             const indexToRemove = removableIndices.shift()!; // Oldest removable index
             removedIndices.add(indexToRemove); // Track original index
-            
+
             // Use the utility function again to recount tokens for the filtered history
             currentTokenCount = countMessagesTokens(
                 currentHistory.filter((_, i) => !removedIndices.has(i)), // Calculate tokens based on remaining messages
@@ -95,11 +101,13 @@ export class MiddleRemovalStrategy implements ICompressionStrategy {
             );
         }
 
-         if (currentTokenCount > maxHistoryTokens) {
-              console.warn(`MiddleRemovalStrategy: Unable to compress below max tokens (${maxHistoryTokens}). Final token count: ${currentTokenCount}`);
-         }
+        if (currentTokenCount > maxHistoryTokens) {
+            console.warn(
+                `MiddleRemovalStrategy: Unable to compress below max tokens (${maxHistoryTokens}). Final token count: ${currentTokenCount}`
+            );
+        }
 
         // Return the new history array with removed messages filtered out
         return history.filter((_, i) => !removedIndices.has(i));
     }
-} 
+}

@@ -28,20 +28,20 @@ export class AnthropicService implements ILLMService {
         this.model = model || 'claude-3-7-sonnet-20250219';
         this.anthropic = new Anthropic({ apiKey });
         this.clientManager = clientManager;
-        
+
         const formatter = new AnthropicMessageFormatter();
         const tokenizer = createTokenizer('anthropic', this.model);
-        
+
         const rawMaxTokens = getMaxTokens('anthropic', this.model);
-        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9); 
+        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
 
         this.messageManager = new MessageManager(
-            formatter, 
-            systemPrompt, 
-            maxTokensWithMargin, 
+            formatter,
+            systemPrompt,
+            maxTokensWithMargin,
             tokenizer
         );
-        
+
         this.eventEmitter = new EventEmitter();
     }
 
@@ -83,7 +83,7 @@ export class AnthropicService implements ILLMService {
                 // Get formatted messages from message manager
                 const messages = this.messageManager.getFormattedMessages();
                 const systemPrompt = this.messageManager.getFormattedSystemPrompt();
-                
+
                 logger.debug(`Messages: ${JSON.stringify(messages, null, 2)}`);
 
                 const response = await this.anthropic.messages.create({
@@ -109,15 +109,15 @@ export class AnthropicService implements ILLMService {
                 // Process assistant message
                 if (toolUses.length > 0) {
                     // Transform all tool uses into the format expected by MessageManager
-                    const formattedToolCalls = toolUses.map(toolUse => ({
+                    const formattedToolCalls = toolUses.map((toolUse) => ({
                         id: toolUse.id,
                         type: 'function' as const,
                         function: {
                             name: toolUse.name,
-                            arguments: JSON.stringify(toolUse.input)
-                        }
+                            arguments: JSON.stringify(toolUse.input),
+                        },
                     }));
-                    
+
                     // Add assistant message with all tool calls
                     this.messageManager.addAssistantMessage(textContent, formattedToolCalls);
                 } else {
@@ -149,7 +149,7 @@ export class AnthropicService implements ILLMService {
                     // Execute tool
                     try {
                         const result = await this.clientManager.executeTool(toolName, args);
-                        
+
                         // Add tool result to message manager
                         this.messageManager.addToolResult(toolUseId, toolName, result);
 
@@ -159,9 +159,11 @@ export class AnthropicService implements ILLMService {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
                         logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
-                        
+
                         // Add error as tool result
-                        this.messageManager.addToolResult(toolUseId, toolName, { error: errorMessage });
+                        this.messageManager.addToolResult(toolUseId, toolName, {
+                            error: errorMessage,
+                        });
 
                         this.eventEmitter.emit('toolResult', toolName, { error: errorMessage });
                     }
@@ -207,7 +209,7 @@ export class AnthropicService implements ILLMService {
             provider: 'anthropic',
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens: getMaxTokens('anthropic', this.model)
+            modelMaxTokens: getMaxTokens('anthropic', this.model),
         };
     }
 
@@ -222,7 +224,7 @@ export class AnthropicService implements ILLMService {
             // Map tool parameters to JSON Schema format
             if (tool.parameters) {
                 // The actual parameters structure appears to be a JSON Schema object
-                const jsonSchemaParams = tool.parameters as any; 
+                const jsonSchemaParams = tool.parameters as any;
 
                 if (jsonSchemaParams.type === 'object' && jsonSchemaParams.properties) {
                     input_schema.properties = jsonSchemaParams.properties;
@@ -230,11 +232,14 @@ export class AnthropicService implements ILLMService {
                         input_schema.required = jsonSchemaParams.required;
                     }
                 } else {
-                    logger.warn(`Unexpected parameters format for tool ${toolName}:`, jsonSchemaParams);
+                    logger.warn(
+                        `Unexpected parameters format for tool ${toolName}:`,
+                        jsonSchemaParams
+                    );
                 }
             } else {
                 // Handle case where tool might have no parameters
-                 logger.debug(`Tool ${toolName} has no defined parameters.`);
+                logger.debug(`Tool ${toolName} has no defined parameters.`);
             }
 
             return {

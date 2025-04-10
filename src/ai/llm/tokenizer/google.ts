@@ -40,4 +40,4 @@ export class GoogleTokenizer implements ITokenizer {
     getProviderName(): string {
         return 'google';
     }
-} 
+}

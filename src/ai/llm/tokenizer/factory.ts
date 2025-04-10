@@ -22,6 +22,8 @@ export function createTokenizer(provider: string, model: string): ITokenizer {
             return new GoogleTokenizer(model);
         // Add cases for other providers here
         default:
-            throw new TokenizationError(`No tokenizer implementation available for provider: ${provider}`);
+            throw new TokenizationError(
+                `No tokenizer implementation available for provider: ${provider}`
+            );
     }
-} 
+}

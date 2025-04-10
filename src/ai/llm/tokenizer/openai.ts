@@ -19,7 +19,9 @@ export class OpenAITokenizer implements ITokenizer {
             this.model = model as TiktokenModel;
             this.encoding = encoding_for_model(this.model);
         } catch (error) {
-            throw new TokenizationError(`Failed to initialize tiktoken for model ${model}: ${error instanceof Error ? error.message : String(error)}`);
+            throw new TokenizationError(
+                `Failed to initialize tiktoken for model ${model}: ${error instanceof Error ? error.message : String(error)}`
+            );
         }
     }
 
@@ -55,4 +57,4 @@ export class OpenAITokenizer implements ITokenizer {
     getProviderName(): string {
         return 'openai';
     }
-} 
+}

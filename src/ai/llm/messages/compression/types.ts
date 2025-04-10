@@ -19,4 +19,4 @@ export interface ICompressionStrategy {
         tokenizer: ITokenizer,
         maxTokens: number
     ): InternalMessage[];
-} 
+}

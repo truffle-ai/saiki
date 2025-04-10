@@ -7,7 +7,6 @@ import { ITokenizer } from './types.js';
  * with a better implementation or official library when available.
  */
 export class AnthropicTokenizer implements ITokenizer {
-
     /**
      * TODO: Replace with a better implementation for anthropic
      * Approximates token count for Anthropic models.
@@ -24,4 +23,4 @@ export class AnthropicTokenizer implements ITokenizer {
     getProviderName(): string {
         return 'anthropic';
     }
-} 
+}
