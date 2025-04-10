@@ -1,14 +1,15 @@
-import { ClientManager } from '../../client/manager.js';
+import { ClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
-import { LLMConfig } from '../../config/types.js';
-import { logger } from '../../utils/logger.js';
+import { LLMConfig } from '../../../config/types.js';
+import { logger } from '../../../utils/logger.js';
 import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
 import { anthropic } from '@ai-sdk/anthropic';
 import { VercelLLMService } from './vercel.js';
-import { VercelLLM } from './types.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
+import { LanguageModelV1 } from 'ai';
+
 /**
  * Extract and validate API key from config or environment variables
  * @param config LLM configuration from the config file
@@ -59,7 +60,7 @@ function _createLLMService(config: LLMConfig, clientManager: ClientManager): ILL
     }
 }
 
-function _createVercelModel(provider: string, model: string): any {
+function _createVercelModel(provider: string, model: string): LanguageModelV1 {
     switch (provider.toLowerCase()) {
         case 'openai':
             return openai(model);
@@ -76,7 +77,7 @@ function _createVercelLLMService(
     config: LLMConfig,
     clientManager: ClientManager
 ): VercelLLMService {
-    const model: VercelLLM = _createVercelModel(config.provider, config.model);
+    const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
     return new VercelLLMService(clientManager, model, config.systemPrompt);
 }
 
