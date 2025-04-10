@@ -19,4 +19,4 @@ export class TokenizationError extends Error {
         super(message);
         this.name = 'TokenizationError';
     }
-} 
+}

@@ -11,14 +11,14 @@ export interface InternalMessage {
      * - 'tool': Result from a tool execution
      */
     role: 'system' | 'user' | 'assistant' | 'tool';
-    
+
     /**
      * The content of the message.
      * - String for regular messages
      * - null if message only contains tool calls
      */
     content: string | null;
-    
+
     /**
      * Tool calls made by the assistant.
      * Only present in assistant messages when the LLM requests tool execution.
@@ -28,12 +28,12 @@ export interface InternalMessage {
          * Unique identifier for this tool call
          */
         id: string;
-        
+
         /**
          * The type of tool call (currently only 'function' is supported)
          */
         type: 'function';
-        
+
         /**
          * Function call details
          */
@@ -42,23 +42,23 @@ export interface InternalMessage {
              * Name of the function to call
              */
             name: string;
-            
+
             /**
              * Arguments for the function in JSON string format
              */
             arguments: string;
         };
     }>;
-    
+
     /**
      * ID of the tool call this message is responding to.
      * Only present in tool messages.
      */
     toolCallId?: string;
-    
+
     /**
      * Name of the tool that produced this result.
      * Only present in tool messages.
      */
     name?: string;
-} 
+}

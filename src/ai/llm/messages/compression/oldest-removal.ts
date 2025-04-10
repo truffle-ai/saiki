@@ -64,12 +64,19 @@ export class OldestRemovalStrategy implements ICompressionStrategy {
             currentTokenCount = countMessagesTokens(currentHistory, tokenizer);
         }
 
-        if (currentTokenCount > maxHistoryTokens && currentHistory.length <= this.minMessagesToKeep) {
-             console.warn(`OldestRemovalStrategy: Could not compress below max tokens (${maxHistoryTokens}) without violating minMessagesToKeep (${this.minMessagesToKeep}). Final token count: ${currentTokenCount}, Messages: ${currentHistory.length}`);
+        if (
+            currentTokenCount > maxHistoryTokens &&
+            currentHistory.length <= this.minMessagesToKeep
+        ) {
+            console.warn(
+                `OldestRemovalStrategy: Could not compress below max tokens (${maxHistoryTokens}) without violating minMessagesToKeep (${this.minMessagesToKeep}). Final token count: ${currentTokenCount}, Messages: ${currentHistory.length}`
+            );
         } else if (currentTokenCount > maxHistoryTokens) {
-             console.warn(`OldestRemovalStrategy: Unable to compress below max tokens (${maxHistoryTokens}). Final token count: ${currentTokenCount}`);
+            console.warn(
+                `OldestRemovalStrategy: Unable to compress below max tokens (${maxHistoryTokens}). Final token count: ${currentTokenCount}`
+            );
         }
 
         return currentHistory;
     }
-} 
+}

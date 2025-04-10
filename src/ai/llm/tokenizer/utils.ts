@@ -66,11 +66,13 @@ export function getMaxTokens(provider: string, model: string): number {
         // Add cases for other providers here
 
         default:
-            logger.warn(`Unknown provider: ${provider} for model: ${model}. Using default limit of 4000.`);
+            logger.warn(
+                `Unknown provider: ${provider} for model: ${model}. Using default limit of 4000.`
+            );
             return 4000; // A conservative default
     }
 }
 
 // Example of potential future helper logic for specific providers if needed
 // export function getOpenAIMaxTokens(model: string): number { ... }
-// export function getAnthropicMaxTokens(model: string): number { ... } 
+// export function getAnthropicMaxTokens(model: string): number { ... }
