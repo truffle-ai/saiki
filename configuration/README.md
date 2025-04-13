@@ -80,12 +80,35 @@ The `llm` section configures the AI provider settings.
 
 ### API Key Configuration
 
-You can specify the API key directly or reference an environment variable:
+#### Setting API Keys
+
+API keys can be configured in two ways:
+
+1. **Environment Variables (Recommended)**:
+   - Add keys to your `.env` file (use `.env.example` as a template)
+   - Reference them in config with the `env:` prefix
+
+2. **Direct Configuration** (Not recommended for security):
+   - Directly in the YAML file (less secure, avoid in production)
 
 ```yaml
-apiKey: sk-actual-api-key  # Direct specification (not recommended)
-apiKey: env:OPENAI_API_KEY  # Reference to environment variable
+# Recommended: Reference environment variables
+apiKey: env:OPENAI_API_KEY
+
+# Not recommended: Direct API key in config
+apiKey: sk-actual-api-key  
 ```
+
+#### Security Best Practices
+- Never commit API keys to version control
+- Use environment variables in production environments
+- Create a `.gitignore` entry for your `.env` file
+
+#### API Keys for Different Providers
+Each provider requires its own API key:
+- OpenAI: Set `OPENAI_API_KEY` in `.env` 
+- Anthropic: Set `ANTHROPIC_API_KEY` in `.env`
+- Google Gemini: Set `GOOGLE_GENERATIVE_AI_API_KEY` in `.env`
 
 #### Openai example
 ```yaml
