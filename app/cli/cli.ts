@@ -1,32 +1,22 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { ClientManager } from '../src/client/manager.js';
-import { logger } from '../src/utils/logger.js';
-import { ILLMService } from '../src/ai/llm/services/types.js';
-import { AgentConfig } from '../src/config/types.js';
-import { initializeServices } from '../src/utils/service-initializer.js';
-import { AgentEventManager } from '../src/ai/llm/events/event-manager.js';
-import { CLISubscriber } from './cli-subscriber.js';
+import { ClientManager } from '../../src/client/manager.js'; // Adjusted path
+import { logger } from '../../src/utils/logger.js'; // Adjusted path
+import { ILLMService } from '../../src/ai/llm/services/types.js'; // Adjusted path
+import { AgentEventManager } from '../../src/ai/llm/events/event-manager.js'; // Adjusted path
+import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new location
 
 /**
- * Start AI-powered CLI with unified configuration
- * @param config Agent configuration including MCP servers and LLM settings
- * @param connectionMode Whether to enforce all connections must succeed ("strict") or allow partial success ("lenient")
+ * Start the AI CLI using initialized services.
+ * This function is now called by the main entry point.
  */
 export async function initializeAiCli(
-    config: AgentConfig,
-    connectionMode: 'strict' | 'lenient' = 'lenient'
+    clientManager: ClientManager,
+    llmService: ILLMService
 ) {
-    try {
-        // Initialize services using the utility function
-        const { clientManager, llmService } = await initializeServices(config, connectionMode);
-        
-        // Run AI CLI
-        await runAiCli(clientManager, llmService);
-    } catch (error) {
-        logger.error(`Error running AI CLI: ${error.message}`);
-        process.exit(1);
-    }
+    // The main initialization is done in the shared initializeAgent function.
+    // This function now assumes services are already initialized.
+    await runAiCli(clientManager, llmService);
 }
 
 /**
@@ -34,24 +24,27 @@ export async function initializeAiCli(
  * @param clientManager Client manager with registered tool providers
  * @param llmService LLM service implementation
  */
-export async function runAiCli(
+async function runAiCli(
     clientManager: ClientManager,
     llmService: ILLMService
 ) {
     // Get model and provider info directly from the LLM service
     logger.info(
-        `Using model config:${JSON.stringify(llmService.getConfig(), null, 2)}`,
+        `Using model config: ${JSON.stringify(llmService.getConfig(), null, 2)}`,
         null,
         'yellow'
     );
 
     logger.debug(`Log level: ${logger.getLevel()}`);
     logger.info(`Connected servers: ${clientManager.getClients().size}`, null, 'green');
-    logger.error(
-        `Failed connections: ${Object.keys(clientManager.getFailedConnections()).length}. Ignoring in lenient mode.\n`,
-        null,
-        'red'
-    );
+    const failedConnections = clientManager.getFailedConnections();
+    if (Object.keys(failedConnections).length > 0) {
+        logger.error(
+            `Failed connections: ${Object.keys(failedConnections).length}.`,
+            null,
+            'red'
+        );
+    }
 
     try {
         // Set up event management
@@ -82,6 +75,12 @@ export async function runAiCli(
         // Main interaction loop - simplified with question-based approach
         const promptUser = () => {
             return new Promise<string>((resolve) => {
+                // Check if stdin is still connected/readable
+                if (!process.stdin.isTTY) {
+                    logger.warn('Input stream closed. Exiting CLI.');
+                    resolve('exit'); // Simulate exit command
+                    return;
+                }
                 process.stdin.resume();
                 rl.question(chalk.bold.green('\nWhat would you like to do? '), (answer) => {
                     resolve(answer.trim());
@@ -97,12 +96,13 @@ export async function runAiCli(
                     logger.warn('Exiting AI CLI. Goodbye!');
                     eventManager.removeSubscriber(cliSubscriber);
                     rl.close();
-                    process.exit(0);
+                    // Use process.exit(0) for a clean exit in CLI mode
+                    process.exit(0); 
                 }
 
                 if (userInput.toLowerCase() === 'clear') {
                     llmService.resetConversation();
-                    logger.info('Conversation history cleared.');
+                    // Event manager will notify subscriber to clear display
                     continue;
                 }
 
@@ -111,13 +111,17 @@ export async function runAiCli(
                     await llmService.completeTask(userInput);
                 } catch (error) {
                     logger.error(`Error in processing input: ${error.message}`);
+                    // Optionally, you could emit an error event here as well
                 }
             }
         } finally {
+            // Ensure cleanup happens even if the loop breaks unexpectedly
+            // rl.close() is idempotent, and removeSubscriber should be safe
             eventManager.removeSubscriber(cliSubscriber);
             rl.close();
         }
     } catch (error) {
-        logger.error(`Error during initialization: ${error.message}`);
+        logger.error(`Error during CLI initialization: ${error.message}`);
+        process.exit(1); // Exit with error code if CLI setup fails
     }
-}
+} 

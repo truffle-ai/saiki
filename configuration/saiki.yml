@@ -7,13 +7,6 @@ mcpServers:
       - -y
       - "@modelcontextprotocol/server-filesystem"
       - .
-  puppeteer:
-    type: stdio
-    command: node
-    args:
-      - --loader
-      - ts-node/esm
-      - src/servers/puppeteerServer.ts
 
 # # describes the llm configuration
 llm:

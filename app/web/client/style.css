@@ -1,0 +1,391 @@
+/* Reset and Base Styles */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    margin: 0;
+    /* Dark Mode Gradient Background */
+    background: linear-gradient(120deg, #1f1f1f 0%, #121212 100%);
+    color: #e0e0e0; /* Light text color */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    line-height: 1.6;
+    padding: 20px;
+}
+
+/* Chat Container - Dark Glassmorphism */
+#chat-container {
+    width: 95%;
+    max-width: 800px; /* Even wider */
+    height: calc(100vh - 40px);
+    max-height: 900px;
+    /* Dark Glassmorphism */
+    background-color: rgba(42, 42, 46, 0.7); /* Dark semi-transparent base */
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%); 
+    border-radius: 18px; /* Slightly larger radius */
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Light border for dark */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); /* Darker shadow */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Header */
+header {
+    background-color: rgba(50, 50, 54, 0.65); /* Darker transparent header */
+    color: #f5f5f5;
+    padding: 15px 30px; /* More padding */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08); /* Lighter border */
+    flex-shrink: 0;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+#reset-button {
+    background-color: rgba(60, 60, 64, 0.7);
+    color: #b0b0b0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+#reset-button:hover {
+    background-color: rgba(75, 75, 80, 0.8);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #e0e0e0;
+}
+
+/* Message List */
+#message-list-wrapper {
+    flex-grow: 1;
+    padding: 30px; /* Generous padding */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 100, 100, 0.7) transparent;
+}
+
+#message-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px; /* More space between messages */
+}
+
+.message {
+    padding: 14px 20px; /* More padding */
+    border-radius: 22px; /* Rounded */
+    max-width: 78%; /* Slightly less wide */
+    word-wrap: break-word;
+    line-height: 1.55;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Adjusted shadow for dark */
+    border: none; /* Remove border */
+}
+
+/* Message Types - Dark Mode */
+.message.user {
+    background-color: #2a3b4d; /* Muted dark blue */
+    color: #e0e0e0;
+    align-self: flex-end;
+    border-bottom-right-radius: 8px;
+}
+
+.message.ai {
+    background-color: #3a3a3e; /* Dark grey for AI */
+    color: #f0f0f0;
+    align-self: flex-start;
+    border-bottom-left-radius: 8px;
+}
+
+/* Status-like messages - Dark Mode */
+.message.tool-call,
+.message.tool-result,
+.message.error,
+.message.status {
+    align-self: center;
+    font-size: 0.85rem;
+    max-width: 85%; /* Constrain width more */
+    border-radius: 12px;
+    padding: 9px 18px; 
+    padding-left: 35px; /* Space for icon */
+    text-align: center;
+    margin: 12px 0; /* More vertical margin */
+    position: relative;
+    box-shadow: none;
+    border: none;
+}
+
+.message.tool-call,
+.message.tool-result {
+    background-color: rgba(70, 70, 74, 0.9); /* Slightly lighter dark */
+    color: #c5c5c5;
+    font-style: normal;
+    text-align: left;
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.message.tool-call::before,
+.message.tool-result::before {
+    content: "⚙️";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+    opacity: 0.7;
+}
+
+.message.error {
+    background-color: rgba(79, 28, 32, 0.9); /* Dark red base */
+    color: #ffced3;
+    font-weight: 500;
+    font-style: normal;
+}
+.message.error::before {
+    content: "⚠️";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+}
+
+.message.status {
+    background-color: rgba(60, 60, 64, 0.9);
+    color: #a0a0a0;
+    font-style: italic;
+}
+.message.status::before {
+    content: "ℹ️";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+}
+
+/* Tool pre/code styling - Dark Mode */
+.message.tool-call pre,
+.message.tool-result pre {
+    background-color: rgba(0, 0, 0, 0.3); /* Darker */
+    color: #d0d0d0;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 10px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 0.88em;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.message.tool-call code,
+.message.tool-result code {
+    /* Styles inherited */
+}
+
+/* Thinking Indicator - Dark Mode */
+.message.ai.thinking {
+    padding: 14px 20px 14px 45px; /* Adjusted padding-left for 3 dots */
+    position: relative;
+    /* Ensure inner span exists */
+}
+
+/* Dots using pseudo-elements on the main element and the inner span */
+.message.ai.thinking::before, 
+.message.ai.thinking::after,
+.message.ai.thinking span::after { 
+    content: '';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px; /* Slightly larger dots */
+    height: 6px;
+    background-color: #888888; /* Grey dots for dark mode */
+    border-radius: 50%;
+    animation: thinking-dot 1.4s infinite ease-in-out both;
+}
+
+.message.ai.thinking::before {
+    left: 12px;
+    animation-delay: -0.32s; /* Start slightly offset */
+}
+
+.message.ai.thinking::after {
+    left: 23px; /* Spacing */
+    animation-delay: -0.16s;
+}
+
+.message.ai.thinking span::after {
+    left: 34px; /* Spacing */
+    animation-delay: 0s;
+}
+
+/* Keyframes for the bouncing dot effect */
+@keyframes thinking-dot {
+  0%, 80%, 100% { 
+    transform: translateY(-50%) scale(0);
+  } 40% { 
+    transform: translateY(-50%) scale(1.0);
+  }
+}
+
+/* Input Area - Dark Mode */
+#input-area {
+    display: flex;
+    padding: 20px 30px; /* More padding */
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: rgba(50, 50, 54, 0.65); /* Match header */
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+#message-input {
+    flex-grow: 1;
+    padding: 14px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 24px;
+    resize: none;
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-right: 15px;
+    max-height: 130px;
+    overflow-y: auto;
+    background-color: rgba(60, 60, 64, 0.8); /* Dark input */
+    color: #e0e0e0; /* Light text */
+    transition: all 0.2s ease;
+}
+
+#message-input::placeholder {
+    color: #888;
+}
+
+#message-input:focus {
+    border-color: rgba(0, 188, 212, 0.6); /* Teal accent */
+    background-color: rgba(70, 70, 74, 0.9);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.15);
+}
+
+/* Send Button - Dark Mode */
+#send-button {
+    background-color: #00bcd4; /* Teal accent */
+    color: #121212; /* Dark text on bright button */
+    border: none;
+    width: 48px; 
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.5rem; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    line-height: 1;
+    box-shadow: 0 3px 8px rgba(0, 188, 212, 0.3);
+}
+
+#send-button::before {
+    content: "↑";
+    font-weight: bold;
+}
+
+#send-button:hover {
+    background-color: #00acc1;
+    box-shadow: 0 4px 12px rgba(0, 188, 212, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Status Bar - Dark Mode */
+#status-bar {
+    padding: 10px 30px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #a0a0a0;
+    background-color: rgba(42, 42, 46, 0.8);
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+#status-bar.connected {
+    background-color: rgba(29, 67, 32, 0.8); /* Dark green */
+    color: #a5d6a7;
+}
+
+#status-bar.error {
+    background-color: rgba(79, 28, 32, 0.8); /* Dark red */
+    color: #ffced3;
+}
+
+#status-bar.connecting {
+    background-color: rgba(81, 51, 0, 0.8); /* Dark orange */
+    color: #ffcc80;
+}
+
+/* Basic Markdown Element Styling - Dark Mode */
+.message.ai code {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 0.2em 0.4em;
+    margin: 0;
+    font-size: 85%;
+    border-radius: 4px;
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    color: #c5c5c5;
+}
+
+.message.ai pre {
+    background-color: rgba(0, 0, 0, 0.2); /* Darker pre */
+    padding: 12px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 8px 0;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.message.ai pre code {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    color: #d0d0d0;
+}
+
+.message.ai ul,
+.message.ai ol {
+    padding-left: 25px;
+    margin: 8px 0;
+}
+
+.message.ai li {
+    margin-bottom: 5px;
+}
+
+.message.ai blockquote {
+    margin-left: 0;
+    padding-left: 15px;
+    border-left: 3px solid #555;
+    color: #a0a0a0;
+    font-style: italic;
+} 
