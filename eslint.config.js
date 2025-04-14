@@ -87,6 +87,7 @@ export default [
             'dist/**',
             '.cursor/**',
             'src/servers/**',
+            'landing_page/**',
             'public/**' // Add public directory to ignores
         ],
     },
