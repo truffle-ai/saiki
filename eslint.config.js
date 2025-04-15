@@ -22,7 +22,6 @@ export default [
             ecmaVersion: 2022,
             sourceType: 'module',
             globals: {
-                // Define Node.js globals for TS files if needed (adjust as necessary)
                 console: 'readonly',
                 process: 'readonly',
                 setTimeout: 'readonly',
@@ -31,20 +30,25 @@ export default [
                 require: 'readonly',
                 __dirname: 'readonly',
                 module: 'readonly',
+                document: 'readonly',
+                window: 'readonly',
+                HTMLElement: 'readonly',
+                HTMLAnchorElement: 'readonly',
+                HTMLImageElement: 'readonly',
+                Element: 'readonly',
+                Node: 'readonly',
+                clearInterval: 'readonly',
+                setInterval: 'readonly',
                 Buffer: 'readonly',
                 URL: 'readonly'
-                // Remove browser globals if they are not used in your TS files
-                // document: 'readonly', 
-                // window: 'readonly',
             },
         },
         plugins: {
             '@typescript-eslint': tseslint,
         },
         rules: {
-             // Keep your TS specific rules
-            'no-console': 'off', // Example rule adjustment for TS
-            'no-unused-vars': 'off', // Base rule off, TS rule handles it
+            'no-console': 'off',
+            'no-unused-vars': 'off',
             '@typescript-eslint/explicit-module-boundary-types': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
