@@ -38,7 +38,7 @@ export class MCPClient implements ToolProvider {
     private serverAlias: string | null = null;
     private timeout: number | undefined = undefined;
 
-    constructor() {}
+    constructor() { }
 
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
         this.timeout = config.timeout ?? DEFAULT_TIMEOUT;

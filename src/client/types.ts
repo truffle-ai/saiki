@@ -42,3 +42,20 @@ export interface IMCPClientWrapper extends ToolProvider {
     // listResources(): Promise<string[]>;
     // readResource(url: string): Promise<string>;
 }
+
+export interface UserConfirmationProvider {
+    requestConfirmation(
+        details: ToolExecutionDetails,
+        callbacks?: {
+            displayDetails?: (details: ToolExecutionDetails) => void;
+            collectInput?: () => Promise<string | boolean>;
+            parseResponse?: (response: any) => boolean;
+        }
+    ): Promise<boolean>;
+}
+
+export interface ToolExecutionDetails {
+    toolName: string;
+    args: any;
+    description?: string;
+}
