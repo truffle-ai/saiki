@@ -1,5 +1,5 @@
-import { AgentSubscriber } from '../src/ai/llm/events/types.js';
-import { logger } from '../src/utils/logger.js';
+import { AgentSubscriber } from '../../src/ai/llm/events/types.js';
+import { logger } from '../../src/utils/logger.js';
 import boxen from 'boxen';
 import chalk from 'chalk';
 

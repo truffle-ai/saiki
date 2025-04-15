@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saiki Agent</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+</head>
+<body>
+    <div id="chat-container">
+        <nav id="left-nav-panel">
+            <!-- Placeholder Nav Content -->
+            <ul>
+                <li><a href="#" title="Chat"><span class="icon">💬</span> <span class="text">Chat</span></a></li>
+                <li><a href="#" title="Settings"><span class="icon">⚙️</span> <span class="text">Settings</span></a></li>
+                <li><a href="#" title="Profile"><span class="icon">👤</span> <span class="text">Profile</span></a></li>
+                <!-- Add more nav items as needed -->
+            </ul>
+        </nav>
+        <div id="main-content">
+            <header>
+                <div class="header-left">
+                    <div id="status-indicator" data-tooltip="Connecting..."></div>
+                    <h1>Saiki</h1>
+                </div>
+                <div class="header-right">
+                    <button id="reset-button" title="Clear Conversation">Clear</button>
+                </div>
+            </header>
+            <div id="message-list-wrapper">
+                 <div id="message-list"></div>
+            </div>
+            <div id="input-area">
+                <textarea id="message-input" placeholder="Ask Saiki anything..." rows="1"></textarea>
+                <button id="send-button" title="Send Message"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js" type="module"></script>
+</body>
+</html> 

@@ -39,4 +39,5 @@ logs/
 .eslintcache
 
 # Coverage directory
-coverage/
+public/
+
