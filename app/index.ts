@@ -14,7 +14,6 @@ dotenv.config();
 if (process.env.LOG_LEVEL) {
     logger.setLevel(process.env.LOG_LEVEL);
 }
-logger.info(`Logger level set to: ${logger.getLevel()}`);
 
 const program = new Command();
 
@@ -85,11 +84,11 @@ async function startAiClient() {
         await initializeAiCli(config, connectionMode);
     } catch (error) {
         logger.error(
-            `Error: Failed to initialize AI CLI from config file ${normalizedConfigPath}: ${JSON.stringify(
-                error,
-                null,
-                2
-            )}`
+            `Error: Failed to initialize AI CLI from config file ${normalizedConfigPath}: ${
+                error instanceof Error
+                    ? `${error.message}\n${error.stack}`
+                    : JSON.stringify(error, null, 2)
+            }`
         );
         process.exit(1);
     }
@@ -115,7 +114,7 @@ function validateAgentConfig(config: AgentConfig): void {
             provider: 'openai',
             model: 'gpt-4o-mini',
             systemPrompt: 'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.',
-            apiKey: 'env:OPENAI_API_KEY',
+            apiKey: '$OPENAI_API_KEY',
         };
     }
 

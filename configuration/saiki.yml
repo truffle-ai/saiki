@@ -25,7 +25,7 @@ llm:
     Use these tools when appropriate to answer user queries.
     You can use multiple tools in sequence to solve complex problems.
     After each tool result, determine if you need more information or can provide a final answer.
-  apiKey: env:OPENAI_API_KEY
+  apiKey: $OPENAI_API_KEY
 
 ## To use Google Gemini, replace the OpenAI configuration with Google Gemini configuration below
 # # describes the llm configuration
@@ -38,4 +38,4 @@ llm:
 #     Use these tools when appropriate to answer user queries.
 #     You can use multiple tools in sequence to solve complex problems.
 #     After each tool result, determine if you need more information or can provide a final answer.
-#   apiKey: env:GOOGLE_GENERATIVE_AI_API_KEY
+#   apiKey: $GOOGLE_GENERATIVE_AI_API_KEY

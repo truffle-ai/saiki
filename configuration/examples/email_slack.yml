@@ -15,7 +15,7 @@ mcpServers:
 llm:
   provider: openai
   model: gpt-4o-mini
-  apiKey: env:OPENAI_API_KEY
+  apiKey: $OPENAI_API_KEY
   systemPrompt: |
     Prompt the user to provide the information needed to answer their question or identify them on Slack.
     Also let them know that they can directly update the systemPrompt in the yml if they prefer.
