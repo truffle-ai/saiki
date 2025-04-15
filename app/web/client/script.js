@@ -1,10 +1,11 @@
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js'; // Use CDN for simplicity
 
 const messageList = document.getElementById('message-list');
+const messageListWrapper = document.getElementById('message-list-wrapper'); // Get the wrapper
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
 const resetButton = document.getElementById('reset-button');
-const statusBar = document.getElementById('status-bar');
+const statusIndicator = document.getElementById('status-indicator'); // NEW
 
 let ws;
 let currentAiMessageElement = null;
@@ -22,15 +23,17 @@ function connectWebSocket() {
     const wsUrl = `${wsProtocol}//${window.location.host}`;
     
     console.log(`Attempting to connect WebSocket to: ${wsUrl}`);
-    statusBar.textContent = 'Connecting...';
-    statusBar.className = 'connecting'; // Use class for styling
+    // Update status indicator
+    statusIndicator.className = 'connecting'; 
+    statusIndicator.setAttribute('data-tooltip', 'Connecting...');
 
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
         console.log('WebSocket connection established');
-        statusBar.textContent = 'Connected';
-        statusBar.className = 'connected'; // Use class for styling
+        // Update status indicator
+        statusIndicator.className = 'connected'; 
+        statusIndicator.setAttribute('data-tooltip', 'Connected');
         // Enable input once connected
         messageInput.disabled = false;
         sendButton.disabled = false;
@@ -50,8 +53,9 @@ function connectWebSocket() {
 
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
-        statusBar.textContent = 'Connection Error';
-        statusBar.className = 'error'; // Use class for styling
+        // Update status indicator
+        statusIndicator.className = 'error'; 
+        statusIndicator.setAttribute('data-tooltip', 'Connection Error');
         appendMessage('WebSocket connection error. Please try refreshing.', 'error');
         // Disable input on error
         messageInput.disabled = true;
@@ -61,8 +65,10 @@ function connectWebSocket() {
 
     ws.onclose = (event) => {
         console.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
-        statusBar.textContent = `Disconnected: ${event.reason || 'Trying to reconnect...'}`;
-        statusBar.className = 'error'; // Use class for styling
+        const reasonText = event.reason || 'Trying to reconnect...';
+        // Update status indicator
+        statusIndicator.className = 'error'; // Show error state on close
+        statusIndicator.setAttribute('data-tooltip', `Disconnected: ${reasonText}`);
         // Disable input on close
         messageInput.disabled = true;
         sendButton.disabled = true;
@@ -74,6 +80,7 @@ function connectWebSocket() {
 
 function handleWebSocketMessage(message) {
     removeThinkingIndicator(); // Remove thinking indicator on any new message
+    let shouldScroll = isScrolledToBottom(); // Check scroll before adding new content
 
     switch (message.event) {
         case 'thinking':
@@ -88,7 +95,6 @@ function handleWebSocketMessage(message) {
             let currentHtml = currentAiMessageElement.innerHTML || '';
             // Basic newline handling for chunks, but keep it as HTML
             currentAiMessageElement.innerHTML = currentHtml + message.data.text.replace(/\n/g, '<br>'); 
-            scrollToBottom();
             break;
         }
         case 'response': { // Restore response handling with marked
@@ -113,22 +119,26 @@ function handleWebSocketMessage(message) {
             }
             break;
         }
-        case 'toolCall': { // Restore tool call handling with basic HTML
+        case 'toolCall': { // Modified tool call handling for expand/collapse
             const argsString = JSON.stringify(message.data.args, null, 2);
-            // Use basic HTML formatting
-            appendMessage(`<strong>Tool Call:</strong> ${escapeHtml(message.data.toolName)}<br><pre><code>${escapeHtml(argsString)}</code></pre>`, 'tool-call', false, true);
+            // Create only the header part initially
+            const headerHtml = `<strong>Tool Call:</strong> ${escapeHtml(message.data.toolName)}`;
+            const contentHtml = `<pre><code>${escapeHtml(argsString)}</code></pre>`;
+            appendExpandableMessage(headerHtml, contentHtml, 'tool-call');
             currentAiMessageElement = null;
             break;
         }
-        case 'toolResult': { // Restore tool result handling with basic HTML
+        case 'toolResult': { // Modified tool result handling for expand/collapse
             let resultString;
             try {
-                 resultString = JSON.stringify(message.data.result, null, 2);
-            } catch { 
-                 resultString = String(message.data.result);
+                resultString = JSON.stringify(message.data.result, null, 2);
+            } catch {
+                resultString = String(message.data.result);
             }
-            // Use basic HTML formatting
-            appendMessage(`<strong>Tool Result:</strong> ${escapeHtml(message.data.toolName)}<br><pre><code>${escapeHtml(resultString)}</code></pre>`, 'tool-result', false, true);
+            // Create only the header part initially
+            const headerHtml = `<strong>Tool Result:</strong> ${escapeHtml(message.data.toolName)}`;
+            const contentHtml = `<pre><code>${escapeHtml(resultString)}</code></pre>`;
+            appendExpandableMessage(headerHtml, contentHtml, 'tool-result');
             currentAiMessageElement = null;
             break;
         }
@@ -141,12 +151,17 @@ function handleWebSocketMessage(message) {
             messageList.innerHTML = ''; // Clear the chat
             appendMessage('Conversation history cleared.', 'status');
             currentAiMessageElement = null; // Reset streaming state
+            shouldScroll = true; // Force scroll after clearing
             break;
         }
         default: {
             console.warn('Received unknown event type:', message.event);
             break;
         }
+    }
+    // Scroll only if user was already at the bottom or after reset
+    if (shouldScroll) {
+        scrollToBottom();
     }
 }
 
@@ -165,8 +180,26 @@ function appendMessage(content, type = 'status', isStreaming = false, isHtml = f
         messageElement.classList.add('streaming');
     }
     messageList.appendChild(messageElement);
-    scrollToBottom();
+    // Scroll is handled in handleWebSocketMessage
+    // scrollToBottom(); 
     return messageElement; 
+}
+
+// New function for expandable messages
+function appendExpandableMessage(headerHtml, contentHtml, type) {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message', type);
+    messageElement.innerHTML = headerHtml + contentHtml; // Add both header and hidden content
+
+    // Add click listener to the message element itself for toggling
+    messageElement.addEventListener('click', () => {
+        messageElement.classList.toggle('expanded');
+    });
+
+    messageList.appendChild(messageElement);
+    // Scroll is handled in handleWebSocketMessage
+    // scrollToBottom(); 
+    return messageElement;
 }
 
 // HTML escaping function - Keep this
@@ -181,6 +214,7 @@ function escapeHtml(unsafe) {
  }
 
 function showThinkingIndicator() {
+    let shouldScroll = isScrolledToBottom();
     if (!thinkingIndicatorElement) {
         // Create the outer div
         thinkingIndicatorElement = document.createElement('div');
@@ -195,7 +229,10 @@ function showThinkingIndicator() {
         thinkingIndicatorElement.setAttribute('aria-live', 'polite');
         
         messageList.appendChild(thinkingIndicatorElement);
-        scrollToBottom();
+        // Scroll only if user was already at the bottom
+        if (shouldScroll) {
+            scrollToBottom();
+        }
     }
 }
 
@@ -209,7 +246,9 @@ function removeThinkingIndicator() {
 function sendMessage() {
     const messageText = messageInput.value.trim();
     if (messageText && ws && ws.readyState === WebSocket.OPEN) {
-        appendMessage(messageText, 'user');
+        appendMessage(messageText, 'user'); // Append user message
+        // Scroll immediately after user sends message
+        scrollToBottom(); 
         ws.send(JSON.stringify({ type: 'message', content: messageText }));
         messageInput.value = '';
         messageInput.style.height = 'auto'; // Reset height after sending
@@ -230,7 +269,13 @@ function resetConversation() {
 }
 
 function scrollToBottom() {
-    messageList.scrollTop = messageList.scrollHeight;
+    messageListWrapper.scrollTop = messageListWrapper.scrollHeight;
+}
+
+// Function to check if user is scrolled to the bottom
+function isScrolledToBottom() {
+    const threshold = 5; // Allow a few pixels tolerance
+    return messageListWrapper.scrollHeight - messageListWrapper.scrollTop - messageListWrapper.clientHeight <= threshold;
 }
 
 // Adjust textarea height dynamically

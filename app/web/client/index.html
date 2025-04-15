@@ -9,18 +9,33 @@
 </head>
 <body>
     <div id="chat-container">
-        <header>
-            <h1>Saiki</h1>
-            <button id="reset-button" title="Clear Conversation">Clear</button>
-        </header>
-        <div id="message-list-wrapper">
-             <div id="message-list"></div>
+        <nav id="left-nav-panel">
+            <!-- Placeholder Nav Content -->
+            <ul>
+                <li><a href="#" title="Chat"><span class="icon">💬</span> <span class="text">Chat</span></a></li>
+                <li><a href="#" title="Settings"><span class="icon">⚙️</span> <span class="text">Settings</span></a></li>
+                <li><a href="#" title="Profile"><span class="icon">👤</span> <span class="text">Profile</span></a></li>
+                <!-- Add more nav items as needed -->
+            </ul>
+        </nav>
+        <div id="main-content">
+            <header>
+                <div class="header-left">
+                    <div id="status-indicator" data-tooltip="Connecting..."></div>
+                    <h1>Saiki</h1>
+                </div>
+                <div class="header-right">
+                    <button id="reset-button" title="Clear Conversation">Clear</button>
+                </div>
+            </header>
+            <div id="message-list-wrapper">
+                 <div id="message-list"></div>
+            </div>
+            <div id="input-area">
+                <textarea id="message-input" placeholder="Ask Saiki anything..." rows="1"></textarea>
+                <button id="send-button" title="Send Message"></button>
+            </div>
         </div>
-        <div id="input-area">
-            <textarea id="message-input" placeholder="Ask Saiki anything..." rows="1"></textarea>
-            <button id="send-button" title="Send Message">Send</button>
-        </div>
-        <div id="status-bar">Connecting...</div>
     </div>
 
     <script src="script.js" type="module"></script>
