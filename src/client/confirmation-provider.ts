@@ -1,11 +1,13 @@
 import { UserConfirmationProvider, ToolExecutionDetails } from './types.js';
 import { logger } from '../utils/logger.js';
 import * as readline from 'readline';
+import chalk from 'chalk';
+import boxen from 'boxen';
 
 /**
  * Default implementation of UserConfirmationProvider
  * Automatically approves tools in the allowedTools set,
- * and prompts for confirmation for other tools
+ * and prompts for confirmation for other tools using logger's styling
  */
 export class DefaultConfirmationProvider implements UserConfirmationProvider {
     private allowedTools: Set<string>;
@@ -35,62 +37,127 @@ export class DefaultConfirmationProvider implements UserConfirmationProvider {
             return true;
         }
 
-        // Use provided callbacks or default implementations
-        const displayDetails = callbacks?.displayDetails || this.defaultDisplayDetails;
-        const collectInput = callbacks?.collectInput || this.defaultCollectInput.bind(this);
-        const parseResponse = callbacks?.parseResponse || this.defaultParseResponse;
+        // Display tool call using the logger's built-in method
+        logger.toolCall(details.toolName, details.args);
 
-        // Display tool execution details
-        displayDetails(details);
-
-        // Collect user input
-        const response = await collectInput();
-
-        // Parse the response to determine if execution is approved
-        return parseResponse(response);
+        // Collect user input with arrow key navigation
+        return await this.collectArrowKeyInput();
     }
 
     /**
-     * Default implementation for displaying tool execution details
+     * !!!! This is an AI-generated sloppy implementation, TODO: REFACTOR THIS !!!
+     * @returns Promise resolving to boolean (true for approve, false for deny)
      */
-    private defaultDisplayDetails(details: ToolExecutionDetails): void {
-        logger.info('=== Tool Execution Confirmation ===');
-        logger.info(`Tool: ${details.toolName}`);
-        if (details.description) {
-            logger.info(`Description: ${details.description}`);
-        }
-        logger.info(`Arguments: ${JSON.stringify(details.args, null, 2)}`);
-        logger.info('Do you want to allow this tool execution? (y/n)');
-    }
+    private collectArrowKeyInput(): Promise<boolean> {
+        return new Promise((resolve) => {
+            // Configure readline for raw input
+            readline.emitKeypressEvents(process.stdin);
+            if (process.stdin.isTTY) {
+                process.stdin.setRawMode(true);
+            }
 
-    /**
-     * Default implementation for collecting user input
-     */
-    private async defaultCollectInput(): Promise<string> {
-        // Create readline interface if it doesn't exist
-        if (!this.rl) {
-            this.rl = readline.createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-        }
+            // Set initial selection (default to No/Deny for safety)
+            let selection = false;
 
-        return new Promise<string>((resolve) => {
-            this.rl!.question('> ', (answer) => {
-                resolve(answer.trim().toLowerCase());
-            });
+            // Display confirmation options
+            console.log(
+                boxen(
+                    `${chalk.cyan('Confirm execution of this tool?')}\n\n` +
+                    `Use ${chalk.yellow('←/→')} arrow keys to select, ${chalk.yellow('Enter')} to confirm`,
+                    {
+                        padding: 1,
+                        borderColor: 'yellow',
+                        title: '🔐 Tool Confirmation',
+                        titleAlignment: 'center'
+                    }
+                )
+            );
+
+            // Initial render of options
+            this.renderSelection(selection);
+
+            // Handle keypress events
+            const keypressHandler = (str: string, key: readline.Key) => {
+                // Handle left/right arrow keys
+                if (key.name === 'left') {
+                    selection = true; // Left = Approve
+                    this.renderSelection(selection);
+                }
+                else if (key.name === 'right') {
+                    selection = false; // Right = Deny
+                    this.renderSelection(selection);
+                }
+                // Handle Enter key to confirm selection
+                else if (key.name === 'return') {
+                    // Clean up
+                    process.stdin.removeListener('keypress', keypressHandler);
+                    if (process.stdin.isTTY) {
+                        process.stdin.setRawMode(false);
+                    }
+
+                    // Display confirmation result
+                    console.log(
+                        boxen(
+                            selection ?
+                                chalk.green('Tool execution approved') :
+                                chalk.red('Tool execution denied'),
+                            {
+                                padding: 1,
+                                borderColor: selection ? 'green' : 'red',
+                                title: selection ? '✅ Approved' : '❌ Denied',
+                                titleAlignment: 'center'
+                            }
+                        )
+                    );
+
+                    // Resolve with selection
+                    resolve(selection);
+                }
+                // Handle Ctrl+C to abort
+                else if (key.ctrl && key.name === 'c') {
+                    // Clean up
+                    process.stdin.removeListener('keypress', keypressHandler);
+                    if (process.stdin.isTTY) {
+                        process.stdin.setRawMode(false);
+                    }
+
+                    console.log(
+                        boxen(
+                            chalk.red('Tool execution aborted'),
+                            {
+                                padding: 1,
+                                borderColor: 'red',
+                                title: '❌ Aborted',
+                                titleAlignment: 'center'
+                            }
+                        )
+                    );
+
+                    // Resolve with false (deny)
+                    resolve(false);
+                }
+            };
+
+            // Register keypress handler
+            process.stdin.on('keypress', keypressHandler);
         });
     }
 
     /**
-     * Default implementation for parsing user response
+     * Render the current selection state with a horizontal layout
+     * @param selection Current selection (true = approve, false = deny)
      */
-    private defaultParseResponse(response: string | boolean): boolean {
-        if (typeof response === 'boolean') {
-            return response;
+    private renderSelection(selection: boolean): void {
+        // Clear previous line
+        process.stdout.write('\r\x1b[K');
+        // Render current selection with horizontal layout
+        if (selection) {
+            process.stdout.write(`${chalk.green('▶')}${chalk.green.bold('Approve')}   ${chalk.gray('Deny')}`);
+        } else {
+            process.stdout.write(` ${chalk.gray('Approve')}  ${chalk.red('▶')}${chalk.red.bold('Deny')}`);
         }
-        return response === 'y' || response === 'yes';
     }
+
 
     /**
      * Close the readline interface if it's open
