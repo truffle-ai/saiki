@@ -50,6 +50,12 @@ async function getBrowserPage(): Promise<{ browser: Browser; page: Page }> {
 
         const launchOptions: any = {
             headless: false,
+            args: [
+                // Keep --start-maximized as a backup, but we'll explicitly set viewport
+                '--start-maximized',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+            ],
         };
 
         if (chromePath) {
@@ -69,10 +75,20 @@ async function getBrowserPage(): Promise<{ browser: Browser; page: Page }> {
     }
     // Ensure page exists or create a new one if browser exists but page doesn't/is closed
     if (browser && (!page || page.isClosed())) {
-         const pages = await browser.pages();
-         // Use the first existing page, or create a new one if none exist
-         page = pages.length > 0 ? pages[0] : await browser.newPage();
-         await page.setViewport({ width: 1280, height: 800 });
+        const pages = await browser.pages();
+        // Use the first existing page, or create a new one if none exist
+        page = pages.length > 0 ? pages[0] : await browser.newPage();
+
+        // Explicitly set viewport to screen dimensions
+        const screenDimensions = await page.evaluate(() => {
+            return {
+                width: window.screen.width,
+                height: window.screen.height,
+                deviceScaleFactor: window.devicePixelRatio, // Consider device scaling
+            };
+        });
+        await page.setViewport(screenDimensions);
+
         page.on('dialog', async (dialog: Dialog) => {
             try {
                 await dialog.dismiss();
