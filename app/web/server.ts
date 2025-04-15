@@ -2,17 +2,11 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws'; // Import WebSocket type
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { WebUISubscriber } from './web-subscriber.js';
 import { ClientManager } from '../../src/client/manager.js';
 import { ILLMService } from '../../src/ai/llm/services/types.js';
 import { AgentEventManager } from '../../src/ai/llm/events/event-manager.js';
 import { logger } from '../../src/utils/logger.js'; // Import logger
-import fs from 'fs'; // Import fs for existsSync check
-
-// Helper to get __dirname in ES Modules -- NO LONGER NEEDED FOR STATIC PATH
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
 
 export async function initializeWebUI(
   clientManager: ClientManager,
@@ -100,9 +94,6 @@ export async function initializeWebUI(
 
     ws.on('error', (error) => {
       logger.error(`WebSocket error: ${error.message}`);
-      // The subscriber will remove the connection via the 'close' event handler.
-      // No need to access private members here.
-      // webSubscriber.connections.delete(ws); 
     });
   });
   

@@ -2,8 +2,6 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
-// It's often helpful to import the 'globals' package for standard environments
-// import globals from 'globals'; // npm install --save-dev globals
 
 export default [
     // Base config for all files
@@ -90,12 +88,9 @@ export default [
             'node_modules/**',
             'dist/**',
             '.cursor/**',
-            'src/servers/**',
-            'landing_page/**',
             'public/**' // Add public directory to ignores
         ],
     },
 
-    // Prettier config should usually be last
     prettier,
 ];

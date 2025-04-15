@@ -7,24 +7,11 @@ import { AgentEventManager } from '../../src/ai/llm/events/event-manager.js'; //
 import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new location
 
 /**
- * Start the AI CLI using initialized services.
- * This function is now called by the main entry point.
- */
-export async function initializeAiCli(
-    clientManager: ClientManager,
-    llmService: ILLMService
-) {
-    // The main initialization is done in the shared initializeAgent function.
-    // This function now assumes services are already initialized.
-    await runAiCli(clientManager, llmService);
-}
-
-/**
  * Run the AI CLI with the given LLM service
  * @param clientManager Client manager with registered tool providers
  * @param llmService LLM service implementation
  */
-async function runAiCli(
+export async function runAiCli(
     clientManager: ClientManager,
     llmService: ILLMService
 ) {
@@ -102,7 +89,7 @@ async function runAiCli(
 
                 if (userInput.toLowerCase() === 'clear') {
                     llmService.resetConversation();
-                    // Event manager will notify subscriber to clear display
+                    logger.info('Conversation history cleared.');
                     continue;
                 }
 

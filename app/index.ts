@@ -6,8 +6,8 @@ import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
 import { loadConfigFile } from '../src/config/loader.js';
 import { AgentConfig } from '../src/config/types.js';
-import { initializeAgent } from './shared/initialize.js';
-import { initializeAiCli } from './cli/cli.js';
+import { initializeServices } from '../src/utils/service-initializer.js';
+import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
 
 // Load environment variables
@@ -67,7 +67,7 @@ if (isNaN(webPort) || webPort <= 0 || webPort > 65535) {
 const normalizedConfigPath = path.normalize(configFile);
 
 logger.info(
-    `Starting Saiki Agent with config: ${normalizedConfigPath}`,
+    `Initializing Saiki with config: ${normalizedConfigPath}`,
     null,
     'blue'
 );
@@ -95,16 +95,16 @@ async function startAgent() {
         validateAgentConfig(config);
 
         logger.info('===============================================');
-        logger.info(`Initializing Saiki Agent in '${runMode}' mode...`, null, 'cyanBright');
+        logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
         logger.info('===============================================\n');
 
         // Use the shared initializer
-        const { clientManager, llmService } = await initializeAgent(config, connectionMode);
+        const { clientManager, llmService } = await initializeServices(config, connectionMode);
 
         // Start based on mode
         if (runMode === 'cli' || runMode === 'both') {
             // Run CLI asynchronously, don't await if running both
-            const cliPromise = initializeAiCli(clientManager, llmService);
+            const cliPromise = await runAiCli(clientManager, llmService);
             if (runMode === 'cli') {
                 await cliPromise; // Only await if *only* running CLI
             }
