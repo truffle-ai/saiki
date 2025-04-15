@@ -39,10 +39,5 @@ logs/
 .eslintcache
 
 # Coverage directory
-coverage/
-
-dog_show_website/
-landing_page/
-servers/
 public/
-configuration/examples/
+
