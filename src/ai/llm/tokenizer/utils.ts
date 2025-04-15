@@ -1,78 +1,90 @@
 import { logger } from '../../../utils/logger.js';
 
+const DEFAULT_TOKEN_LIMIT = 100000;
+
+// Map of known model token limits by provider and model substring
+const MODEL_TOKEN_LIMITS: Record<string, Record<string, number>> = {
+    openai: {
+        'gpt-4.1-nano': 1000000,
+        'gpt-4.1-mini': 1000000,
+        'gpt-4.1': 1000000,
+        'gpt-4o-mini': 128000,
+        'gpt-4o': 128000,
+    },
+    anthropic: {
+        'claude-3-7-sonnet': 200000,
+        'claude-3-5-haiku': 200000,
+        'claude-3-5-sonnet': 200000,
+        'claude-3-opus': 200000,
+        'claude-3-sonnet': 200000,
+        'claude-3-haiku': 200000,
+    },
+    google: {
+        'gemini-2.5-pro': 1048576,
+        'gemini-2.0-flash': 1048576,
+        'gemini-2.0-flash-lite': 1048576,
+        'gemini-1.5-pro': 2097152,
+        'gemini-1.5-flash': 1048576,
+    },
+    // Add other providers here as needed
+};
+
+// Provider-specific default token limits
+const PROVIDER_DEFAULTS: Record<string, number> = {
+    openai: 128000,
+    anthropic: 100000,
+    google: 1048576,
+};
+
 /**
- * Attempts to determine the LLM provider based on the model name string.
- * @param model The model name (e.g., 'gpt-3.5-turbo', 'claude-3-opus-20240229')
- * @returns The inferred provider name ('openai', 'anthropic', etc.) or 'unknown'
+ * Normalizes the model name by removing known suffixes such as dates or version identifiers.
+ * @param modelName The original model name.
+ * @returns The normalized model name.
  */
-export function getProviderFromModel(model: string): string {
-    const lowerModel = model.toLowerCase();
-
-    if (lowerModel.startsWith('gpt-')) {
-        return 'openai';
-    }
-    if (lowerModel.startsWith('claude-')) {
-        return 'anthropic';
-    }
-    if (lowerModel.startsWith('gemini-')) {
-        return 'google';
-    }
-    if (lowerModel.startsWith('grok-')) {
-        return 'grok';
-    }
-    // Add more provider checks here as needed
-
-    logger.warn(`Could not determine provider for model: ${model}. Defaulting to 'unknown'.`);
-    return 'unknown';
+function normalizeModelName(modelName: string): string {
+    return modelName
+        .toLowerCase()
+        .replace(/[@-]\d{6,8}$/, '') // Removes suffixes like '-20250219' or '@20250219'
+        .replace(/-\d{3}$/, ''); // Removes version suffixes like '-001'
 }
 
 /**
- * Gets the approximate maximum context window size (in tokens) for a given model.
- * Uses known values for common models and provides defaults.
- * @param provider The LLM provider name (e.g., 'openai', 'anthropic')
- * @param model The specific model name
- * @returns The maximum token limit for the model's context window
+ * Retrieves the maximum token limit for a given provider and model.
+ * @param provider The name of the provider (e.g., 'openai', 'anthropic', 'google').
+ * @param model The specific model name.
+ * @returns The maximum token limit for the model.
  */
 export function getMaxTokens(provider: string, model: string): number {
     const lowerProvider = provider.toLowerCase();
-    const lowerModel = model.toLowerCase();
+    const normalizedModel = normalizeModelName(model);
+    logger.debug(
+        `getMaxTokens: provider: ${provider}, model: ${model}, normalizedModel: ${normalizedModel}`
+    );
 
-    switch (lowerProvider) {
-        case 'openai':
-            // Based on OpenAI documentation (as of early 2024)
-            // Includes input and output tokens
-            if (lowerModel.includes('gpt-4-turbo')) return 128000;
-            if (lowerModel.includes('gpt-4-32k')) return 32768;
-            if (lowerModel.includes('gpt-4')) return 8192; // Standard gpt-4
-            if (lowerModel.includes('gpt-3.5-turbo-16k')) return 16385;
-            if (lowerModel.includes('gpt-3.5-turbo')) return 4096; // Older default, use newer if possible
-            // Add newer models like gpt-4o when confirmed
-            logger.warn(`Unknown OpenAI model: ${model}. Using default limit of 4096.`);
-            return 4096; // Default for older gpt-3.5
+    const providerModels = MODEL_TOKEN_LIMITS[lowerProvider];
+    if (providerModels) {
+        // Sort model keys by length in descending order to match more specific names first
+        const sortedModelKeys = Object.keys(providerModels).sort((a, b) => b.length - a.length);
 
-        case 'anthropic':
-            // Based on Anthropic documentation (as of early 2024)
-            // Claude models often have larger context windows
-            // Note: Actual usable context might be slightly less
-            if (lowerModel.includes('claude-3-opus')) return 200000; // Around 200k
-            if (lowerModel.includes('claude-3-sonnet')) return 200000; // Around 200k
-            if (lowerModel.includes('claude-3-haiku')) return 200000; // Around 200k
-            if (lowerModel.includes('claude-2.1')) return 200000; // Around 200k
-            if (lowerModel.includes('claude-2.0')) return 100000; // Around 100k
-            if (lowerModel.includes('claude-instant-1')) return 100000; // Around 100k
-            logger.warn(`Unknown Anthropic model: ${model}. Using default limit of 100000.`);
-            return 100000; // Default for older Claude
+        for (const modelKey of sortedModelKeys) {
+            if (normalizedModel.includes(modelKey)) {
+                logger.debug(
+                    `getMaxTokens: found modelKey: ${modelKey}, limit: ${providerModels[modelKey]}`
+                );
+                return providerModels[modelKey];
+            }
+        }
 
-        // Add cases for other providers here
-
-        default:
-            logger.warn(
-                `Unknown provider: ${provider} for model: ${model}. Using default limit of 4000.`
-            );
-            return 4000; // A conservative default
+        logger.warn(
+            `Unknown ${provider} model: ${model}. Using default limit of ${
+                PROVIDER_DEFAULTS[lowerProvider] ?? DEFAULT_TOKEN_LIMIT
+            }.`
+        );
+        return PROVIDER_DEFAULTS[lowerProvider] ?? DEFAULT_TOKEN_LIMIT;
     }
-}
 
-// Example of potential future helper logic for specific providers if needed
-// export function getOpenAIMaxTokens(model: string): number { ... }
-// export function getAnthropicMaxTokens(model: string): number { ... }
+    logger.warn(
+        `Unknown provider: ${provider} for model: ${model}. Using default limit of ${DEFAULT_TOKEN_LIMIT}.`
+    );
+    return DEFAULT_TOKEN_LIMIT;
+}

@@ -17,7 +17,6 @@ const ToolsListSchema = z.object({
     nextCursor: z.string().optional(),
 });
 
-
 const DEFAULT_TIMEOUT = 60000;
 /**
  * Wrapper on top of Client class provided in model context protocol SDK, to add additional metadata about the server
