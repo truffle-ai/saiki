@@ -13,7 +13,7 @@ export class ClientManager {
 
     constructor(confirmationProvider?: UserConfirmationProvider) {
         // If a confirmation provider is passed, use it, otherwise use the default implementation
-        this.confirmationProvider = confirmationProvider || new DefaultConfirmationProvider(this.allowedTools);
+        this.confirmationProvider = confirmationProvider ?? new DefaultConfirmationProvider(this.allowedTools);
     }
 
     /**

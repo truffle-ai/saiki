@@ -43,6 +43,9 @@ export interface IMCPClientWrapper extends ToolProvider {
     // readResource(url: string): Promise<string>;
 }
 
+/**
+ * Interface for tool confirmation provider for client
+ */
 export interface UserConfirmationProvider {
     requestConfirmation(
         details: ToolExecutionDetails,
@@ -54,6 +57,9 @@ export interface UserConfirmationProvider {
     ): Promise<boolean>;
 }
 
+/**
+ * Interface for current tool being executed
+ */
 export interface ToolExecutionDetails {
     toolName: string;
     args: any;
