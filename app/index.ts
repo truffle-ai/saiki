@@ -38,7 +38,7 @@ program
     .option('-c, --config-file <path>', 'Path to config file', 'configuration/saiki.yml')
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
-    .option('--mode <mode>', 'Run mode: cli, web, or both', 'cli')
+    .option('--mode <mode>', 'Run mode: cli or web', 'cli')
     .option('--web-port <port>', 'Port for WebUI', '3000')
     .version('0.2.0');
 
@@ -52,8 +52,8 @@ const runMode = options.mode.toLowerCase();
 const webPort = parseInt(options.webPort, 10);
 
 // Validate run mode
-if (!['cli', 'web', 'both'].includes(runMode)) {
-    logger.error(`Invalid mode: ${runMode}. Must be 'cli', 'web', or 'both'.`);
+if (!['cli', 'web'].includes(runMode)) {
+    logger.error(`Invalid mode: ${runMode}. Must be 'cli' or 'web'.`);
     process.exit(1);
 }
 
@@ -73,7 +73,7 @@ logger.info(
 );
 
 // Conditionally display CLI examples
-if (runMode === 'cli' || runMode === 'both') {
+if (runMode === 'cli') {
     logger.info('');
     logger.info(
         'Running in CLI mode. Use natural language or type \'exit\' to quit.',
@@ -102,24 +102,15 @@ async function startAgent() {
         const { clientManager, llmService } = await initializeServices(config, connectionMode);
 
         // Start based on mode
-        if (runMode === 'cli' || runMode === 'both') {
-            // Run CLI asynchronously, don't await if running both
-            const cliPromise = await runAiCli(clientManager, llmService);
-            if (runMode === 'cli') {
-                await cliPromise; // Only await if *only* running CLI
-            }
-        }
-
-        if (runMode === 'web' || runMode === 'both') {
-            // Run WebUI asynchronously
+        if (runMode === 'cli') {
+            // Run CLI
+            await runAiCli(clientManager, llmService);
+        } else if (runMode === 'web') {
+            // Run WebUI
             initializeWebUI(clientManager, llmService, webPort);
+            logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
             // Note: Web server runs indefinitely, no need to await here unless
             // you specifically want the script to only exit when the server does.
-        }
-
-        if (runMode === 'both') {
-             logger.info('Running in both CLI and WebUI mode.', null, 'magenta');
-             logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
         }
 
     } catch (error) {
