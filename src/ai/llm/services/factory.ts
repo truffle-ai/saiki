@@ -18,17 +18,8 @@ import { LanguageModelV1 } from 'ai';
 function extractApiKey(config: LLMConfig): string {
     const provider = config.provider;
 
-    // Get API key from config or environment
+    // Get API key from config (already expanded)
     let apiKey = config.apiKey || '';
-    if (apiKey.startsWith('env:')) {
-        // If the API key is specified as an environment variable reference
-        const envVarName = apiKey.substring(4);
-        apiKey = process.env[envVarName] || '';
-    } else {
-        // Fall back to environment variables if not in config
-        const apiKeyEnvVar = provider === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY';
-        apiKey = apiKey || process.env[apiKeyEnvVar] || '';
-    }
 
     if (!apiKey) {
         const errorMsg = `Error: API key for ${provider} not found`;

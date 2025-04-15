@@ -149,7 +149,7 @@ mcpServers:
 llm:
   provider: openai
   model: gpt-4o
-  apiKey: env:OPENAI_API_KEY
+  apiKey: $OPENAI_API_KEY
 ```
 
 Use a custom configuration:

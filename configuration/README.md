@@ -39,7 +39,7 @@ mcpServers:
 llm:
   provider: openai
   model: gpt-4
-  apiKey: env:OPENAI_API_KEY
+  apiKey: $OPENAI_API_KEY
 ```
 
 ## Tool Server Configuration
@@ -85,15 +85,15 @@ The `llm` section configures the AI provider settings.
 API keys can be configured in two ways:
 
 1. **Environment Variables (Recommended)**:
-   - Add keys to your `.env` file (use `.env.example` as a template)
-   - Reference them in config with the `env:` prefix
+   - Add keys to your `.env` file (use `.env.example` as a template) or export environment variables
+   - Reference them in config with the `$` prefix
 
 2. **Direct Configuration** (Not recommended for security):
    - Directly in the YAML file (less secure, avoid in production)
 
 ```yaml
 # Recommended: Reference environment variables
-apiKey: env:OPENAI_API_KEY
+apiKey: $OPENAI_API_KEY
 
 # Not recommended: Direct API key in config
 apiKey: sk-actual-api-key  
@@ -115,7 +115,7 @@ Each provider requires its own API key:
 llm:
   provider: openai
   model: gpt-4o
-  apiKey: env:OPENAI_API_KEY
+  apiKey: $OPENAI_API_KEY
 ```
 
 #### Anthropic example
@@ -123,7 +123,7 @@ llm:
 llm:
   provider: anthropic
   model: claude-3-7-sonnet-20250219
-  apiKey: env:ANTHROPIC_API_KEY
+  apiKey: $ANTHROPIC_API_KEY
 ```
 
 #### Google example
@@ -131,7 +131,7 @@ llm:
 llm:
   provider: google
   model: gemini-2.0-flash
-  apiKey: env:GOOGLE_GENERATIVE_AI_API_KEY
+  apiKey: $GOOGLE_GENERATIVE_AI_API_KEY
 ```
 
 ### Windows Support
@@ -271,5 +271,5 @@ mcpServers:
 llm:
   provider: openai
   model: gpt-4
-  apiKey: env:OPENAI_API_KEY
+  apiKey: $OPENAI_API_KEY
 ``` 

@@ -30,6 +30,7 @@ export class MCPClient implements ToolProvider {
     private serverSpawned = false;
     private serverPid: number | null = null;
     private serverAlias: string | null = null;
+    private timeout: number | undefined = undefined;
 
     constructor() {}
 
@@ -204,7 +205,11 @@ export class MCPClient implements ToolProvider {
 
             // Call the tool with properly formatted arguments
 
-            const result = await this.client.callTool({ name, arguments: toolArgs });
+            const result = await this.client.callTool(
+                { name, arguments: toolArgs },
+                undefined, // resultSchema (optional)
+                { timeout: this.timeout ?? 60000 } // Use server-specific timeout, default 1 minute
+            );
             logger.debug(`Tool '${name}' result: ${JSON.stringify(result, null, 2)}`);
 
             // Check for null or undefined result

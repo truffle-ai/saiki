@@ -14,6 +14,7 @@ export interface StdioServerConfig {
     command: string;
     args: string[];
     env?: Record<string, string>;
+    timeout?: number; // in milliseconds
 }
 
 /**
@@ -23,6 +24,7 @@ export interface SSEServerConfig {
     type: 'sse';
     url: string;
     headers?: Record<string, string>;
+    timeout?: number; // in milliseconds
 }
 
 /**
