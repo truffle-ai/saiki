@@ -32,7 +32,7 @@ Why developers use Saiki:
    
 3. **Customizable Interfaces**: Use it in a CLI, wrap it in a web app, or embed it into your own stack. Saiki separates AI logic from the UI so you can build around it, not within it.
 
-Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs.
+Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. Interact with Saiki via the command line or the new experimental web UI.
 
 ## 🚀 Getting Started
 
@@ -61,11 +61,23 @@ OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 3. **Launch Saiki:**
-```bash
-npm start
-```
 
-That's it! You're now ready to interact with Saiki through the command line.
+   **CLI Mode (Default):**
+   ```bash
+   npm start
+   ```
+   This will launch the command-line interface.
+
+   **Web UI Mode:**
+   ```bash
+   # Launch only the Web UI (default port: 3000)
+   npm start -- --mode web
+
+   # Launch Web UI on a specific port
+   npm start -- --mode web --web-port 8080
+   ```
+
+   That's it! You're now ready to interact with Saiki through the command line or web interface.
 
 ### Next Steps
 Check out [example configurations](./configuration/examples/) or the [Configuration Guide](./configuration/README.md) to customize your setup.
@@ -134,7 +146,7 @@ Here are some examples of what you can do with Saiki:
 
 ## ⚙️ Configuration
 
-Saiki uses a YAML configuration file (`configuration/saiki.yml`) to define tool servers and LLM settings:
+Saiki uses a YAML configuration file (`configuration/saiki.yml` by default) to define tool servers and LLM settings:
 
 ```yaml
 mcpServers:
@@ -152,7 +164,7 @@ llm:
   apiKey: $OPENAI_API_KEY
 ```
 
-Use a custom configuration:
+Use a custom configuration file:
 ```bash
 npm start -- --config-file path/to/your/config.yml
 ```
