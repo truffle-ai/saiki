@@ -8,7 +8,8 @@ import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
 import { VercelMessageFormatter } from '../messages/formatters/vercel.js';
 import { createTokenizer } from '../tokenizer/factory.js';
-import { getProviderFromModel, getMaxTokens } from '../tokenizer/utils.js';
+import { getMaxTokens } from '../tokenizer/utils.js';
+import { getProviderFromModel } from '../../utils.js';
 
 /**
  * Vercel implementation of LLMService

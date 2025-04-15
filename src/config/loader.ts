@@ -12,9 +12,12 @@ import { logger } from '../utils/logger.js';
 // Expand $VAR and ${VAR} in all string values recursively
 function expandEnvVars(config: any): any {
     if (typeof config === 'string') {
-        const expanded = config.replace(/\$([A-Z_][A-Z0-9_]*)|\${([A-Z_][A-Z0-9_]*)}/gi, (_, v1, v2) => {
-            return process.env[v1 || v2] || '';
-        });
+        const expanded = config.replace(
+            /\$([A-Z_][A-Z0-9_]*)|\${([A-Z_][A-Z0-9_]*)}/gi,
+            (_, v1, v2) => {
+                return process.env[v1 || v2] || '';
+            }
+        );
         return expanded;
     } else if (Array.isArray(config)) {
         return config.map(expandEnvVars);
