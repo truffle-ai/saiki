@@ -9,6 +9,11 @@
 
 **Use natural language to control your tools, apps, and services — connect once, command everything.**
 
+<div align="center">
+  <img src="assets/notion_webui_example.gif" alt="Saiki: Website designer agent demo" />
+</div>
+
+
 ## 📑 Table of Contents
 - [Overview](#-overview)
 - [Getting Started](#-getting-started)
