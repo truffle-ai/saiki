@@ -17,6 +17,8 @@ const ToolsListSchema = z.object({
     nextCursor: z.string().optional(),
 });
 
+
+const DEFAULT_TIMEOUT = 60000;
 /**
  * Wrapper on top of Client class provided in model context protocol SDK, to add additional metadata about the server
  */
@@ -35,6 +37,7 @@ export class MCPClient implements ToolProvider {
     constructor() {}
 
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
+        this.timeout = config.timeout ?? DEFAULT_TIMEOUT;
         if (config.type === 'stdio') {
             const stdioConfig: StdioServerConfig = config;
 
@@ -204,11 +207,12 @@ export class MCPClient implements ToolProvider {
             }
 
             // Call the tool with properly formatted arguments
+            logger.debug(`Using timeout: ${this.timeout}`);
 
             const result = await this.client.callTool(
                 { name, arguments: toolArgs },
                 undefined, // resultSchema (optional)
-                { timeout: this.timeout ?? 60000 } // Use server-specific timeout, default 1 minute
+                { timeout: this.timeout } // Use server-specific timeout, default 1 minute
             );
             logger.debug(`Tool '${name}' result: ${JSON.stringify(result, null, 2)}`);
 
