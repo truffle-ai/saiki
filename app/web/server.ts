@@ -58,6 +58,67 @@ export async function initializeWebUI(
     }
   });
   
+  // ---- NEW ENDPOINT: Connect to a new MCP Server ----
+  app.post('/api/connect-server', express.json(), async (req, res) => {
+    logger.info('Received request via POST /api/connect-server');
+    const { name, config } = req.body;
+
+    // Basic validation
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).send({ error: 'Missing or invalid server name' });
+    }
+    if (!config || typeof config !== 'object') {
+      return res.status(400).send({ error: 'Missing or invalid server config object' });
+    }
+    // Add more specific config validation here if needed (e.g., checking type, command/url)
+
+    try {
+      await clientManager.connectClient(name, config);
+      logger.info(`Successfully connected to new server '${name}' via API request.`);
+      // Optionally, trigger a tool list refresh and notify clients via WebSocket
+      // const tools = await clientManager.getAllTools();
+      // webSubscriber.broadcast({ event: 'toolsUpdated', data: { tools } }); 
+      res.status(200).send({ status: 'connected', name: name });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error during connection';
+      logger.error(`Error handling POST /api/connect-server for '${name}': ${errorMessage}`);
+      // Send back a more specific error if possible (e.g., distinguish between bad config and connection failure)
+      res.status(500).send({ error: `Failed to connect to server '${name}': ${errorMessage}` });
+    }
+  });
+  // ---- END NEW ENDPOINT ----
+
+  
+  // ---- NEW ENDPOINT: Connect to a new MCP Server ----
+  app.post('/api/connect-server', express.json(), async (req, res) => {
+    logger.info('Received request via POST /api/connect-server');
+    const { name, config } = req.body;
+
+    // Basic validation
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).send({ error: 'Missing or invalid server name' });
+    }
+    if (!config || typeof config !== 'object') {
+      return res.status(400).send({ error: 'Missing or invalid server config object' });
+    }
+    // Add more specific config validation here if needed (e.g., checking type, command/url)
+
+    try {
+      await clientManager.connectClient(name, config);
+      logger.info(`Successfully connected to new server '${name}' via API request.`);
+      // Optionally, trigger a tool list refresh and notify clients via WebSocket
+      // const tools = await clientManager.getAllTools();
+      // webSubscriber.broadcast({ event: 'toolsUpdated', data: { tools } }); 
+      res.status(200).send({ status: 'connected', name: name });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error during connection';
+      logger.error(`Error handling POST /api/connect-server for '${name}': ${errorMessage}`);
+      // Send back a more specific error if possible (e.g., distinguish between bad config and connection failure)
+      res.status(500).send({ error: `Failed to connect to server '${name}': ${errorMessage}` });
+    }
+  });
+  // ---- END NEW ENDPOINT ----
+
   // WebSocket connection handling
   wss.on('connection', (ws: WebSocket) => {
     logger.info('WebSocket client connected.');

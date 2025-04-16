@@ -1,5 +1,5 @@
 import { MCPClient } from './mcp-client.js';
-import { ServerConfigs } from '../config/types.js';
+import { ServerConfigs, McpServerConfig } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
 
@@ -19,6 +19,7 @@ export class ClientManager {
         }
         this.clients.set(name, client);
         logger.info(`Registered client: ${name}`);
+        delete this.connectionErrors[name];
     }
 
     /**
@@ -112,6 +113,33 @@ export class ClientManager {
                     ? 'Failed to connect to all required servers'
                     : 'Failed to connect to at least one server'
             );
+        }
+    }
+
+    /**
+     * Dynamically connect to a new MCP server.
+     * @param name The unique name for the new server connection.
+     * @param config The configuration for the server.
+     * @returns Promise resolving when the connection attempt is complete.
+     * @throws Error if the connection fails.
+     */
+    async connectClient(name: string, config: McpServerConfig): Promise<void> {
+        if (this.clients.has(name)) {
+            logger.warn(`Client '${name}' is already connected or registered.`);
+            return;
+        }
+
+        const client = new MCPClient();
+        try {
+            logger.info(`Attempting to connect to new server '${name}'...`);
+            await client.connect(config, name);
+            this.registerClient(name, client);
+            logger.info(`Successfully connected to new server '${name}'`);
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            this.connectionErrors[name] = errorMsg;
+            logger.error(`Failed to connect to new server '${name}': ${errorMsg}`);
+            throw new Error(`Failed to connect to new server '${name}': ${errorMsg}`);
         }
     }
 
