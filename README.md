@@ -79,6 +79,16 @@ OPENAI_API_KEY=your_openai_api_key_here
 
    That's it! You're now ready to interact with Saiki through the command line or web interface.
 
+   Saiki also works with Docker — see the [Running with Docker](#running-with-docker) section below for details.
+
+---
+
+### Running with Docker
+
+See [README.Docker.md](./README.Docker.md) for detailed instructions on building and running Saiki with Docker, including mounting your project directory and setting the working directory at runtime.
+
+---
+
 ### Next Steps
 Check out [example configurations](./configuration/examples/) or the [Configuration Guide](./configuration/README.md) to customize your setup.
 
