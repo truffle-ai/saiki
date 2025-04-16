@@ -34,8 +34,14 @@ if (!existsSync('.env')) {
 }
 
 // Check for at least one required API key
-if (!process.env.OPENAI_API_KEY && !process.env.GOOGLE_GENERATIVE_AI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-    logger.error('ERROR: No API key found. Please set at least one of OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or ANTHROPIC_API_KEY in your environment or .env file.');
+if (
+    !process.env.OPENAI_API_KEY &&
+    !process.env.GOOGLE_GENERATIVE_AI_API_KEY &&
+    !process.env.ANTHROPIC_API_KEY
+) {
+    logger.error(
+        'ERROR: No API key found. Please set at least one of OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or ANTHROPIC_API_KEY in your environment or .env file.'
+    );
     process.exit(1);
 }
 
@@ -74,19 +80,12 @@ if (isNaN(webPort) || webPort <= 0 || webPort > 65535) {
 // Platform-independent path handling
 const normalizedConfigPath = path.normalize(configFile);
 
-logger.info(
-    `Initializing Saiki with config: ${normalizedConfigPath}`,
-    null,
-    'blue'
-);
+logger.info(`Initializing Saiki with config: ${normalizedConfigPath}`, null, 'blue');
 
 // Conditionally display CLI examples
 if (runMode === 'cli') {
     logger.info('');
-    logger.info(
-        'Running in CLI mode. Use natural language or type \'exit\' to quit.',
-        'cyanBright'
-    );
+    logger.info("Running in CLI mode. Use natural language or type 'exit' to quit.", 'cyanBright');
     logger.info('Examples:', 'yellow');
     logger.info('- "List all files in the current directory"');
     logger.info('- "Show system information"');
@@ -120,7 +119,6 @@ async function startAgent() {
             // Note: Web server runs indefinitely, no need to await here unless
             // you specifically want the script to only exit when the server does.
         }
-
     } catch (error) {
         logger.error(
             `Error: Failed to initialize AI CLI from config file ${normalizedConfigPath}: ${
@@ -152,7 +150,8 @@ function validateAgentConfig(config: AgentConfig): void {
         config.llm = {
             provider: 'openai',
             model: 'gpt-4o-mini',
-            systemPrompt: 'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.',
+            systemPrompt:
+                'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.',
             apiKey: '$OPENAI_API_KEY',
         };
     } else {
@@ -163,7 +162,8 @@ function validateAgentConfig(config: AgentConfig): void {
         // Provide default system prompt if missing
         if (!config.llm.systemPrompt) {
             logger.info('No system prompt found, using default', 'yellow');
-            config.llm.systemPrompt = 'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.';
+            config.llm.systemPrompt =
+                'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.';
         }
     }
 

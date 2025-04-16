@@ -13,8 +13,8 @@
         "dev": "tsc --watch",
         "lint": "eslint . --ext .ts",
         "lint:fix": "eslint . --ext .ts --fix",
-        "format": "prettier --write \"src/**/*.ts\"",
-        "format:check": "prettier --check \"src/**/*.ts\""
+        "format": "prettier --write \"src/**/*.ts\" \"app/**/*.ts\"",
+        "format:check": "prettier --check \"src/**/*.ts\" \"app/**/*.ts\""
     },
     "keywords": [
         "mcp",
