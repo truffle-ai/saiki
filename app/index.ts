@@ -22,12 +22,20 @@ const program = new Command();
 
 // Check if .env file exists
 if (!existsSync('.env')) {
-    logger.error('ERROR: .env file not found.');
-    logger.info('Please create a .env file with your OpenAI API key.');
-    logger.info('You can copy .env.example and fill in your API key.');
+    logger.warn('WARNING: .env file not found.');
+    logger.info('If you are running locally, please create a .env file with your API key(s).');
+    logger.info('You can copy .env.example and fill in your API key(s).');
+    logger.info('Alternatively, ensure the required environment variables are set.');
     logger.info('');
     logger.info('Example .env content:');
     logger.info('OPENAI_API_KEY=your_openai_api_key_here', null, 'green');
+    logger.info('GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key_here', null, 'green');
+    logger.info('ANTHROPIC_API_KEY=your_anthropic_api_key_here', null, 'green');
+}
+
+// Check for at least one required API key
+if (!process.env.OPENAI_API_KEY && !process.env.GOOGLE_GENERATIVE_AI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    logger.error('ERROR: No API key found. Please set at least one of OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or ANTHROPIC_API_KEY in your environment or .env file.');
     process.exit(1);
 }
 
