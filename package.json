@@ -1,6 +1,6 @@
 {
     "name": "saiki",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
     "main": "dist/app/index.js",
@@ -31,6 +31,11 @@
     ],
     "author": "",
     "license": "Elastic-2.0",
+    "files": [
+        "dist/",
+        "configuration/saiki.yml",
+        "public/"
+    ],
     "dependencies": {
         "@ai-sdk/anthropic": "^1.2.2",
         "@ai-sdk/google": "^1.2.8",

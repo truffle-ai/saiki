@@ -11,9 +11,7 @@ mcpServers:
     type: stdio
     command: node
     args:
-      - --loader
-      - ts-node/esm
-      - src/servers/puppeteerServer.ts
+      - dist/src/servers/puppeteerServer.js
 
 # # describes the llm configuration
 llm:
