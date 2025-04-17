@@ -8,11 +8,9 @@
         "saiki": "./dist/app/index.js"
     },
     "scripts": {
-        "clean": "npx rimraf dist",
         "prebuild": "",
-        "build": "npm run clean && npx tsc && npm run copy-client",
+        "build": "npx rimraf dist && npx tsc && npx rimraf public && mkdir public && npx copyfiles -f \"app/web/client/*\" public",
         "prepare": "npm run build",
-        "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"app/web/client/*\" public",
         "start": "node dist/app/index.js",
         "dev": "tsc --watch",
         "lint": "eslint . --ext .ts",
