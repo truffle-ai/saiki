@@ -81,6 +81,7 @@ export class MCPClient implements ToolProvider {
         this.serverAlias = serverAlias || null;
 
         // --- Resolve path for bundled node scripts ---
+        // TODO: Improve this logic to be less hacky
         if (command === 'node' && this.resolvedArgs.length > 0 && this.resolvedArgs[0].startsWith('dist/')) {
             try {
                 const scriptRelativePath = this.resolvedArgs[0];
