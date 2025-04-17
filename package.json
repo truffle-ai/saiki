@@ -4,10 +4,14 @@
     "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
     "main": "dist/app/index.js",
+    "bin": {
+        "saiki": "./dist/app/index.js"
+    },
     "scripts": {
         "clean": "rimraf dist",
         "prebuild": "npm run lint",
         "build": "npm run clean && tsc && npm run copy-client",
+        "prepare": "npm run build",
         "copy-client": "rimraf public && mkdir public && copyfiles -f \"app/web/client/*\" public",
         "start": "node dist/app/index.js",
         "dev": "tsc --watch",
@@ -26,7 +30,7 @@
         "truffle-ai"
     ],
     "author": "",
-    "license": "MIT",
+    "license": "Elastic-2.0",
     "dependencies": {
         "@ai-sdk/anthropic": "^1.2.2",
         "@ai-sdk/google": "^1.2.8",
