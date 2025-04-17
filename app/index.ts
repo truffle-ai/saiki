@@ -5,6 +5,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
 import { loadConfigFile } from '../src/config/loader.js';
+import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
 import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
 import { runAiCli } from './cli/cli.js';
@@ -22,15 +23,15 @@ const program = new Command();
 
 // Check if .env file exists
 if (!existsSync('.env')) {
-    logger.warn('WARNING: .env file not found.');
-    logger.info('If you are running locally, please create a .env file with your API key(s).');
-    logger.info('You can copy .env.example and fill in your API key(s).');
-    logger.info('Alternatively, ensure the required environment variables are set.');
-    logger.info('');
-    logger.info('Example .env content:');
-    logger.info('OPENAI_API_KEY=your_openai_api_key_here', null, 'green');
-    logger.info('GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key_here', null, 'green');
-    logger.info('ANTHROPIC_API_KEY=your_anthropic_api_key_here', null, 'green');
+    logger.debug('WARNING: .env file not found.');
+    logger.debug('If you are running locally, please create a .env file with your API key(s).');
+    logger.debug('You can copy .env.example and fill in your API key(s).');
+    logger.debug('Alternatively, ensure the required environment variables are set.');
+    logger.debug('');
+    logger.debug('Example .env content:');
+    logger.debug('OPENAI_API_KEY=your_openai_api_key_here', null, 'green');
+    logger.debug('GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key_here', null, 'green');
+    logger.debug('ANTHROPIC_API_KEY=your_anthropic_api_key_here', null, 'green');
 }
 
 // Check for at least one required API key
@@ -49,7 +50,7 @@ if (
 program
     .name('saiki')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
-    .option('-c, --config-file <path>', 'Path to config file', 'configuration/saiki.yml')
+    .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .option('--mode <mode>', 'Run mode: cli or web', 'cli')
@@ -64,6 +65,7 @@ const configFile = options.configFile;
 const connectionMode = options.strict ? 'strict' : ('lenient' as 'strict' | 'lenient');
 const runMode = options.mode.toLowerCase();
 const webPort = parseInt(options.webPort, 10);
+const resolveFromPackageRoot = configFile === DEFAULT_CONFIG_PATH; // Check if should resolve from package root
 
 // Validate run mode
 if (!['cli', 'web'].includes(runMode)) {
@@ -78,7 +80,7 @@ if (isNaN(webPort) || webPort <= 0 || webPort > 65535) {
 }
 
 // Platform-independent path handling
-const normalizedConfigPath = path.normalize(configFile);
+const normalizedConfigPath = resolvePackagePath(configFile, resolveFromPackageRoot);
 
 logger.info(`Initializing Saiki with config: ${normalizedConfigPath}`, null, 'blue');
 

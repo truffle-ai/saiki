@@ -7,6 +7,7 @@ import { ClientManager } from '../../src/client/manager.js';
 import { ILLMService } from '../../src/ai/llm/services/types.js';
 import { AgentEventManager } from '../../src/ai/llm/events/event-manager.js';
 import { logger } from '../../src/utils/logger.js'; // Import logger
+import { resolvePackagePath } from '../../src/utils/path.js';
 
 export async function initializeWebUI(
     clientManager: ClientManager,
@@ -23,8 +24,8 @@ export async function initializeWebUI(
     eventManager.registerSubscriber(webSubscriber);
     logger.info('WebUI Event Manager and Subscriber initialized.');
 
-    // Serve static files from the root /public directory
-    const publicPath = path.resolve(process.cwd(), 'public');
+    // Serve static files from the package's public directory using the helper
+    const publicPath = resolvePackagePath('public', true);
     logger.info(`Serving static files from: ${publicPath}`);
     app.use(express.static(publicPath));
 
