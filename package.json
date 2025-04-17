@@ -8,11 +8,11 @@
         "saiki": "./dist/app/index.js"
     },
     "scripts": {
-        "clean": "rimraf dist",
+        "clean": "npx rimraf dist",
         "prebuild": "",
-        "build": "npm run clean && tsc && npm run copy-client",
+        "build": "npm run clean && npx tsc && npm run copy-client",
         "prepare": "npm run build",
-        "copy-client": "rimraf public && mkdir public && copyfiles -f \"app/web/client/*\" public",
+        "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"app/web/client/*\" public",
         "start": "node dist/app/index.js",
         "dev": "tsc --watch",
         "lint": "eslint . --ext .ts",
@@ -41,6 +41,7 @@
         "boxen": "^7.1.1",
         "chalk": "^5.4.1",
         "commander": "^11.1.0",
+        "copyfiles": "^2.4.1",
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
         "marked": "^15.0.8",
@@ -48,14 +49,13 @@
         "ora": "^7.0.1",
         "puppeteer-core": "^24.4.0",
         "readline-sync": "^1.4.10",
+        "rimraf": "^6.0.1",
         "tiktoken": "^1.0.20",
+        "typescript": "^5.3.3",
         "winston": "^3.17.0",
         "ws": "^8.18.1",
         "yaml": "^2.7.1",
-        "zod": "^3.22.4",
-        "rimraf": "^6.0.1",
-        "copyfiles": "^2.4.1",
-        "typescript": "^5.3.3"
+        "zod": "^3.22.4"
     },
     "devDependencies": {
         "@eslint/js": "^9.23.0",
