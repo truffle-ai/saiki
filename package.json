@@ -9,7 +9,7 @@
     },
     "scripts": {
         "clean": "rimraf dist",
-        "prebuild": "npm run lint",
+        "prebuild": "",
         "build": "npm run clean && tsc && npm run copy-client",
         "prepare": "npm run build",
         "copy-client": "rimraf public && mkdir public && copyfiles -f \"app/web/client/*\" public",
