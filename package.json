@@ -1,5 +1,5 @@
 {
-    "name": "saiki",
+    "name": "@truffle-ai/saiki",
     "version": "0.2.0",
     "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
