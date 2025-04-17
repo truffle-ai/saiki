@@ -2,10 +2,14 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { z } from 'zod';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { McpServerConfig, StdioServerConfig, SSEServerConfig } from '../config/types.js';
 import { ToolSet } from '../ai/types.js';
 import { ToolProvider } from './types.js';
+import { resolvePackagePath } from '../utils/path.js';
+
 const ToolsListSchema = z.object({
     tools: z.array(
         z.object({
@@ -26,7 +30,8 @@ export class MCPClient implements ToolProvider {
     private transport: any = null;
     private isConnected = false;
     private serverCommand: string | null = null;
-    private serverArgs: string[] | null = null;
+    private originalArgs: string[] | null = null;
+    private resolvedArgs: string[] | null = null;
     private serverEnv: Record<string, string> | null = null;
     private serverSpawned = false;
     private serverPid: number | null = null;
@@ -70,13 +75,26 @@ export class MCPClient implements ToolProvider {
     ): Promise<Client> {
         // Store server details
         this.serverCommand = command;
-        this.serverArgs = args;
+        this.originalArgs = [...args];
+        this.resolvedArgs = [...this.originalArgs];
         this.serverEnv = env || null;
         this.serverAlias = serverAlias || null;
 
-        logger.info('');
+        // --- Resolve path for bundled node scripts ---
+        // TODO: Improve this logic to be less hacky
+        if (command === 'node' && this.resolvedArgs.length > 0 && this.resolvedArgs[0].startsWith('dist/')) {
+            try {
+                const scriptRelativePath = this.resolvedArgs[0];
+                this.resolvedArgs[0] = resolvePackagePath(scriptRelativePath, true);
+                logger.debug(`Resolved bundled script path: ${scriptRelativePath} -> ${this.resolvedArgs[0]}`);
+            } catch (e) {
+                logger.warn(`Failed to resolve path for bundled script ${this.resolvedArgs[0]}: ${e}`);
+            }
+        }
+        // --- End path resolution ---
+
         logger.info('=======================================');
-        logger.info(`MCP SERVER: ${command} ${args.join(' ')}`, null, 'magenta');
+        logger.info(`MCP SERVER: ${command} ${this.resolvedArgs.join(' ')}`, null, 'magenta');
         if (env) {
             logger.info('Environment:');
             Object.entries(env).forEach(([key, _]) => {
@@ -85,9 +103,9 @@ export class MCPClient implements ToolProvider {
         }
         logger.info('=======================================\n');
 
-        const serverName = serverAlias
-            ? `"${serverAlias}" (${command} ${args.join(' ')})`
-            : `${command} ${args.join(' ')}`;
+        const serverName = this.serverAlias
+            ? `"${this.serverAlias}" (${command} ${this.resolvedArgs.join(' ')})`
+            : `${command} ${this.resolvedArgs.join(' ')}`;
         logger.info(`Connecting to MCP server: ${serverName}`);
 
         // Create a properly expanded environment by combining process.env with the provided env
@@ -98,8 +116,8 @@ export class MCPClient implements ToolProvider {
 
         // Create transport for stdio connection with expanded environment
         this.transport = new StdioClientTransport({
-            command,
-            args,
+            command: command,
+            args: this.resolvedArgs,
             env: expandedEnv as Record<string, string>,
         });
 
@@ -270,7 +288,8 @@ export class MCPClient implements ToolProvider {
         spawned: boolean;
         pid: number | null;
         command: string | null;
-        args: string[] | null;
+        originalArgs: string[] | null;
+        resolvedArgs: string[] | null;
         env: Record<string, string> | null;
         alias: string | null;
     } {
@@ -278,7 +297,8 @@ export class MCPClient implements ToolProvider {
             spawned: this.serverSpawned,
             pid: this.serverPid,
             command: this.serverCommand,
-            args: this.serverArgs,
+            originalArgs: this.originalArgs,
+            resolvedArgs: this.resolvedArgs,
             env: this.serverEnv,
             alias: this.serverAlias,
         };
@@ -300,7 +320,7 @@ export class MCPClient implements ToolProvider {
         // If connection is in progress, wait for it to complete
         return this.connectViaStdio(
             this.serverCommand,
-            this.serverArgs || [],
+            this.originalArgs || [],
             this.serverEnv || undefined,
             this.serverAlias || undefined
         );

@@ -1,20 +1,24 @@
 {
-    "name": "saiki",
-    "version": "0.1.0",
+    "name": "@truffle-ai/saiki",
+    "version": "0.2.0",
     "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
     "main": "dist/app/index.js",
+    "bin": {
+        "saiki": "./dist/app/index.js"
+    },
     "scripts": {
-        "clean": "rimraf dist",
-        "prebuild": "npm run lint",
-        "build": "npm run clean && tsc && npm run copy-client",
-        "copy-client": "rimraf public && mkdir public && copyfiles -f \"app/web/client/*\" public",
+        "clean": "npx rimraf dist",
+        "prebuild": "",
+        "build": "npm run clean && npx tsc && npm run copy-client",
+        "prepare": "npm run build",
+        "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"app/web/client/*\" public",
         "start": "node dist/app/index.js",
         "dev": "tsc --watch",
         "lint": "eslint . --ext .ts",
         "lint:fix": "eslint . --ext .ts --fix",
-        "format": "prettier --write \"src/**/*.ts\"",
-        "format:check": "prettier --check \"src/**/*.ts\""
+        "format": "prettier --write \"src/**/*.ts\" \"app/**/*.ts\"",
+        "format:check": "prettier --check \"src/**/*.ts\" \"app/**/*.ts\""
     },
     "keywords": [
         "mcp",
@@ -26,7 +30,12 @@
         "truffle-ai"
     ],
     "author": "",
-    "license": "MIT",
+    "license": "Elastic-2.0",
+    "files": [
+        "dist/",
+        "configuration/saiki.yml",
+        "public/"
+    ],
     "dependencies": {
         "@ai-sdk/anthropic": "^1.2.2",
         "@ai-sdk/google": "^1.2.8",
@@ -37,6 +46,7 @@
         "boxen": "^7.1.1",
         "chalk": "^5.4.1",
         "commander": "^11.1.0",
+        "copyfiles": "^2.4.1",
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
         "marked": "^15.0.8",
@@ -44,7 +54,9 @@
         "ora": "^7.0.1",
         "puppeteer-core": "^24.4.0",
         "readline-sync": "^1.4.10",
+        "rimraf": "^6.0.1",
         "tiktoken": "^1.0.20",
+        "typescript": "^5.3.3",
         "winston": "^3.17.0",
         "ws": "^8.18.1",
         "yaml": "^2.7.1",
@@ -57,12 +69,9 @@
         "@types/readline-sync": "^1.4.8",
         "@typescript-eslint/eslint-plugin": "^8.28.0",
         "@typescript-eslint/parser": "^8.28.0",
-        "copyfiles": "^2.4.1",
         "eslint": "^9.23.0",
         "eslint-config-prettier": "^10.1.1",
         "prettier": "^3.5.3",
-        "rimraf": "^6.0.1",
-        "ts-node": "^10.9.2",
-        "typescript": "^5.3.3"
+        "ts-node": "^10.9.2"
     }
 }

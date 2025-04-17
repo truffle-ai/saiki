@@ -77,4 +77,4 @@ export class CLISubscriber implements AgentSubscriber {
 
         logger.info('🔄 Conversation history cleared.', null, 'blue');
     }
-} 
+}

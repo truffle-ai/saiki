@@ -11,10 +11,7 @@ import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new lo
  * @param clientManager Client manager with registered tool providers
  * @param llmService LLM service implementation
  */
-export async function runAiCli(
-    clientManager: ClientManager,
-    llmService: ILLMService
-) {
+export async function runAiCli(clientManager: ClientManager, llmService: ILLMService) {
     // Get model and provider info directly from the LLM service
     logger.info(
         `Using model config: ${JSON.stringify(llmService.getConfig(), null, 2)}`,
@@ -26,11 +23,7 @@ export async function runAiCli(
     logger.info(`Connected servers: ${clientManager.getClients().size}`, null, 'green');
     const failedConnections = clientManager.getFailedConnections();
     if (Object.keys(failedConnections).length > 0) {
-        logger.error(
-            `Failed connections: ${Object.keys(failedConnections).length}.`,
-            null,
-            'red'
-        );
+        logger.error(`Failed connections: ${Object.keys(failedConnections).length}.`, null, 'red');
     }
 
     try {
@@ -84,7 +77,7 @@ export async function runAiCli(
                     eventManager.removeSubscriber(cliSubscriber);
                     rl.close();
                     // Use process.exit(0) for a clean exit in CLI mode
-                    process.exit(0); 
+                    process.exit(0);
                 }
 
                 if (userInput.toLowerCase() === 'clear') {
@@ -111,4 +104,4 @@ export async function runAiCli(
         logger.error(`Error during CLI initialization: ${error.message}`);
         process.exit(1); // Exit with error code if CLI setup fails
     }
-} 
+}
