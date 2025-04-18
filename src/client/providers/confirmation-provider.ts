@@ -38,7 +38,7 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
             logger.debug(`Tool '${details.toolName}' execution is automatically approved`);
             return true;
         }
-        // If the tool is in the allowed list, automatically approve
+        // If the tool is in the ed list, automatically approve
         if (this.allowedTools.has(details.toolName)) {
             logger.debug(`Tool '${details.toolName}' is pre-approved for execution`);
             return true;
@@ -49,6 +49,20 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
 
         // Collect user input with arrow key navigation
         return await this.collectArrowKeyInput();
+    }
+
+    async allowTool(toolName: string): Promise<void> {
+        this.allowedTools.add(toolName);
+        logger.info(`Tool '${toolName}' has been allowed for execution without confirmation`);
+    }
+
+    async disallowTool(toolName: string): Promise<void> {
+        this.allowedTools.delete(toolName);
+        logger.info(`Tool '${toolName}' has been allowed for execution without confirmation`);
+    }
+
+    async isToolAllowed(toolName: string): Promise<boolean> {
+        return this.allowedTools.has(toolName);
     }
 
     /**
