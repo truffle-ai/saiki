@@ -18,15 +18,7 @@ function fetchTiktokenModel(model: string): TiktokenModel {
         }
     }
 
-    try {
-        // Verify the model name is known to tiktoken
-        encoding_for_model(model as TiktokenModel);
-        return model as TiktokenModel;
-    } catch (e) {
-        // Fallback if encoding_for_model throws (likely an invalid/unsupported model name)
-        console.warn(`Model '${model}' caused an error with tiktoken. Using default '${DEFAULT_MODEL}'. Error: ${e instanceof Error ? e.message : String(e)}`);
-        return DEFAULT_MODEL;
-    }
+    return model as TiktokenModel;
 }
 
 /**
