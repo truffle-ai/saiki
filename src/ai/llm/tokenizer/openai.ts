@@ -1,6 +1,26 @@
 import { ITokenizer, TokenizationError } from './types.js';
 import { encoding_for_model, TiktokenModel } from 'tiktoken';
 
+// List of model prefixes potentially unsupported by tiktoken or needing mapping
+const UNSUPPORTED_PREFIXES: string[] = ['gpt-4.1-'];
+const DEFAULT_MODEL: TiktokenModel = 'gpt-4o'; // Fallback model
+
+/**
+ * Fetches the appropriate TiktokenModel name, handling potential unsupported models.
+ * @param model The initial model name string.
+ * @returns A valid TiktokenModel name.
+ */
+function fetchTiktokenModel(model: string): TiktokenModel {
+    for (const prefix of UNSUPPORTED_PREFIXES) {
+        if (model.startsWith(prefix)) {
+            console.warn(`Model '${model}' might not be directly supported by tiktoken. Using default '${DEFAULT_MODEL}'.`);
+            return DEFAULT_MODEL;
+        }
+    }
+
+    return model as TiktokenModel;
+}
+
 /**
  * Tokenizer for OpenAI models using the tiktoken library.
  */
@@ -11,16 +31,15 @@ export class OpenAITokenizer implements ITokenizer {
     /**
      * Initializes the tokenizer for a specific OpenAI model.
      * @param model The OpenAI model name (e.g., 'gpt-3.5-turbo', 'gpt-4')
-     * @throws TokenizationError if the model is not supported by tiktoken
+     * @throws TokenizationError if tiktoken initialization fails after attempting fallback.
      */
     constructor(model: string) {
         try {
-            // Ensure the model is a valid TiktokenModel type
-            this.model = model as TiktokenModel;
+            this.model = fetchTiktokenModel(model);
             this.encoding = encoding_for_model(this.model);
         } catch (error) {
             throw new TokenizationError(
-                `Failed to initialize tiktoken for model ${model}: ${error instanceof Error ? error.message : String(error)}`
+                `Failed to initialize tiktoken for model ${this.model} (derived from '${model}'): ${error instanceof Error ? error.message : String(error)}`
             );
         }
     }
@@ -36,10 +55,7 @@ export class OpenAITokenizer implements ITokenizer {
             const tokens = this.encoding.encode(text);
             return tokens.length;
         } catch (error) {
-            // Handle potential errors during encoding, though less common
             console.error(`Tiktoken encoding failed for model ${this.model}:`, error);
-            // Fallback or re-throw depending on desired behavior
-            // For now, let's return 0 or throw a specific error
             throw new TokenizationError(`Encoding failed for text snippet.`);
         }
     }

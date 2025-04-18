@@ -90,7 +90,7 @@ export class VercelLLMService implements ILLMService {
         );
 
         // Maximum number of tool use iterations
-        const MAX_ITERATIONS = 10;
+        const MAX_ITERATIONS = 50;
         let iterationCount = 0;
         let fullResponse = '';
 

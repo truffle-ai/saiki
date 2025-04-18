@@ -99,8 +99,26 @@ Check out [example configurations](./configuration/examples/) or the [Configurat
 
 ## 🎯 Examples
 
+### 🛒 Amazon Shopping Assistant
+
+
+**Task:** `Can you go to amazon and add some snacks to my cart? I like trail mix, cheetos and maybe surprise me with something else?`
+
+Uses the built-in Puppeteer server (`src/servers`) to navigate Amazon and automate shopping tasks.
+
+```bash
+# You can use the default saiki.yml
+npm start
+```
+
+<div align="center">
+  <a href="https://youtu.be/C-Z0aVbl4Ik">
+    <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" />
+  </a>
+</div>
+
 ### 🎨 AI Website Designer
-**Task:** "Design a landing page based on README.md"
+**Task:** `Design a landing page based on README.md`
 
 Uses [Filesystem MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/filesystem) and Puppeteer for website generation.
 
@@ -113,7 +131,9 @@ npm start -- --config-file ./configuration/examples/website_designer.yml
 </div>
 
 ### 📧 Email Summary to Slack
-**Task:** "Summarize emails and send highlights to Slack"
+
+**Task:** `Summarize emails and send highlights to Slack`
+
 
 Integrates [Slack MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/slack) and [Gmail MCP](https://mcp.composio.dev/) (via Composio).
 
@@ -126,6 +146,7 @@ npm start -- --config-file ./configuration/examples/email_slack.yml
     <img src="assets/email_slack_demo.gif" alt="Saiki Email + Slack agent demo" />
   </a>
 </div>
+
 
 ## 💻 Use Cases
 
