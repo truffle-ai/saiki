@@ -534,4 +534,133 @@ header h1 {
     color: #d8ccc3; /* Slightly muted quote text */
     background-color: rgba(68, 58, 53, 0.5); /* Faint warm background */
     border-radius: 0 6px 6px 0; /* Rounded corners */
+}
+
+/* --- New Connect Server Button Styles --- */
+#connect-server-button {
+    background-color: rgba(90, 80, 75, 0.7); /* Match reset button base */
+    color: #d8ccc3;
+    border: 1px solid rgba(255, 230, 200, 0.12);
+    padding: 7px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    margin-left: 10px; /* Add some space from reset button */
+}
+
+#connect-server-button:hover {
+    background-color: rgba(105, 95, 90, 0.8); /* Match reset button hover */
+    border-color: rgba(255, 230, 200, 0.2);
+    color: #f0e6dd;
+}
+
+/* --- Modal Styles --- */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.6); /* Black w/ opacity */
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background-color: #443a35; /* Darker warm background for modal */
+    margin: 10% auto; /* 10% from the top and centered */
+    padding: 30px;
+    border: 1px solid rgba(255, 230, 200, 0.1); /* Subtle warm border */
+    width: 80%;
+    max-width: 500px; /* Max width */
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    color: #f0e6dd; /* Warm off-white text */
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: #f5eadd;
+    border-bottom: 1px solid rgba(255, 230, 200, 0.1);
+    padding-bottom: 10px;
+}
+
+/* Close Button */
+.close-button {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    transition: color 0.2s ease;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: #f0e6dd; /* Brighter on hover/focus */
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Form Styling inside Modal */
+#connect-server-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #c8bdaf; /* Muted label color */
+}
+
+#connect-server-form input[type="text"],
+#connect-server-form input[type="url"],
+#connect-server-form select {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 15px; /* Space below input */
+    display: inline-block;
+    border: 1px solid rgba(255, 230, 200, 0.15);
+    border-radius: 6px;
+    box-sizing: border-box;
+    background-color: #5a504b; /* Input background - match AI message */
+    color: #f0e6dd; /* Input text color */
+    font-size: 0.9rem;
+}
+
+#connect-server-form input[type="text"]:focus,
+#connect-server-form input[type="url"]:focus,
+#connect-server-form select:focus {
+    border-color: #a08c7d; /* Warmer focus border */
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(160, 140, 125, 0.3);
+}
+
+#connect-server-form button[type="submit"] {
+    background-color: #7d5a4f; /* Match user message color */
+    color: #f5eadd;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+    float: right; /* Align button to the right */
+}
+
+#connect-server-form button[type="submit"]:hover {
+    background-color: #946a5d; /* Lighter terracotta hover */
+}
+
+/* Clear float for elements after the button */
+#connect-server-form::after {
+    content: "";
+    display: table;
+    clear: both;
 } 

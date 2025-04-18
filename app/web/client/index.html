@@ -26,6 +26,7 @@
                 </div>
                 <div class="header-right">
                     <button id="reset-button" title="Clear Conversation">Clear</button>
+                    <button id="connect-server-button">Connect Server</button>
                 </div>
             </header>
             <div id="message-list-wrapper">
@@ -35,6 +36,38 @@
                 <textarea id="message-input" placeholder="Ask Saiki anything..." rows="1"></textarea>
                 <button id="send-button" title="Send Message"></button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal for connecting a new server -->
+    <div id="connect-server-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Connect New MCP Server</h2>
+            <form id="connect-server-form">
+                <label for="server-name">Server Name:</label>
+                <input type="text" id="server-name" name="server-name" required><br><br>
+
+                <label for="server-type">Server Type:</label>
+                <select id="server-type" name="server-type">
+                    <option value="stdio">stdio</option>
+                    <option value="sse">sse</option>
+                </select><br><br>
+
+                <div id="stdio-options">
+                    <label for="server-command">Command:</label>
+                    <input type="text" id="server-command" name="server-command"><br><br>
+                    <label for="server-args">Arguments (comma-separated):</label>
+                    <input type="text" id="server-args" name="server-args"><br><br>
+                </div>
+
+                <div id="sse-options" style="display: none;">
+                    <label for="server-url">URL:</label>
+                    <input type="url" id="server-url" name="server-url"><br><br>
+                </div>
+
+                <button type="submit">Connect</button>
+            </form>
         </div>
     </div>
 

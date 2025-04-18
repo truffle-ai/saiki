@@ -1,5 +1,5 @@
 import { MCPClient } from './mcp-client.js';
-import { ServerConfigs } from '../config/types.js';
+import { ServerConfigs, McpServerConfig } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
 
@@ -19,6 +19,7 @@ export class ClientManager {
         }
         this.clients.set(name, client);
         logger.info(`Registered client: ${name}`);
+        delete this.connectionErrors[name];
     }
 
     /**
@@ -86,32 +87,71 @@ export class ClientManager {
         connectionMode: 'strict' | 'lenient' = 'lenient'
     ): Promise<void> {
         const successfulConnections: string[] = [];
+        const connectionPromises: Promise<void>[] = [];
 
         for (const [name, config] of Object.entries(serverConfigs)) {
-            const client = new MCPClient();
-            try {
-                await client.connect(config, name);
-                this.registerClient(name, client);
-                successfulConnections.push(name);
-            } catch (error) {
-                const errorMsg = error instanceof Error ? error.message : String(error);
-                this.connectionErrors[name] = errorMsg;
-                logger.error(`Failed to connect to server '${name}': ${errorMsg}`);
-            }
+            const connectPromise = this.connectClient(name, config)
+                .then(() => {
+                    successfulConnections.push(name);
+                })
+                .catch((error) => {
+                    logger.debug(`Handled connection error for '${name}' during initialization.`);
+                });
+            connectionPromises.push(connectPromise);
         }
 
-        // Check if we've met the requirements for connection mode
+        await Promise.all(connectionPromises);
+
         const requiredSuccessfulConnections =
             connectionMode === 'strict'
                 ? Object.keys(serverConfigs).length
                 : Math.min(1, Object.keys(serverConfigs).length);
 
         if (successfulConnections.length < requiredSuccessfulConnections) {
+            const errorSummary = Object.entries(this.getFailedConnections())
+                .map(([server, error]) => `${server}: ${error}`)
+                .join('; ');
             throw new Error(
                 connectionMode === 'strict'
-                    ? 'Failed to connect to all required servers'
-                    : 'Failed to connect to at least one server'
+                    ? `Failed to connect to all required servers. Errors: ${errorSummary}`
+                    : `Failed to connect to at least one server. Errors: ${errorSummary}`
             );
+        }
+
+        if (successfulConnections.length >= requiredSuccessfulConnections) {
+            // Only clear errors related to the servers we attempted to connect to in this call
+            Object.keys(serverConfigs).forEach((name) => {
+                if (successfulConnections.includes(name)) {
+                    delete this.connectionErrors[name];
+                }
+            });
+        }
+    }
+
+    /**
+     * Dynamically connect to a new MCP server.
+     * @param name The unique name for the new server connection.
+     * @param config The configuration for the server.
+     * @returns Promise resolving when the connection attempt is complete.
+     * @throws Error if the connection fails.
+     */
+    async connectClient(name: string, config: McpServerConfig): Promise<void> {
+        if (this.clients.has(name)) {
+            logger.warn(`Client '${name}' is already connected or registered.`);
+            return;
+        }
+
+        const client = new MCPClient();
+        try {
+            logger.info(`Attempting to connect to new server '${name}'...`);
+            await client.connect(config, name);
+            this.registerClient(name, client);
+            logger.info(`Successfully connected to new server '${name}'`);
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            this.connectionErrors[name] = errorMsg;
+            logger.error(`Failed to connect to new server '${name}': ${errorMsg}`);
+            throw new Error(`Failed to connect to new server '${name}': ${errorMsg}`);
         }
     }
 
