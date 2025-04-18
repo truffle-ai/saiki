@@ -176,7 +176,7 @@ export class VercelLLMService implements ILLMService {
                 }
 
                 // Process tool results
-                if (step.stepType === 'tool-result' && step.toolResults) {
+                if (step.toolResults) {
                     for (const toolResult of step.toolResults as any) {
                         // For now, don't add tool results to message manager
                         // Just emit the events
