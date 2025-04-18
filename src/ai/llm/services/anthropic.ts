@@ -10,6 +10,7 @@ import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import { SystemPromptBuilder } from '../../systemPrompt/SystemPromptBuilder.js';
 import { PromptContext } from '../../systemPrompt/types.js';
+import type { ContentBlock, TextBlock } from '@anthropic-ai/sdk/resources/messages';
 
 /**
  * Anthropic implementation of LLMService
@@ -108,8 +109,15 @@ export class AnthropicService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Get formatted messages from message manager
-                const messages = this.messageManager.getFormattedMessages();
-                const systemPrompt = this.messageManager.getFormattedSystemPrompt();
+                let messages = this.messageManager.getFormattedMessages();
+                // Ensure all message content fields are arrays of content blocks
+                messages = messages.map((msg) => {
+                    if (typeof msg.content === 'string') {
+                        return { ...msg, content: [{ type: 'text', text: msg.content }] };
+                    }
+                    return msg;
+                });
+                const systemPrompt = await this.messageManager.getFormattedSystemPrompt();
 
                 logger.debug(`Messages: ${JSON.stringify(messages, null, 2)}`);
 
@@ -125,8 +133,12 @@ export class AnthropicService implements ILLMService {
                 let textContent = '';
                 const toolUses = [];
 
+                function isTextBlock(block: ContentBlock): block is TextBlock {
+                    return block.type === 'text';
+                }
+
                 for (const content of response.content) {
-                    if (content.type === 'text') {
+                    if (isTextBlock(content)) {
                         textContent += content.text;
                     } else if (content.type === 'tool_use') {
                         toolUses.push(content);

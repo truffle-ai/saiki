@@ -1,4 +1,4 @@
-import { ISystemPromptContributor, PromptContext, SegmentResult, Frequency } from './types';
+import { ISystemPromptContributor, PromptContext, SegmentResult, Frequency } from './types.js';
 
 /**
  * SystemPromptBuilder assembles the system prompt from registered contributors,

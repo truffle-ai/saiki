@@ -1,4 +1,4 @@
-import { ISystemPromptContributor, Frequency, PromptContext, SegmentResult } from '../types';
+import { ISystemPromptContributor, Frequency, PromptContext, SegmentResult } from '../types.js';
 
 /**
  * Contributor that provides the legacy static system prompt for backward compatibility.

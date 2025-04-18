@@ -1,5 +1,5 @@
-import { ISystemPromptContributor } from './types';
-import { SystemPromptBuilder } from './SystemPromptBuilder';
+import { ISystemPromptContributor } from './types.js';
+import { SystemPromptBuilder } from './SystemPromptBuilder.js';
 
 /**
  * Singleton registry for system prompt contributors.
