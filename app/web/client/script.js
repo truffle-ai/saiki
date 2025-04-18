@@ -401,7 +401,3 @@ function escapeHtml(unsafe) {
          .replace(/"/g, "&quot;")
          .replace(/'/g, "&#039;");
  }
-
-// Note: isScrolledToBottom was moved inside as it directly uses messageListWrapper fetched there.
-// Other WebSocket logic (connectWebSocket, handleWebSocketMessage) is defined inside DOMContentLoaded
-// as it needs access to the helper functions defined there. 
