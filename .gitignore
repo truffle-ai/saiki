@@ -59,3 +59,5 @@ dev-debug.log
 tasks.json
 tasks/ 
 scripts/
+.windsurfrules
+README-task-master.md

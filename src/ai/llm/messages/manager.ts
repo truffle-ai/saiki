@@ -5,6 +5,8 @@ import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
+import { SystemPromptBuilder } from '../../systemPrompt/SystemPromptBuilder.js';
+import { PromptContext } from '../../systemPrompt/types.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -49,6 +51,9 @@ export class MessageManager {
      */
     private compressionStrategies: ICompressionStrategy[];
 
+    private systemPromptBuilder?: SystemPromptBuilder;
+    private promptContext?: PromptContext;
+
     /**
      * Creates a new MessageManager instance
      *
@@ -75,6 +80,20 @@ export class MessageManager {
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
         this.compressionStrategies = compressionStrategies;
+    }
+
+    /**
+     * Set the SystemPromptBuilder for modular prompt support.
+     */
+    setSystemPromptBuilder(builder: SystemPromptBuilder): void {
+        this.systemPromptBuilder = builder;
+    }
+
+    /**
+     * Set the PromptContext for prompt generation.
+     */
+    setPromptContext(ctx: PromptContext): void {
+        this.promptContext = ctx;
     }
 
     /**
@@ -214,54 +233,11 @@ export class MessageManager {
      *
      * @returns The system prompt or null if not set
      */
-    getSystemPrompt(): string | null {
-        return this.systemPrompt;
-    }
-
-    /**
-     * Counts total tokens in current conversation including system prompt.
-     * Requires a tokenizer to be configured.
-     * @returns Total token count or null if no tokenizer is available.
-     */
-    countTotalTokens(): number | null {
-        if (!this.tokenizer) return null;
-
-        let total = 0;
-        const overheadPerMessage = 4; // Approximation for message format overhead
-
-        try {
-            // Count system prompt
-            if (this.systemPrompt) {
-                total += this.tokenizer.countTokens(this.systemPrompt);
-            }
-
-            // Count each message
-            for (const message of this.history) {
-                if (message.content) {
-                    total += this.tokenizer.countTokens(message.content);
-                }
-
-                // Count tool calls if present
-                if (message.toolCalls) {
-                    for (const call of message.toolCalls) {
-                        total += this.tokenizer.countTokens(call.function.name);
-                        // Ensure arguments exist and are strings before counting
-                        if (call.function.arguments) {
-                            total += this.tokenizer.countTokens(call.function.arguments);
-                        }
-                    }
-                }
-                // Add overhead for each message structure
-                total += overheadPerMessage;
-            }
-        } catch (error) {
-            logger.error('MessageManager: Error counting tokens:', error);
-            // Decide on error handling: return null, throw, or return current total?
-            // Returning null indicates counting failed.
-            return null;
+    async getSystemPrompt(): Promise<string | null> {
+        if (this.systemPromptBuilder && this.promptContext) {
+            return await this.systemPromptBuilder.buildPrompt(this.promptContext);
         }
-
-        return total;
+        return this.systemPrompt;
     }
 
     /**
@@ -295,10 +271,10 @@ export class MessageManager {
      * @returns Formatted system prompt or null/undefined based on formatter implementation
      * @throws Error if formatting fails
      */
-    getFormattedSystemPrompt(): string | null | undefined {
+    async getFormattedSystemPrompt(): Promise<string | null | undefined> {
+        const prompt = await this.getSystemPrompt();
         try {
-            // Check if the formatter implements getSystemPrompt and call it
-            return this.formatter.getSystemPrompt?.(this.systemPrompt);
+            return this.formatter.getSystemPrompt?.(prompt ?? undefined);
         } catch (error) {
             console.error('Error getting formatted system prompt:', error);
             throw new Error(`Failed to get formatted system prompt: ${error}`);
@@ -393,5 +369,51 @@ export class MessageManager {
             // If counting failed but we did remove messages, log that
             logger.error('MessageManager: Token counting failed after attempting compression.');
         }
+    }
+
+    /**
+     * Counts total tokens in current conversation including system prompt.
+     * Requires a tokenizer to be configured.
+     * @returns Total token count or null if no tokenizer is available.
+     */
+    countTotalTokens(): number | null {
+        if (!this.tokenizer) return null;
+
+        let total = 0;
+        const overheadPerMessage = 4; // Approximation for message format overhead
+
+        try {
+            // Count system prompt
+            if (this.systemPrompt) {
+                total += this.tokenizer.countTokens(this.systemPrompt);
+            }
+
+            // Count each message
+            for (const message of this.history) {
+                if (message.content) {
+                    total += this.tokenizer.countTokens(message.content);
+                }
+
+                // Count tool calls if present
+                if (message.toolCalls) {
+                    for (const call of message.toolCalls) {
+                        total += this.tokenizer.countTokens(call.function.name);
+                        // Ensure arguments exist and are strings before counting
+                        if (call.function.arguments) {
+                            total += this.tokenizer.countTokens(call.function.arguments);
+                        }
+                    }
+                }
+                // Add overhead for each message structure
+                total += overheadPerMessage;
+            }
+        } catch (error) {
+            logger.error('MessageManager: Error counting tokens:', error);
+            // Decide on error handling: return null, throw, or return current total?
+            // Returning null indicates counting failed.
+            return null;
+        }
+
+        return total;
     }
 }

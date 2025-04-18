@@ -8,6 +8,8 @@ import { MessageManager } from '../messages/manager.js';
 import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
+import { SystemPromptBuilder } from '../../systemPrompt/SystemPromptBuilder.js';
+import { PromptContext } from '../../systemPrompt/types.js';
 
 // System prompt constants
 
@@ -37,6 +39,8 @@ export class OpenAIService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private systemPromptBuilder?: SystemPromptBuilder;
+    private promptContext?: PromptContext;
 
     constructor(
         clientManager: ClientManager,
@@ -65,6 +69,20 @@ export class OpenAIService implements ILLMService {
         this.eventEmitter = new EventEmitter();
     }
 
+    /**
+     * Accept a SystemPromptBuilder instance for modular system prompt support.
+     */
+    setSystemPromptBuilder(builder: SystemPromptBuilder): void {
+        this.systemPromptBuilder = builder;
+    }
+
+    /**
+     * Update the prompt context (message count, session, etc.)
+     */
+    updatePromptContext(ctx: PromptContext): void {
+        this.promptContext = ctx;
+    }
+
     getEventEmitter(): EventEmitter {
         return this.eventEmitter;
     }
@@ -73,6 +91,9 @@ export class OpenAIService implements ILLMService {
         return this.clientManager.getAllTools();
     }
 
+    /**
+     * @deprecated Use setSystemPromptBuilder instead for modular system prompt support.
+     */
     updateSystemContext(newSystemPrompt: string): void {
         this.messageManager.setSystemPrompt(newSystemPrompt);
     }
@@ -80,6 +101,12 @@ export class OpenAIService implements ILLMService {
     async completeTask(userInput: string): Promise<string> {
         // Add user message to history
         this.messageManager.addUserMessage(userInput);
+
+        // If using SystemPromptBuilder, rebuild and set system prompt
+        if (this.systemPromptBuilder && this.promptContext) {
+            const prompt = await this.systemPromptBuilder.buildPrompt(this.promptContext);
+            this.messageManager.setSystemPrompt(prompt);
+        }
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();

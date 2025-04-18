@@ -1,6 +1,8 @@
 import { LanguageModelV1 } from 'ai';
 import { EventEmitter } from 'events';
 import { ToolSet } from '../../types.js';
+import { SystemPromptBuilder } from '../../systemPrompt/SystemPromptBuilder.js';
+import { PromptContext } from '../../systemPrompt/types.js';
 
 /**
  * Core interface for LLM service implementations
@@ -9,8 +11,16 @@ export interface ILLMService {
     // Primary method for handling a user interaction from start to finish
     completeTask(userInput: string): Promise<string>;
 
-    // Update the system message/context
+    /**
+     * @deprecated Use setSystemPromptBuilder instead for modular system prompt support.
+     */
     updateSystemContext(newSystemPrompt: string): void;
+
+    // Accept a SystemPromptBuilder instance
+    setSystemPromptBuilder(builder: SystemPromptBuilder): void;
+
+    // Update the prompt context (message count, session, etc.)
+    updatePromptContext(ctx: PromptContext): void;
 
     // Clear conversation history
     resetConversation(): void;
