@@ -16,7 +16,7 @@ export class OpenAITokenizer implements ITokenizer {
     constructor(model: string) {
         try {
             // Ensure the model is a valid TiktokenModel type
-            this.model = model as TiktokenModel;
+            this.model = (model.includes('gpt-4.1-') ? model.replace('gpt-4.1-', 'gpt-4o-') : model) as TiktokenModel;
             this.encoding = encoding_for_model(this.model);
         } catch (error) {
             throw new TokenizationError(

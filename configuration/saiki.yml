@@ -16,7 +16,7 @@ mcpServers:
 # # describes the llm configuration
 llm:
   provider: openai
-  model: gpt-4o-mini
+  model: gpt-4.1-mini
   # you can update the system prompt to change the behavior of the llm
   systemPrompt: |
     You are Saiki, a helpful AI assistant with access to tools.
