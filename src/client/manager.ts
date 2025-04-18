@@ -2,18 +2,17 @@ import { MCPClient } from './mcp-client.js';
 import { ServerConfigs } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { ToolProvider, UserConfirmationProvider, ToolExecutionDetails } from './types.js';
-import { DefaultConfirmationProvider } from './confirmation-provider.js';
+import { CLIConfirmationProvider } from './providers/confirmation-provider.js';
 
 export class ClientManager {
     private clients: Map<string, ToolProvider> = new Map();
     private connectionErrors: { [key: string]: string } = {};
     private toolToClientMap: Map<string, ToolProvider> = new Map();
-    private allowedTools: Set<string> = new Set();
-    private confirmationProvider: UserConfirmationProvider;
+    private confirmationProvider?: UserConfirmationProvider;
 
     constructor(confirmationProvider?: UserConfirmationProvider) {
         // If a confirmation provider is passed, use it, otherwise use the default implementation
-        this.confirmationProvider = confirmationProvider ?? new DefaultConfirmationProvider(this.allowedTools);
+        this.confirmationProvider = confirmationProvider ?? new CLIConfirmationProvider();
     }
 
     /**
@@ -74,27 +73,6 @@ export class ClientManager {
      * @param toolName Name of the tool to check
      * @returns boolean indicating if the tool is pre-approved
      */
-    isToolAllowed(toolName: string): boolean {
-        return this.allowedTools.has(toolName);
-    }
-
-    /**
-     * Allow a tool to execute without confirmation
-     * @param toolName Name of the tool to allow
-     */
-    allowTool(toolName: string): void {
-        this.allowedTools.add(toolName);
-        logger.info(`Tool '${toolName}' has been allowed for execution without confirmation`);
-    }
-
-    /**
-     * Disallow a tool, requiring confirmation before execution
-     * @param toolName Name of the tool to disallow
-     */
-    disallowTool(toolName: string): void {
-        this.allowedTools.delete(toolName);
-        logger.info(`Tool '${toolName}' now requires confirmation before execution`);
-    }
 
     /**
      * Execute a specific tool with the given arguments
@@ -182,7 +160,7 @@ export class ClientManager {
      * @returns Set of tool names that are allowed without confirmation
      */
     getAllowedTools(): Set<string> {
-        return new Set(this.allowedTools);
+        return new Set(this.confirmationProvider.allowedTools);
     }
 
     /**

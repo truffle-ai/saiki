@@ -1,6 +1,7 @@
-import { UserConfirmationProvider, ToolExecutionDetails } from './types.js';
-import { logger } from '../utils/logger.js';
+import { UserConfirmationProvider, ToolExecutionDetails, SettingsProvider, UserSettings } from '../types.js';
+import { logger } from '../../utils/logger.js';
 import * as readline from 'readline';
+import { FileSettingsProvider } from './file-settings-provider.js';
 import chalk from 'chalk';
 import boxen from 'boxen';
 
@@ -9,12 +10,14 @@ import boxen from 'boxen';
  * Automatically approves tools in the allowedTools set,
  * and prompts for confirmation for other tools using logger's styling
  */
-export class DefaultConfirmationProvider implements UserConfirmationProvider {
-    private allowedTools: Set<string>;
+export class CLIConfirmationProvider implements UserConfirmationProvider {
+    public allowedTools: Set<string>;
     private rl: readline.Interface | null = null;
+    public settings: Promise<UserSettings>;
 
-    constructor(allowedTools: Set<string>) {
-        this.allowedTools = allowedTools;
+    constructor(allowedTools?: Set<string>, settingsProvider?: SettingsProvider) {
+        this.allowedTools = allowedTools ?? new Set();
+        this.settings = new FileSettingsProvider().getUserSettings();
     }
 
     /**
@@ -31,6 +34,10 @@ export class DefaultConfirmationProvider implements UserConfirmationProvider {
             parseResponse?: (response: any) => boolean;
         }
     ): Promise<boolean> {
+        if ((await this.settings).settings.toolApprovalRequired === false) {
+            logger.debug(`Tool '${details.toolName}' execution is automatically approved`);
+            return true;
+        }
         // If the tool is in the allowed list, automatically approve
         if (this.allowedTools.has(details.toolName)) {
             logger.debug(`Tool '${details.toolName}' is pre-approved for execution`);

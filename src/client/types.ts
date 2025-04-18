@@ -47,13 +47,14 @@ export interface IMCPClientWrapper extends ToolProvider {
  * Interface for tool confirmation provider for client
  */
 export interface UserConfirmationProvider {
+    allowedTools: Set<string>,
     requestConfirmation(
         details: ToolExecutionDetails,
         callbacks?: {
             displayDetails?: (details: ToolExecutionDetails) => void;
             collectInput?: () => Promise<string | boolean>;
             parseResponse?: (response: any) => boolean;
-        }
+        },
     ): Promise<boolean>;
 }
 
@@ -64,4 +65,24 @@ export interface ToolExecutionDetails {
     toolName: string;
     args: any;
     description?: string;
+}
+
+/**
+ * Interface for user settings
+ * TODO: This is a placeholder and should be replaced with a proper schema
+ */
+export interface UserSettings {
+    userId?: number,
+    settings: {
+        [key: string]: any;
+    };
+}
+
+/**
+ * Interface for settings provider
+ * TODO: This is a placeholder and should be replaced with a proper schema
+ */
+export interface SettingsProvider {
+    getUserSettings(userId?: string): Promise<UserSettings>;
+    updateUserSettings(userId: string, settings: UserSettings): Promise<void>;
 }
