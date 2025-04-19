@@ -195,7 +195,7 @@ This document outlines the detailed technical steps required to implement the ex
 ## 3. Contributor Loading & Merging (`src/ai/llm/messages/manager.ts` or new `ContributorLoader` class)
 
 1.  **Define Default Contributors:**
-    *   Inside `MessageManager` or a dedicated loader class, define the default set:
+    *   Make MessageManager accept the agentConfig instead of the 'systemPrompt' string it currently does. Then inside `MessageManager` or a dedicated loader class, define the default set of contributors required for the system prompt:
         ```typescript
         const defaultContributors: ContributorConfig[] = [
           { id: 'dateTime', type: 'dynamic', priority: 10, source: 'dateTime', enabled: true },
@@ -203,6 +203,7 @@ This document outlines the detailed technical steps required to implement the ex
           // { id: 'baseInstructions', type: 'static', priority: 0, content: 'You are Saiki...', enabled: true },
         ];
         ```
+    Here we will also handle the case of systemPrompt section just being a string - we will convert it into a contributor like we discussed. More details below.
 
 2.  **Implement Loading Logic:**
     *   Create a method `loadContributors(systemPromptConfig: string | SystemPromptConfig): SystemPromptContributor[]`.

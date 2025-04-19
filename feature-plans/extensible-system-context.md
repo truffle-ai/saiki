@@ -3,7 +3,7 @@
 ## 1. Goals
 
 *   Make the composition of the LLM's system prompt modular, extensible, and configurable.
-*   Allow users to define which components ("contributors") build the final system prompt via the `saiki.config.json` file.
+*   Allow users to define which components ("contributors") build the final system prompt via the `configuration/saiki.yml` file.
 *   Support both static content (fixed strings) and dynamic content (e.g., current date/time, agent memory summary, available tools list) contributions.
 *   Maintain backward compatibility for users who currently define `systemPrompt` as a simple string in their configuration.
 *   Lay the architectural foundation for more complex agent behaviors (like a gaming agent) by providing clear hooks for injecting dynamic context (e.g., memory, game state, user-provided domain knowledge).
