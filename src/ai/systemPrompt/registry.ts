@@ -1,6 +1,6 @@
 import { DynamicContributorContext } from './types.js';
 import * as handlers from './in-built-prompts.js';
-
+import { logger } from '../../utils/logger.js';
 export type SourceHandler = (context: DynamicContributorContext) => Promise<string>;
 
 /**
@@ -19,6 +19,16 @@ export const sourceHandlerRegistry: Record<string, SourceHandler> = {
 /**
  * Utility to look up a handler by source key.
  */
-export function getSourceHandler(source: string): SourceHandler | undefined {
-  return sourceHandlerRegistry[source];
+export function getSourceHandler(source: string): SourceHandler {
+  logger.debug(`getSourceHandler: source: ${source}`);
+  if (!source || typeof source !== 'string') {
+    throw new Error('Source must be a non-empty string');
+  }
+  
+  const handler = sourceHandlerRegistry[source];
+  if (!handler) {
+    throw new Error(`No handler found for source: ${source}`);
+  }
+  
+  return handler;
 } 

@@ -12,7 +12,6 @@ export interface IMessageFormatter {
      * required by the target LLM API.
      *
      * @param history The raw internal message history (read-only to prevent modifications)
-     * @param systemPrompt The system prompt, if any
      * @returns The message history structured for the target API
      */
     format(history: Readonly<InternalMessage[]>, systemPrompt?: string | null): any[];

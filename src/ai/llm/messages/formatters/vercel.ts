@@ -17,19 +17,10 @@ export class VercelMessageFormatter implements IMessageFormatter {
      * Formats internal messages into Vercel AI SDK format
      *
      * @param history Array of internal messages to format
-     * @param systemPrompt System prompt to include at the beginning of messages
      * @returns Array of messages formatted for Vercel's API
      */
-    format(history: Readonly<InternalMessage[]>, systemPrompt: string | null): any[] {
+    format(history: Readonly<InternalMessage[]>): any[] {
         const formatted = [];
-
-        // Add system message if present
-        if (systemPrompt) {
-            formatted.push({
-                role: 'system',
-                content: systemPrompt,
-            });
-        }
 
         for (const msg of history) {
             switch (msg.role) {
@@ -81,7 +72,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
      *
      * @returns null as Vercel doesn't need a separate system prompt
      */
-    formatSystemPrompt(): null {
-        return null;
+    formatSystemPrompt(systemPrompt: string ): string {
+        return systemPrompt;
     }
 }

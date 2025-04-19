@@ -14,25 +14,14 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
      * Formats internal messages into OpenAI's Chat Completion API format
      *
      * @param history Array of internal messages to format
-     * @param systemPrompt System prompt to include at the beginning of messages
      * @returns Array of messages formatted for OpenAI's API
      */
-    format(history: Readonly<InternalMessage[]>, systemPrompt: string | null): any[] {
+    format(history: Readonly<InternalMessage[]>): any[] {
         const formatted = [];
-
-        // Add system message if provided
-        if (systemPrompt) {
-            formatted.push({
-                role: 'system',
-                content: systemPrompt,
-            });
-        }
 
         for (const msg of history) {
             switch (msg.role) {
                 case 'system':
-                    // We already handled the systemPrompt, but if there are additional
-                    // system messages in the history, add them
                     formatted.push({
                         role: 'system',
                         content: msg.content,
@@ -84,7 +73,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
      *
      * @returns null as OpenAI doesn't need a separate system prompt
      */
-    formatSystemPrompt(): null {
-        return null;
+    formatSystemPrompt(systemPrompt: string): string {
+        return systemPrompt;
     }
 }

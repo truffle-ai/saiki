@@ -212,8 +212,8 @@ export class OpenAIService implements ILLMService {
             attempts++;
 
             try {
-                // Get formatted messages from message manager
-                const formattedMessages = this.messageManager.getFormattedMessages();
+                // Use the new messageManager helper to get the combined system prompt and messages
+                const formattedMessages = await this.messageManager.getFormattedSystemPromptAndMessages();
 
                 logger.silly(
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`

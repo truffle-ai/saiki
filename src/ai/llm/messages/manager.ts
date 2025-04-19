@@ -215,16 +215,21 @@ export class MessageManager {
      * @returns The constructed system prompt
      */
     async getSystemPrompt(): Promise<string> {
+        logger.debug('MessageManager: Entering getSystemPrompt');
         if (!this.contributors.length) {
-            throw new Error('MessageManager: No contributors found.');
+            throw new Error('MessageManager: No contributors found while generating system prompt.');
         }
         const context: DynamicContributorContext = {
             agentConfig: this.agentConfig,
             clientManager: this.clientManager,
         };
-        const parts = await Promise.all(this.contributors.map(c => c.getContent(context)));
+        const parts = await Promise.all(this.contributors.map(c => {
+            logger.debug(`MessageManager: getSystemPrompt: contributor: ${c.id} with content: ${c.getContent(context)}`);
+            return c.getContent(context);
+        }));
         const prompt = parts.filter(Boolean).join('\n\n');
         this.systemPrompt = prompt; // Cache the generated system prompt
+        logger.debug(`MessageManager: Exiting getSystemPrompt with prompt: ${prompt}`);
         return prompt;
     }
 
@@ -243,7 +248,8 @@ export class MessageManager {
 
         try {
             // Pass a read-only view of the potentially compressed history to the formatter
-            return this.formatter.format([...this.history], undefined); // systemPrompt is now handled by getSystemPrompt
+            // NOTE: If the provider requires the system prompt as a message, prepend it to the history before calling this method.
+            return this.formatter.format([...this.history]);
         } catch (error) {
             logger.error('Error formatting messages:', error);
             throw new Error(
@@ -262,11 +268,37 @@ export class MessageManager {
     async getFormattedSystemPrompt(): Promise<string | null | undefined> {
         const prompt = await this.getSystemPrompt();
         try {
-            return this.formatter.formatSystemPrompt?.(prompt);
+            return this.formatter.formatSystemPrompt ? this.formatter.formatSystemPrompt(prompt) : prompt;
         } catch (error) {
             console.error('Error getting formatted system prompt:', error);
             throw new Error(`Failed to get formatted system prompt: ${error}`);
         }
+    }
+
+    /**
+     * Returns the formatted messages array, with the system prompt prepended or replacing
+     * the first system message, as required for providers like OpenAI/Vercel.
+     */
+    async getFormattedSystemPromptAndMessages(): Promise<any[]> {
+        const systemPrompt = await this.getFormattedSystemPrompt();
+        logger.debug(`MessageManager: getFormattedSystemPromptAndMessages got system prompt: ${systemPrompt}`);
+        let formattedMessages = this.getFormattedMessages();
+
+        if (systemPrompt) {
+            if (formattedMessages.length > 0 && formattedMessages[0].role === 'system') {
+                formattedMessages = [
+                    { role: 'system', content: systemPrompt },
+                    ...formattedMessages.slice(1),
+                ];
+            } else {
+                formattedMessages = [
+                    { role: 'system', content: systemPrompt },
+                    ...formattedMessages,
+                ];
+            }
+        }
+        logger.debug(`MessageManager: getFormattedSystemPromptAndMessages returning formatted messages: ${JSON.stringify(formattedMessages, null, 2)}`);
+        return formattedMessages;
     }
 
     /**
@@ -373,6 +405,7 @@ export class MessageManager {
         try {
             // Count system prompt from cache
             if (this.systemPrompt) {
+                logger.debug(`[MessageManager]: Using cached system prompt: ${this.systemPrompt} while counting tokens`);
                 total += this.tokenizer.countTokens(this.systemPrompt);
             }
 

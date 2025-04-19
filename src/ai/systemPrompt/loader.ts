@@ -4,28 +4,36 @@ import { SystemPromptContributor, DynamicContributorContext } from './types.js';
 import { ContributorConfig, SystemPromptConfig } from '../../config/types.js';
 import { StaticContributor, DynamicContributor } from './contributors.js';
 import { getSourceHandler } from './registry.js';
-
+import { logger } from '../../utils/logger.js';
 /**
  * Loads and merges system prompt contributors from config and defaults.
  * Returns a sorted array of SystemPromptContributor instances.
+ * TODO: REFACTOR
  */
 export function loadContributors(
   systemPromptConfig: string | SystemPromptConfig,
   agentConfig: AgentConfig,
   clientManager: ClientManager
 ): SystemPromptContributor[] {
+  logger.debug(`Loading contributors for system prompt: ${systemPromptConfig}`);
   // Default contributors (can be extended)
   const defaultContributors: ContributorConfig[] = [
     { id: 'dateTime', type: 'dynamic', priority: 10, source: 'dateTime', enabled: true },
   ];
 
-  // Legacy: If config is a string, wrap as a single static contributor
+  // Determine configContributors based on config type
+  let configContributors: ContributorConfig[] = [];
   if (typeof systemPromptConfig === 'string') {
-    return [new StaticContributor('legacyPrompt', 0, systemPromptConfig)];
+    // Legacy: treat as a single static contributor
+    logger.debug(`[SystemPrompt] Loading legacy system prompt: ${systemPromptConfig}`);
+    configContributors = [
+      { id: 'legacyPrompt', type: 'static', priority: 0, content: systemPromptConfig, enabled: true }
+    ];
+  } else {
+    configContributors = systemPromptConfig.contributors || [];
   }
 
   // Merge config contributors with defaults
-  const configContributors = systemPromptConfig.contributors || [];
   const merged: ContributorConfig[] = [...defaultContributors];
 
   for (const config of configContributors) {
