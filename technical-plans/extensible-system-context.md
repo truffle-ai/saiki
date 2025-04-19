@@ -72,9 +72,9 @@ This document outlines the detailed technical steps required to implement the ex
         }
         ```
 
-2.  **Implement Base Classes (`src/ai/systemPrompt/contributors/base.ts` - New File):**
+2.  **Implement Base Classes (`src/ai/systemPrompt/contributors.ts`):**
     ```typescript
-    import { SystemPromptContributor, DynamicContributorContext } from '../types';
+    import { SystemPromptContributor, DynamicContributorContext } from './types';
 
     export class StaticContributor implements SystemPromptContributor {
       readonly id: string;
@@ -111,11 +111,11 @@ This document outlines the detailed technical steps required to implement the ex
     }
     ```
 
-3.  **Implement Source Handlers (`src/ai/systemPrompt/contributors/handlers.ts` - New File):**
+3.  **Implement Source Handlers (`src/ai/systemPrompt/in-built-prompts.ts`):**
     *   Extract logic from PR #62 contributors.
     *   Define functions matching the `(context: DynamicContributorContext) => Promise<string>` signature.
     ```typescript
-    import { DynamicContributorContext } from '../types';
+    import { DynamicContributorContext } from './types';
     import { logger } from '../../../utils/logger'; // Adjust path
 
     // --- Example Handlers ---
@@ -170,10 +170,10 @@ This document outlines the detailed technical steps required to implement the ex
     // --- Add other handlers for Persona, RAG, Safety etc. as needed ---
     ```
 
-4.  **Implement Source Registry (`src/ai/systemPrompt/contributors/registry.ts` - New File):**
+4.  **Implement Source Registry (`src/ai/systemPrompt/registry.ts`):**
     ```typescript
-    import { DynamicContributorContext } from '../types';
-    import * as handlers from './handlers'; // Import all handlers
+    import { DynamicContributorContext } from './types';
+    import * as handlers from './in-built-prompts'; // Import all handlers
 
     export type SourceHandler = (context: DynamicContributorContext) => Promise<string>;
 
@@ -199,26 +199,34 @@ This document outlines the detailed technical steps required to implement the ex
         ```typescript
         const defaultContributors: ContributorConfig[] = [
           { id: 'dateTime', type: 'dynamic', priority: 10, source: 'dateTime', enabled: true },
-          // Add other defaults like base instructions or safety prompts if desired
-          // { id: 'baseInstructions', type: 'static', priority: 0, content: 'You are Saiki...', enabled: true },
         ];
         ```
     Here we will also handle the case of systemPrompt section just being a string - we will convert it into a contributor like we discussed. More details below.
 
 2.  **Implement Loading Logic:**
     *   Create a method `loadContributors(systemPromptConfig: string | SystemPromptConfig): SystemPromptContributor[]`.
-    *   **Handle Legacy String:** If input is a string, return `[new StaticContributor('legacyPrompt', 0, systemPromptConfig)]`.
+    *   **Handle Legacy system context String:** If system prompt config is a string, return `[new StaticContributor('legacyPrompt', 0, systemPromptConfig)]`.
     *   **Handle Config Object:**
-        *   Get `userConfigs = systemPromptConfig.contributors`.
+        *   Get `systemPromptContributors = systemPromptConfig.contributors`.
         *   Perform the merge:
             *   Start with a copy of `defaultContributors`.
-            *   Iterate through `userConfigs`. If a user config `id` matches a default `id`, replace the default entry with the user's entry. If it doesn't match any default, add the user's entry to the list.
+            *   Iterate through `systemPromptContributors`. If a contributor's `id` matches a default `id`, replace the default entry with the contributor from the configuration. If it doesn't match any default, add the contributor from the configuration to the list.
             *   Filter out any contributor where `enabled === false`.
         *   Instantiate `SystemPromptContributor` objects:
             *   Iterate through the final merged/filtered `ContributorConfig` list.
             *   For `type: 'static'`, create `new StaticContributor(config.id, config.priority, config.content || '')`. Handle missing content error.
             *   For `type: 'dynamic'`, look up the handler using `getSourceHandler(config.source)`. If found, create `new DynamicContributor(config.id, config.priority, handler)`. Handle missing source or handler errors.
         *   Return the list of instantiated `SystemPromptContributor` objects.
+
+## 3.1 Handling Contributor Priority
+
+- Each contributor (from both defaults and configuration) has a `priority` field.
+- Before assembling the final system prompt, the merged list of contributors is sorted in ascending order of `priority` (i.e., lower numbers come first).
+- This guarantees that the system prompt is constructed in the correct, deterministic order, regardless of the order in which contributors are defined in the configuration.
+- Example:
+  ```typescript
+  const sortedContributors = contributors.sort((a, b) => a.priority - b.priority);
+  ```
 
 ## 4. Dependency Injection & Integration
 
@@ -228,7 +236,7 @@ This document outlines the detailed technical steps required to implement the ex
 
 2.  **Modify `MessageManager` Constructor:**
     *   Accept `agentConfig: AgentConfig`, `clientManager: ClientManager` (and existing parameters like `formatter`, `tokenizer`, `maxTokens`). Store these internally.
-    *   In the constructor, call `this.contributors = this.loadContributors(agentConfig.llm.systemPrompt)`.
+    *   In the constructor, call `this.contributors = this.loadContributors(agentConfig.llm.systemPrompt)`. we can get rid of 'systemContext' from the constructor and pull that field from the agentConfig instead.
 
 3.  **Modify `MessageManager.getFormattedMessages` (or where prompt is built):**
     *   Before constructing the final message list for the LLM:
@@ -244,7 +252,7 @@ This document outlines the detailed technical steps required to implement the ex
 1.  **Remove Old Contributor Classes:** Delete the specific contributor class files from PR #62 (e.g., `src/ai/systemPrompt/contributors/DateTimeContributor.ts`).
 2.  **Remove Old `SystemPromptBuilder` / `SystemPromptRegistry`:** Delete or refactor these files from PR #62 as their functionality is now integrated into `MessageManager` and the new registry/handler structure.
 3.  **Update `app/index.ts` Validation:** Modify `validateAgentConfig` to handle the new `systemPrompt` structure (checking if it's string or object and validating the object structure if present).
-4.  **Testing:** Add unit tests for:
+4.  **Testing (Optional):** Add unit tests for:
     *   `StaticContributor` and `DynamicContributor` base classes.
     *   Individual source handler functions (mocking context).
     *   The `loadContributors` logic (including merging, legacy handling, error cases).
@@ -252,9 +260,9 @@ This document outlines the detailed technical steps required to implement the ex
 
 ## 6. Documentation
 
-1.  Update `README.md` or relevant documentation.
+1.  Update user-facing documentation (e.g., README, configuration examples) to reflect the new system prompt contributor model, configuration schema, and usage instructions.
 2.  Explain the new `systemPrompt` configuration format in `saiki.config.json`.
-3.  List the available built-in `source` types for dynamic contributors (`dateTime`, `memorySummary`, etc.).
+3.  List the available built-in `source` types for dynamic contributors (currently only `dateTime`).
 4.  Provide examples of how to customize the system prompt (adding, removing, reordering contributors).
-5.  Document the default contributors and their priorities.
+5.  Document the default contributors and their priorities (currently only `dateTime`).
 6.  Explain how to configure dynamic sources (e.g., the `memory` section). 

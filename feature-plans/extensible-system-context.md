@@ -30,12 +30,12 @@ Based on discussions and review of PR #62, the plan involves transitioning to a 
     *   If `config.llm.systemPrompt` is a string, internally treat it as a single static contributor: `[{ id: 'legacyPrompt', type: 'static', priority: 0, content: "the string", enabled: true }]`.
 
 3.  **Core Components:**
-    *   **Base Classes:** Create `StaticContributor` and `DynamicContributor` classes implementing a common `SystemPromptContributor` interface (`{ id, priority, getContent(context) }`).
+    *   **Base Classes:** Create `StaticContributor` and `DynamicContributor` classes implementing a common `SystemPromptContributor` interface (`{ id, priority, getContent(context) }`) in `src/ai/systemPrompt/contributors.ts`. Keep the types/interfaces in `src/ai/systemPrompt/types.ts`
     *   **Source Handlers (`src/ai/systemPrompt/in-built-prompts.ts`):** Extract logic from PR #62's contributors into standalone async functions (e.g., `getCurrentDateTime()`, `getMemorySummary(context)`). These functions will perform the actual data fetching/formatting.
     *   **Source Registry (`src/ai/systemPrompt/registry.ts`):** Create a map linking `source` strings (from config, e.g., `"dateTime"`) to their corresponding handler functions.
 
 4.  **Loading & Merging Logic (`MessageManager` or dedicated loader):**
-    *   Define a default list of contributors (e.g., `dateTime`).
+    *   Define a default list of contributors (**currently only `dateTime` is included by default**).
     *   Load the user's `contributors` array from the configuration.
     *   Merge the default and user lists: user config overrides defaults based on `id`. Respect the `enabled: false` flag to disable defaults.
     *   Instantiate `StaticContributor` or `DynamicContributor` objects for the final, merged list, linking dynamic ones to handlers via the registry.
@@ -51,4 +51,10 @@ Based on discussions and review of PR #62, the plan involves transitioning to a 
 
 7.  **Refactoring:**
     *   Remove the specific contributor classes from PR #62 (`DateTimeContributor`, etc.).
-    *   Update `SystemPromptBuilder` and `MessageManager` integration points. 
+    *   Update `SystemPromptBuilder` and `MessageManager` integration points.
+
+8.  **Testing (Optional):**
+    *   Add or update tests for the new contributor system and configuration validation as needed.
+
+9.  **Documentation:**
+    *   Update user-facing documentation (e.g., README, configuration examples) to reflect the new system prompt contributor model, configuration schema, and usage instructions. 
