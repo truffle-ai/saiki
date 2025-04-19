@@ -8,6 +8,7 @@ import { MessageManager } from '../messages/manager.js';
 import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
+import { AgentConfig } from '../../../config/types.js';
 
 // System prompt constants
 
@@ -37,16 +38,18 @@ export class OpenAIService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private agentConfig: AgentConfig;
 
     constructor(
+        agentConfig: AgentConfig,
         clientManager: ClientManager,
-        systemPrompt: string,
         apiKey: string,
         model?: string
     ) {
         this.model = model || 'gpt-4o-mini';
         this.openai = new OpenAI({ apiKey });
         this.clientManager = clientManager;
+        this.agentConfig = agentConfig;
 
         // Initialize Formatter, Tokenizer, and get Max Tokens
         const formatter = new OpenAIMessageFormatter();
@@ -57,7 +60,8 @@ export class OpenAIService implements ILLMService {
         // Initialize MessageManager with OpenAIFormatter
         this.messageManager = new MessageManager(
             formatter,
-            systemPrompt || DETAILED_SYSTEM_PROMPT_TEMPLATE,
+            agentConfig,
+            clientManager,
             maxTokensWithMargin,
             tokenizer
         );

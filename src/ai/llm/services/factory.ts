@@ -1,6 +1,6 @@
 import { ClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
-import { LLMConfig } from '../../../config/types.js';
+import { LLMConfig, AgentConfig } from '../../../config/types.js';
 import { logger } from '../../../utils/logger.js';
 import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
@@ -37,17 +37,16 @@ function extractApiKey(config: LLMConfig): string {
 /**
  * Create an LLM service instance based on the provided configuration
  */
-function _createLLMService(config: LLMConfig, clientManager: ClientManager): ILLMService {
+function _createLLMService(agentConfig: AgentConfig, clientManager: ClientManager): ILLMService {
     // Extract and validate API key
-    const apiKey = extractApiKey(config);
-
-    switch (config.provider.toLowerCase()) {
+    const apiKey = extractApiKey(agentConfig.llm);
+    switch (agentConfig.llm.provider.toLowerCase()) {
         case 'openai':
-            return new OpenAIService(clientManager, config.systemPrompt, apiKey, config.model);
+            return new OpenAIService(agentConfig, clientManager, apiKey, agentConfig.llm.model);
         case 'anthropic':
-            return new AnthropicService(clientManager, config.systemPrompt, apiKey, config.model);
+            return new AnthropicService(agentConfig, clientManager, apiKey, agentConfig.llm.model);
         default:
-            throw new Error(`Unsupported LLM provider: ${config.provider}`);
+            throw new Error(`Unsupported LLM provider: ${agentConfig.llm.provider}`);
     }
 }
 
@@ -65,21 +64,21 @@ function _createVercelModel(provider: string, model: string): LanguageModelV1 {
 }
 
 function _createVercelLLMService(
-    config: LLMConfig,
+    agentConfig: AgentConfig,
     clientManager: ClientManager
 ): VercelLLMService {
-    const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
-    return new VercelLLMService(clientManager, model, config.systemPrompt);
+    const model: LanguageModelV1 = _createVercelModel(agentConfig.llm.provider, agentConfig.llm.model);
+    return new VercelLLMService(agentConfig, clientManager, model);
 }
 
 export function createLLMService(
-    config: LLMConfig,
+    agentConfig: AgentConfig,
     clientManager: ClientManager,
     vercel: boolean = false
 ): ILLMService {
     if (vercel) {
-        return _createVercelLLMService(config, clientManager);
+        return _createVercelLLMService(agentConfig, clientManager);
     } else {
-        return _createLLMService(config, clientManager);
+        return _createLLMService(agentConfig, clientManager);
     }
 }

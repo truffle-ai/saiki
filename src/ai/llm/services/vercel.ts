@@ -10,6 +10,7 @@ import { VercelMessageFormatter } from '../messages/formatters/vercel.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import { getProviderFromModel } from '../../utils.js';
+import { AgentConfig } from '../../../config/types.js';
 
 /**
  * Vercel implementation of LLMService
@@ -20,10 +21,12 @@ export class VercelLLMService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private agentConfig: AgentConfig;
 
-    constructor(clientManager: ClientManager, model: LanguageModelV1, systemPrompt: string) {
+    constructor(agentConfig: AgentConfig, clientManager: ClientManager, model: LanguageModelV1) {
         this.model = model;
         this.clientManager = clientManager;
+        this.agentConfig = agentConfig;
         this.eventEmitter = new EventEmitter();
 
         // Detect provider, get tokenizer, and max tokens
@@ -38,7 +41,8 @@ export class VercelLLMService implements ILLMService {
         // Update MessageManager initialization
         this.messageManager = new MessageManager(
             formatter,
-            systemPrompt,
+            agentConfig,
+            clientManager,
             maxTokensWithMargin,
             tokenizer
         );

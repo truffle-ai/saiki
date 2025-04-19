@@ -1,47 +1,25 @@
-/**
- * Frequency at which a system prompt segment should be recomputed.
- * - 'perSession': Once per session
- * - 'perMessage': On every message
- * - 'onInterval': At a specified interval (ms)
- */
-export type Frequency = 'perSession' | 'perMessage' | 'onInterval';
+import { AgentConfig, ContributorConfig, SystemPromptConfig } from '../../config/types.js';
+import { ClientManager } from '../../client/manager.js';
 
 /**
- * Context provided to each system prompt contributor for segment generation.
+ * Context passed to dynamic system prompt contributors.
+ * Extend as needed for additional dependencies (e.g., message history).
  */
-export interface PromptContext {
-  /** Unique session identifier */
-  sessionId: string;
-  /** Number of messages in the session */
-  messageCount: number;
-  /** Timestamp of the last interval-based recomputation (ms since epoch) */
-  lastIntervalTs: number;
+export interface DynamicContributorContext {
+  agentConfig: AgentConfig;
+  clientManager: ClientManager;
+  // Add other necessary dependencies here
 }
 
 /**
- * Result returned by a system prompt segment contributor.
+ * Interface for a system prompt contributor (static or dynamic).
  */
-export interface SegmentResult {
-  /** The text of the segment to include in the system prompt */
-  text: string;
-  /** Optional variables for advanced templating or debugging */
-  vars?: Record<string, string>;
-}
-
-/**
- * Interface for a system prompt segment contributor.
- */
-export interface ISystemPromptContributor {
-  /** Unique name for the contributor */
-  readonly name: string;
-  /** Frequency at which this segment should be recomputed */
-  readonly frequency: Frequency;
-  /** Optional interval in ms for 'onInterval' frequency */
-  readonly intervalMs?: number;
+export interface SystemPromptContributor {
+  id: string;
+  priority: number;
   /**
-   * Generate the segment for the system prompt.
-   * @param ctx - The current prompt context
-   * @returns A promise resolving to the segment result
+   * Asynchronously gets the content string for this contributor.
+   * @param context - The dynamic context for content generation
    */
-  getSegment(ctx: PromptContext): Promise<SegmentResult>;
+  getContent(context: DynamicContributorContext): Promise<string>;
 } 

@@ -9,6 +9,7 @@ import { AnthropicMessageFormatter } from '../messages/formatters/anthropic.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import type { ContentBlock, TextBlock } from '@anthropic-ai/sdk/resources/messages';
+import { AgentConfig } from '../../../config/types.js';
 
 /**
  * Anthropic implementation of LLMService
@@ -19,26 +20,28 @@ export class AnthropicService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private agentConfig: AgentConfig;
 
     constructor(
+        agentConfig: AgentConfig,
         clientManager: ClientManager,
-        systemPrompt: string,
         apiKey: string,
         model?: string
     ) {
         this.model = model || 'claude-3-7-sonnet-20250219';
         this.anthropic = new Anthropic({ apiKey });
         this.clientManager = clientManager;
+        this.agentConfig = agentConfig;
 
         const formatter = new AnthropicMessageFormatter();
         const tokenizer = createTokenizer('anthropic', this.model);
-
         const rawMaxTokens = getMaxTokens('anthropic', this.model);
         const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
 
         this.messageManager = new MessageManager(
             formatter,
-            systemPrompt,
+            agentConfig,
+            clientManager,
             maxTokensWithMargin,
             tokenizer
         );

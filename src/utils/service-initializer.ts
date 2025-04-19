@@ -21,7 +21,7 @@ export async function initializeServices(
 
     // Change vercel to false to use other LLM services
     const vercel = true;
-    const llmService = createLLMService(config.llm, clientManager, vercel);
+    const llmService = createLLMService(config, clientManager, vercel);
 
     logger.debug('LLM service created');
 

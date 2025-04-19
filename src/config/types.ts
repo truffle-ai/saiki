@@ -43,10 +43,24 @@ export type ServerConfigs = Record<string, McpServerConfig>;
 export type LLMConfig = {
     provider: string;
     model: string;
-    systemPrompt: string;
+    systemPrompt: string | SystemPromptConfig;
     apiKey?: string;
     providerOptions?: Record<string, any>;
 };
+
+
+export interface ContributorConfig {
+  id: string;
+  type: 'static' | 'dynamic';
+  priority: number;
+  enabled?: boolean;
+  content?: string;
+  source?: string;
+}
+
+export interface SystemPromptConfig {
+  contributors: ContributorConfig[];
+}
 
 /**
  * Agent configuration type

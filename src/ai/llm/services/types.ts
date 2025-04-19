@@ -1,8 +1,6 @@
 import { LanguageModelV1 } from 'ai';
 import { EventEmitter } from 'events';
 import { ToolSet } from '../../types.js';
-import { SystemPromptBuilder } from '../../systemPrompt/SystemPromptBuilder.js';
-import { PromptContext } from '../../systemPrompt/types.js';
 
 /**
  * Core interface for LLM service implementations

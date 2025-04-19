@@ -5,8 +5,10 @@ import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
-import { SystemPromptBuilder } from '../../systemPrompt/SystemPromptBuilder.js';
-import { PromptContext } from '../../systemPrompt/types.js';
+import { AgentConfig } from '../../../config/types.js';
+import { ClientManager } from '../../../client/manager.js';
+import { SystemPromptContributor, DynamicContributorContext } from '../../systemPrompt/types.js';
+import { loadContributors } from '../../systemPrompt/loader.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -23,11 +25,6 @@ export class MessageManager {
      * Internal storage for conversation messages
      */
     private history: InternalMessage[] = [];
-
-    /**
-     * System prompt used for the conversation
-     */
-    private systemPrompt: string | null = null;
 
     /**
      * Formatter used to convert internal messages to LLM-specific format
@@ -51,21 +48,28 @@ export class MessageManager {
      */
     private compressionStrategies: ICompressionStrategy[];
 
-    private systemPromptBuilder?: SystemPromptBuilder;
-    private promptContext?: PromptContext;
+    /**
+     * System prompt contributors (static and dynamic)
+     */
+    private contributors: SystemPromptContributor[] = [];
+    private agentConfig: AgentConfig;
+    private clientManager: ClientManager;
+    private systemPrompt: string | null = null; // Cache for the current system prompt
 
     /**
      * Creates a new MessageManager instance
      *
      * @param formatter Formatter implementation for the target LLM provider
-     * @param systemPrompt Optional system prompt to initialize the conversation
+     * @param agentConfig Agent configuration (provides systemPrompt and other settings)
+     * @param clientManager ClientManager instance for tool access, etc.
      * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
      * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
      * @param compressionStrategies Optional array of compression strategies to apply sequentially when maxTokens is exceeded. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
      */
     constructor(
         formatter: IMessageFormatter,
-        systemPrompt: string | null = null,
+        agentConfig: AgentConfig,
+        clientManager: ClientManager,
         maxTokens: number | null = null,
         tokenizer: ITokenizer | null = null,
         compressionStrategies: ICompressionStrategy[] = [
@@ -74,26 +78,12 @@ export class MessageManager {
         ]
     ) {
         this.formatter = formatter;
-        if (systemPrompt) {
-            this.setSystemPrompt(systemPrompt);
-        }
+        this.agentConfig = agentConfig;
+        this.clientManager = clientManager;
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
         this.compressionStrategies = compressionStrategies;
-    }
-
-    /**
-     * Set the SystemPromptBuilder for modular prompt support.
-     */
-    setSystemPromptBuilder(builder: SystemPromptBuilder): void {
-        this.systemPromptBuilder = builder;
-    }
-
-    /**
-     * Set the PromptContext for prompt generation.
-     */
-    setPromptContext(ctx: PromptContext): void {
-        this.promptContext = ctx;
+        this.contributors = loadContributors(agentConfig.llm.systemPrompt, agentConfig, clientManager);
     }
 
     /**
@@ -149,9 +139,9 @@ export class MessageManager {
                 }
                 break;
             case 'system':
-                // System messages should ideally be handled via setSystemPrompt
+                // System messages should ideally be handled via system prompt contributors
                 logger.warn(
-                    'MessageManager: Adding system message directly to history. Use setSystemPrompt instead.'
+                    'MessageManager: Adding system message directly to history. Use system prompt contributors instead.'
                 );
                 if (typeof message.content !== 'string' || message.content.trim() === '') {
                     throw new Error(
@@ -220,24 +210,22 @@ export class MessageManager {
     }
 
     /**
-     * Sets the system prompt for the conversation
+     * Retrieves the current system prompt by running all contributors in priority order.
      *
-     * @param prompt The system prompt text
+     * @returns The constructed system prompt
      */
-    setSystemPrompt(prompt: string): void {
-        this.systemPrompt = prompt;
-    }
-
-    /**
-     * Retrieves the current system prompt
-     *
-     * @returns The system prompt or null if not set
-     */
-    async getSystemPrompt(): Promise<string | null> {
-        if (this.systemPromptBuilder && this.promptContext) {
-            return await this.systemPromptBuilder.buildPrompt(this.promptContext);
+    async getSystemPrompt(): Promise<string> {
+        if (!this.contributors.length) {
+            throw new Error('MessageManager: No contributors found.');
         }
-        return this.systemPrompt;
+        const context: DynamicContributorContext = {
+            agentConfig: this.agentConfig,
+            clientManager: this.clientManager,
+        };
+        const parts = await Promise.all(this.contributors.map(c => c.getContent(context)));
+        const prompt = parts.filter(Boolean).join('\n\n');
+        this.systemPrompt = prompt; // Cache the generated system prompt
+        return prompt;
     }
 
     /**
@@ -255,7 +243,7 @@ export class MessageManager {
 
         try {
             // Pass a read-only view of the potentially compressed history to the formatter
-            return this.formatter.format([...this.history], this.systemPrompt);
+            return this.formatter.format([...this.history], undefined); // systemPrompt is now handled by getSystemPrompt
         } catch (error) {
             logger.error('Error formatting messages:', error);
             throw new Error(
@@ -274,7 +262,7 @@ export class MessageManager {
     async getFormattedSystemPrompt(): Promise<string | null | undefined> {
         const prompt = await this.getSystemPrompt();
         try {
-            return this.formatter.getSystemPrompt?.(prompt ?? undefined);
+            return this.formatter.formatSystemPrompt?.(prompt);
         } catch (error) {
             console.error('Error getting formatted system prompt:', error);
             throw new Error(`Failed to get formatted system prompt: ${error}`);
@@ -383,7 +371,7 @@ export class MessageManager {
         const overheadPerMessage = 4; // Approximation for message format overhead
 
         try {
-            // Count system prompt
+            // Count system prompt from cache
             if (this.systemPrompt) {
                 total += this.tokenizer.countTokens(this.systemPrompt);
             }
@@ -399,21 +387,18 @@ export class MessageManager {
                     for (const call of message.toolCalls) {
                         total += this.tokenizer.countTokens(call.function.name);
                         // Ensure arguments exist and are strings before counting
-                        if (call.function.arguments) {
+                        if (call.function.arguments && typeof call.function.arguments === 'string') {
                             total += this.tokenizer.countTokens(call.function.arguments);
                         }
                     }
                 }
-                // Add overhead for each message structure
-                total += overheadPerMessage;
             }
+            // Add overhead per message
+            total += this.history.length * overheadPerMessage;
+            return total;
         } catch (error) {
-            logger.error('MessageManager: Error counting tokens:', error);
-            // Decide on error handling: return null, throw, or return current total?
-            // Returning null indicates counting failed.
+            logger.error('Error counting tokens:', error);
             return null;
         }
-
-        return total;
     }
 }
