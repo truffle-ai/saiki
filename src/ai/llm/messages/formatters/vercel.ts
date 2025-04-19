@@ -81,7 +81,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
      *
      * @returns null as Vercel doesn't need a separate system prompt
      */
-    getSystemPrompt(): null {
+    formatSystemPrompt(): null {
         return null;
     }
 }

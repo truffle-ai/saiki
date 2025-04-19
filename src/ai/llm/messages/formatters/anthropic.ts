@@ -166,7 +166,7 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
      * @param systemPrompt The system prompt to format
      * @returns The system prompt without any modification
      */
-    getSystemPrompt(systemPrompt: string | null): string | null {
+    formatSystemPrompt(systemPrompt: string | null): string | null {
         // Anthropic uses system prompt as a separate parameter, no need for any formatting
         return systemPrompt;
     }

@@ -11,17 +11,6 @@ export interface ILLMService {
     // Primary method for handling a user interaction from start to finish
     completeTask(userInput: string): Promise<string>;
 
-    /**
-     * @deprecated Use setSystemPromptBuilder instead for modular system prompt support.
-     */
-    updateSystemContext(newSystemPrompt: string): void;
-
-    // Accept a SystemPromptBuilder instance
-    setSystemPromptBuilder(builder: SystemPromptBuilder): void;
-
-    // Update the prompt context (message count, session, etc.)
-    updatePromptContext(ctx: PromptContext): void;
-
     // Clear conversation history
     resetConversation(): void;
 

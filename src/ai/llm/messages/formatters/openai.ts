@@ -84,7 +84,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
      *
      * @returns null as OpenAI doesn't need a separate system prompt
      */
-    getSystemPrompt(): null {
+    formatSystemPrompt(): null {
         return null;
     }
 }

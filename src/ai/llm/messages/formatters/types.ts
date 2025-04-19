@@ -25,5 +25,5 @@ export interface IMessageFormatter {
      * @param systemPrompt The system prompt to format
      * @returns The formatted system prompt or null/undefined if not needed
      */
-    getSystemPrompt?(systemPrompt: string | null): string | null | undefined;
+    formatSystemPrompt?(systemPrompt: string | null): string | null | undefined;
 }

@@ -10,6 +10,10 @@ export class SystemPromptRegistry {
 
   private constructor() {}
 
+  // TODO: Integrate SystemPromptRegistry into the application initialization process.
+  // This registry is intended to manage system prompt contributors dynamically,
+  // potentially loaded from configuration or plugins in the future.
+
   /**
    * Get the singleton instance of the registry.
    */

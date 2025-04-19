@@ -8,8 +8,6 @@ import { MessageManager } from '../messages/manager.js';
 import { AnthropicMessageFormatter } from '../messages/formatters/anthropic.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
-import { SystemPromptBuilder } from '../../systemPrompt/SystemPromptBuilder.js';
-import { PromptContext } from '../../systemPrompt/types.js';
 import type { ContentBlock, TextBlock } from '@anthropic-ai/sdk/resources/messages';
 
 /**
@@ -21,8 +19,6 @@ export class AnthropicService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
-    private systemPromptBuilder?: SystemPromptBuilder;
-    private promptContext?: PromptContext;
 
     constructor(
         clientManager: ClientManager,
@@ -50,20 +46,6 @@ export class AnthropicService implements ILLMService {
         this.eventEmitter = new EventEmitter();
     }
 
-    /**
-     * Accept a SystemPromptBuilder instance for modular system prompt support.
-     */
-    setSystemPromptBuilder(builder: SystemPromptBuilder): void {
-        this.systemPromptBuilder = builder;
-    }
-
-    /**
-     * Update the prompt context (message count, session, etc.)
-     */
-    updatePromptContext(ctx: PromptContext): void {
-        this.promptContext = ctx;
-    }
-
     getEventEmitter(): EventEmitter {
         return this.eventEmitter;
     }
@@ -72,22 +54,9 @@ export class AnthropicService implements ILLMService {
         return this.clientManager.getAllTools();
     }
 
-    /**
-     * @deprecated Use setSystemPromptBuilder instead for modular system prompt support.
-     */
-    updateSystemContext(newSystemPrompt: string): void {
-        this.messageManager.setSystemPrompt(newSystemPrompt);
-    }
-
     async completeTask(userInput: string): Promise<string> {
         // Add user message to message manager
         this.messageManager.addUserMessage(userInput);
-
-        // If using SystemPromptBuilder, rebuild and set system prompt
-        if (this.systemPromptBuilder && this.promptContext) {
-            const prompt = await this.systemPromptBuilder.buildPrompt(this.promptContext);
-            this.messageManager.setSystemPrompt(prompt);
-        }
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();
@@ -109,6 +78,8 @@ export class AnthropicService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Get formatted messages from message manager
+                // Ensure all message content fields are arrays of content blocks
+                // This handles potential upstream inconsistencies and ensures compatibility with Anthropic API.
                 let messages = this.messageManager.getFormattedMessages();
                 // Ensure all message content fields are arrays of content blocks
                 messages = messages.map((msg) => {
