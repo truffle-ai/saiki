@@ -2,11 +2,19 @@ import { MCPClient } from './mcp-client.js';
 import { ServerConfigs, McpServerConfig } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
+import { UserConfirmationProvider } from './tool-confirmation/types.js';
+import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
 
 export class ClientManager {
     private clients: Map<string, ToolProvider> = new Map();
     private connectionErrors: { [key: string]: string } = {};
     private toolToClientMap: Map<string, ToolProvider> = new Map();
+    private confirmationProvider?: UserConfirmationProvider;
+
+    constructor(confirmationProvider?: UserConfirmationProvider) {
+        // If a confirmation provider is passed, use it, otherwise use the default implementation
+        this.confirmationProvider = confirmationProvider ?? new CLIConfirmationProvider();
+    }
 
     /**
      * Register a client that provides tools
@@ -28,7 +36,8 @@ export class ClientManager {
      */
     async getAllTools(): Promise<Record<string, any>> {
         let allTools: Record<string, any> = {};
-        // Clear existing map to avoid stale entries
+
+        // Clear existing maps to avoid stale entries
         this.toolToClientMap.clear();
 
         for (const [serverName, client] of this.clients.entries()) {
@@ -62,6 +71,12 @@ export class ClientManager {
     }
 
     /**
+     * Check if a tool is allowed to execute without confirmation
+     * @param toolName Name of the tool to check
+     * @returns boolean indicating if the tool is pre-approved
+     */
+
+    /**
      * Execute a specific tool with the given arguments
      * @param toolName Name of the tool to execute
      * @param args Arguments to pass to the tool
@@ -71,6 +86,16 @@ export class ClientManager {
         const client = this.getToolClient(toolName);
         if (!client) {
             throw new Error(`No client found for tool: ${toolName}`);
+        }
+
+        // Request confirmation before executing
+        const approved = await this.confirmationProvider.requestConfirmation({
+            toolName,
+            args
+        });
+
+        if (!approved) {
+            throw new Error(`Execution of tool '${toolName}' was denied`);
         }
 
         return await client.callTool(toolName, args);
@@ -169,6 +194,14 @@ export class ClientManager {
      */
     getFailedConnections(): { [key: string]: string } {
         return this.connectionErrors;
+    }
+
+    /**
+     * Get all allowed tools
+     * @returns Set of tool names that are allowed without confirmation
+     */
+    getAllowedTools(): Set<string> {
+        return this.confirmationProvider.allowedTools;
     }
 
     /**
