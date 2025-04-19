@@ -1,8 +1,9 @@
-import { UserConfirmationProvider, ToolExecutionDetails, SettingsProvider, UserSettings } from '../types.js';
+import { UserConfirmationProvider, ToolExecutionDetails } from './types.js';
 import { logger } from '../../utils/logger.js';
 import * as readline from 'readline';
-import { FileSettingsProvider } from './file-settings-provider.js';
 import chalk from 'chalk';
+import { FileSettingsProvider } from '../../settings/file-settings-provider.js';
+import { SettingsProvider } from '../../settings/types.js';
 import boxen from 'boxen';
 
 /**
@@ -13,11 +14,11 @@ import boxen from 'boxen';
 export class CLIConfirmationProvider implements UserConfirmationProvider {
     public allowedTools: Set<string>;
     private rl: readline.Interface | null = null;
-    public settings: Promise<UserSettings>;
+    public settingsProvider: SettingsProvider;
 
     constructor(allowedTools?: Set<string>, settingsProvider?: SettingsProvider) {
         this.allowedTools = allowedTools ?? new Set();
-        this.settings = new FileSettingsProvider().getUserSettings();
+        this.settingsProvider = settingsProvider ?? new FileSettingsProvider()
     }
 
     /**
@@ -34,7 +35,7 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
             parseResponse?: (response: any) => boolean;
         }
     ): Promise<boolean> {
-        if ((await this.settings).settings.toolApprovalRequired === false) {
+        if ((await this.settingsProvider.getUserSettings()).settings.toolApprovalRequired === false) {
             logger.debug(`Tool '${details.toolName}' execution is automatically approved`);
             return true;
         }
@@ -48,17 +49,25 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
         logger.toolCall(details.toolName, details.args);
 
         // Collect user input with arrow key navigation
-        return await this.collectArrowKeyInput();
+        const choice = await this.collectArrowKeyInput();
+
+        // Add an approved tool to the list
+        if (choice) {
+            await this.allowTool(details.toolName);
+        }
+        else {
+            logger.warn(`Tool '${details.toolName}' execution denied`);
+        }
+
+        return choice;
     }
 
     async allowTool(toolName: string): Promise<void> {
         this.allowedTools.add(toolName);
-        logger.info(`Tool '${toolName}' has been allowed for execution without confirmation`);
     }
 
     async disallowTool(toolName: string): Promise<void> {
         this.allowedTools.delete(toolName);
-        logger.info(`Tool '${toolName}' has been allowed for execution without confirmation`);
     }
 
     async isToolAllowed(toolName: string): Promise<boolean> {
@@ -66,7 +75,7 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
     }
 
     /**
-     * !!!! This is an AI-generated sloppy implementation, TODO: REFACTOR THIS !!!
+     * TODO: Refactor this implementation to be more generic
      * @returns Promise resolving to boolean (true for approve, false for deny)
      */
     private collectArrowKeyInput(): Promise<boolean> {

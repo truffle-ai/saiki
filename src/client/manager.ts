@@ -1,8 +1,9 @@
 import { MCPClient } from './mcp-client.js';
 import { ServerConfigs } from '../config/types.js';
 import { logger } from '../utils/logger.js';
-import { ToolProvider, UserConfirmationProvider, ToolExecutionDetails } from './types.js';
-import { CLIConfirmationProvider } from './providers/confirmation-provider.js';
+import { ToolProvider } from './types.js';
+import { UserConfirmationProvider } from './tool-confirmation/types.js';
+import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
 
 export class ClientManager {
     private clients: Map<string, ToolProvider> = new Map();
@@ -160,7 +161,7 @@ export class ClientManager {
      * @returns Set of tool names that are allowed without confirmation
      */
     getAllowedTools(): Set<string> {
-        return new Set(this.confirmationProvider.allowedTools);
+        return this.confirmationProvider.allowedTools;
     }
 
     /**

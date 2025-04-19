@@ -1,11 +1,11 @@
-import { SettingsProvider, UserSettings } from "../types.js";
-import { settings } from "./settings/settings.js";
+import { SettingsProvider, UserSettings } from "./types.js";
+import { getDefaultUserSettings } from "./utils.js";
 
 export class FileSettingsProvider implements SettingsProvider {
-    private settings: UserSettings = settings;
+    private userSettings: UserSettings = getDefaultUserSettings();
 
     async getUserSettings(userId?: string): Promise<UserSettings> {
-        return this.settings;
+        return this.userSettings;
     }
 
     async updateUserSettings(userId: string, settings: UserSettings): Promise<void> {
