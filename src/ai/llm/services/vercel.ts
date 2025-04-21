@@ -14,6 +14,7 @@ import { InternalMessage, ImageData } from '../messages/types.js';
 import { IMessageFormatter } from '../messages/formatters/types.js';
 import { countMessagesTokens } from '../messages/utils.js';
 import { ITokenizer } from '../tokenizer/types.js';
+import { InternalMessage } from '../messages/types.js';
 
 /**
  * Vercel implementation of LLMService
