@@ -34,11 +34,11 @@ export interface IMCPClientWrapper extends ToolProvider {
     // Connection Management
     connect(config: McpServerConfig, serverName: string): Promise<IMCPClient>;
 
-    // TODO: implement Prompt Management
-    // listPrompts(): Promise<string[]>;
-    // getPrompt(name: string, args?: any): Promise<string>;
+    // Prompt Management
+    listPrompts(): Promise<string[]>;
+    getPrompt(name: string, args?: any): Promise<any>; // Return type might need refinement based on SDK
 
     // Resource Management
-    // listResources(): Promise<string[]>;
-    // readResource(url: string): Promise<string>;
+    listResources(): Promise<string[]>;
+    readResource(uri: string): Promise<any>; // Return type might need refinement based on SDK
 }
