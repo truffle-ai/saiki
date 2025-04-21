@@ -43,29 +43,57 @@ export class VercelMessageFormatter implements IMessageFormatter {
 
                 case 'assistant':
                     if (msg.toolCalls && msg.toolCalls.length > 0) {
-                        // Vercel expects function_call for tool calls
+                        // Format according to CoreAssistantMessage with ToolCallPart(s)
+                        // See: https://sdk.vercel.ai/docs/reference/ai-sdk-core/core-message#coreassistantmessage
+                        const contentParts: any[] = [];
+
+                        // Add text part if content exists
+                        if (msg.content) {
+                            contentParts.push({ type: 'text', text: msg.content });
+                        }
+
+                        // Add tool_call parts
+                        for (const toolCall of msg.toolCalls) {
+                            contentParts.push({
+                                type: 'tool-call',
+                                toolCallId: toolCall.id,
+                                toolName: toolCall.function.name,
+                                // Ensure args are parsed if they are a string, otherwise pass as is
+                                // The SDK expects args as an object
+                                args: typeof toolCall.function.arguments === 'string'
+                                        ? JSON.parse(toolCall.function.arguments)
+                                        : toolCall.function.arguments,
+                            });
+                        }
+
                         formatted.push({
                             role: 'assistant',
-                            content: msg.content,
-                            function_call: {
-                                name: msg.toolCalls[0].function.name,
-                                arguments: msg.toolCalls[0].function.arguments,
-                            },
+                            content: contentParts,
+                            // Remove deprecated function_call
                         });
                     } else {
+                        // Standard assistant message without tool calls
                         formatted.push({
                             role: 'assistant',
-                            content: msg.content,
+                            content: msg.content, // Should be string | null
                         });
                     }
                     break;
 
                 case 'tool':
-                    // Convert internal tool results to Vercel's expected format
+                    // Convert internal tool results to Vercel's expected 'tool' role format
+                    // See: https://sdk.vercel.ai/docs/reference/ai-sdk-core/core-message#coretoolmessage
                     formatted.push({
-                        role: 'function',
-                        name: msg.name!,
-                        content: msg.content,
+                        role: 'tool', // Use 'tool' role instead of 'function'
+                        content: [
+                            // Vercel expects tool results wrapped in a content array
+                            {
+                                type: 'tool-result',
+                                toolCallId: msg.toolCallId!,
+                                toolName: msg.name!,
+                                result: msg.content, // Assuming msg.content is the stringified result
+                            },
+                        ],
                     });
                     break;
             }

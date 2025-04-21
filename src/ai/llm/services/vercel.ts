@@ -10,6 +10,7 @@ import { VercelMessageFormatter } from '../messages/formatters/vercel.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import { getProviderFromModel } from '../../utils.js';
+import { InternalMessage } from '../messages/types.js';
 
 /**
  * Vercel implementation of LLMService
@@ -166,20 +167,14 @@ export class VercelLLMService implements ILLMService {
                     `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
                 );
 
-                // Process tool calls
+                // Emit events based on step content (kept from original)
                 if (step.toolCalls && step.toolCalls.length > 0) {
-                    // For now, don't add assistant message with tool calls to history
-                    // Just emit the events
                     for (const toolCall of step.toolCalls) {
                         this.eventEmitter.emit('llmservice:toolCall', toolCall.toolName, toolCall.args);
                     }
                 }
-
-                // Process tool results
-                if (step.toolResults) {
+                if (step.toolResults && step.toolResults.length > 0) {
                     for (const toolResult of step.toolResults as any) {
-                        // For now, don't add tool results to message manager
-                        // Just emit the events
                         this.eventEmitter.emit(
                             'llmservice:toolResult',
                             toolResult.toolName,
@@ -187,14 +182,121 @@ export class VercelLLMService implements ILLMService {
                         );
                     }
                 }
+                // NOTE: Message manager additions are now handled after generateText completes
             },
             maxSteps: maxSteps,
         });
 
-        const fullResponse = response.text;
+        // Add all generated messages from the generateText response to the message manager,
+        // ensuring correct formatting for each role type.
+        if (response.response?.messages && response.response.messages.length > 0) {
+            logger.debug(
+                `Adding ${response.response.messages.length} messages from generateText response to manager.`
+            );
+            for (const message of response.response.messages) {
+                // Use type assertion for role to help TypeScript
+                const role = message.role as InternalMessage['role'];
 
-        // Add final assistant message
-        this.messageManager.addAssistantMessage(fullResponse);
+                switch (role) {
+                    case 'user':
+                        // Assuming user message content is always a simple string here
+                        if (typeof message.content === 'string') {
+                            this.messageManager.addUserMessage(message.content);
+                        } else {
+                            logger.warn(
+                                `[VercelLLMService] Skipping user message with non-string content: ${JSON.stringify(message.content)}`
+                            );
+                        }
+                        break;
+                    case 'assistant': {
+                        let assistantContent: string | null = null;
+                        const assistantToolCalls: InternalMessage['toolCalls'] = [];
+
+                        // Check content type for assistant message
+                        if (typeof message.content === 'string') {
+                            assistantContent = message.content;
+                        } else if (Array.isArray(message.content)) {
+                            // Assert part type within the loop if necessary, or check structure
+                            for (const part of message.content as any[]) { // Using 'as any[]' for simplicity, refine if needed
+                                if (part.type === 'text' && typeof part.text === 'string') {
+                                    assistantContent =
+                                        (assistantContent || '') + part.text;
+                                } else if (
+                                    part.type === 'tool-call' &&
+                                    typeof part.toolCallId === 'string' &&
+                                    typeof part.toolName === 'string'
+                                ) {
+                                    assistantToolCalls.push({
+                                        id: part.toolCallId,
+                                        type: 'function', // Map to internal 'function' type
+                                        function: {
+                                            name: part.toolName,
+                                            arguments:
+                                                typeof part.args === 'string'
+                                                    ? part.args
+                                                    : JSON.stringify(part.args ?? null), // Ensure args are stringified, handle null/undefined
+                                        },
+                                    });
+                                }
+                                // Handle other part types like 'reasoning' if needed
+                            }
+                        }
+
+                        // Add assistant message if it has content or tool calls
+                        if (assistantContent !== null || assistantToolCalls.length > 0) {
+                            this.messageManager.addAssistantMessage(
+                                assistantContent,
+                                assistantToolCalls.length > 0 ? assistantToolCalls : undefined
+                            );
+                        } else {
+                            logger.warn(
+                                `[VercelLLMService] Skipping empty assistant message: ${JSON.stringify(message)}`
+                            );
+                        }
+                        break;
+                    }
+                    case 'tool':
+                        // Tool messages have content as an array of ToolResultPart
+                        if (Array.isArray(message.content)) {
+                            // Assert part type within the loop or check structure
+                            for (const part of message.content as any[]) { // Using 'as any[]' for simplicity
+                                if (
+                                    part.type === 'tool-result' &&
+                                    typeof part.toolCallId === 'string' &&
+                                    typeof part.toolName === 'string'
+                                ) {
+                                    // Use the dedicated method which handles result stringification
+                                    this.messageManager.addToolResult(
+                                        part.toolCallId,
+                                        part.toolName,
+                                        part.result // addToolResult handles stringification
+                                    );
+                                }
+                            }
+                        } else {
+                            logger.warn(
+                                `[VercelLLMService] Skipping tool message with unexpected content format: ${JSON.stringify(message.content)}`
+                            );
+                        }
+                        break;
+                    case 'system':
+                        // Avoid adding system prompts directly to history if possible
+                        if (typeof message.content === 'string') {
+                            logger.warn(`[VercelLLMService] Received system message in response.messages, attempting to update system prompt.`);
+                            this.messageManager.setSystemPrompt(message.content);
+                        }
+                        break;
+                    default:
+                        // Use 'role' variable which has the asserted type
+                        logger.warn(`[VercelLLMService] Unknown message role in response: ${role}`);
+                        break;
+                }
+            }
+        }
+        // Removed the 'else' block that manually added response.text,
+        // as the loop should now handle all message types correctly.
+
+        const fullResponse = response.text; // Final text response remains the same
 
         this.eventEmitter.emit('llmservice:response', fullResponse);
         return fullResponse;
