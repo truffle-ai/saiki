@@ -83,17 +83,61 @@ export class VercelMessageFormatter implements IMessageFormatter {
                 case 'tool':
                     // Convert internal tool results to Vercel's expected 'tool' role format
                     // See: https://sdk.vercel.ai/docs/reference/ai-sdk-core/core-message#coretoolmessage
+                    
+                    let toolResultPart: any; // Renamed for clarity
+
+                    if (Array.isArray(msg.content) && msg.content[0]?.type === 'image') {
+                        // Content is an image part array, use experimental_content
+                        const imagePart = msg.content[0];
+
+                        // Ensure the image data is base64 string as per ToolResultContent spec
+                        let imageDataBase64: string;
+                        if (typeof imagePart.image === 'string') {
+                            // Assume it's already base64 or a data URL (Vercel might handle data URLs)
+                            imageDataBase64 = imagePart.image;
+                        } else if (imagePart.image instanceof Buffer) {
+                            imageDataBase64 = imagePart.image.toString('base64');
+                        } else if (imagePart.image instanceof Uint8Array) {
+                            imageDataBase64 = Buffer.from(imagePart.image).toString('base64');
+                        } else if (imagePart.image instanceof ArrayBuffer) {
+                           imageDataBase64 = Buffer.from(imagePart.image).toString('base64');
+                        } else if (imagePart.image instanceof URL) {
+                           imageDataBase64 = imagePart.image.toString(); // Pass URL string
+                        } else {
+                            // Fallback or throw error if type is unexpected
+                            console.warn('Unexpected image data type in Vercel formatter for tool result:', typeof imagePart.image);
+                            imageDataBase64 = '[Unsupported image data type]';
+                        }
+
+                        toolResultPart = {
+                            type: 'tool-result',
+                            toolCallId: msg.toolCallId!,
+                            toolName: msg.name!,
+                            result: null, // Standard result is null when using experimental_content
+                            experimental_content: [
+                                {
+                                    type: 'image',
+                                    data: imageDataBase64, // Use the prepared base64 string
+                                    mimeType: imagePart.mimeType,
+                                },
+                            ],
+                        };
+                    } else {
+                        // Content is not an image part array, use the standard result field
+                        toolResultPart = {
+                            type: 'tool-result',
+                            toolCallId: msg.toolCallId!,
+                            toolName: msg.name!,
+                            // Use msg.content directly (should be string or JSON-like)
+                            // If it was previously stringified JSON, keep it that way.
+                            // If it's already a serializable object, it should work.
+                            result: msg.content,
+                        };
+                    }
+                    
                     formatted.push({
-                        role: 'tool', // Use 'tool' role instead of 'function'
-                        content: [
-                            // Vercel expects tool results wrapped in a content array
-                            {
-                                type: 'tool-result',
-                                toolCallId: msg.toolCallId!,
-                                toolName: msg.name!,
-                                result: msg.content, // Assuming msg.content is the stringified result
-                            },
-                        ],
+                        role: 'tool', 
+                        content: [ toolResultPart ], // Vercel expects tool results wrapped in a content array
                     });
                     break;
             }

@@ -214,13 +214,35 @@ export class MessageManager {
         if (!toolCallId || !name) {
             throw new Error('addToolResult: toolCallId and name are required.');
         }
-        // Ensure content is always a string for the internal message
-        const content =
-            result === undefined || result === null
-                ? ''
-                : typeof result === 'string'
-                  ? result
-                  : JSON.stringify(result);
+
+        let content: InternalMessage['content'];
+
+        // --- Check for Image Data ---
+        // Adjust this condition based on how your MCP server actually returns images
+        if (
+            result &&
+            typeof result === 'object' &&
+            typeof result.contentType === 'string' &&
+            result.contentType.startsWith('image/') &&
+            (typeof result.data === 'string' || result.data instanceof Uint8Array || result.data instanceof Buffer || result.data instanceof ArrayBuffer) // Assuming base64 string or binary data
+        ) {
+             // Format as an array with an image part
+             content = [{
+                 type: 'image',
+                 image: result.data, // Use the image data directly
+                 mimeType: result.contentType, // Store the MIME type
+             }];
+        } else {
+            // Fallback to existing string/JSON conversion for other types
+            content =
+                result === undefined || result === null
+                    ? ''
+                    : typeof result === 'string'
+                    ? result
+                    : JSON.stringify(result);
+        }
+        // --- End Image Check ---
+
         this.addMessage({ role: 'tool', content, toolCallId, name });
     }
 
