@@ -188,7 +188,9 @@ export class Logger {
                 if (item.type === 'text') {
                     displayText += item.text;
                 } else if (item.type === 'image' && item.url) {
-                    displayText += `[Image: ${item.url}]`;
+                    displayText += `[Image URL: ${item.url}]`;
+                } else if (item.type === 'image') {
+                    displayText += `[Image Data: ${item.mimeType || 'unknown type'}]`;
                 } else if (item.type === 'markdown') {
                     displayText += item.markdown;
                 } else {
