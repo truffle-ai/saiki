@@ -105,8 +105,18 @@ export async function initializeWebUI(
                     logger.info(
                         `Processing message from WebSocket: ${data.content.substring(0, 50)}...`
                     );
-                    // Let the LLM process the task, events will flow back via webSubscriber
-                    await llmService.completeTask(data.content);
+                    // Extract potential image data
+                    const imageDataInput = data.imageData ? { 
+                        image: data.imageData.base64, // Use the base64 string directly
+                        mimeType: data.imageData.mimeType 
+                    } : undefined;
+
+                    if (imageDataInput) {
+                        logger.info('Image data included in message.');
+                    }
+                    
+                    // Let the LLM process the task with both text and potentially image data
+                    await llmService.completeTask(data.content, imageDataInput);
                 } else if (data.type === 'reset') {
                     logger.info('Processing reset command from WebSocket.');
                     llmService.resetConversation(); // Trigger reset event

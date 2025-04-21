@@ -93,11 +93,16 @@ export class MessageManager {
 
         switch (message.role) {
             case 'user':
-                if (typeof message.content !== 'string' || message.content.trim() === '') {
+                if (
+                    // Allow array content for user messages
+                    !(Array.isArray(message.content) && message.content.length > 0) &&
+                    (typeof message.content !== 'string' || message.content.trim() === '')
+                ) {
                     throw new Error(
-                        'MessageManager: User message content should be a non-empty string.'
+                        'MessageManager: User message content should be a non-empty string or a non-empty array of parts.'
                     );
                 }
+                // Optional: Add validation for the structure of array parts if needed
                 break;
             case 'assistant':
                 // Content can be null if toolCalls are present, but one must exist
@@ -158,7 +163,26 @@ export class MessageManager {
         if (typeof content !== 'string' || content.trim() === '') {
             throw new Error('addUserMessage: Content must be a non-empty string.');
         }
-        this.addMessage({ role: 'user', content });
+        this.addMessage({ role: 'user', content: [{ type: 'text', text: content }] }); // Wrap in array format
+    }
+
+    /**
+     * Convenience method to add a user message with text and image data.
+     *
+     * @param textContent The text part of the user message.
+     * @param image Image data (URL, Buffer, etc.).
+     * @param mimeType Optional MIME type for the image.
+     */
+    addUserMultimodalMessage(
+        textContent: string,
+        image: string | Uint8Array | Buffer | ArrayBuffer | URL,
+        mimeType?: string
+    ): void {
+        const messageContent: InternalMessage['content'] = [
+            { type: 'text', text: textContent },
+            { type: 'image', image, mimeType },
+        ];
+        this.addMessage({ role: 'user', content: messageContent });
     }
 
     /**
@@ -226,42 +250,82 @@ export class MessageManager {
     countTotalTokens(): number | null {
         if (!this.tokenizer) return null;
 
-        let total = 0;
-        const overheadPerMessage = 4; // Approximation for message format overhead
+        let totalTokens = 0;
 
         try {
-            // Count system prompt
-            if (this.systemPrompt) {
-                total += this.tokenizer.countTokens(this.systemPrompt);
-            }
+            // Get the full message history formatted for the target LLM provider
+            const formattedMessages = this.formatter.format(this.history, this.systemPrompt);
 
-            // Count each message
-            for (const message of this.history) {
-                if (message.content) {
-                    total += this.tokenizer.countTokens(message.content);
-                }
-
-                // Count tool calls if present
-                if (message.toolCalls) {
-                    for (const call of message.toolCalls) {
-                        total += this.tokenizer.countTokens(call.function.name);
-                        // Ensure arguments exist and are strings before counting
-                        if (call.function.arguments) {
-                            total += this.tokenizer.countTokens(call.function.arguments);
-                        }
+            // Iterate through the provider-specific formatted messages
+            for (const formattedMessage of formattedMessages) {
+                // --- Token Counting Logic based on potential Vercel/CoreMessage structure --- 
+                // This assumes the formatter returns something close to CoreMessage[] 
+                // Adjust if your specific formatter returns a different structure
+                
+                if (formattedMessage?.content) {
+                    if (typeof formattedMessage.content === 'string') {
+                        totalTokens += this.tokenizer.countTokens(formattedMessage.content);
+                    } else if (Array.isArray(formattedMessage.content)) {
+                        // For multimodal, currently count only text parts
+                        formattedMessage.content.forEach((part: any) => {
+                            if (part.type === 'text' && typeof part.text === 'string') {
+                                totalTokens += this.tokenizer.countTokens(part.text);
+                            }
+                            // NOTE: Image token counting is complex and omitted for now.
+                        });
                     }
                 }
-                // Add overhead for each message structure
-                total += overheadPerMessage;
-            }
-        } catch (error) {
-            logger.error('MessageManager: Error counting tokens:', error);
-            // Decide on error handling: return null, throw, or return current total?
-            // Returning null indicates counting failed.
-            return null;
-        }
 
-        return total;
+                // Count tokens for tool calls if present in the formatted message
+                // Vercel SDK uses 'toolCalls' or 'tool_calls' depending on context/version
+                const toolCalls = formattedMessage?.toolCalls || formattedMessage?.tool_calls;
+                if (toolCalls) {
+                     // Stringify to approximate token cost, as structure can vary
+                    const toolCallsString = JSON.stringify(toolCalls);
+                    totalTokens += this.tokenizer.countTokens(toolCallsString);
+                }
+
+                // Count tokens for tool results if present (Vercel uses 'tool_result')
+                // Assuming 'content' for tool role might contain result parts
+                 if (formattedMessage?.role === 'tool' && Array.isArray(formattedMessage.content)) {
+                     formattedMessage.content.forEach((part: any) => {
+                         if (part.type === 'tool-result') {
+                             const resultString = JSON.stringify(part.result);
+                             totalTokens += this.tokenizer.countTokens(resultString);
+                             // Also count toolCallId and toolName if desired, though often minor
+                             if (part.toolCallId) totalTokens += this.tokenizer.countTokens(part.toolCallId);
+                             if (part.toolName) totalTokens += this.tokenizer.countTokens(part.toolName);
+                         }
+                     });
+                 }
+                
+                // --- End Token Counting Logic ---
+            }
+            
+            // Add system prompt tokens separately ONLY if the formatter doesn't include it in the main list
+            // and provides the getSystemPrompt method.
+             if (this.systemPrompt && typeof this.formatter.getSystemPrompt === 'function') {
+                 const formattedSystem = this.formatter.getSystemPrompt(this.systemPrompt);
+                 // Check if the system prompt was handled separately *and* not included in formattedMessages
+                 // (This logic might need refinement based on specific formatter behavior)
+                 const systemInMessages = formattedMessages.some((m: any) => m.role === 'system');
+                 if (formattedSystem && !systemInMessages) {
+                     totalTokens += this.tokenizer.countTokens(formattedSystem);
+                 }
+             } else if (this.systemPrompt && !formattedMessages.some((m: any) => m.role === 'system')){
+                 // Fallback if getSystemPrompt doesn't exist but system wasn't in the list
+                 // This assumes the system prompt *should* have been formatted somehow.
+                 logger.warn("MessageManager: System prompt exists but wasn't found in formatted messages and formatter lacks getSystemPrompt. Token count might be inaccurate.")
+                 // We might still try counting the raw system prompt as a best guess
+                 // totalTokens += this.tokenizer.countTokens(this.systemPrompt);
+             }
+
+            logger.debug(`MessageManager: Calculated total tokens: ${totalTokens}`);
+            return totalTokens;
+        } catch (error) {
+            logger.error(`MessageManager: Error counting tokens: ${error instanceof Error ? error.message : String(error)}`, { error });
+            return null; // Indicate that token counting failed
+        }
     }
 
     /**

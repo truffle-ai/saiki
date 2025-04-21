@@ -75,9 +75,13 @@ export class VercelLLMService implements ILLMService {
         }, {});
     }
 
-    async completeTask(userInput: string): Promise<string> {
-        // Add user message
-        this.messageManager.addUserMessage(userInput);
+    async completeTask(userInput: string, imageData?: { image: string | Uint8Array | Buffer | ArrayBuffer | URL, mimeType?: string }): Promise<string> {
+        // Add user message - use multimodal method if imageData is provided
+        if (imageData) {
+            this.messageManager.addUserMultimodalMessage(userInput, imageData.image, imageData.mimeType);
+        } else {
+            this.messageManager.addUserMessage(userInput);
+        }
 
         // Get all tools
         const tools: any = await this.clientManager.getAllTools();
@@ -202,10 +206,27 @@ export class VercelLLMService implements ILLMService {
                         // Assuming user message content is always a simple string here
                         if (typeof message.content === 'string') {
                             this.messageManager.addUserMessage(message.content);
-                        } else {
+                        } else { 
+                             // Handle array content for user messages (potentially multimodal)
+                             // For now, just log a warning if we receive an array from the API response.
+                             // We might need more sophisticated handling if the API can return complex user messages.
                             logger.warn(
-                                `[VercelLLMService] Skipping user message with non-string content: ${JSON.stringify(message.content)}`
+                                `[VercelLLMService] Received user message with non-string content (likely multimodal input): ${JSON.stringify(message.content)}`
                             );
+                            // Optionally, attempt to extract text if possible?
+                             let extractedText = '';
+                             if (Array.isArray(message.content)) {
+                                 message.content.forEach(part => {
+                                     if (part.type === 'text' && typeof part.text === 'string') {
+                                         extractedText += part.text + ' ';
+                                     }
+                                 });
+                             }
+                             if (extractedText.trim()) {
+                                 this.messageManager.addUserMessage(extractedText.trim());
+                             } else {
+                                 logger.warn(`[VercelLLMService] Could not extract text from user message content.`);
+                             }
                         }
                         break;
                     case 'assistant': {

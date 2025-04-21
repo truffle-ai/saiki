@@ -14,10 +14,11 @@ export interface InternalMessage {
 
     /**
      * The content of the message.
-     * - String for regular messages
-     * - null if message only contains tool calls
+     * - String for system, assistant (text only), and tool messages.
+     * - Array of parts for user messages (can include text and images).
+     * - null if an assistant message only contains tool calls.
      */
-    content: string | null;
+    content: string | null | Array<{ type: 'text'; text: string } | { type: 'image'; image: string | Uint8Array | Buffer | ArrayBuffer | URL; mimeType?: string }>;
 
     /**
      * Tool calls made by the assistant.
