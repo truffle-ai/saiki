@@ -171,6 +171,9 @@ export class VercelLLMService implements ILLMService {
                     `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
                 );
 
+                if (step.text) {
+                    this.eventEmitter.emit('response', step.text);
+                }
                 // Emit events based on step content (kept from original)
                 if (step.toolCalls && step.toolCalls.length > 0) {
                     for (const toolCall of step.toolCalls) {
@@ -314,8 +317,6 @@ export class VercelLLMService implements ILLMService {
                 }
             }
         }
-        // Removed the 'else' block that manually added response.text,
-        // as the loop should now handle all message types correctly.
 
         const fullResponse = response.text; // Final text response remains the same
 
