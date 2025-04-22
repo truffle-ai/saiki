@@ -43,30 +43,16 @@ export class OpenAIService implements ILLMService {
 
     constructor(
         clientManager: ClientManager,
-        systemPrompt: string,
-        apiKey: string,
+        openai: OpenAI,
         agentEventBus: EventEmitter,
-        model?: string
+        messageManager: MessageManager,
+        model: string
     ) {
-        this.model = model || 'gpt-4o-mini';
-        this.openai = new OpenAI({ apiKey });
+        this.model = model;
+        this.openai = openai;
         this.clientManager = clientManager;
-
-        // Initialize Formatter, Tokenizer, and get Max Tokens
-        const formatter = new OpenAIMessageFormatter();
-        const tokenizer = createTokenizer('openai', this.model);
-        const rawMaxTokens = getMaxTokens('openai', this.model);
-        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-
-        // Initialize MessageManager with OpenAIFormatter
-        this.messageManager = new MessageManager(
-            formatter,
-            systemPrompt || DETAILED_SYSTEM_PROMPT_TEMPLATE,
-            maxTokensWithMargin,
-            tokenizer
-        );
-
         this.eventEmitter = agentEventBus;
+        this.messageManager = messageManager;
     }
 
     getEventEmitter(): EventEmitter {

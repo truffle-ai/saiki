@@ -16,6 +16,8 @@ import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import { MessageManager } from '../messages/manager.js';
 import { getProviderFromModel } from '../../utils.js';
+import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
+import OpenAI from 'openai';
 
 /**
  * Extract and validate API key from config or environment variables
@@ -49,8 +51,26 @@ function _createInBuiltLLMService(config: LLMConfig, clientManager: ClientManage
     const apiKey = extractApiKey(config);
 
     switch (config.provider.toLowerCase()) {
-        case 'openai':
-            return new OpenAIService(clientManager, config.systemPrompt, apiKey, agentEventBus, config.model);
+        case 'openai': {
+            const formatter = new OpenAIMessageFormatter();
+            const tokenizer = createTokenizer('openai', config.model);
+            const rawMaxTokens = getMaxTokens('openai', config.model);
+            const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
+            const messageManager = new MessageManager(
+                formatter,
+                config.systemPrompt,
+                maxTokensWithMargin,
+                tokenizer
+            );
+            const openai = new OpenAI({ apiKey });
+            return new OpenAIService(
+                clientManager,
+                openai,
+                agentEventBus,
+                messageManager,
+                config.model
+            );
+        }
         case 'anthropic':
             return new AnthropicService(clientManager, config.systemPrompt, apiKey, agentEventBus, config.model);
         default:
