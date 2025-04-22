@@ -1,9 +1,9 @@
 import { AllowedToolsProvider } from './allowed-tools-provider/types.js';
 
 /**
- * Interface to get user confirmation and manage allowed tools
+ * Interface to get tool confirmation and manage allowed tools
  */
-export interface UserConfirmationProvider {
+export interface ToolConfirmationProvider {
     allowedToolsProvider: AllowedToolsProvider;
     requestConfirmation(
         details: ToolExecutionDetails,

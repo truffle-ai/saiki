@@ -1,4 +1,4 @@
-import { UserConfirmationProvider, ToolExecutionDetails } from './types.js';
+import { ToolConfirmationProvider, ToolExecutionDetails } from './types.js';
 import { logger } from '../../utils/logger.js';
 import * as readline from 'readline';
 import chalk from 'chalk';
@@ -9,11 +9,11 @@ import { AllowedToolsProvider } from './allowed-tools-provider/types.js';
 import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
 
 /**
- * Default implementation of UserConfirmationProvider
+ * CLI implementation of ToolConfirmationProvider
  * Automatically approves tools in the allowedTools set,
  * and prompts for confirmation for other tools using logger's styling
  */
-export class CLIConfirmationProvider implements UserConfirmationProvider {
+export class CLIConfirmationProvider implements ToolConfirmationProvider {
     public allowedToolsProvider: AllowedToolsProvider;
     private rl: readline.Interface | null = null;
     public settingsProvider: SettingsProvider;
@@ -29,26 +29,30 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
     /**
      * Request confirmation for executing a tool
      * @param toolDetails Details about the tool execution
-     * @param callbacks Optional callbacks for customizing the confirmation flow
+     * @param userId (Optional) The user ID for whom to request confirmation. If not provided, a default user ID will be used.
+     * @param callbacks (Optional) callbacks for customizing the confirmation flow
      * @returns Promise resolving to boolean indicating if execution is approved
+     * TODO: Use the callbacks or change to event-driven approach
      */
     async requestConfirmation(
         toolDetails: ToolExecutionDetails,
-        userId: string,
+        userId?: string,
         callbacks?: {
             displayDetails?: (details: ToolExecutionDetails) => void;
             collectInput?: () => Promise<string | boolean>;
             parseResponse?: (response: any) => boolean;
         }
     ): Promise<boolean> {
+        // Use a default userId if not provided
+        const effectiveUserId = userId ?? 'default';
         // Get user settings and check if tool approval is required
-        const userSettings = await this.settingsProvider.getUserSettings(userId);
+        const userSettings = await this.settingsProvider.getUserSettings(effectiveUserId);
         if (userSettings.toolApprovalRequired === false) {
             logger.debug(`Tool '${toolDetails.toolName}' execution is automatically approved`);
             return true;
         }
         // If the tool is in the allowed list, automatically approve
-        if (await this.allowedToolsProvider.isToolAllowed(toolDetails.toolName, userId)) {
+        if (await this.allowedToolsProvider.isToolAllowed(toolDetails.toolName, effectiveUserId)) {
             logger.debug(`Tool '${toolDetails.toolName}' is pre-approved for execution`);
             return true;
         }
@@ -61,7 +65,7 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
 
         // Add an approved tool to the list
         if (choice) {
-            await this.allowedToolsProvider.allowTool(toolDetails.toolName, userId);
+            await this.allowedToolsProvider.allowTool(toolDetails.toolName, effectiveUserId);
         }
         else {
             logger.warn(`Tool '${toolDetails.toolName}' execution denied`);

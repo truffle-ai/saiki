@@ -2,7 +2,7 @@ import { MCPClient } from './mcp-client.js';
 import { ServerConfigs, McpServerConfig } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
-import { UserConfirmationProvider } from './tool-confirmation/types.js';
+import { ToolConfirmationProvider } from './tool-confirmation/types.js';
 import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
 import { getUserId } from '../utils/user-info.js';
 
@@ -11,9 +11,9 @@ export class ClientManager {
     private clients: Map<string, ToolProvider> = new Map();
     private connectionErrors: { [key: string]: string } = {};
     private toolToClientMap: Map<string, ToolProvider> = new Map();
-    private confirmationProvider?: UserConfirmationProvider;
+    private confirmationProvider?: ToolConfirmationProvider;
 
-    constructor(confirmationProvider?: UserConfirmationProvider) {
+    constructor(confirmationProvider?: ToolConfirmationProvider) {
         // If a confirmation provider is passed, use it, otherwise use the default implementation
         this.confirmationProvider = confirmationProvider ?? new CLIConfirmationProvider();
     }
