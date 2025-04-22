@@ -4,6 +4,8 @@ import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
 import { UserConfirmationProvider } from './tool-confirmation/types.js';
 import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
+import { getUserId } from '../utils/userInfo.js';
+
 
 export class ClientManager {
     private clients: Map<string, ToolProvider> = new Map();
@@ -194,8 +196,9 @@ export class ClientManager {
      * Get all allowed tools
      * @returns Set of tool names that are allowed without confirmation
      */
-    getAllowedTools(): Set<string> {
-        return this.confirmationProvider.allowedTools;
+    async getAllowedTools(): Promise<Set<string>> {
+        const userId = getUserId();
+        return this.confirmationProvider.allowedToolsProvider.getAllowedTools(userId);
     }
 
     /**

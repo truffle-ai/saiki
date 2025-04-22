@@ -5,6 +5,8 @@ import chalk from 'chalk';
 import { InMemorySettingsProvider } from '../../settings/in-memory-provider.js';
 import { SettingsProvider } from '../../settings/types.js';
 import boxen from 'boxen';
+import { AllowedToolsProvider } from './allowed-tools-provider/types.js';
+import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
 
 /**
  * Default implementation of UserConfirmationProvider
@@ -12,13 +14,16 @@ import boxen from 'boxen';
  * and prompts for confirmation for other tools using logger's styling
  */
 export class CLIConfirmationProvider implements UserConfirmationProvider {
-    public allowedTools: Set<string>;
+    public allowedToolsProvider: AllowedToolsProvider;
     private rl: readline.Interface | null = null;
     public settingsProvider: SettingsProvider;
 
-    constructor(allowedTools?: Set<string>, settingsProvider?: SettingsProvider) {
-        this.allowedTools = allowedTools ?? new Set();
-        this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider()
+    constructor(
+        allowedToolsProvider?: AllowedToolsProvider,
+        settingsProvider?: SettingsProvider
+    ) {
+        this.allowedToolsProvider = allowedToolsProvider ?? new InMemoryAllowedToolsProvider();
+        this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider();
     }
 
     /**
@@ -29,7 +34,7 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
      */
     async requestConfirmation(
         toolDetails: ToolExecutionDetails,
-        userId?: string,
+        userId: string,
         callbacks?: {
             displayDetails?: (details: ToolExecutionDetails) => void;
             collectInput?: () => Promise<string | boolean>;
@@ -42,8 +47,8 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
             logger.debug(`Tool '${toolDetails.toolName}' execution is automatically approved`);
             return true;
         }
-        // If the tool is in the ed list, automatically approve
-        if (this.allowedTools.has(toolDetails.toolName)) {
+        // If the tool is in the allowed list, automatically approve
+        if (await this.allowedToolsProvider.isToolAllowed(toolDetails.toolName, userId)) {
             logger.debug(`Tool '${toolDetails.toolName}' is pre-approved for execution`);
             return true;
         }
@@ -56,25 +61,13 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
 
         // Add an approved tool to the list
         if (choice) {
-            await this.allowTool(toolDetails.toolName);
+            await this.allowedToolsProvider.allowTool(toolDetails.toolName, userId);
         }
         else {
             logger.warn(`Tool '${toolDetails.toolName}' execution denied`);
         }
 
         return choice;
-    }
-
-    async allowTool(toolName: string): Promise<void> {
-        this.allowedTools.add(toolName);
-    }
-
-    async disallowTool(toolName: string): Promise<void> {
-        this.allowedTools.delete(toolName);
-    }
-
-    async isToolAllowed(toolName: string): Promise<boolean> {
-        return this.allowedTools.has(toolName);
     }
 
     /**
