@@ -1,77 +1,77 @@
-import { UserConfirmationProvider, ToolExecutionDetails } from './types.js';
+import { ToolConfirmationProvider, ToolExecutionDetails } from './types.js';
 import { logger } from '../../utils/logger.js';
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { FileSettingsProvider } from '../../settings/file-settings-provider.js';
+import { InMemorySettingsProvider } from '../../settings/in-memory-provider.js';
 import { SettingsProvider } from '../../settings/types.js';
 import boxen from 'boxen';
+import { AllowedToolsProvider } from './allowed-tools-provider/types.js';
+import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
 
 /**
- * Default implementation of UserConfirmationProvider
+ * CLI implementation of ToolConfirmationProvider
  * Automatically approves tools in the allowedTools set,
  * and prompts for confirmation for other tools using logger's styling
  */
-export class CLIConfirmationProvider implements UserConfirmationProvider {
-    public allowedTools: Set<string>;
+export class CLIConfirmationProvider implements ToolConfirmationProvider {
+    public allowedToolsProvider: AllowedToolsProvider;
     private rl: readline.Interface | null = null;
     public settingsProvider: SettingsProvider;
 
-    constructor(allowedTools?: Set<string>, settingsProvider?: SettingsProvider) {
-        this.allowedTools = allowedTools ?? new Set();
-        this.settingsProvider = settingsProvider ?? new FileSettingsProvider()
+    constructor(
+        allowedToolsProvider?: AllowedToolsProvider,
+        settingsProvider?: SettingsProvider
+    ) {
+        this.allowedToolsProvider = allowedToolsProvider ?? new InMemoryAllowedToolsProvider();
+        this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider();
     }
 
     /**
      * Request confirmation for executing a tool
-     * @param details Details about the tool execution
-     * @param callbacks Optional callbacks for customizing the confirmation flow
+     * @param toolDetails Details about the tool execution
+     * @param userId (Optional) The user ID for whom to request confirmation. If not provided, a default user ID will be used.
+     * @param callbacks (Optional) callbacks for customizing the confirmation flow
      * @returns Promise resolving to boolean indicating if execution is approved
+     * TODO: Use the callbacks or change to event-driven approach
      */
     async requestConfirmation(
-        details: ToolExecutionDetails,
+        toolDetails: ToolExecutionDetails,
+        userId?: string,
         callbacks?: {
             displayDetails?: (details: ToolExecutionDetails) => void;
             collectInput?: () => Promise<string | boolean>;
             parseResponse?: (response: any) => boolean;
         }
     ): Promise<boolean> {
-        if ((await this.settingsProvider.getUserSettings()).settings.toolApprovalRequired === false) {
-            logger.debug(`Tool '${details.toolName}' execution is automatically approved`);
+        // Use a default userId if not provided
+        const effectiveUserId = userId ?? 'default';
+        // Get user settings and check if tool approval is required
+        const userSettings = await this.settingsProvider.getUserSettings(effectiveUserId);
+        if (userSettings.toolApprovalRequired === false) {
+            logger.debug(`Tool '${toolDetails.toolName}' execution is automatically approved`);
             return true;
         }
-        // If the tool is in the ed list, automatically approve
-        if (this.allowedTools.has(details.toolName)) {
-            logger.debug(`Tool '${details.toolName}' is pre-approved for execution`);
+        // If the tool is in the allowed list, automatically approve
+        if (await this.allowedToolsProvider.isToolAllowed(toolDetails.toolName, effectiveUserId)) {
+            logger.debug(`Tool '${toolDetails.toolName}' is pre-approved for execution`);
             return true;
         }
 
         // Display tool call using the logger's built-in method
-        logger.toolCall(details.toolName, details.args);
+        logger.toolCall(toolDetails.toolName, toolDetails.args);
 
         // Collect user input with arrow key navigation
         const choice = await this.collectArrowKeyInput();
 
         // Add an approved tool to the list
         if (choice) {
-            await this.allowTool(details.toolName);
+            await this.allowedToolsProvider.allowTool(toolDetails.toolName, effectiveUserId);
         }
         else {
-            logger.warn(`Tool '${details.toolName}' execution denied`);
+            logger.warn(`Tool '${toolDetails.toolName}' execution denied`);
         }
 
         return choice;
-    }
-
-    async allowTool(toolName: string): Promise<void> {
-        this.allowedTools.add(toolName);
-    }
-
-    async disallowTool(toolName: string): Promise<void> {
-        this.allowedTools.delete(toolName);
-    }
-
-    async isToolAllowed(toolName: string): Promise<boolean> {
-        return this.allowedTools.has(toolName);
     }
 
     /**

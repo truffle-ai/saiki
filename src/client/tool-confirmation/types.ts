@@ -1,10 +1,13 @@
+import { AllowedToolsProvider } from './allowed-tools-provider/types.js';
+
 /**
- * Interface for tool confirmation provider for client
+ * Interface to get tool confirmation and manage allowed tools
  */
-export interface UserConfirmationProvider {
-    allowedTools: Set<string>,
+export interface ToolConfirmationProvider {
+    allowedToolsProvider: AllowedToolsProvider;
     requestConfirmation(
         details: ToolExecutionDetails,
+        userId?: string,
         callbacks?: {
             displayDetails?: (details: ToolExecutionDetails) => void;
             collectInput?: () => Promise<string | boolean>;
