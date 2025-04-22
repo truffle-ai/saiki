@@ -11,6 +11,7 @@ import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import { getProviderFromModel } from '../../utils.js';
 import { InternalMessage, ImageData } from '../messages/types.js';
+import { IMessageFormatter } from '../messages/formatters/types.js';
 
 /**
  * Vercel implementation of LLMService
@@ -21,6 +22,7 @@ export class VercelLLMService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private formatter: IMessageFormatter;
 
     constructor(clientManager: ClientManager, model: LanguageModelV1, agentEventBus: EventEmitter, systemPrompt: string) {
         this.model = model;
@@ -35,8 +37,9 @@ export class VercelLLMService implements ILLMService {
 
         // Use vercel formatter to match the message format vercel expects
         const formatter = new VercelMessageFormatter();
+        this.formatter = formatter;
 
-        // Update MessageManager initialization
+        // Initialize MessageManager with Vercel formatter
         this.messageManager = new MessageManager(
             formatter,
             systemPrompt,
@@ -190,134 +193,15 @@ export class VercelLLMService implements ILLMService {
             maxSteps: maxSteps,
         });
 
-        // Add all generated messages from the generateText response to the message manager,
-        // ensuring correct formatting for each role type.
-        if (response.response?.messages && response.response.messages.length > 0) {
-            logger.debug(
-                `Adding ${response.response.messages.length} messages from generateText response to manager.`
-            );
-            for (const message of response.response.messages) {
-                // Use type assertion for role to help TypeScript
-                const role = message.role as InternalMessage['role'];
-
-                switch (role) {
-                    case 'user':
-                        // Assuming user message content is always a simple string here
-                        if (typeof message.content === 'string') {
-                            this.messageManager.addUserMessage(message.content);
-                        } else { 
-                             // Handle array content for user messages (potentially multimodal)
-                             // For now, just log a warning if we receive an array from the API response.
-                             // We might need more sophisticated handling if the API can return complex user messages.
-                            logger.warn(
-                                `[VercelLLMService] Received user message with non-string content (likely multimodal input): ${JSON.stringify(message.content)}`
-                            );
-                            // Optionally, attempt to extract text if possible?
-                             let extractedText = '';
-                             if (Array.isArray(message.content)) {
-                                 message.content.forEach(part => {
-                                     if (part.type === 'text' && typeof part.text === 'string') {
-                                         extractedText += part.text + ' ';
-                                     }
-                                 });
-                             }
-                             if (extractedText.trim()) {
-                                 this.messageManager.addUserMessage(extractedText.trim());
-                             } else {
-                                 logger.warn(`[VercelLLMService] Could not extract text from user message content.`);
-                             }
-                        }
-                        break;
-                    case 'assistant': {
-                        let assistantContent: string | null = null;
-                        const assistantToolCalls: InternalMessage['toolCalls'] = [];
-
-                        // Check content type for assistant message
-                        if (typeof message.content === 'string') {
-                            assistantContent = message.content;
-                        } else if (Array.isArray(message.content)) {
-                            // Assert part type within the loop if necessary, or check structure
-                            for (const part of message.content as any[]) { // Using 'as any[]' for simplicity, refine if needed
-                                if (part.type === 'text' && typeof part.text === 'string') {
-                                    assistantContent =
-                                        (assistantContent || '') + part.text;
-                                } else if (
-                                    part.type === 'tool-call' &&
-                                    typeof part.toolCallId === 'string' &&
-                                    typeof part.toolName === 'string'
-                                ) {
-                                    assistantToolCalls.push({
-                                        id: part.toolCallId,
-                                        type: 'function', // Map to internal 'function' type
-                                        function: {
-                                            name: part.toolName,
-                                            arguments:
-                                                typeof part.args === 'string'
-                                                    ? part.args
-                                                    : JSON.stringify(part.args ?? null), // Ensure args are stringified, handle null/undefined
-                                        },
-                                    });
-                                }
-                                // Handle other part types like 'reasoning' if needed
-                            }
-                        }
-
-                        // Add assistant message if it has content or tool calls
-                        if (assistantContent !== null || assistantToolCalls.length > 0) {
-                            this.messageManager.addAssistantMessage(
-                                assistantContent,
-                                assistantToolCalls.length > 0 ? assistantToolCalls : undefined
-                            );
-                        } else {
-                            logger.warn(
-                                `[VercelLLMService] Skipping empty assistant message: ${JSON.stringify(message)}`
-                            );
-                        }
-                        break;
-                    }
-                    case 'tool':
-                        // Tool messages have content as an array of ToolResultPart
-                        if (Array.isArray(message.content)) {
-                            // Assert part type within the loop or check structure
-                            for (const part of message.content as any[]) { // Using 'as any[]' for simplicity
-                                if (
-                                    part.type === 'tool-result' &&
-                                    typeof part.toolCallId === 'string' &&
-                                    typeof part.toolName === 'string'
-                                ) {
-                                    // Use the dedicated method which handles result stringification
-                                    this.messageManager.addToolResult(
-                                        part.toolCallId,
-                                        part.toolName,
-                                        part.result // addToolResult handles stringification
-                                    );
-                                }
-                            }
-                        } else {
-                            logger.warn(
-                                `[VercelLLMService] Skipping tool message with unexpected content format: ${JSON.stringify(message.content)}`
-                            );
-                        }
-                        break;
-                    case 'system':
-                        // Avoid adding system prompts directly to history if possible
-                        if (typeof message.content === 'string') {
-                            logger.warn(`[VercelLLMService] Received system message in response.messages, attempting to update system prompt.`);
-                            this.messageManager.setSystemPrompt(message.content);
-                        }
-                        break;
-                    default:
-                        // Use 'role' variable which has the asserted type
-                        logger.warn(`[VercelLLMService] Unknown message role in response: ${role}`);
-                        break;
-                }
+        // Parse and append each new InternalMessage from the formatter
+        if (typeof this.formatter.parseResponse === 'function') {
+            const newMsgs = this.formatter.parseResponse(response) || [];
+            for (const msg of newMsgs) {
+                this.messageManager.addMessage(msg);
             }
         }
-
-        const fullResponse = response.text; // Final text response remains the same
-
-        this.eventEmitter.emit('llmservice:response', fullResponse);
-        return fullResponse;
+        // Return the plain text of the response
+        return response.text;
     }
 
     async processStream(
