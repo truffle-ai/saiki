@@ -94,7 +94,6 @@ export async function runAiCli(clientManager: ClientManager, llmService: ILLMSer
                     await llmService.completeTask(userInput);
                 } catch (error) {
                     logger.error(`Error in processing input: ${error.message}`);
-                    // Optionally, you could emit an error event here as well
                 }
             }
         } finally {
