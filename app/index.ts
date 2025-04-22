@@ -108,15 +108,15 @@ async function startAgent() {
         logger.info('===============================================\n');
 
         // Use the shared initializer
-        const { clientManager, llmService } = await initializeServices(config, connectionMode);
+        const { clientManager, llmService, agentEventBus } = await initializeServices(config, connectionMode);
 
         // Start based on mode
         if (runMode === 'cli') {
             // Run CLI
-            await runAiCli(clientManager, llmService);
+            await runAiCli(clientManager, llmService, agentEventBus);
         } else if (runMode === 'web') {
             // Run WebUI
-            initializeWebUI(clientManager, llmService, webPort);
+            initializeWebUI(clientManager, llmService, agentEventBus, webPort);
             logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
             // Note: Web server runs indefinitely, no need to await here unless
             // you specifically want the script to only exit when the server does.

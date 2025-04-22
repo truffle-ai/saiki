@@ -21,10 +21,10 @@ export class VercelLLMService implements ILLMService {
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
 
-    constructor(clientManager: ClientManager, model: LanguageModelV1, systemPrompt: string) {
+    constructor(clientManager: ClientManager, model: LanguageModelV1, agentEventBus: EventEmitter, systemPrompt: string) {
         this.model = model;
         this.clientManager = clientManager;
-        this.eventEmitter = new EventEmitter();
+        this.eventEmitter = agentEventBus;
 
         // Detect provider, get tokenizer, and max tokens
         this.provider = getProviderFromModel(this.model.modelId);
@@ -96,7 +96,7 @@ export class VercelLLMService implements ILLMService {
 
         try {
             while (iterationCount < 1) {
-                this.eventEmitter.emit('thinking');
+                this.eventEmitter.emit('llmservice:thinking');
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
@@ -136,7 +136,7 @@ export class VercelLLMService implements ILLMService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in Vercel LLM service execution: ${errorMessage}`, { error });
             this.eventEmitter.emit(
-                'error',
+                'llmservice:error',
                 error instanceof Error ? error : new Error(errorMessage)
             );
             return `Error processing request: ${errorMessage}`;
@@ -171,7 +171,7 @@ export class VercelLLMService implements ILLMService {
                     // For now, don't add assistant message with tool calls to history
                     // Just emit the events
                     for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit('toolCall', toolCall.toolName, toolCall.args);
+                        this.eventEmitter.emit('llmservice:toolCall', toolCall.toolName, toolCall.args);
                     }
                 }
 
@@ -181,7 +181,7 @@ export class VercelLLMService implements ILLMService {
                         // For now, don't add tool results to message manager
                         // Just emit the events
                         this.eventEmitter.emit(
-                            'toolResult',
+                            'llmservice:toolResult',
                             toolResult.toolName,
                             toolResult.result
                         );
@@ -196,7 +196,7 @@ export class VercelLLMService implements ILLMService {
         // Add final assistant message
         this.messageManager.addAssistantMessage(fullResponse);
 
-        this.eventEmitter.emit('response', fullResponse);
+        this.eventEmitter.emit('llmservice:response', fullResponse);
         return fullResponse;
     }
 
@@ -215,7 +215,7 @@ export class VercelLLMService implements ILLMService {
         // Add final assistant message, might not be needed
         this.messageManager.addAssistantMessage(fullResponse);
 
-        this.eventEmitter.emit('response', fullResponse);
+        this.eventEmitter.emit('llmservice:response', fullResponse);
         return fullResponse;
     }
 
@@ -234,13 +234,13 @@ export class VercelLLMService implements ILLMService {
             onChunk: (chunk) => {
                 logger.debug(`Chunk type: ${chunk.chunk.type}`);
                 if (chunk.chunk.type === 'text-delta') {
-                    this.eventEmitter.emit('chunk', chunk.chunk.textDelta);
+                    this.eventEmitter.emit('llmservice:chunk', chunk.chunk.textDelta);
                 }
             },
             onError: (error) => {
                 logger.error(`Error in streamText: ${JSON.stringify(error, null, 2)}`);
                 this.eventEmitter.emit(
-                    'error',
+                    'llmservice:error',
                     error instanceof Error ? error : new Error(String(error))
                 );
             },
@@ -261,7 +261,7 @@ export class VercelLLMService implements ILLMService {
                     // Don't add assistant message with tool calls to history
                     // Just emit the events
                     for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit('toolCall', toolCall.toolName, toolCall.args);
+                        this.eventEmitter.emit('llmservice:toolCall', toolCall.toolName, toolCall.args);
                     }
                 }
 
@@ -271,7 +271,7 @@ export class VercelLLMService implements ILLMService {
                         // Don't add tool results to message manager
                         // Just emit the events
                         this.eventEmitter.emit(
-                            'toolResult',
+                            'llmservice:toolResult',
                             toolResult.toolName,
                             toolResult.result
                         );
@@ -305,7 +305,7 @@ export class VercelLLMService implements ILLMService {
 
     resetConversation(): void {
         this.messageManager.reset();
-        this.eventEmitter.emit('conversationReset');
+        this.eventEmitter.emit('llmservice:conversationReset');
     }
 
     /**
