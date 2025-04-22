@@ -10,6 +10,8 @@ import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
 import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
+import { AgentEventManager } from '../src/ai/llm/events/event-manager.js';
+import { CLISubscriber } from './cli/cli-subscriber.js';
 
 // Load environment variables
 dotenv.config();
@@ -53,7 +55,7 @@ program
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
-    .option('--mode <mode>', 'Run mode: cli or web', 'cli')
+    .option('--mode <mode>', 'Run mode: cli, web, or gameboy', 'cli')
     .option('--web-port <port>', 'Port for WebUI', '3000')
     .version('0.2.0');
 
@@ -68,8 +70,8 @@ const webPort = parseInt(options.webPort, 10);
 const resolveFromPackageRoot = configFile === DEFAULT_CONFIG_PATH; // Check if should resolve from package root
 
 // Validate run mode
-if (!['cli', 'web'].includes(runMode)) {
-    logger.error(`Invalid mode: ${runMode}. Must be 'cli' or 'web'.`);
+if (!['cli', 'web', 'gameboy'].includes(runMode)) {
+    logger.error(`Invalid mode: ${runMode}. Must be 'cli', 'web', or 'gameboy'.`);
     process.exit(1);
 }
 
@@ -120,6 +122,50 @@ async function startAgent() {
             logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
             // Note: Web server runs indefinitely, no need to await here unless
             // you specifically want the script to only exit when the server does.
+        } else if (runMode === 'gameboy') {
+            logger.info('Starting GameBoy agent...', null, 'magenta');
+            // Hook up CLI subscriber to display tool calls and results
+            const eventManager = new AgentEventManager(llmService);
+            const cliSubscriber = new CLISubscriber();
+            eventManager.registerSubscriber(cliSubscriber);
+            let gameOver = false;
+            // Detect end of game on 'stop' tool call
+            llmService.getEventEmitter().on('toolCall', (toolName: string) => {
+                if (toolName === 'stop') gameOver = true;
+            });
+            // Start the game
+            const gamePath = "C:\\Users\\nutme\\Desktop\\Dragonballz\\Projects\\Truffle\\gameboy\\roms\\2048.gb";
+            await llmService.completeTask(`start ${gamePath}`);
+            // Loop: feed screenshots until game ends
+            while (!gameOver) {
+                const imageBuffer = await clientManager.readResource('screenshot://latest');
+                // Extract base64 blob from the ResourceResponse structure
+                let imageBase64: string | undefined;
+                if (
+                    imageBuffer &&
+                    Array.isArray(imageBuffer.contents) &&
+                    imageBuffer.contents.length > 0 &&
+                    typeof imageBuffer.contents[0].blob === 'string'
+                ) {
+                    imageBase64 = imageBuffer.contents[0].blob;
+                } else {
+                    logger.warn('Could not extract base64 blob from screenshot resource response.', {
+                        response: imageBuffer,
+                    });
+                }
+                // If we extracted the base64 string, send it to the LLM
+                if (imageBase64) {
+                    await llmService.completeTask('screenshot', {
+                        image: imageBase64,
+                        mimeType: 'image/png', // Use correct mimeType
+                    });
+                } else {
+                    logger.warn('Received screenshot resource is not a Buffer. Skipping LLM call.');
+                    // Potentially add a delay or alternative error handling here
+                }
+            }
+            logger.info('Game over!', null, 'magenta');
+            process.exit(0);
         }
     } catch (error) {
         logger.error(
