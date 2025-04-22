@@ -2,7 +2,7 @@ import { UserConfirmationProvider, ToolExecutionDetails } from './types.js';
 import { logger } from '../../utils/logger.js';
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { FileSettingsProvider } from '../../settings/file-settings-provider.js';
+import { InMemorySettingsProvider } from '../../settings/in-memory-provider.js';
 import { SettingsProvider } from '../../settings/types.js';
 import boxen from 'boxen';
 
@@ -18,45 +18,48 @@ export class CLIConfirmationProvider implements UserConfirmationProvider {
 
     constructor(allowedTools?: Set<string>, settingsProvider?: SettingsProvider) {
         this.allowedTools = allowedTools ?? new Set();
-        this.settingsProvider = settingsProvider ?? new FileSettingsProvider()
+        this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider()
     }
 
     /**
      * Request confirmation for executing a tool
-     * @param details Details about the tool execution
+     * @param toolDetails Details about the tool execution
      * @param callbacks Optional callbacks for customizing the confirmation flow
      * @returns Promise resolving to boolean indicating if execution is approved
      */
     async requestConfirmation(
-        details: ToolExecutionDetails,
+        toolDetails: ToolExecutionDetails,
+        userId?: string,
         callbacks?: {
             displayDetails?: (details: ToolExecutionDetails) => void;
             collectInput?: () => Promise<string | boolean>;
             parseResponse?: (response: any) => boolean;
         }
     ): Promise<boolean> {
-        if ((await this.settingsProvider.getUserSettings()).settings.toolApprovalRequired === false) {
-            logger.debug(`Tool '${details.toolName}' execution is automatically approved`);
+        // Get user settings and check if tool approval is required
+        const userSettings = await this.settingsProvider.getUserSettings(userId);
+        if (userSettings.toolApprovalRequired === false) {
+            logger.debug(`Tool '${toolDetails.toolName}' execution is automatically approved`);
             return true;
         }
         // If the tool is in the ed list, automatically approve
-        if (this.allowedTools.has(details.toolName)) {
-            logger.debug(`Tool '${details.toolName}' is pre-approved for execution`);
+        if (this.allowedTools.has(toolDetails.toolName)) {
+            logger.debug(`Tool '${toolDetails.toolName}' is pre-approved for execution`);
             return true;
         }
 
         // Display tool call using the logger's built-in method
-        logger.toolCall(details.toolName, details.args);
+        logger.toolCall(toolDetails.toolName, toolDetails.args);
 
         // Collect user input with arrow key navigation
         const choice = await this.collectArrowKeyInput();
 
         // Add an approved tool to the list
         if (choice) {
-            await this.allowTool(details.toolName);
+            await this.allowTool(toolDetails.toolName);
         }
         else {
-            logger.warn(`Tool '${details.toolName}' execution denied`);
+            logger.warn(`Tool '${toolDetails.toolName}' execution denied`);
         }
 
         return choice;

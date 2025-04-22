@@ -1,7 +1,7 @@
 import { SettingsProvider, UserSettings } from "./types.js";
 import { getDefaultUserSettings } from "./utils.js";
 
-export class FileSettingsProvider implements SettingsProvider {
+export class InMemorySettingsProvider implements SettingsProvider {
     private userSettings: UserSettings = getDefaultUserSettings();
 
     async getUserSettings(userId?: string): Promise<UserSettings> {
@@ -9,6 +9,6 @@ export class FileSettingsProvider implements SettingsProvider {
     }
 
     async updateUserSettings(userId: string, settings: UserSettings): Promise<void> {
-        // TODO: write to file
+        this.userSettings = settings;
     }
 }

@@ -71,12 +71,6 @@ export class ClientManager {
     }
 
     /**
-     * Check if a tool is allowed to execute without confirmation
-     * @param toolName Name of the tool to check
-     * @returns boolean indicating if the tool is pre-approved
-     */
-
-    /**
      * Execute a specific tool with the given arguments
      * @param toolName Name of the tool to execute
      * @param args Arguments to pass to the tool
