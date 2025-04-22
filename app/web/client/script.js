@@ -12,7 +12,6 @@ marked.use({ sanitize: true });
 // --- Wait for DOMContentLoaded before initializing UI and listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     // --- Get DOM Elements --- 
-    const messageList = document.getElementById('message-list');
     const messageListWrapper = document.getElementById('message-list-wrapper');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
@@ -33,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeImageBtn = document.getElementById('remove-image-btn');
 
     // --- Check if critical elements exist ---
-    if (!messageList || !messageListWrapper || !userInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv || !chatLog || !imageUpload || !imagePreviewContainer || !imagePreview || !removeImageBtn) {
+    if (!chatLog || !messageListWrapper || !userInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv || !imageUpload || !imagePreviewContainer || !imagePreview || !removeImageBtn) {
         console.error("Initialization failed: One or more required DOM elements not found.");
         // Display error to user if possible
         if (chatLog) {
@@ -43,19 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
              chatLog.appendChild(errorElement);
         }
         return; // Stop further execution
-    }
-
-    // --- Helper Functions (Defined inside DOMContentLoaded) ---
-
-    // Function to update the status indicator
-    function updateStatus(text, className) {
-        if (statusIndicator) { // Check if element exists
-           statusIndicator.className = className; // Apply class for styling (e.g., connected, error, thinking)
-           statusIndicator.setAttribute('data-tooltip', text); // Update tooltip text
-           console.log(`Status updated: ${text} (${className})`); // Optional logging
-        } else {
-           console.error("Status indicator element not found.");
-        }
     }
 
     function scrollToBottom() {
@@ -120,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
             thinkingIndicatorElement.appendChild(innerSpan);
             thinkingIndicatorElement.setAttribute('role', 'status');
             thinkingIndicatorElement.setAttribute('aria-live', 'polite');
-            messageList.appendChild(thinkingIndicatorElement);
+            chatLog.appendChild(thinkingIndicatorElement);
             if (shouldScroll) {
                 scrollToBottom();
             }
@@ -169,9 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Send via WebSocket instead of fetch
         if (ws && ws.readyState === WebSocket.OPEN) {
-            // Indicate processing state without clearing 'connected'
-            statusIndicator.classList.add('thinking');
-            statusIndicator.setAttribute('data-tooltip', 'Processing...');
             const payload = { type: 'message', content: messageToSend, imageData: imageDataToSend };
             ws.send(JSON.stringify(payload));
         } else {
@@ -256,9 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     messageElement.innerHTML = finalHtmlContent; // Set the parsed HTML content
                     chatLog.appendChild(messageElement);
                 }
-                // remove thinking indicator only
-                statusIndicator.classList.remove('thinking');
-                statusIndicator.setAttribute('data-tooltip', 'Connected');
+                // done handling AI response
                 break;
             }
             case 'toolCall': {
@@ -288,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             }
             case 'conversationReset': {
-                messageList.innerHTML = '';
+                chatLog.innerHTML = '';
                 displaySystemMessage('Conversation history cleared.', 'status');
                 currentAiMessageElement = null;
                 shouldScroll = true;
@@ -338,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ws.onerror = (error) => {
             console.error('WebSocket error:', error);
-            statusIndicator.classList.remove('connected', 'thinking');
+            statusIndicator.classList.remove('connected');
             statusIndicator.classList.add('error');
             statusIndicator.setAttribute('data-tooltip', 'Connection Error');
             displaySystemMessage('WebSocket connection error. Please try refreshing.', 'error');
@@ -349,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ws.onclose = (event) => {
             console.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
-            statusIndicator.classList.remove('connected', 'thinking');
+            statusIndicator.classList.remove('connected');
             statusIndicator.classList.add('error');
             statusIndicator.setAttribute('data-tooltip', `Disconnected: ${event.reason || 'Connection closed'}`);
             messageInput.disabled = true;
