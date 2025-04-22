@@ -10,6 +10,7 @@ import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
 import { LanguageModelV1 } from 'ai';
 import { EventEmitter } from 'events';
+import { LLMRouter } from '../types.js';
 
 /**
  * Extract and validate API key from config or environment variables
@@ -38,7 +39,7 @@ function extractApiKey(config: LLMConfig): string {
 /**
  * Create an LLM service instance based on the provided configuration
  */
-function _createLLMService(config: LLMConfig, clientManager: ClientManager, agentEventBus: EventEmitter): ILLMService {
+function _createInBuiltLLMService(config: LLMConfig, clientManager: ClientManager, agentEventBus: EventEmitter): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
 
@@ -74,15 +75,19 @@ function _createVercelLLMService(
     return new VercelLLMService(clientManager, model, agentEventBus, config.systemPrompt);
 }
 
+/**
+ * Enum/type for LLM routing backend selection.
+ * 'vercel' = use Vercel LLM service, 'default' = use in-built LLM service
+ */
 export function createLLMService(
     config: LLMConfig,
-    vercel: boolean = false,
+    router: LLMRouter = 'vercel',
     clientManager: ClientManager,
     agentEventBus: EventEmitter
 ): ILLMService {
-    if (vercel) {
+    if (router === 'vercel') {
         return _createVercelLLMService(config, clientManager, agentEventBus);
     } else {
-        return _createLLMService(config, clientManager, agentEventBus);
+        return _createInBuiltLLMService(config, clientManager, agentEventBus);
     }
 }

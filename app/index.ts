@@ -108,7 +108,7 @@ async function startAgent() {
         logger.info('===============================================\n');
 
         // Use the shared initializer
-        const { clientManager, llmService, agentEventBus } = await initializeServices(config, connectionMode);
+        const { clientManager, llmService, agentEventBus } = await initializeServices(config, { connectionMode });
 
         // Start based on mode
         if (runMode === 'cli') {
