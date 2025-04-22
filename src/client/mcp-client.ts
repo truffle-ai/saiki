@@ -149,7 +149,7 @@ export class MCPClient implements ToolProvider {
     }
 
     async connectViaSSE(url: string, headers: Record<string, string>): Promise<Client> {
-        logger.info(`Connecting to SSE MCP server at url: ${url}`);
+        logger.debug(`Connecting to SSE MCP server at url: ${url}`);
 
         this.transport = new SSEClientTransport(new URL(url), {
             // For regular HTTP requests
@@ -175,7 +175,7 @@ export class MCPClient implements ToolProvider {
             await this.client.connect(this.transport);
             // If connection is successful, we know the server was spawned
             this.serverSpawned = true;
-            logger.info(`✅ SSE SERVER ${url} SPAWNED`);
+            logger.info(`✅ SSE SERVER SPAWNED`);
             logger.info('Connection established!\n\n');
             this.isConnected = true;
 
