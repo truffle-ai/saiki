@@ -10,7 +10,7 @@ import { VercelMessageFormatter } from '../messages/formatters/vercel.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import { getProviderFromModel } from '../../utils.js';
-import { InternalMessage } from '../messages/types.js';
+import { InternalMessage, ImageData } from '../messages/types.js';
 
 /**
  * Vercel implementation of LLMService
@@ -75,13 +75,9 @@ export class VercelLLMService implements ILLMService {
         }, {});
     }
 
-    async completeTask(userInput: string, imageData?: { image: string | Uint8Array | Buffer | ArrayBuffer | URL, mimeType?: string }): Promise<string> {
-        // Add user message - use multimodal method if imageData is provided
-        if (imageData) {
-            this.messageManager.addUserMultimodalMessage(userInput, imageData.image, imageData.mimeType);
-        } else {
-            this.messageManager.addUserMessage(userInput);
-        }
+    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+        // Add user message, with optional image data
+        this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const tools: any = await this.clientManager.getAllTools();

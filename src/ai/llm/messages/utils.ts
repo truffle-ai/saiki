@@ -33,12 +33,25 @@ export function countMessagesTokens(
                     // Count string content directly
                     total += tokenizer.countTokens(message.content);
                 } else if (Array.isArray(message.content)) {
-                    // For multimodal array content, count only text parts
+                    // For multimodal array content, count text and approximate image parts
                     message.content.forEach(part => {
                         if (part.type === 'text' && typeof part.text === 'string') {
                             total += tokenizer.countTokens(part.text);
+                        } else if (part.type === 'image') {
+                            // Approximate tokens for images: estimate ~1 token per 1KB or based on Base64 length
+                            if (typeof part.image === 'string') {
+                                // Base64 string length -> bytes -> tokens (~4 bytes per token)
+                                const byteLength = Math.floor((part.image.length * 3) / 4);
+                                total += Math.ceil(byteLength / 1024);
+                            } else if (
+                                part.image instanceof Uint8Array ||
+                                part.image instanceof Buffer ||
+                                part.image instanceof ArrayBuffer
+                            ) {
+                                const bytes = part.image instanceof ArrayBuffer ? part.image.byteLength : (part.image as Uint8Array).length;
+                                total += Math.ceil(bytes / 1024);
+                            }
                         }
-                        // Image tokens are ignored in this utility
                     });
                 }
                 // else: Handle other potential content types if necessary in the future

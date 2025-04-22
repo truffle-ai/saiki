@@ -8,6 +8,7 @@ import { MessageManager } from '../messages/manager.js';
 import { AnthropicMessageFormatter } from '../messages/formatters/anthropic.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
+import { ImageData } from '../messages/types.js';
 
 /**
  * Anthropic implementation of LLMService
@@ -58,9 +59,9 @@ export class AnthropicService implements ILLMService {
         this.messageManager.setSystemPrompt(newSystemPrompt);
     }
 
-    async completeTask(userInput: string): Promise<string> {
-        // Add user message to message manager
-        this.messageManager.addUserMessage(userInput);
+    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+        // Add user message with optional image data
+        this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();

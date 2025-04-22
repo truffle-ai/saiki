@@ -8,6 +8,7 @@ import { MessageManager } from '../messages/manager.js';
 import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
+import { ImageData } from '../messages/types.js';
 
 // System prompt constants
 
@@ -78,9 +79,9 @@ export class OpenAIService implements ILLMService {
         this.messageManager.setSystemPrompt(newSystemPrompt);
     }
 
-    async completeTask(userInput: string): Promise<string> {
-        // Add user message to history
-        this.messageManager.addUserMessage(userInput);
+    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+        // Add user message with optional image data
+        this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();

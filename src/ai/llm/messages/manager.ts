@@ -1,10 +1,11 @@
 import { IMessageFormatter } from './formatters/types.js';
-import { InternalMessage } from './types.js';
+import { InternalMessage, ImageData } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
+import { countMessagesTokens } from './utils.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -159,30 +160,17 @@ export class MessageManager {
      * @param content The user message content
      * @throws Error if content is empty or not a string
      */
-    addUserMessage(content: string): void {
-        if (typeof content !== 'string' || content.trim() === '') {
+    addUserMessage(textContent: string, imageData?: ImageData): void {
+        if (typeof textContent !== 'string' || textContent.trim() === '') {
             throw new Error('addUserMessage: Content must be a non-empty string.');
         }
-        this.addMessage({ role: 'user', content: [{ type: 'text', text: content }] }); // Wrap in array format
-    }
-
-    /**
-     * Convenience method to add a user message with text and image data.
-     *
-     * @param textContent The text part of the user message.
-     * @param image Image data (URL, Buffer, etc.).
-     * @param mimeType Optional MIME type for the image.
-     */
-    addUserMultimodalMessage(
-        textContent: string,
-        image: string | Uint8Array | Buffer | ArrayBuffer | URL,
-        mimeType?: string
-    ): void {
-        const messageContent: InternalMessage['content'] = [
-            { type: 'text', text: textContent },
-            { type: 'image', image, mimeType },
-        ];
-        this.addMessage({ role: 'user', content: messageContent });
+        const messageParts: InternalMessage['content'] = imageData
+            ? [
+                  { type: 'text', text: textContent },
+                  { type: 'image', image: imageData.image, mimeType: imageData.mimeType },
+              ]
+            : [{ type: 'text', text: textContent }];
+        this.addMessage({ role: 'user', content: messageParts });
     }
 
     /**
@@ -265,88 +253,18 @@ export class MessageManager {
     }
 
     /**
-     * Counts total tokens in current conversation including system prompt.
-     * Requires a tokenizer to be configured.
-     * @returns Total token count or null if no tokenizer is available.
+     * Counts total tokens in current InternalMessage history using the shared util.
+     * @returns Total token count or null if tokenizer is not set or counting fails.
      */
     countTotalTokens(): number | null {
         if (!this.tokenizer) return null;
-
-        let totalTokens = 0;
-
         try {
-            // Get the full message history formatted for the target LLM provider
-            const formattedMessages = this.formatter.format(this.history, this.systemPrompt);
-
-            // Iterate through the provider-specific formatted messages
-            for (const formattedMessage of formattedMessages) {
-                // --- Token Counting Logic based on potential Vercel/CoreMessage structure --- 
-                // This assumes the formatter returns something close to CoreMessage[] 
-                // Adjust if your specific formatter returns a different structure
-                
-                if (formattedMessage?.content) {
-                    if (typeof formattedMessage.content === 'string') {
-                        totalTokens += this.tokenizer.countTokens(formattedMessage.content);
-                    } else if (Array.isArray(formattedMessage.content)) {
-                        // For multimodal, currently count only text parts
-                        formattedMessage.content.forEach((part: any) => {
-                            if (part.type === 'text' && typeof part.text === 'string') {
-                                totalTokens += this.tokenizer.countTokens(part.text);
-                            }
-                            // NOTE: Image token counting is complex and omitted for now.
-                        });
-                    }
-                }
-
-                // Count tokens for tool calls if present in the formatted message
-                // Vercel SDK uses 'toolCalls' or 'tool_calls' depending on context/version
-                const toolCalls = formattedMessage?.toolCalls || formattedMessage?.tool_calls;
-                if (toolCalls) {
-                     // Stringify to approximate token cost, as structure can vary
-                    const toolCallsString = JSON.stringify(toolCalls);
-                    totalTokens += this.tokenizer.countTokens(toolCallsString);
-                }
-
-                // Count tokens for tool results if present (Vercel uses 'tool_result')
-                // Assuming 'content' for tool role might contain result parts
-                 if (formattedMessage?.role === 'tool' && Array.isArray(formattedMessage.content)) {
-                     formattedMessage.content.forEach((part: any) => {
-                         if (part.type === 'tool-result') {
-                             const resultString = JSON.stringify(part.result);
-                             totalTokens += this.tokenizer.countTokens(resultString);
-                             // Also count toolCallId and toolName if desired, though often minor
-                             if (part.toolCallId) totalTokens += this.tokenizer.countTokens(part.toolCallId);
-                             if (part.toolName) totalTokens += this.tokenizer.countTokens(part.toolName);
-                         }
-                     });
-                 }
-                
-                // --- End Token Counting Logic ---
-            }
-            
-            // Add system prompt tokens separately ONLY if the formatter doesn't include it in the main list
-            // and provides the getSystemPrompt method.
-             if (this.systemPrompt && typeof this.formatter.getSystemPrompt === 'function') {
-                 const formattedSystem = this.formatter.getSystemPrompt(this.systemPrompt);
-                 // Check if the system prompt was handled separately *and* not included in formattedMessages
-                 // (This logic might need refinement based on specific formatter behavior)
-                 const systemInMessages = formattedMessages.some((m: any) => m.role === 'system');
-                 if (formattedSystem && !systemInMessages) {
-                     totalTokens += this.tokenizer.countTokens(formattedSystem);
-                 }
-             } else if (this.systemPrompt && !formattedMessages.some((m: any) => m.role === 'system')){
-                 // Fallback if getSystemPrompt doesn't exist but system wasn't in the list
-                 // This assumes the system prompt *should* have been formatted somehow.
-                 logger.warn("MessageManager: System prompt exists but wasn't found in formatted messages and formatter lacks getSystemPrompt. Token count might be inaccurate.")
-                 // We might still try counting the raw system prompt as a best guess
-                 // totalTokens += this.tokenizer.countTokens(this.systemPrompt);
-             }
-
-            logger.debug(`MessageManager: Calculated total tokens: ${totalTokens}`);
-            return totalTokens;
+            const total = countMessagesTokens(this.history, this.tokenizer);
+            logger.debug(`MessageManager: Calculated total tokens: ${total}`);
+            return total;
         } catch (error) {
             logger.error(`MessageManager: Error counting tokens: ${error instanceof Error ? error.message : String(error)}`, { error });
-            return null; // Indicate that token counting failed
+            return null;
         }
     }
 
@@ -460,24 +378,10 @@ export class MessageManager {
                 break;
             } else if (currentTotalTokens <= this.maxTokens) {
                 logger.debug(
-                    `MessageManager: Compression successful after ${strategyName}. New count: ${currentTotalTokens}, Total messages removed: ${messagesRemoved}`
+                    `MessageManager: Compression successful after ${strategyName}. New count: ${currentTotalTokens}, messages removed: ${messagesRemoved}`
                 );
-                break; // Stop applying further strategies
-            } else {
-                logger.debug(
-                    `MessageManager: Still over limit (${currentTotalTokens} > ${this.maxTokens}) after ${strategyName}. Proceeding to next strategy if any.`
-                );
+                break;
             }
-        }
-
-        // Final check and logging (after all strategies have been attempted or loop was broken)
-        if (currentTotalTokens !== null && currentTotalTokens > this.maxTokens) {
-            logger.warn(
-                `MessageManager: Compression strategies finished, but still over token limit (${currentTotalTokens} > ${this.maxTokens}). History length: ${this.history.length}`
-            );
-        } else if (currentTotalTokens === null && this.history.length < initialLength) {
-            // If counting failed but we did remove messages, log that
-            logger.error('MessageManager: Token counting failed after attempting compression.');
         }
     }
 }

@@ -1,6 +1,7 @@
 import { LanguageModelV1 } from 'ai';
 import { EventEmitter } from 'events';
 import { ToolSet } from '../../types.js';
+import { ImageData } from '../messages/types.js';
 
 /**
  * Core interface for LLM service implementations
@@ -15,7 +16,7 @@ export interface ILLMService {
      * @param imageData Optional image data associated with the user input.
      * @returns A promise that resolves with the final text response from the AI.
      */
-    completeTask(userInput: string, imageData?: { image: string | Uint8Array | Buffer | ArrayBuffer | URL, mimeType?: string }): Promise<string>;
+    completeTask(userInput: string, imageData?: ImageData): Promise<string>;
 
     // Update the system message/context
     updateSystemContext(newSystemPrompt: string): void;
