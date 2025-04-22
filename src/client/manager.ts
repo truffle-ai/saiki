@@ -4,7 +4,7 @@ import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
 import { UserConfirmationProvider } from './tool-confirmation/types.js';
 import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
-import { getUserId } from '../utils/userInfo.js';
+import { getUserId } from '../utils/user-info.js';
 
 
 export class ClientManager {
