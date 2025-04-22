@@ -356,4 +356,24 @@ export class MessageManager {
             }
         }
     }
+
+    /**
+     * Parses a raw LLM response, converts it into internal messages and adds them to the history.
+     *
+     * @param response The response from the LLM provider
+     */
+    processLLMResponse(response: any): void {
+        const msgs = this.formatter.parseResponse(response) ?? [];
+        msgs.forEach((m) => this.addMessage(m));
+    }
+
+    /**
+     * Returns the current token count of the conversation history.
+     *
+     * @returns The number of tokens in the current history, or 0 if no tokenizer is set
+     */
+    getTokenCount(): number {
+        if (!this.tokenizer) return 0;
+        return countMessagesTokens(this.history, this.tokenizer);
+    }
 }

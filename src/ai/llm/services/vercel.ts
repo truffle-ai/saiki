@@ -6,14 +6,9 @@ import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { VercelMessageFormatter } from '../messages/formatters/vercel.js';
-import { createTokenizer } from '../tokenizer/factory.js';
-import { getMaxTokens } from '../tokenizer/utils.js';
 import { getProviderFromModel } from '../../utils.js';
-import { InternalMessage, ImageData } from '../messages/types.js';
-import { IMessageFormatter } from '../messages/formatters/types.js';
-import { countMessagesTokens } from '../messages/utils.js';
-import { ITokenizer } from '../tokenizer/types.js';
+import { getMaxTokens } from '../tokenizer/utils.js';
+import { ImageData } from '../messages/types.js';
 
 /**
  * Vercel implementation of LLMService
@@ -24,35 +19,20 @@ export class VercelLLMService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
-    private formatter: IMessageFormatter;
-    private tokenizer: ITokenizer;
 
-    constructor(clientManager: ClientManager, model: LanguageModelV1, agentEventBus: EventEmitter, systemPrompt: string) {
+    constructor(
+        clientManager: ClientManager,
+        model: LanguageModelV1,
+        agentEventBus: EventEmitter,
+        messageManager: MessageManager
+    ) {
         this.model = model;
         this.clientManager = clientManager;
         this.eventEmitter = agentEventBus;
-
-        // Detect provider, get tokenizer, and max tokens
         this.provider = getProviderFromModel(this.model.modelId);
-        const tokenizer = createTokenizer(this.provider, this.model.modelId);
-        this.tokenizer = tokenizer;
-        const rawMaxTokens = getMaxTokens(this.provider, this.model.modelId);
-        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-
-        // Use vercel formatter to match the message format vercel expects
-        const formatter = new VercelMessageFormatter();
-        this.formatter = formatter;
-
-        // Initialize MessageManager with Vercel formatter
-        this.messageManager = new MessageManager(
-            formatter,
-            systemPrompt,
-            maxTokensWithMargin,
-            tokenizer
-        );
-
+        this.messageManager = messageManager;
         logger.debug(
-            `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, formatter: VercelFormatter, maxTokens (adjusted): ${maxTokensWithMargin}`
+            `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, messageManager: ${this.messageManager}`
         );
     }
 
@@ -117,9 +97,7 @@ export class VercelLLMService implements ILLMService {
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
                 // Estimate tokens before sending (optional)
-                const currentTokens = countMessagesTokens([
-                    ...this.messageManager.getHistory(),
-                ], this.tokenizer);
+                const currentTokens = this.messageManager.getTokenCount();
                 logger.debug(
                     `Estimated tokens being sent to Vercel provider: ${currentTokens}`
                 );
@@ -197,11 +175,8 @@ export class VercelLLMService implements ILLMService {
             maxSteps: maxSteps,
         });
 
-        // Parse and append each new InternalMessage from the formatter
-        const newMsgs = this.formatter.parseResponse(response) || [];
-        for (const msg of newMsgs) {
-            this.messageManager.addMessage(msg);
-        }
+        // Parse and append each new InternalMessage from the formatter using MessageManager
+        this.messageManager.processLLMResponse(response);
         // Return the plain text of the response
         return response.text;
     }

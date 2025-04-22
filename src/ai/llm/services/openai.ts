@@ -40,7 +40,6 @@ export class OpenAIService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
-    private tokenizer: ITokenizer;
 
     constructor(
         clientManager: ClientManager,
@@ -56,7 +55,6 @@ export class OpenAIService implements ILLMService {
         // Initialize Formatter, Tokenizer, and get Max Tokens
         const formatter = new OpenAIMessageFormatter();
         const tokenizer = createTokenizer('openai', this.model);
-        this.tokenizer = tokenizer;
         const rawMaxTokens = getMaxTokens('openai', this.model);
         const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
 
@@ -226,7 +224,7 @@ export class OpenAIService implements ILLMService {
                 );
 
                 // Directly count tokens and log
-                const currentTokens = countMessagesTokens([...this.messageManager.getHistory()], this.tokenizer);
+                const currentTokens = this.messageManager.getTokenCount();
                 logger.debug(`Estimated tokens being sent to OpenAI: ${currentTokens}`);
 
                 // Call OpenAI API

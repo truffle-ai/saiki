@@ -33,10 +33,8 @@ export class AnthropicService implements ILLMService {
 
         const formatter = new AnthropicMessageFormatter();
         const tokenizer = createTokenizer('anthropic', this.model);
-
         const rawMaxTokens = getMaxTokens('anthropic', this.model);
         const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-
         this.messageManager = new MessageManager(
             formatter,
             systemPrompt,

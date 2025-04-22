@@ -11,6 +11,11 @@ import { AnthropicService } from './anthropic.js';
 import { LanguageModelV1 } from 'ai';
 import { EventEmitter } from 'events';
 import { LLMRouter } from '../types.js';
+import { VercelMessageFormatter } from '../messages/formatters/vercel.js';
+import { createTokenizer } from '../tokenizer/factory.js';
+import { getMaxTokens } from '../tokenizer/utils.js';
+import { MessageManager } from '../messages/manager.js';
+import { getProviderFromModel } from '../../utils.js';
 
 /**
  * Extract and validate API key from config or environment variables
@@ -72,7 +77,18 @@ function _createVercelLLMService(
     agentEventBus: EventEmitter
 ): VercelLLMService {
     const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
-    return new VercelLLMService(clientManager, model, agentEventBus, config.systemPrompt);
+    const provider = getProviderFromModel(model.modelId);
+    const formatter = new VercelMessageFormatter();
+    const tokenizer = createTokenizer(provider, model.modelId);
+    const rawMaxTokens = getMaxTokens(provider, model.modelId);
+    const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
+    const messageManager = new MessageManager(
+        formatter,
+        config.systemPrompt,
+        maxTokensWithMargin,
+        tokenizer
+    );
+    return new VercelLLMService(clientManager, model, agentEventBus, messageManager);
 }
 
 /**
