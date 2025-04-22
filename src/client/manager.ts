@@ -193,15 +193,6 @@ export class ClientManager {
     }
 
     /**
-     * Get all allowed tools
-     * @returns Set of tool names that are allowed without confirmation
-     */
-    async getAllowedTools(): Promise<Set<string>> {
-        const userId = getUserId();
-        return this.confirmationProvider.allowedToolsProvider.getAllowedTools(userId);
-    }
-
-    /**
      * Disconnect all clients
      */
     disconnectAll(): void {
