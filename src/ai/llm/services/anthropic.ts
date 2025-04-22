@@ -23,6 +23,7 @@ export class AnthropicService implements ILLMService {
         clientManager: ClientManager,
         systemPrompt: string,
         apiKey: string,
+        agentEventBus: EventEmitter,
         model?: string
     ) {
         this.model = model || 'claude-3-7-sonnet-20250219';
@@ -42,7 +43,7 @@ export class AnthropicService implements ILLMService {
             tokenizer
         );
 
-        this.eventEmitter = new EventEmitter();
+        this.eventEmitter = agentEventBus;
     }
 
     getEventEmitter(): EventEmitter {
@@ -68,7 +69,7 @@ export class AnthropicService implements ILLMService {
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
         // Notify thinking
-        this.eventEmitter.emit('thinking');
+        this.eventEmitter.emit('llmservice:thinking');
 
         // Maximum number of tool use iterations
         const MAX_ITERATIONS = 10;
@@ -128,7 +129,7 @@ export class AnthropicService implements ILLMService {
                 // If no tools were used, we're done
                 if (toolUses.length === 0) {
                     fullResponse += textContent;
-                    this.eventEmitter.emit('response', fullResponse);
+                    this.eventEmitter.emit('llmservice:response', fullResponse);
                     return fullResponse;
                 }
 
@@ -144,7 +145,7 @@ export class AnthropicService implements ILLMService {
                     const toolUseId = toolUse.id;
 
                     // Notify tool call
-                    this.eventEmitter.emit('toolCall', toolName, args);
+                    this.eventEmitter.emit('llmservice:toolCall', toolName, args);
 
                     // Execute tool
                     try {
@@ -154,7 +155,7 @@ export class AnthropicService implements ILLMService {
                         this.messageManager.addToolResult(toolUseId, toolName, result);
 
                         // Notify tool result
-                        this.eventEmitter.emit('toolResult', toolName, result);
+                        this.eventEmitter.emit('llmservice:toolResult', toolName, result);
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -165,17 +166,17 @@ export class AnthropicService implements ILLMService {
                             error: errorMessage,
                         });
 
-                        this.eventEmitter.emit('toolResult', toolName, { error: errorMessage });
+                        this.eventEmitter.emit('llmservice:toolResult', toolName, { error: errorMessage });
                     }
                 }
 
                 // Notify thinking for next iteration
-                this.eventEmitter.emit('thinking');
+                this.eventEmitter.emit('llmservice:thinking');
             }
 
             // If we reached max iterations
             logger.warn(`Reached maximum iterations (${MAX_ITERATIONS}) for task.`);
-            this.eventEmitter.emit('response', fullResponse);
+            this.eventEmitter.emit('llmservice:response', fullResponse);
             return (
                 fullResponse ||
                 'Reached maximum number of tool call iterations without a final response.'
@@ -186,7 +187,7 @@ export class AnthropicService implements ILLMService {
             logger.error(`Error in Anthropic service API call: ${errorMessage}`, { error });
 
             this.eventEmitter.emit(
-                'error',
+                'llmservice:error',
                 error instanceof Error ? error : new Error(errorMessage)
             );
             return `Error processing request: ${errorMessage}`;
@@ -196,7 +197,7 @@ export class AnthropicService implements ILLMService {
     resetConversation(): void {
         // Reset the message manager
         this.messageManager.reset();
-        this.eventEmitter.emit('conversationReset');
+        this.eventEmitter.emit('llmservice:conversationReset');
     }
 
     /**

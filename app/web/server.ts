@@ -1,28 +1,33 @@
 import express from 'express';
 import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws'; // Import WebSocket type
-import path from 'path';
+import { WebSocketServer, WebSocket } from 'ws';
 import { WebUISubscriber } from './web-subscriber.js';
 import { ClientManager } from '../../src/client/manager.js';
 import { ILLMService } from '../../src/ai/llm/services/types.js';
-import { AgentEventManager } from '../../src/ai/llm/events/event-manager.js';
-import { logger } from '../../src/utils/logger.js'; // Import logger
+import { logger } from '../../src/utils/logger.js';
 import { resolvePackagePath } from '../../src/utils/path.js';
+import { EventEmitter } from 'events';
 
 export async function initializeWebUI(
     clientManager: ClientManager,
     llmService: ILLMService,
+    agentEventBus: EventEmitter,
     port = 3000
 ) {
     const app = express();
     const server = http.createServer(app);
     const wss = new WebSocketServer({ server });
-    const webSubscriber = new WebUISubscriber();
 
-    // Set up event management - register the WebUISubscriber
-    const eventManager = new AgentEventManager(llmService);
-    eventManager.registerSubscriber(webSubscriber);
-    logger.info('WebUI Event Manager and Subscriber initialized.');
+    // Set up event management
+    const webSubscriber = new WebUISubscriber();
+    logger.info('Setting up WebUI event subscriptions...');
+    agentEventBus.on('llmservice:thinking', webSubscriber.onThinking.bind(webSubscriber));
+    agentEventBus.on('llmservice:chunk', webSubscriber.onChunk.bind(webSubscriber));
+    agentEventBus.on('llmservice:toolCall', webSubscriber.onToolCall.bind(webSubscriber));
+    agentEventBus.on('llmservice:toolResult', webSubscriber.onToolResult.bind(webSubscriber));
+    agentEventBus.on('llmservice:response', webSubscriber.onResponse.bind(webSubscriber));
+    agentEventBus.on('llmservice:error', webSubscriber.onError.bind(webSubscriber));
+    agentEventBus.on('llmservice:conversationReset', webSubscriber.onConversationReset.bind(webSubscriber));
 
     // Serve static files from the package's public directory using the helper
     const publicPath = resolvePackagePath('public', true);
@@ -142,5 +147,5 @@ export async function initializeWebUI(
     });
 
     // Return references that might be useful (e.g., for testing or graceful shutdown)
-    return { server, wss, eventManager, webSubscriber };
+    return { server, wss, webSubscriber };
 }

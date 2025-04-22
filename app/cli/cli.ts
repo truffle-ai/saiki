@@ -3,15 +3,14 @@ import chalk from 'chalk';
 import { ClientManager } from '../../src/client/manager.js'; // Adjusted path
 import { logger } from '../../src/utils/logger.js'; // Adjusted path
 import { ILLMService } from '../../src/ai/llm/services/types.js'; // Adjusted path
-import { AgentEventManager } from '../../src/ai/llm/events/event-manager.js'; // Adjusted path
 import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new location
-
+import { EventEmitter } from 'events';
 /**
  * Run the AI CLI with the given LLM service
  * @param clientManager Client manager with registered tool providers
  * @param llmService LLM service implementation
  */
-export async function runAiCli(clientManager: ClientManager, llmService: ILLMService) {
+export async function runAiCli(clientManager: ClientManager, llmService: ILLMService, agentEventBus: EventEmitter) {
     // Get model and provider info directly from the LLM service
     logger.info(
         `Using model config: ${JSON.stringify(llmService.getConfig(), null, 2)}`,
@@ -28,10 +27,15 @@ export async function runAiCli(clientManager: ClientManager, llmService: ILLMSer
 
     try {
         // Set up event management
-        logger.info('Setting up event manager and cli logging...');
-        const eventManager = new AgentEventManager(llmService);
+        logger.info('Setting up CLI event subscriptions...');
         const cliSubscriber = new CLISubscriber();
-        eventManager.registerSubscriber(cliSubscriber);
+        agentEventBus.on('llmservice:thinking', cliSubscriber.onThinking.bind(cliSubscriber));
+        agentEventBus.on('llmservice:chunk', cliSubscriber.onChunk.bind(cliSubscriber));
+        agentEventBus.on('llmservice:toolCall', cliSubscriber.onToolCall.bind(cliSubscriber));
+        agentEventBus.on('llmservice:toolResult', cliSubscriber.onToolResult.bind(cliSubscriber));
+        agentEventBus.on('llmservice:response', cliSubscriber.onResponse.bind(cliSubscriber));
+        agentEventBus.on('llmservice:error', cliSubscriber.onError.bind(cliSubscriber));
+        agentEventBus.on('llmservice:conversationReset', cliSubscriber.onConversationReset.bind(cliSubscriber));
 
         // Get available tools from all connected servers
         logger.info('Loading available tools...');
@@ -74,7 +78,6 @@ export async function runAiCli(clientManager: ClientManager, llmService: ILLMSer
 
                 if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
                     logger.warn('Exiting AI CLI. Goodbye!');
-                    eventManager.removeSubscriber(cliSubscriber);
                     rl.close();
                     // Use process.exit(0) for a clean exit in CLI mode
                     process.exit(0);
@@ -96,8 +99,6 @@ export async function runAiCli(clientManager: ClientManager, llmService: ILLMSer
             }
         } finally {
             // Ensure cleanup happens even if the loop breaks unexpectedly
-            // rl.close() is idempotent, and removeSubscriber should be safe
-            eventManager.removeSubscriber(cliSubscriber);
             rl.close();
         }
     } catch (error) {

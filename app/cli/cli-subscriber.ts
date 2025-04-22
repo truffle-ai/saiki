@@ -1,13 +1,20 @@
-import { AgentSubscriber } from '../../src/ai/llm/events/types.js';
 import { logger } from '../../src/utils/logger.js';
 import boxen from 'boxen';
 import chalk from 'chalk';
 
 /**
- * CLI implementation of AgentSubscriber that handles displaying AI responses and events
- * in a terminal interface
+ * Wrapper class to store methods describing how the CLI should handle agent events
+ *
+ * Minimum expected event handler methods (for LLMService events)
+ *   - onThinking(): void
+ *   - onChunk(text: string): void
+ *   - onToolCall(toolName: string, args: any): void
+ *   - onToolResult(toolName: string, result: any): void
+ *   - onResponse(text: string): void
+ *   - onError(error: Error): void
+ *   - onConversationReset(): void
  */
-export class CLISubscriber implements AgentSubscriber {
+export class CLISubscriber {
     private accumulatedResponse: string = '';
     private currentLines: number = 0;
 

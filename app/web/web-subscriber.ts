@@ -1,7 +1,18 @@
-import { AgentSubscriber } from '../../src/ai/llm/events/types.js';
 import { WebSocket } from 'ws';
 
-export class WebUISubscriber implements AgentSubscriber {
+/**
+ * Wrapper class to store methods describing how the WebUI should handle agent events
+ *
+ * Minimum expected event handler methods (for LLMService events)
+ *   - onThinking(): void
+ *   - onChunk(text: string): void
+ *   - onToolCall(toolName: string, args: any): void
+ *   - onToolResult(toolName: string, result: any): void
+ *   - onResponse(text: string): void
+ *   - onError(error: Error): void
+ *   - onConversationReset(): void
+ */
+export class WebUISubscriber {
     private connections: Set<WebSocket> = new Set();
 
     addConnection(ws: WebSocket): void {
