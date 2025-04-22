@@ -27,18 +27,18 @@ export async function initializeServices(
 ): Promise<AgentServices> {
     // 1. Create the shared event bus
     const agentEventBus = new EventEmitter();
+    logger.debug('Agent event bus initialized');
 
-    // 2. Initialize client manager with server configs from unified config
+    // 2. Initialize client manager with the mcp server configs and connection mode
     const clientManager = new ClientManager();
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
-    logger.debug('MCP servers initialized');
+    logger.debug('Client manager and MCP servers initialized');
 
     // 3. Initialize the LLMService
     // Change vercel to false to use other LLM services
     const vercel = true;
     const llmService = createLLMService(config.llm, vercel, clientManager, agentEventBus);
-
-    logger.debug('LLM service created');
+    logger.debug('LLM service initialized');
 
     return { clientManager, llmService, agentEventBus };
 }
