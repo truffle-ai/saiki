@@ -16,6 +16,7 @@ import { ITokenizer } from '../tokenizer/types.js';
  * @param config LLMConfig object containing provider, model, systemPrompt, etc.
  * @param router LLMRouter flag ('vercel', 'default', etc.)
  * @returns MessageManager instance
+ * TODO: Make compression strategy also configurable
  */
 export function createMessageManager(
     config: LLMConfig,
