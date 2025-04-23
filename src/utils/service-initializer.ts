@@ -5,6 +5,8 @@ import { createLLMService } from '../ai/llm/services/factory.js';
 import { logger } from './logger.js';
 import { EventEmitter } from 'events';
 import { LLMRouter } from '../ai/llm/types.js';
+import { MessageManager } from '../ai/llm/messages/manager.js';
+import { createMessageManager } from '../ai/llm/messages/factory.js';
 
 /**
  * Type for the core agent services returned by initializeServices
@@ -13,6 +15,7 @@ export type AgentServices = {
     clientManager: ClientManager;
     llmService: ILLMService;
     agentEventBus: EventEmitter;
+    messageManager: MessageManager;
 };
 
 /**
@@ -28,6 +31,7 @@ export type InitializeServicesOptions = {
     llmService?: ILLMService;         // Inject a custom or mock LLMService
     agentEventBus?: EventEmitter;     // Inject a custom or mock EventEmitter
     llmRouter?: LLMRouter; // Route LLM calls via Vercel (default) or use in-built
+    messageManager?: MessageManager;  // Inject a custom or mock MessageManager
     // Add more overrides as needed
     // configOverride?: Partial<AgentConfig>; // (optional) for field-level config overrides
 };
@@ -62,17 +66,24 @@ export async function initializeServices(
     }
 
     /**
-     * 3. Initialize or use the LLMService (allows override for tests/mocks)
+     * 3. Initialize or use the MessageManager (allows override for tests/mocks)
+     *    - Uses llmRouter from options to select the correct message formatting/tokenization backend
+     *    - 'vercel' = Vercel-style message formatting (default), 'default' = in-built provider-specific formatting
+     */
+    const router: LLMRouter = options?.llmRouter ?? 'vercel';
+    const messageManager = options?.messageManager ?? createMessageManager(config.llm, router);
+
+    /**
+     * 4. Initialize or use the LLMService (allows override for tests/mocks)
      *    - Use llmRouter from options to select LLM routing backend
      *    - 'vercel' = route via Vercel LLM service (default), 'default' = use in-built LLM services
      */
-    const router: LLMRouter = options?.llmRouter ?? 'vercel';
-    const llmService = options?.llmService ?? createLLMService(config.llm, router, clientManager, agentEventBus);
+    const llmService = options?.llmService ?? createLLMService(config.llm, router, clientManager, agentEventBus, messageManager);
     if (!options?.llmService) {
         logger.debug(`LLM service initialized using router: ${router}`);
     } else {
         logger.debug('LLM service provided via options override');
     }
 
-    return { clientManager, llmService, agentEventBus };
+    return { clientManager, llmService, agentEventBus, messageManager };
 }

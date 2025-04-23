@@ -11,14 +11,8 @@ import { AnthropicService } from './anthropic.js';
 import { LanguageModelV1 } from 'ai';
 import { EventEmitter } from 'events';
 import { LLMRouter } from '../types.js';
-import { VercelMessageFormatter } from '../messages/formatters/vercel.js';
-import { createTokenizer } from '../tokenizer/factory.js';
-import { getMaxTokens } from '../tokenizer/utils.js';
 import { MessageManager } from '../messages/manager.js';
-import { getProviderFromModel } from '../../utils.js';
-import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
 import OpenAI from 'openai';
-import { AnthropicMessageFormatter } from '../messages/formatters/anthropic.js';
 import Anthropic from '@anthropic-ai/sdk';
 
 /**
@@ -45,57 +39,36 @@ function extractApiKey(config: LLMConfig): string {
     return apiKey;
 }
 
-function _createOpenAIService(config: LLMConfig, clientManager: ClientManager, agentEventBus: EventEmitter, apiKey: string): OpenAIService {
-    const formatter = new OpenAIMessageFormatter();
-    const tokenizer = createTokenizer('openai', config.model);
-    const rawMaxTokens = getMaxTokens('openai', config.model);
-    const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-    const messageManager = new MessageManager(
-        formatter,
-        config.systemPrompt,
-        maxTokensWithMargin,
-        tokenizer
-    );
-    const openai = new OpenAI({ apiKey });
-    return new OpenAIService(
-        clientManager,
-        openai,
-        agentEventBus,
-        messageManager,
-        config.model
-    );
-}
-
-function _createAnthropicService(config: LLMConfig, clientManager: ClientManager, agentEventBus: EventEmitter, apiKey: string): AnthropicService {
-    const formatter = new AnthropicMessageFormatter();
-    const tokenizer = createTokenizer('anthropic', config.model);
-    const rawMaxTokens = getMaxTokens('anthropic', config.model);
-    const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-    const messageManager = new MessageManager(
-        formatter,
-        config.systemPrompt,
-        maxTokensWithMargin,
-        tokenizer
-    );
-    const anthropic = new Anthropic({ apiKey });
-    return new AnthropicService(
-        clientManager,
-        anthropic,
-        agentEventBus,
-        messageManager,
-        config.model
-    );
-}
-
-function _createInBuiltLLMService(config: LLMConfig, clientManager: ClientManager, agentEventBus: EventEmitter): ILLMService {
+function _createInBuiltLLMService(
+    config: LLMConfig,
+    clientManager: ClientManager,
+    agentEventBus: EventEmitter,
+    messageManager: MessageManager
+): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
 
     switch (config.provider.toLowerCase()) {
-        case 'openai':
-            return _createOpenAIService(config, clientManager, agentEventBus, apiKey);
-        case 'anthropic':
-            return _createAnthropicService(config, clientManager, agentEventBus, apiKey);
+        case 'openai': {
+            const openai = new OpenAI({ apiKey });
+            return new OpenAIService(
+                clientManager,
+                openai,
+                agentEventBus,
+                messageManager,
+                config.model
+            );
+        }
+        case 'anthropic': {
+            const anthropic = new Anthropic({ apiKey });
+            return new AnthropicService(
+                clientManager,
+                anthropic,
+                agentEventBus,
+                messageManager,
+                config.model
+            );
+        }
         default:
             throw new Error(`Unsupported LLM provider: ${config.provider}`);
     }
@@ -117,20 +90,10 @@ function _createVercelModel(provider: string, model: string): LanguageModelV1 {
 function _createVercelLLMService(
     config: LLMConfig,
     clientManager: ClientManager,
-    agentEventBus: EventEmitter
+    agentEventBus: EventEmitter,
+    messageManager: MessageManager
 ): VercelLLMService {
     const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
-    const provider = getProviderFromModel(model.modelId);
-    const formatter = new VercelMessageFormatter();
-    const tokenizer = createTokenizer(provider, model.modelId);
-    const rawMaxTokens = getMaxTokens(provider, model.modelId);
-    const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-    const messageManager = new MessageManager(
-        formatter,
-        config.systemPrompt,
-        maxTokensWithMargin,
-        tokenizer
-    );
     return new VercelLLMService(clientManager, model, agentEventBus, messageManager);
 }
 
@@ -142,11 +105,12 @@ export function createLLMService(
     config: LLMConfig,
     router: LLMRouter = 'vercel',
     clientManager: ClientManager,
-    agentEventBus: EventEmitter
+    agentEventBus: EventEmitter,
+    messageManager: MessageManager
 ): ILLMService {
     if (router === 'vercel') {
-        return _createVercelLLMService(config, clientManager, agentEventBus);
+        return _createVercelLLMService(config, clientManager, agentEventBus, messageManager);
     } else {
-        return _createInBuiltLLMService(config, clientManager, agentEventBus);
+        return _createInBuiltLLMService(config, clientManager, agentEventBus, messageManager);
     }
 }
