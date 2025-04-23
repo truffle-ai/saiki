@@ -171,7 +171,7 @@ export class VercelLLMService implements ILLMService {
                 );
 
                 if (step.text) {
-                    this.eventEmitter.emit('response', step.text);
+                    this.eventEmitter.emit('llmservice:response', step.text);
                 }
                 // Emit events based on step content (kept from original)
                 if (step.toolCalls && step.toolCalls.length > 0) {
