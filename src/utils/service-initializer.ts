@@ -1,3 +1,30 @@
+/*
+ * Service Initializer: Centralized Wiring for Saiki Core Services
+ *
+ * This module is responsible for initializing and wiring together all core agent services (LLM, client manager, message manager, event bus, etc.)
+ * for the Saiki application. It provides a single entry point for constructing the service graph, ensuring consistent dependency injection
+ * and configuration across CLI, web, and test environments.
+ *
+ * **Configuration Pattern:**
+ * - The primary source of configuration is the config file (e.g., `saiki.yml`), which allows users to declaratively specify both high-level
+ *   and low-level service options (such as compression strategies for MessageManager, LLM provider/model, etc.).
+ * - For most use cases, the config file is sufficient and preferred, as it enables environment-specific, auditable, and user-friendly customization.
+ *
+ * **Override Pattern:**
+ * - For advanced, programmatic, or test scenarios, this initializer supports code-level overrides via the `InitializeServicesOptions` type.
+ * - These overrides are intended for swapping out top-level services (e.g., injecting a mock MessageManager or LLMService in tests), not for
+ *   overriding every internal dependency. This keeps the override API surface small, maintainable, and focused on real-world needs.
+ * - If deeper customization is required (e.g., a custom compression strategy for MessageManager in a test), construct the desired service
+ *   yourself and inject it via the appropriate top-level override (e.g., `messageManager`).
+ *
+ * **Best Practice:**
+ * - Use the config file for all user-facing and environment-specific configuration, including low-level service details.
+ * - Use code-level overrides only for top-level services and only when necessary (e.g., for testing, mocking, or advanced integration).
+ * - Do not expose every internal dependency as an override unless there is a strong, recurring need.
+ *
+ * This pattern ensures a clean, scalable, and maintainable architecture, balancing flexibility with simplicity.
+ */
+
 import { ClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/services/types.js';
 import { AgentConfig } from '../config/types.js';
@@ -20,9 +47,19 @@ export type AgentServices = {
 
 /**
  * Options for overriding or injecting services/config at runtime.
- * This enables testability, context-specific tweaks, and advanced configuration.
- * - Use to override config fields, inject mocks, or pass runMode/context.
- * - All fields are optional; defaults to config file/env if not provided.
+ *
+ * **Design Rationale:**
+ * - The config file (e.g., `saiki.yml`) is the main source of truth for configuring both high-level and low-level service options.
+ *   This allows users and operators to declaratively tune the system without code changes.
+ * - The `InitializeServicesOptions` type is intended for advanced/test scenarios where you need to override top-level services
+ *   (such as injecting a mock MessageManager or LLMService). This keeps the override API surface small and focused.
+ * - For most use cases, do not expose every internal dependency here. If you need to customize internals (e.g., a custom compression strategy),
+ *   construct the service yourself and inject it as a top-level override.
+ *
+ * **Summary:**
+ * - Use config for normal operation and low-level tuning.
+ * - Use top-level service overrides for code/test/advanced scenarios.
+ * - This pattern is robust, scalable, and easy to maintain.
  */
 export type InitializeServicesOptions = {
     runMode?: 'cli' | 'web' | 'test'; // Context/mode override
