@@ -34,6 +34,7 @@ import { EventEmitter } from 'events';
 import { LLMRouter } from '../ai/llm/types.js';
 import { MessageManager } from '../ai/llm/messages/manager.js';
 import { createMessageManager } from '../ai/llm/messages/factory.js';
+import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
 
 /**
  * Type for the core agent services returned by initializeServices
@@ -62,7 +63,7 @@ export type AgentServices = {
  * - This pattern is robust, scalable, and easy to maintain.
  */
 export type InitializeServicesOptions = {
-    runMode?: 'cli' | 'web' | 'test'; // Context/mode override
+    runMode?: 'cli' | 'web'; // Context/mode override
     connectionMode?: 'strict' | 'lenient'; // Connection mode override
     clientManager?: ClientManager;     // Inject a custom or mock ClientManager
     llmService?: ILLMService;         // Inject a custom or mock LLMService
@@ -92,9 +93,12 @@ export async function initializeServices(
 
     /**
      * 2. Initialize or use the client manager (allows override for tests/mocks)
+     *    - Selects the appropriate ToolConfirmationProvider based on runMode (cli/web/etc) using the factory.
      */
     const connectionMode = options?.connectionMode ?? 'lenient';
-    const clientManager = options?.clientManager ?? new ClientManager();
+    const runMode = options?.runMode ?? 'cli';
+    const confirmationProvider = createToolConfirmationProvider(runMode);
+    const clientManager = options?.clientManager ?? new ClientManager(confirmationProvider);
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
     if (!options?.clientManager) {
         logger.debug('Client manager and MCP servers initialized');
