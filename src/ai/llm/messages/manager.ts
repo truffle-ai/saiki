@@ -5,7 +5,7 @@ import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
-import { countMessagesTokens } from './utils.js';
+import { countMessagesTokens, getImageData } from './utils.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -203,33 +203,25 @@ export class MessageManager {
             throw new Error('addToolResult: toolCallId and name are required.');
         }
 
+        // Simplest image detection: if result has an 'image' field, treat as ImagePart
         let content: InternalMessage['content'];
-
-        // --- Check for Image Data ---
-        // Adjust this condition based on how your MCP server actually returns images
-        if (
-            result &&
-            typeof result === 'object' &&
-            typeof result.contentType === 'string' &&
-            result.contentType.startsWith('image/') &&
-            (typeof result.data === 'string' || result.data instanceof Uint8Array || result.data instanceof Buffer || result.data instanceof ArrayBuffer) // Assuming base64 string or binary data
-        ) {
-             // Format as an array with an image part
-             content = [{
-                 type: 'image',
-                 image: result.data, // Use the image data directly
-                 mimeType: result.contentType, // Store the MIME type
-             }];
+        if (result && typeof result === 'object' && 'image' in result) {
+            // Use shared helper to get base64/URL
+            const imagePart = result as { image: string | Uint8Array | Buffer | ArrayBuffer | URL; mimeType?: string };
+            content = [{
+                type: 'image',
+                image: getImageData(imagePart),
+                mimeType: imagePart.mimeType,
+            }];
+        } else if (typeof result === 'string') {
+            content = result;
+        } else if (Array.isArray(result)) {
+            // Assume array of parts already
+            content = result;
         } else {
-            // Fallback to existing string/JSON conversion for other types
-            content =
-                result === undefined || result === null
-                    ? ''
-                    : typeof result === 'string'
-                    ? result
-                    : JSON.stringify(result);
+            // Fallback: stringify all other values
+            content = JSON.stringify(result ?? '');
         }
-        // --- End Image Check ---
 
         this.addMessage({ role: 'tool', content, toolCallId, name });
     }

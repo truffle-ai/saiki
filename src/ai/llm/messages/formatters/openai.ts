@@ -87,4 +87,12 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
     getSystemPrompt(): null {
         return null;
     }
+
+    /**
+     * Parses OpenAI API response into internal message objects.
+     * Currently a no-op stub; implement as needed.
+     */
+    parseResponse(response: any): InternalMessage[] {
+        return [];
+    }
 }

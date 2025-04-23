@@ -20,7 +20,7 @@ export interface IMessageFormatter {
     /**
      * Parses raw LLM response into an array of InternalMessage objects.
      */
-    parseResponse?(response: any): InternalMessage[];
+    parseResponse(response: any): InternalMessage[];
 
     /**
      * Optional method for handling system prompt separately.

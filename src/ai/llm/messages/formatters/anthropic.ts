@@ -170,4 +170,12 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
         // Anthropic uses system prompt as a separate parameter, no need for any formatting
         return systemPrompt;
     }
+
+    /**
+     * Parses Anthropic API response into internal message objects.
+     * Currently a no-op stub; implement actual parsing logic as needed.
+     */
+    parseResponse(response: any): InternalMessage[] {
+        return [];
+    }
 }

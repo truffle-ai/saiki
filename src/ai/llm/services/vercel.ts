@@ -194,11 +194,9 @@ export class VercelLLMService implements ILLMService {
         });
 
         // Parse and append each new InternalMessage from the formatter
-        if (typeof this.formatter.parseResponse === 'function') {
-            const newMsgs = this.formatter.parseResponse(response) || [];
-            for (const msg of newMsgs) {
-                this.messageManager.addMessage(msg);
-            }
+        const newMsgs = this.formatter.parseResponse(response) || [];
+        for (const msg of newMsgs) {
+            this.messageManager.addMessage(msg);
         }
         // Return the plain text of the response
         return response.text;

@@ -79,3 +79,23 @@ export function countMessagesTokens(
     }
     return total;
 }
+
+/**
+ * Extracts image data (base64 or URL) from an ImagePart or raw buffer.
+ * @param imagePart The image part containing image data
+ * @returns Base64-encoded string or URL string
+ */
+export function getImageData(imagePart: { image: string | Uint8Array | Buffer | ArrayBuffer | URL }): string {
+    const { image } = imagePart;
+    if (typeof image === 'string') {
+        return image;
+    } else if (image instanceof Buffer) {
+        return image.toString('base64');
+    } else if (image instanceof Uint8Array || image instanceof ArrayBuffer) {
+        return Buffer.from(image).toString('base64');
+    } else if (image instanceof URL) {
+        return image.toString();
+    }
+    console.warn('Unexpected image data type in getImageData:', typeof image);
+    return '';
+}

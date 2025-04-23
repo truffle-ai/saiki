@@ -1,5 +1,8 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
+import type { GenerateTextResult } from 'ai';
+import { getImageData } from '../utils.js';
+// import Core SDK types if/when needed
 
 /**
  * Message formatter for Vercel AI SDK.
@@ -42,103 +45,11 @@ export class VercelMessageFormatter implements IMessageFormatter {
                     break;
 
                 case 'assistant':
-                    if (msg.toolCalls && msg.toolCalls.length > 0) {
-                        // Format according to CoreAssistantMessage with ToolCallPart(s)
-                        // See: https://sdk.vercel.ai/docs/reference/ai-sdk-core/core-message#coreassistantmessage
-                        const contentParts: any[] = [];
-
-                        // Add text part if content exists
-                        if (msg.content) {
-                            contentParts.push({ type: 'text', text: msg.content });
-                        }
-
-                        // Add tool_call parts
-                        for (const toolCall of msg.toolCalls) {
-                            contentParts.push({
-                                type: 'tool-call',
-                                toolCallId: toolCall.id,
-                                toolName: toolCall.function.name,
-                                // Ensure args are parsed if they are a string, otherwise pass as is
-                                // The SDK expects args as an object
-                                args: typeof toolCall.function.arguments === 'string'
-                                        ? JSON.parse(toolCall.function.arguments)
-                                        : toolCall.function.arguments,
-                            });
-                        }
-
-                        formatted.push({
-                            role: 'assistant',
-                            content: contentParts,
-                            // Remove deprecated function_call
-                        });
-                    } else {
-                        // Standard assistant message without tool calls
-                        formatted.push({
-                            role: 'assistant',
-                            content: msg.content, // Should be string | null
-                        });
-                    }
+                    formatted.push({ role: 'assistant', ...this.formatAssistantMessage(msg) });
                     break;
 
                 case 'tool':
-                    // Convert internal tool results to Vercel's expected 'tool' role format
-                    // See: https://sdk.vercel.ai/docs/reference/ai-sdk-core/core-message#coretoolmessage
-                    
-                    let toolResultPart: any; // Renamed for clarity
-
-                    if (Array.isArray(msg.content) && msg.content[0]?.type === 'image') {
-                        // Content is an image part array, use experimental_content
-                        const imagePart = msg.content[0];
-
-                        // Ensure the image data is base64 string as per ToolResultContent spec
-                        let imageDataBase64: string;
-                        if (typeof imagePart.image === 'string') {
-                            // Assume it's already base64 or a data URL (Vercel might handle data URLs)
-                            imageDataBase64 = imagePart.image;
-                        } else if (imagePart.image instanceof Buffer) {
-                            imageDataBase64 = imagePart.image.toString('base64');
-                        } else if (imagePart.image instanceof Uint8Array) {
-                            imageDataBase64 = Buffer.from(imagePart.image).toString('base64');
-                        } else if (imagePart.image instanceof ArrayBuffer) {
-                           imageDataBase64 = Buffer.from(imagePart.image).toString('base64');
-                        } else if (imagePart.image instanceof URL) {
-                           imageDataBase64 = imagePart.image.toString(); // Pass URL string
-                        } else {
-                            // Fallback or throw error if type is unexpected
-                            console.warn('Unexpected image data type in Vercel formatter for tool result:', typeof imagePart.image);
-                            imageDataBase64 = '[Unsupported image data type]';
-                        }
-
-                        toolResultPart = {
-                            type: 'tool-result',
-                            toolCallId: msg.toolCallId!,
-                            toolName: msg.name!,
-                            result: null, // Standard result is null when using experimental_content
-                            experimental_content: [
-                                {
-                                    type: 'image',
-                                    data: imageDataBase64, // Use the prepared base64 string
-                                    mimeType: imagePart.mimeType,
-                                },
-                            ],
-                        };
-                    } else {
-                        // Content is not an image part array, use the standard result field
-                        toolResultPart = {
-                            type: 'tool-result',
-                            toolCallId: msg.toolCallId!,
-                            toolName: msg.name!,
-                            // Use msg.content directly (should be string or JSON-like)
-                            // If it was previously stringified JSON, keep it that way.
-                            // If it's already a serializable object, it should work.
-                            result: msg.content,
-                        };
-                    }
-                    
-                    formatted.push({
-                        role: 'tool', 
-                        content: [ toolResultPart ], // Vercel expects tool results wrapped in a content array
-                    });
+                    formatted.push({ role: 'tool', ...this.formatToolMessage(msg) });
                     break;
             }
         }
@@ -159,10 +70,11 @@ export class VercelMessageFormatter implements IMessageFormatter {
 
     /**
      * Parses raw Vercel SDK response into internal message objects.
+     * TODO: Break this into smaller functions
      */
-    parseResponse?(response: any): InternalMessage[] {
+    parseResponse(response: GenerateTextResult<any, any>): InternalMessage[] {
         const internal: InternalMessage[] = [];
-        if (!response.response?.messages) return internal;
+        if (!response.response.messages) return internal;
         for (const msg of response.response.messages) {
             const role = msg.role as InternalMessage['role'];
             switch (role) {
@@ -205,7 +117,11 @@ export class VercelMessageFormatter implements IMessageFormatter {
                                 if (Array.isArray(part.experimental_content)) {
                                     content = part.experimental_content.map((img: any) => ({ type: 'image', image: img.data, mimeType: img.mimeType }));
                                 } else {
-                                    content = part.result ?? '';
+                                    // Ensure result is a string for InternalMessage.content
+                                    const raw = part.result;
+                                    content = typeof raw === 'string'
+                                        ? raw
+                                        : JSON.stringify(raw ?? '');
                                 }
                                 internal.push({ role: 'tool', content, toolCallId: part.toolCallId, name: part.toolName });
                             }
@@ -218,5 +134,61 @@ export class VercelMessageFormatter implements IMessageFormatter {
             }
         }
         return internal;
+    }
+
+    // Helper to format Assistant messages (with optional tool calls)
+    private formatAssistantMessage(msg: InternalMessage): { content: any; function_call?: { name: string; arguments: string } } {
+        if (msg.toolCalls && msg.toolCalls.length > 0) {
+            const contentParts: any[] = [];
+            if (msg.content) {
+                contentParts.push({ type: 'text', text: msg.content });
+            }
+            for (const toolCall of msg.toolCalls) {
+                contentParts.push({
+                    type: 'tool-call',
+                    toolCallId: toolCall.id,
+                    toolName: toolCall.function.name,
+                    args: typeof toolCall.function.arguments === 'string'
+                        ? JSON.parse(toolCall.function.arguments)
+                        : toolCall.function.arguments,
+                });
+            }
+            return {
+                content: contentParts,
+                function_call: {
+                    name: msg.toolCalls[0].function.name,
+                    arguments: typeof msg.toolCalls[0].function.arguments === 'string'
+                        ? msg.toolCalls[0].function.arguments
+                        : JSON.stringify(msg.toolCalls[0].function.arguments),
+                },
+            };
+        }
+        return { content: msg.content };
+    }
+
+    // Helper to format Tool result messages
+    private formatToolMessage(msg: InternalMessage): { content: any[] } {
+        let toolResultPart: any;
+        if (Array.isArray(msg.content) && msg.content[0]?.type === 'image') {
+            const imagePart = msg.content[0];
+            const imageDataBase64 = getImageData(imagePart);
+            toolResultPart = {
+                type: 'tool-result',
+                toolCallId: msg.toolCallId!,
+                toolName: msg.name!,
+                result: null,
+                experimental_content: [
+                    { type: 'image', data: imageDataBase64, mimeType: imagePart.mimeType }
+                ],
+            };
+        } else {
+            toolResultPart = {
+                type: 'tool-result',
+                toolCallId: msg.toolCallId!,
+                toolName: msg.name!,
+                result: msg.content,
+            };
+        }
+        return { content: [toolResultPart] };
     }
 }
