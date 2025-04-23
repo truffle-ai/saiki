@@ -22,27 +22,16 @@ export class AnthropicService implements ILLMService {
 
     constructor(
         clientManager: ClientManager,
-        systemPrompt: string,
-        apiKey: string,
+        anthropic: Anthropic,
         agentEventBus: EventEmitter,
-        model?: string
+        messageManager: MessageManager,
+        model: string
     ) {
-        this.model = model || 'claude-3-7-sonnet-20250219';
-        this.anthropic = new Anthropic({ apiKey });
+        this.model = model;
+        this.anthropic = anthropic;
         this.clientManager = clientManager;
-
-        const formatter = new AnthropicMessageFormatter();
-        const tokenizer = createTokenizer('anthropic', this.model);
-        const rawMaxTokens = getMaxTokens('anthropic', this.model);
-        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-        this.messageManager = new MessageManager(
-            formatter,
-            systemPrompt,
-            maxTokensWithMargin,
-            tokenizer
-        );
-
         this.eventEmitter = agentEventBus;
+        this.messageManager = messageManager;
     }
 
     getEventEmitter(): EventEmitter {

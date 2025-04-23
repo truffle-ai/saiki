@@ -18,6 +18,8 @@ import { MessageManager } from '../messages/manager.js';
 import { getProviderFromModel } from '../../utils.js';
 import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
 import OpenAI from 'openai';
+import { AnthropicMessageFormatter } from '../messages/formatters/anthropic.js';
+import Anthropic from '@anthropic-ai/sdk';
 
 /**
  * Extract and validate API key from config or environment variables
@@ -43,36 +45,57 @@ function extractApiKey(config: LLMConfig): string {
     return apiKey;
 }
 
-/**
- * Create an LLM service instance based on the provided configuration
- */
+function _createOpenAIService(config: LLMConfig, clientManager: ClientManager, agentEventBus: EventEmitter, apiKey: string): OpenAIService {
+    const formatter = new OpenAIMessageFormatter();
+    const tokenizer = createTokenizer('openai', config.model);
+    const rawMaxTokens = getMaxTokens('openai', config.model);
+    const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
+    const messageManager = new MessageManager(
+        formatter,
+        config.systemPrompt,
+        maxTokensWithMargin,
+        tokenizer
+    );
+    const openai = new OpenAI({ apiKey });
+    return new OpenAIService(
+        clientManager,
+        openai,
+        agentEventBus,
+        messageManager,
+        config.model
+    );
+}
+
+function _createAnthropicService(config: LLMConfig, clientManager: ClientManager, agentEventBus: EventEmitter, apiKey: string): AnthropicService {
+    const formatter = new AnthropicMessageFormatter();
+    const tokenizer = createTokenizer('anthropic', config.model);
+    const rawMaxTokens = getMaxTokens('anthropic', config.model);
+    const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
+    const messageManager = new MessageManager(
+        formatter,
+        config.systemPrompt,
+        maxTokensWithMargin,
+        tokenizer
+    );
+    const anthropic = new Anthropic({ apiKey });
+    return new AnthropicService(
+        clientManager,
+        anthropic,
+        agentEventBus,
+        messageManager,
+        config.model
+    );
+}
+
 function _createInBuiltLLMService(config: LLMConfig, clientManager: ClientManager, agentEventBus: EventEmitter): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
 
     switch (config.provider.toLowerCase()) {
-        case 'openai': {
-            const formatter = new OpenAIMessageFormatter();
-            const tokenizer = createTokenizer('openai', config.model);
-            const rawMaxTokens = getMaxTokens('openai', config.model);
-            const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-            const messageManager = new MessageManager(
-                formatter,
-                config.systemPrompt,
-                maxTokensWithMargin,
-                tokenizer
-            );
-            const openai = new OpenAI({ apiKey });
-            return new OpenAIService(
-                clientManager,
-                openai,
-                agentEventBus,
-                messageManager,
-                config.model
-            );
-        }
+        case 'openai':
+            return _createOpenAIService(config, clientManager, agentEventBus, apiKey);
         case 'anthropic':
-            return new AnthropicService(clientManager, config.systemPrompt, apiKey, agentEventBus, config.model);
+            return _createAnthropicService(config, clientManager, agentEventBus, apiKey);
         default:
             throw new Error(`Unsupported LLM provider: ${config.provider}`);
     }
