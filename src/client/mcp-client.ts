@@ -286,7 +286,7 @@ export class MCPClient implements ToolProvider {
             logger.debug(`listPrompts response: ${JSON.stringify(response, null, 2)}`);
             return response.prompts.map((p: any) => p.name);
         } catch (error) {
-            logger.error('Failed to list prompts from MCP server:', error);
+            logger.debug('Failed to list prompts from MCP server (optional feature), skipping:', error);
             return [];
         }
     }
@@ -322,7 +322,7 @@ export class MCPClient implements ToolProvider {
             logger.debug(`listResources response: ${JSON.stringify(response, null, 2)}`);
             return response.resources.map((r: any) => r.uri);
         } catch (error) {
-            logger.error('Failed to list resources from MCP server:', error);
+            logger.debug('Failed to list resources from MCP server (optional feature), skipping:', error);
             return [];
         }
     }

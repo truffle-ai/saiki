@@ -84,7 +84,7 @@ export class ClientManager {
         for (const [name, client] of this.clients.entries()) {
             await this.updateClientCache(name, client);
         }
-        logger.info('Finished rebuilding all caches.');
+        logger.debug('Finished rebuilding all caches.');
     }
 
     /**
@@ -92,7 +92,6 @@ export class ClientManager {
      * @returns Promise resolving to a map of tool names to tool definitions
      */
     async getAllTools(): Promise<Record<string, ToolSet>> {
-        await this.rebuildAllCaches();
         let allTools: Record<string, any> = {};
 
         // Clear existing maps to avoid stale entries
@@ -153,7 +152,6 @@ export class ClientManager {
      * @returns Promise resolving to an array of unique prompt names.
      */
     async listAllPrompts(): Promise<string[]> {
-        await this.rebuildAllCaches();
         return Array.from(this.promptToClientMap.keys());
     }
 
@@ -197,7 +195,6 @@ export class ClientManager {
      * @returns Promise resolving to an array of unique resource URIs.
      */
     async listAllResources(): Promise<string[]> {
-        await this.rebuildAllCaches();
         return Array.from(this.resourceToClientMap.keys());
     }
 
