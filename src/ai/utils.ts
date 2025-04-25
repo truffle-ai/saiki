@@ -2,6 +2,7 @@ import { logger } from '../utils/logger.js';
 
 const MODEL_PREFIX_TO_PROVIDER: Record<string, string> = {
     'gpt-': 'openai',
+    'o4-': 'openai',
     'claude-': 'anthropic',
     'gemini-': 'google',
     'grok-': 'grok',

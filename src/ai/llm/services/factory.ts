@@ -71,7 +71,9 @@ function _createVercelLLMService(
     agentEventBus: EventEmitter
 ): VercelLLMService {
     const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
-    return new VercelLLMService(clientManager, model, agentEventBus, config.systemPrompt);
+    // Allow overriding of maxIterations via config.llm.maxIterations
+    const maxIter = config.maxIterations ?? 50;
+    return new VercelLLMService(clientManager, model, agentEventBus, config.systemPrompt, maxIter);
 }
 
 export function createLLMService(
