@@ -12,21 +12,6 @@
   <img src="assets/notion_webui_example.gif" alt="Saiki Demo" width="800" />
 </div>
 
-## Overview
-
-Saiki is a flexible, modular AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly.
-
-Why developers choose Saiki:
-
-1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP). Drop in pre-built servers for GitHub, filesystem, terminal, or build your own.
-2. **AI-Powered Orchestration**: Natural language tasks are parsed into multi-step tool calls executed in the correct sequence.
-3. **Multi-Interface Support**: Use via CLI, wrap it in a web UI, or integrate into other systems – AI logic is decoupled from UI concerns.
-4. **Production-Ready**: Robust error handling, structured logging, and pluggable LLM providers (OpenAI, Anthropic, Google) ensure reliability.
-
-Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. Interact with Saiki via the command line or the new experimental web UI.
-
-Ready to jump in? Follow the [Installation](#installation) guide or explore demos below.
-
 ## Installation
 
 **Global (npm)**
@@ -65,10 +50,10 @@ npm start
 ```
 
 </details>
-<br>
 
-- Type `exit` or `quit` to leave the session.
-- Type `clear` to reset the conversation.
+### CLI Reference
+
+Simply run `saiki -h` for a full list of CLI flags and options.
 
 ### Web UI Mode
 
@@ -87,9 +72,20 @@ npm start -- --mode web --web-port 3000
 
 Open http://localhost:3000 in your browser.
 
-### CLI Reference
+## Overview
 
-Simply run `saiki -h` for a full list of CLI flags and options.
+Saiki is a flexible, modular AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly.
+
+Why developers choose Saiki:
+
+1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP). Drop in pre-built servers for GitHub, filesystem, terminal, or build your own.
+2. **AI-Powered Orchestration**: Natural language tasks are parsed into multi-step tool calls executed in the correct sequence.
+3. **Multi-Interface Support**: Use via CLI, wrap it in a web UI, or integrate into other systems – AI logic is decoupled from UI concerns.
+4. **Production-Ready**: Robust error handling, structured logging, and pluggable LLM providers (OpenAI, Anthropic, Google) ensure reliability.
+
+Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. Interact with Saiki via the command line or the new experimental web UI.
+
+Ready to jump in? Follow the [Installation](#installation) guide or explore demos below.
 
 ## Examples & Demos
 
@@ -121,24 +117,28 @@ _For more examples, see the [Examples](docs/README.md#examples--demos) section i
 
 ## Configuration
 
-Saiki uses a YAML config file (`configuration/saiki.yml` by default) to connect tool servers and configure LLM providers:
+Saiki uses a YAML config file (`configuration/saiki.yml` by default) to configure tool servers (MCP servers) and LLM providers.
 
 ```yaml
 mcpServers:
-  github:
+  filesystem:
     type: stdio
     command: npx
-    args: ["-y", "@modelcontextprotocol/server-github"]
-    env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: $GITHUB_TOKEN
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+  puppeteer:
+    type: stdio
+    command: node
+    args:
+      - dist/src/servers/puppeteerServer.js
 
 llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
 ```
-
-See [docs/README.md](docs/README.md) for complete configuration reference.
 
 ## Discovering & Connecting MCP Servers
 
@@ -149,32 +149,12 @@ Saiki communicates with your tools via Model Context Protocol (MCP) servers. You
    - Smithery.ai catalog: https://smithery.ai/tools
    - Composio MCP registry: https://mcp.composio.dev/
 
-
-
 2. Search on npm:
 ```bash
 npm search @modelcontextprotocol/server
 ```
 
-3. Add servers to your `configuration/saiki.yml`:
-```yaml
-mcpServers:
-  github:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - @modelcontextprotocol/server-github
-    env:
-      GITHUB_TOKEN: $GITHUB_TOKEN
-  filesystem:
-    type: stdio
-    command: npx
-    args:
-      - -y 
-      - @modelcontextprotocol/server-filesystem
-      - .
-```
+3. Add servers to your `configuration/saiki.yml` under the `mcpServers` key (see the snippet above).
 
 4. Create custom servers:
    - Use the MCP TypeScript SDK: https://github.com/modelcontextprotocol/typescript-sdk
@@ -185,7 +165,7 @@ mcpServers:
 Find detailed guides, architecture, and API reference in the `docs/` folder:
 
 - High-level design — [docs/architecture.md](docs/architecture.md)  
-- Docker usage — [README.Docker.md](README.Docker.md) 
+- Docker usage — [README.Docker.md](README.Docker.md)  
 
 ## Contributing
 
