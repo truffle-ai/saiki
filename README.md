@@ -4,255 +4,206 @@
   <img src="https://img.shields.io/badge/Status-Beta-yellow" alt="Status: Beta">
   <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0">
   <a href="https://discord.gg/GwxwQs8CN5"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord"></a>
-  <a href="https://trytruffle.ai"><img src="https://img.shields.io/badge/Backed_by-Y_Combinator-orange" alt="Backed by YC"></a>
 </p>
 
 **Use natural language to control your tools, apps, and services — connect once, command everything.**
 
 <div align="center">
-  <img src="assets/notion_webui_example.gif" alt="Saiki: Website designer agent demo" />
+  <img src="assets/notion_webui_example.gif" alt="Saiki Demo" width="800" />
 </div>
 
+## Installation
 
-## 📑 Table of Contents
-- [Overview](#-overview)
-- [Getting Started](#-getting-started)
-- [Examples](#-examples)
-- [Use Cases](#-use-cases)
-- [Configuration](#️-configuration)
-- [Extensions](#-extensions)
-- [Documentation](#-documentation)
-- [Contributing](#-contributing)
-- [Community & Support](#-community--support)
-
-## 🌟 Overview
-
-Saiki is a flexible AI agent that lets you take actions across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to use and how to use them.
-
-Why developers use Saiki:
-
-1. **Open, hackable, flexible** – Saiki connects to anything via MCP. Drop in tool servers for GitHub, terminal, filesystem — or build your own. You can even bring your own LLMs. It's modular by design & requires minimal set up.
-
-2. **Built-in Orchestration**: Once you've configured your servers and start using Saiki, it figures out which tools to use, in what order, and how to call them to get the job done.
-   
-3. **Customizable Interfaces**: Use it in a CLI, wrap it in a web app, or embed it into your own stack. Saiki separates AI logic from the UI so you can build around it, not within it.
-
-Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. Interact with Saiki via the command line or the new experimental web UI.
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 16+
-- npm
-- OpenAI API key
-
-
-
-
-### Quick Start
-
-1. **Install and build:**
+**Global (npm)**
 ```bash
-git clone https://github.com/truffle-ai/saiki/ && cd saiki
+npm install -g @truffle-ai/saiki
+```
+
+<details><summary><strong>Build & Link from source</strong></summary>
+
+```bash
+git clone https://github.com/truffle-ai/saiki.git
+cd saiki
 npm install
 npm run build
+npm link
 ```
 
-2. **Configure your API key:**
-Create a .env file based on .env.example and add your API key(s).
-At minimum, you'll need to add your OpenAI API key:
-```
-OPENAI_API_KEY=your_openai_api_key_here
-```
+After linking, the `saiki` command becomes available globally.
 
-3. **Launch Saiki:**
+</details>
 
-   **CLI Mode (Default):**
-   ```bash
-   npm start
-   ```
-   This will launch the command-line interface.
+## Quick Start
 
-   **Web UI Mode:**
-   ```bash
-   # Launch only the Web UI (default port: 3000)
-   npm start -- --mode web
+### CLI Mode
 
-   # Launch Web UI on a specific port
-   npm start -- --mode web --web-port 8080
-   ```
-
-   That's it! You're now ready to interact with Saiki through the command line or web interface.
-
-   Saiki also works with Docker — see the [Running with Docker](#running-with-docker) section below for details.
-
----
-
-### Running with Docker
-
-See [README.Docker.md](./README.Docker.md) for detailed instructions on building and running Saiki with Docker, including mounting your project directory and setting the working directory at runtime.
-
----
-
-### Next Steps
-Check out [example configurations](./configuration/examples/) or the [Configuration Guide](./configuration/README.md) to customize your setup.
-
-## 🎯 Examples
-
-### 🛒 Amazon Shopping Assistant
-
-
-**Task:** `Can you go to amazon and add some snacks to my cart? I like trail mix, cheetos and maybe surprise me with something else?`
-
-Uses the built-in Puppeteer server (`src/servers`) to navigate Amazon and automate shopping tasks.
-
+Invoke the interactive CLI:
 ```bash
-# You can use the default saiki.yml
+saiki
+```
+
+<details><summary><strong>Alternative: without global install</strong></summary>
+
+You can also run directly via npm:
+```bash
 npm start
 ```
 
-<div align="center">
-  <a href="https://youtu.be/C-Z0aVbl4Ik">
-    <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" />
-  </a>
-</div>
+</details>
+
+### CLI Reference
+
+Simply run `saiki -h` for a full list of CLI flags and options.
+
+### Web UI Mode
+
+Serve the experimental web interface:
+```bash
+saiki --mode web --web-port 3000
+```
+
+<details><summary><strong>Alternative: without global install</strong></summary>
+
+```bash
+npm start -- --mode web --web-port 3000
+```
+
+</details>
+
+Open http://localhost:3000 in your browser.
+
+## Overview
+
+Saiki is a flexible, modular AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly.
+
+Why developers choose Saiki:
+
+1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP). Drop in pre-built servers for GitHub, filesystem, terminal, or build your own.
+2. **AI-Powered Orchestration**: Natural language tasks are parsed into multi-step tool calls executed in the correct sequence.
+3. **Multi-Interface Support**: Use via CLI, wrap it in a web UI, or integrate into other systems – AI logic is decoupled from UI concerns.
+4. **Production-Ready**: Robust error handling, structured logging, and pluggable LLM providers (OpenAI, Anthropic, Google) ensure reliability.
+
+Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. Interact with Saiki via the command line or the new experimental web UI.
+
+Ready to jump in? Follow the [Installation](#installation) guide or explore demos below.
+
+## Examples & Demos
+
+### 🛒 Amazon Shopping Assistant
+**Task:** `Can you go to amazon and add some snacks to my cart? I like trail mix, cheetos and maybe surprise me with something else?`
+```bash
+# Use default config which supports puppeteer for navigating the browser
+saiki
+```
+<a href="https://youtu.be/C-Z0aVbl4Ik">
+  <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" width="800"/>
+</a>
+
+### 📧 Email Summary to Slack
+**Task:** `Summarize emails and send highlights to Slack`
+```bash
+saiki --config-file ./configuration/examples/email_slack.yml
+```
+<img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="800">
 
 ### 🎨 AI Website Designer
 **Task:** `Design a landing page based on README.md`
-
-Uses [Filesystem MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/filesystem) and Puppeteer for website generation.
-
 ```bash
-npm start -- --config-file ./configuration/examples/website_designer.yml
+saiki --config-file ./configuration/examples/website_designer.yml
 ```
+<img src="assets/website_demo.gif" alt="Website Designer Demo" width="800">
 
-<div align="center">
-  <img src="assets/website_demo.gif" alt="Saiki: Website designer agent demo" />
-</div>
+_For more examples, see the [Examples](docs/README.md#examples--demos) section in the docs._
 
-### 📧 Email Summary to Slack
+## Configuration
 
-**Task:** `Summarize emails and send highlights to Slack`
-
-
-Integrates [Slack MCP](https://github.com/smithery-ai/reference-servers/tree/main/src/slack) and [Gmail MCP](https://mcp.composio.dev/) (via Composio).
-
-```bash
-npm start -- --config-file ./configuration/examples/email_slack.yml
-```
-
-<div align="center">
-  <a href="https://youtu.be/a1TV7xTiC4g">
-    <img src="assets/email_slack_demo.gif" alt="Saiki Email + Slack agent demo" />
-  </a>
-</div>
-
-
-## 💻 Use Cases
-
-Here are some examples of what you can do with Saiki:
-
-### Code Operations
-```
-> Find all TODO comments in the src directory
-> Create a new React component called UserProfile
-> Show me files changed in the last commit
-```
-
-### Development Workflow
-```
-> Start the dev server
-> Run tests for the auth module
-> Show available npm scripts
-```
-
-### File Management
-```
-> Find all files modified in the last week
-> Create a new directory called "reports"
-> Zip all log files into an archive
-```
-
-### GitHub Integration
-```
-> Show open pull requests on this repository
-> Create an issue for the performance bug
-> Check the status of the CI pipeline
-```
-
-## ⚙️ Configuration
-
-Saiki uses a YAML configuration file (`configuration/saiki.yml` by default) to define tool servers and LLM settings:
+Saiki uses a YAML config file (`configuration/saiki.yml` by default) to configure tool servers (MCP servers) and LLM providers.
 
 ```yaml
 mcpServers:
-  # Add tool servers here (GitHub, filesystem, terminal, etc.)
-  github:
+  filesystem:
     type: stdio
     command: npx
-    args: ["-y", "@modelcontextprotocol/server-github"]
-    env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: your-github-token
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+  puppeteer:
+    type: stdio
+    command: node
+    args:
+      - dist/src/servers/puppeteerServer.js
 
 llm:
   provider: openai
-  model: gpt-4o
+  model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
 ```
 
-Use a custom configuration file:
+## Discovering & Connecting MCP Servers
+
+Saiki communicates with your tools via Model Context Protocol (MCP) servers. You can discover and connect to MCP servers in several ways:
+
+1. Browse pre-built servers:
+   - Model Context Protocol reference servers: https://github.com/modelcontextprotocol/reference-servers
+   - Smithery.ai catalog: https://smithery.ai/tools
+   - Composio MCP registry: https://mcp.composio.dev/
+
+2. Search on npm:
 ```bash
-npm start -- --config-file path/to/your/config.yml
+npm search @modelcontextprotocol/server
 ```
 
-Saiki supports multiple LLM providers including OpenAI, Anthropic, and Google. 
-See the [Configuration Guide](./configuration/README.md) for detailed setup instructions for each provider.
+3. Add servers to your `configuration/saiki.yml` under the `mcpServers` key (see the snippet above).
 
-## 🔌 Extensions
+4. Create custom servers:
+   - Use the MCP TypeScript SDK: https://github.com/modelcontextprotocol/typescript-sdk
+   - Follow the MCP spec: https://modelcontextprotocol.io/introduction
 
-Saiki's power comes from its extensibility. You can easily add new capabilities by:
+## Documentation
 
-1. **Using Existing Tool Servers**: Connect pre-built MCP-compatible servers for services GitHub, filesystem, terminal, etc. [Smithery.ai](https://smithery.ai/) has a large set of pre-built MCP servers. [Composio](https://mcp.composio.dev/) has MCP servers with in-built managed auth.
+Find detailed guides, architecture, and API reference in the `docs/` folder:
 
-2. **Creating Custom Servers**: Build your own tool servers to add specialized functionality.
+- High-level design — [docs/architecture.md](docs/architecture.md)  
+- Docker usage — [README.Docker.md](README.Docker.md)  
 
-Popular tool servers:
-- GitHub: Manage repositories, issues, PRs
-- Filesystem: File and directory operations
-- Terminal: Run shell commands
-- Desktop Commander: Control desktop applications
+## Contributing
 
-For creating custom servers, check out the [MCP Documentation](https://modelcontextprotocol.io/introduction).
+We welcome contributions! Here's how to get started:
 
-## 📚 Documentation
+1. Fork the repository to your GitHub account.
+2. Clone your fork:
+   ```bash
+   git clone https://github.com/your-username/saiki.git
+   cd saiki
+   ```
+3. Create a new feature branch:
+   ```bash
+   git checkout -b feature/your-branch-name
+   ```
+4. Make your changes:
+   - Follow existing TypeScript and code style conventions.
+   - Run `npm run lint:fix` and `npm run format` before committing.
+   - Add or update tests for new functionality.
+5. Commit and push your branch:
+   ```bash
+   git commit -m "Brief description of changes"
+   git push origin feature/your-branch-name
+   ```
+6. Open a Pull Request against the `main` branch with a clear description of your changes.
 
-For more detailed information:
+*Tip:* Open an issue first for discussion on larger enhancements or proposals.
 
-- [Architecture Overview](./docs/architecture.md) - How Saiki works under the hood
-- [Configuration Guide](./configuration/README.md) - Detailed configuration options
+## Community & Support
 
-## 🤝 Contributing
-
-We welcome contributions! Here's how you can help:
-
-- **Add Tool Configurations**: Connect existing MCP-compatible servers
-- **Build Examples**: Create example scripts or use cases
-- **Create Custom Servers**: Build new MCP-compatible servers
-- **Report Issues**: Help us identify bugs or suggest features
-
-Ready to contribute? Fork the repo, make your changes, and submit a pull request!
-
-Resources:
-- [Smithery.ai](https://smithery.ai/) - Browse MCP servers
-- [MCP Documentation](https://modelcontextprotocol.io/introduction)
-- [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
-
-## ⭐ Community & Support
-
-Saiki was built by the team at [Truffle AI](https://trytruffle.ai).
+Saiki was built by the team at Truffle AI.
 
 Saiki is better with you! Join our Discord whether you want to say hello, share your projects, ask questions, or get help setting things up:
 
 [![Join our Discord server](https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat)](https://discord.gg/GwxwQs8CN5)
 
-If you find Saiki useful, please consider giving it a star on GitHub!
+If you're enjoying Saiki, please give us a ⭐ on GitHub!
+
+## License
+
+Elastic License 2.0. See [LICENSE](LICENSE) for details.
