@@ -7,6 +7,13 @@ import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new lo
 import { EventEmitter } from 'events';
 
 const validLogLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
+const HELP_MESSAGE = `Available commands:
+exit/quit - Exit the CLI
+clear - Clear conversation history
+help - Show this help message
+currentloglevel - Show current logging level
+${validLogLevels.join('|')} - Set logging level directly
+`;
 
 /**
  * Run the AI CLI with the given LLM service
@@ -116,13 +123,7 @@ export async function runAiCli(
         }
 
         function showHelp() {
-            logger.info(`Available commands:
-                exit/quit - Exit the CLI
-                clear - Clear conversation history
-                help - Show this help message
-                currentloglevel - Show current logging level
-                ${validLogLevels.join('|')} - Set logging level directly
-                `);
+            logger.info(HELP_MESSAGE);
         }
 
         try {
