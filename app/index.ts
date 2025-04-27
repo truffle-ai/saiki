@@ -8,7 +8,7 @@ import { loadConfigFile } from '../src/config/loader.js';
 import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
 import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
-import { runAiCli } from './cli/cli.js';
+import { runAiCli, runHeadlessCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
 
 // Load environment variables
@@ -50,6 +50,7 @@ if (
 program
     .name('saiki')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
+    .argument('[prompt...]', 'Optional headless prompt for single command mode')
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
@@ -58,6 +59,7 @@ program
     .version('0.2.0');
 
 program.parse();
+const headlessInput = program.args.length > 0 ? program.args.join(' ') : undefined;
 
 // Get options
 const options = program.opts();
@@ -112,8 +114,13 @@ async function startAgent() {
 
         // Start based on mode
         if (runMode === 'cli') {
-            // Run CLI
-            await runAiCli(clientManager, llmService, agentEventBus);
+            if (headlessInput) {
+                await runHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
+                process.exit(0);
+            } else {
+                // Run CLI
+                await runAiCli(clientManager, llmService, agentEventBus);
+            }
         } else if (runMode === 'web') {
             // Run WebUI
             initializeWebUI(clientManager, llmService, agentEventBus, webPort);

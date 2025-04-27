@@ -105,3 +105,44 @@ export async function runAiCli(clientManager: ClientManager, llmService: ILLMSer
         process.exit(1); // Exit with error code if CLI setup fails
     }
 }
+
+/**
+ * Run a single headless command via CLI without interactive prompt
+ */
+export async function runHeadlessCli(
+    clientManager: ClientManager,
+    llmService: ILLMService,
+    agentEventBus: EventEmitter,
+    prompt: string
+): Promise<void> {
+    // Print basic model and connection info
+    logger.info(`Using model config: ${JSON.stringify(llmService.getConfig(), null, 2)}`, null, 'yellow');
+    logger.debug(`Log level: ${logger.getLevel()}`);
+    logger.info(`Connected servers: ${clientManager.getClients().size}`, null, 'green');
+    const failedConnections = clientManager.getFailedConnections();
+    if (Object.keys(failedConnections).length > 0) {
+        logger.error(`Failed connections: ${Object.keys(failedConnections).length}.`, null, 'red');
+    }
+
+    // Subscribe to events for streaming output
+    logger.info('Setting up CLI event subscriptions...');
+    const cliSubscriber = new CLISubscriber();
+    agentEventBus.on('llmservice:thinking', cliSubscriber.onThinking.bind(cliSubscriber));
+    agentEventBus.on('llmservice:chunk', cliSubscriber.onChunk.bind(cliSubscriber));
+    agentEventBus.on('llmservice:toolCall', cliSubscriber.onToolCall.bind(cliSubscriber));
+    agentEventBus.on('llmservice:toolResult', cliSubscriber.onToolResult.bind(cliSubscriber));
+    agentEventBus.on('llmservice:response', cliSubscriber.onResponse.bind(cliSubscriber));
+    agentEventBus.on('llmservice:error', cliSubscriber.onError.bind(cliSubscriber));
+    agentEventBus.on('llmservice:conversationReset', cliSubscriber.onConversationReset.bind(cliSubscriber));
+
+    // Load tools and confirm initialization
+    logger.info('Loading available tools...');
+    const tools = await clientManager.getAllTools();
+    logger.info(
+        `Loaded ${Object.keys(tools).length} tools from ${clientManager.getClients().size} MCP servers\n`
+    );
+    logger.info('AI Agent initialized successfully!', null, 'green');
+
+    // Execute the task (subscriber handles output events)
+    await llmService.completeTask(prompt);
+}
