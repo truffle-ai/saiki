@@ -85,7 +85,6 @@ export async function runAiCli(
         function handleCliCommand(input: string): boolean {
             const lowerInput = input.toLowerCase().trim();
 
-            // Existing commands
             if (lowerInput === 'exit' || lowerInput === 'quit') {
                 logger.warn('Exiting AI CLI. Goodbye!');
                 rl.close();
@@ -98,25 +97,10 @@ export async function runAiCli(
                 return true;
             }
 
-            // New log level commands
             if (validLogLevels.includes(lowerInput)) {
                 logger.setLevel(lowerInput);
                 return true;
             }
-
-            /*
-            if (lowerInput.startsWith('loglevel ')) {
-                const level = lowerInput.split(' ')[1];
-                if (validLogLevels.includes(level)) {
-                    logger.setLevel(level);
-                } else {
-                    logger.warn(
-                        `Invalid log level. Valid levels are: ${validLogLevels.join(', ')}`
-                    );
-                }
-                return true;
-            }
-            */
 
             if (lowerInput === 'currentloglevel') {
                 logger.info(`Current log level: ${logger.getLevel()}`);
@@ -132,16 +116,13 @@ export async function runAiCli(
         }
 
         function showHelp() {
-            logger.info(`
-        Available commands:
-          exit/quit - Exit the CLI
-          clear - Clear conversation history
-          help - Show this help message
-          currentloglevel - Show current logging level
-          debug|verbose|info|warn|error|silly - Set logging level directly
-          
-          Available log levels: ${validLogLevels.join(', ')}
-          `);
+            logger.info(`Available commands:
+                exit/quit - Exit the CLI
+                clear - Clear conversation history
+                help - Show this help message
+                currentloglevel - Show current logging level
+                ${validLogLevels.join('|')} - Set logging level directly
+                `);
         }
 
         try {
