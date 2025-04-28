@@ -207,3 +207,9 @@ If you're enjoying Saiki, please give us a ⭐ on GitHub!
 ## License
 
 Elastic License 2.0. See [LICENSE](LICENSE) for details.
+
+## Contributors
+
+Thanks to all these amazing people for contributing to Saiki! ([full list](https://github.com/truffle-ai/saiki/graphs/contributors)):
+
+[![Contributors](https://contrib.rocks/image?repo=truffle-ai/saiki)](https://github.com/truffle-ai/saiki/graphs/contributors)
