@@ -256,3 +256,9 @@ Saiki is better with you! Join our Discord whether you want to say hello, share 
 [![Join our Discord server](https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat)](https://discord.gg/GwxwQs8CN5)
 
 If you find Saiki useful, please consider giving it a star on GitHub!
+
+## Contributors
+
+Thanks to all these amazing people ([see full list](https://github.com/truffle-ai/saiki/graphs/contributors)):
+
+[![Contributors](https://contrib.rocks/image?repo=truffle-ai/saiki)](https://github.com/truffle-ai/saiki/graphs/contributors)
