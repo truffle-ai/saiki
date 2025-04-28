@@ -259,6 +259,6 @@ If you find Saiki useful, please consider giving it a star on GitHub!
 
 ## Contributors
 
-Thanks to all these amazing people ([see full list](https://github.com/truffle-ai/saiki/graphs/contributors)):
+Thanks to all these amazing people for contributing to Saiki! ([full list](https://github.com/truffle-ai/saiki/graphs/contributors)):
 
 [![Contributors](https://contrib.rocks/image?repo=truffle-ai/saiki)](https://github.com/truffle-ai/saiki/graphs/contributors)
