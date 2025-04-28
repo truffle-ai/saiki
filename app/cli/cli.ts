@@ -5,12 +5,26 @@ import { logger } from '../../src/utils/logger.js'; // Adjusted path
 import { ILLMService } from '../../src/ai/llm/services/types.js'; // Adjusted path
 import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new location
 import { EventEmitter } from 'events';
+
+const validLogLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
+const HELP_MESSAGE = `Available commands:
+exit/quit - Exit the CLI
+clear - Clear conversation history
+help - Show this help message
+currentloglevel - Show current logging level
+${validLogLevels.join('|')} - Set logging level directly
+`;
+
 /**
  * Run the AI CLI with the given LLM service
  * @param clientManager Client manager with registered tool providers
  * @param llmService LLM service implementation
  */
-export async function runAiCli(clientManager: ClientManager, llmService: ILLMService, agentEventBus: EventEmitter) {
+export async function runAiCli(
+    clientManager: ClientManager,
+    llmService: ILLMService,
+    agentEventBus: EventEmitter
+) {
     // Get model and provider info directly from the LLM service
     logger.info(
         `Using model config: ${JSON.stringify(llmService.getConfig(), null, 2)}`,
@@ -35,7 +49,10 @@ export async function runAiCli(clientManager: ClientManager, llmService: ILLMSer
         agentEventBus.on('llmservice:toolResult', cliSubscriber.onToolResult.bind(cliSubscriber));
         agentEventBus.on('llmservice:response', cliSubscriber.onResponse.bind(cliSubscriber));
         agentEventBus.on('llmservice:error', cliSubscriber.onError.bind(cliSubscriber));
-        agentEventBus.on('llmservice:conversationReset', cliSubscriber.onConversationReset.bind(cliSubscriber));
+        agentEventBus.on(
+            'llmservice:conversationReset',
+            cliSubscriber.onConversationReset.bind(cliSubscriber)
+        );
 
         // Get available tools from all connected servers
         logger.info('Loading available tools...');
@@ -72,20 +89,48 @@ export async function runAiCli(clientManager: ClientManager, llmService: ILLMSer
             });
         };
 
+        function handleCliCommand(input: string): boolean {
+            const lowerInput = input.toLowerCase().trim();
+
+            if (lowerInput === 'exit' || lowerInput === 'quit') {
+                logger.warn('Exiting AI CLI. Goodbye!');
+                rl.close();
+                process.exit(0);
+            }
+
+            if (lowerInput === 'clear') {
+                llmService.resetConversation();
+                logger.info('Conversation history cleared.');
+                return true;
+            }
+
+            if (validLogLevels.includes(lowerInput)) {
+                logger.setLevel(lowerInput);
+                return true;
+            }
+
+            if (lowerInput === 'currentloglevel') {
+                logger.info(`Current log level: ${logger.getLevel()}`);
+                return true;
+            }
+
+            if (lowerInput === 'help') {
+                showHelp();
+                return true;
+            }
+
+            return false;
+        }
+
+        function showHelp() {
+            logger.info(HELP_MESSAGE);
+        }
+
         try {
             while (true) {
                 const userInput = await promptUser();
 
-                if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
-                    logger.warn('Exiting AI CLI. Goodbye!');
-                    rl.close();
-                    // Use process.exit(0) for a clean exit in CLI mode
-                    process.exit(0);
-                }
-
-                if (userInput.toLowerCase() === 'clear') {
-                    llmService.resetConversation();
-                    logger.info('Conversation history cleared.');
+                if (handleCliCommand(userInput)) {
                     continue;
                 }
 
