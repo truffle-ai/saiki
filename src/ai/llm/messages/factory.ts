@@ -8,6 +8,7 @@ import { LLMConfig } from '../../../config/types.js';
 import { LLMRouter } from '../types.js';
 import { IMessageFormatter } from './formatters/types.js';
 import { ITokenizer } from '../tokenizer/types.js';
+import { SystemPromptContributor } from '../../systemPrompt/types.js';
 
 /**
  * Factory function to create a MessageManager instance with the correct formatter, tokenizer, and maxTokens
@@ -15,12 +16,14 @@ import { ITokenizer } from '../tokenizer/types.js';
  *
  * @param config LLMConfig object containing provider, model, systemPrompt, etc.
  * @param router LLMRouter flag ('vercel', 'default', etc.)
+ * @param contributors SystemPromptContributor[]
  * @returns MessageManager instance
  * TODO: Make compression strategy also configurable
  */
 export function createMessageManager(
     config: LLMConfig,
-    router: LLMRouter = 'vercel'
+    router: LLMRouter = 'vercel',
+    contributors: SystemPromptContributor[]
 ): MessageManager {
     let formatter: IMessageFormatter;
     let tokenizer: ITokenizer;
@@ -50,7 +53,7 @@ export function createMessageManager(
 
     return new MessageManager(
         formatter,
-        config.systemPrompt,
+        contributors,
         maxTokens,
         tokenizer
     );

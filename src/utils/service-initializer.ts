@@ -35,6 +35,7 @@ import { LLMRouter } from '../ai/llm/types.js';
 import { MessageManager } from '../ai/llm/messages/manager.js';
 import { createMessageManager } from '../ai/llm/messages/factory.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
+import { loadContributors } from '../ai/systemPrompt/loader.js';
 
 /**
  * Type for the core agent services returned by initializeServices
@@ -112,7 +113,8 @@ export async function initializeServices(
      *    - 'vercel' = Vercel-style message formatting (default), 'default' = in-built provider-specific formatting
      */
     const router: LLMRouter = options?.llmRouter ?? 'vercel';
-    const messageManager = options?.messageManager ?? createMessageManager(config.llm, router);
+    const contributors = loadContributors(config.llm.systemPrompt);
+    const messageManager = options?.messageManager ?? createMessageManager(config.llm, router, contributors);
 
     /**
      * 4. Initialize or use the LLMService (allows override for tests/mocks)
