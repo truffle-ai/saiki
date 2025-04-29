@@ -5,7 +5,7 @@ import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
-import { getImageData, DEFAULT_OVERHEAD_PER_MESSAGE } from './utils.js';
+import { getImageData, countMessagesTokens} from './utils.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -84,7 +84,7 @@ export class MessageManager {
      * @returns The number of tokens in the current history
      */
     getTokenCount(): number {
-        return this.countMessagesTokens(this.history, this.tokenizer);
+        return countMessagesTokens(this.history, this.tokenizer);
     }
 
     /**
@@ -324,7 +324,7 @@ export class MessageManager {
      * Checks if history compression is needed based on token count and applies strategies.
      */
     private compressHistoryIfNeeded(): void {
-        let currentTotalTokens: number = this.countMessagesTokens(this.history, this.tokenizer);
+        let currentTotalTokens: number = this.getTokenCount();
         logger.debug(`MessageManager: Checking if history compression is needed.`);
         // If counting failed or we are within limits, do nothing
         if (currentTotalTokens <= this.maxTokens) {
@@ -356,7 +356,7 @@ export class MessageManager {
             }
 
             // Recalculate tokens after applying the strategy
-            currentTotalTokens = this.countMessagesTokens(this.history, this.tokenizer);
+            currentTotalTokens = this.getTokenCount();
             const messagesRemoved = initialLength - this.history.length;
 
             // If counting failed or we are now within limits, stop applying strategies
@@ -377,69 +377,5 @@ export class MessageManager {
     processLLMResponse(response: any): void {
         const msgs = this.formatter.parseResponse(response) ?? [];
         msgs.forEach((m) => this.addMessage(m));
-    }
-
-    /**
-     * Counts the number of tokens in the given message history using the provided tokenizer.
-     * Used internally for compression and token limit enforcement.
-     */
-    private countMessagesTokens(
-        history: InternalMessage[],
-        tokenizer: ITokenizer,
-        overheadPerMessage: number = DEFAULT_OVERHEAD_PER_MESSAGE
-    ): number {
-        let total = 0;
-        try {
-            for (const message of history) {
-                if (message.content) {
-                    if (typeof message.content === 'string') {
-                        // Count string content directly
-                        total += tokenizer.countTokens(message.content);
-                    } else if (Array.isArray(message.content)) {
-                        // For multimodal array content, count text and approximate image parts
-                        message.content.forEach(part => {
-                            if (part.type === 'text' && typeof part.text === 'string') {
-                                total += tokenizer.countTokens(part.text);
-                            } else if (part.type === 'image') {
-                                // Approximate tokens for images: estimate ~1 token per 1KB or based on Base64 length
-                                if (typeof part.image === 'string') {
-                                    // Base64 string length -> bytes -> tokens (~4 bytes per token)
-                                    const byteLength = Math.floor((part.image.length * 3) / 4);
-                                    total += Math.ceil(byteLength / 1024);
-                                } else if (
-                                    part.image instanceof Uint8Array ||
-                                    part.image instanceof Buffer ||
-                                    part.image instanceof ArrayBuffer
-                                ) {
-                                    const bytes = part.image instanceof ArrayBuffer ? part.image.byteLength : (part.image as Uint8Array).length;
-                                    total += Math.ceil(bytes / 1024);
-                                }
-                            }
-                        });
-                    }
-                    // else: Handle other potential content types if necessary in the future
-                }
-                // Count tool calls
-                if (message.toolCalls) {
-                    for (const call of message.toolCalls) {
-                        if (call.function?.name) {
-                            total += tokenizer.countTokens(call.function.name);
-                        }
-                        if (call.function?.arguments) {
-                            total += tokenizer.countTokens(call.function.arguments);
-                        }
-                    }
-                }
-                // Add overhead for the message itself
-                total += overheadPerMessage;
-            }
-        } catch (error) {
-            console.error('countMessagesTokens: Error counting tokens:', error);
-            // Re-throw to indicate failure
-            throw new Error(
-                `Failed to count tokens: ${error instanceof Error ? error.message : String(error)}`
-            );
-        }
-        return total;
     }
 }

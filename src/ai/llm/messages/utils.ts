@@ -2,7 +2,7 @@ import { InternalMessage } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 
 // Approximation for message format overhead
-export const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
+const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
 
 /**
  * Counts the total tokens in an array of InternalMessages using a provided tokenizer.
