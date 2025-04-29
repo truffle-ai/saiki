@@ -39,6 +39,14 @@ function extractApiKey(config: LLMConfig): string {
     return apiKey;
 }
 
+/**
+ * Create an instance of one of our in-built LLM services
+ * @param config LLM configuration from the config file
+ * @param clientManager Client manager instance
+ * @param agentEventBus Event emitter instance
+ * @param messageManager Message manager instance
+ * @returns ILLMService instance
+ */
 function _createInBuiltLLMService(
     config: LLMConfig,
     clientManager: ClientManager,
