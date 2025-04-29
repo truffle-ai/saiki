@@ -13,5 +13,5 @@ export const sourceHandlerRegistry: Record<string, SourceHandler> = {
 };
 
 export function getSourceHandler(source: string): SourceHandler | undefined {
-  return sourceHandlerRegistry[source];
-} 
+    return sourceHandlerRegistry[source];
+}

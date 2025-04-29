@@ -33,9 +33,7 @@ function expandEnvVars(config: any): any {
     return config;
 }
 
-export async function loadConfigFile(
-    configPath: string
-): Promise<AgentConfig> {
+export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
     try {
         // Determine where to load from: absolute, default, or user-relative
         const resolveFromPackageRoot = configPath === DEFAULT_CONFIG_PATH;

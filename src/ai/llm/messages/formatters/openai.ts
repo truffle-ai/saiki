@@ -142,7 +142,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
             return content;
         }
         return content
-            .map(part => {
+            .map((part) => {
                 if (part.type === 'text') {
                     return { type: 'text', text: part.text };
                 }

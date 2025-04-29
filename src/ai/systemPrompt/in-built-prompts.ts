@@ -15,10 +15,10 @@ import { DynamicContributorContext } from './types.js';
  */
 
 export async function getCurrentDateTime(_context: DynamicContributorContext): Promise<string> {
-  return `<dateTime>Current date and time: ${new Date().toISOString()}</dateTime>`;
+    return `<dateTime>Current date and time: ${new Date().toISOString()}</dateTime>`;
 }
 
 export async function getMemorySummary(_context: DynamicContributorContext): Promise<string> {
-  // Placeholder for actual memory logic
-  return '<memorySummary>Memory summary: [not implemented]</memorySummary>';
+    // Placeholder for actual memory logic
+    return '<memorySummary>Memory summary: [not implemented]</memorySummary>';
 }

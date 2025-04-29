@@ -28,11 +28,13 @@ export function resolvePackagePath(targetPath: string, resolveFromPackageRoot: b
             }
             const parent = path.dirname(dir);
             if (parent === dir) {
-                throw new Error(`Cannot find package root when resolving default path: ${targetPath}`);
+                throw new Error(
+                    `Cannot find package root when resolving default path: ${targetPath}`
+                );
             }
             dir = parent;
         }
     }
     // User-specified relative path
     return path.resolve(process.cwd(), targetPath);
-} 
+}

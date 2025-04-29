@@ -41,16 +41,16 @@ export type ServerConfigs = Record<string, McpServerConfig>;
  * LLM configuration type
  */
 export interface ContributorConfig {
-  id: string;
-  type: 'static' | 'dynamic';
-  priority: number;
-  enabled?: boolean;
-  content?: string; // for static
-  source?: string;  // for dynamic
+    id: string;
+    type: 'static' | 'dynamic';
+    priority: number;
+    enabled?: boolean;
+    content?: string; // for static
+    source?: string; // for dynamic
 }
 
 export interface SystemPromptConfig {
-  contributors: ContributorConfig[];
+    contributors: ContributorConfig[];
 }
 
 export type LLMConfig = {

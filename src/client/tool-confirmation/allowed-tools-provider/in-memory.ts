@@ -41,4 +41,4 @@ export class InMemoryAllowedToolsProvider implements AllowedToolsProvider {
         // Return a copy to prevent external mutation
         return new Set(this.getAllowedSet(effectiveUserId));
     }
-} 
+}

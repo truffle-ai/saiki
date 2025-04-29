@@ -8,7 +8,7 @@ import { ImageData } from '../messages/types.js';
  */
 export interface ILLMService {
     /**
-     * Process a user's task (e.g., text input, potentially with image data) 
+     * Process a user's task (e.g., text input, potentially with image data)
      * and return the final AI response.
      * Handles potential tool calls and conversation management internally.
      *

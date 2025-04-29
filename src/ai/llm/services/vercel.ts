@@ -89,7 +89,9 @@ export class VercelLLMService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Get formatted messages from message manager
-                const formattedMessages = await this.messageManager.getFormattedMessages({ clientManager: this.clientManager });
+                const formattedMessages = await this.messageManager.getFormattedMessages({
+                    clientManager: this.clientManager,
+                });
 
                 logger.debug(
                     `Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`
@@ -98,9 +100,7 @@ export class VercelLLMService implements ILLMService {
 
                 // Estimate tokens before sending (optional)
                 const currentTokens = this.messageManager.getTokenCount();
-                logger.debug(
-                    `Estimated tokens being sent to Vercel provider: ${currentTokens}`
-                );
+                logger.debug(`Estimated tokens being sent to Vercel provider: ${currentTokens}`);
 
                 // Choose between generateText or processStream
                 // generateText waits for the full response, processStream handles chunks
@@ -158,7 +158,11 @@ export class VercelLLMService implements ILLMService {
                 // Emit events based on step content (kept from original)
                 if (step.toolCalls && step.toolCalls.length > 0) {
                     for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit('llmservice:toolCall', toolCall.toolName, toolCall.args);
+                        this.eventEmitter.emit(
+                            'llmservice:toolCall',
+                            toolCall.toolName,
+                            toolCall.args
+                        );
                     }
                 }
                 if (step.toolResults && step.toolResults.length > 0) {
@@ -242,7 +246,11 @@ export class VercelLLMService implements ILLMService {
                     // Don't add assistant message with tool calls to history
                     // Just emit the events
                     for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit('llmservice:toolCall', toolCall.toolName, toolCall.args);
+                        this.eventEmitter.emit(
+                            'llmservice:toolCall',
+                            toolCall.toolName,
+                            toolCall.args
+                        );
                     }
                 }
 

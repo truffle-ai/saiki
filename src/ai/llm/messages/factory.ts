@@ -51,10 +51,5 @@ export function createMessageManager(
         throw new Error(`Unsupported LLM router: ${router}`);
     }
 
-    return new MessageManager(
-        formatter,
-        contributors,
-        maxTokens,
-        tokenizer
-    );
-} 
+    return new MessageManager(formatter, contributors, maxTokens, tokenizer);
+}

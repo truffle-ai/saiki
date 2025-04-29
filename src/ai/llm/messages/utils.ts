@@ -7,7 +7,7 @@ const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
 /**
  * Counts the total tokens in an array of InternalMessages using a provided tokenizer.
  * Includes an estimated overhead per message.
- * 
+ *
  * NOTE: This function counts tokens on the raw InternalMessage history and has limitations:
  * 1. It does not account for provider-specific formatting (uses raw content).
  * 2. It ignores the token cost of images in multimodal messages (counts text only).
@@ -34,7 +34,7 @@ export function countMessagesTokens(
                     total += tokenizer.countTokens(message.content);
                 } else if (Array.isArray(message.content)) {
                     // For multimodal array content, count text and approximate image parts
-                    message.content.forEach(part => {
+                    message.content.forEach((part) => {
                         if (part.type === 'text' && typeof part.text === 'string') {
                             total += tokenizer.countTokens(part.text);
                         } else if (part.type === 'image') {
@@ -48,7 +48,10 @@ export function countMessagesTokens(
                                 part.image instanceof Buffer ||
                                 part.image instanceof ArrayBuffer
                             ) {
-                                const bytes = part.image instanceof ArrayBuffer ? part.image.byteLength : (part.image as Uint8Array).length;
+                                const bytes =
+                                    part.image instanceof ArrayBuffer
+                                        ? part.image.byteLength
+                                        : (part.image as Uint8Array).length;
                                 total += Math.ceil(bytes / 1024);
                             }
                         }
@@ -85,7 +88,9 @@ export function countMessagesTokens(
  * @param imagePart The image part containing image data
  * @returns Base64-encoded string or URL string
  */
-export function getImageData(imagePart: { image: string | Uint8Array | Buffer | ArrayBuffer | URL }): string {
+export function getImageData(imagePart: {
+    image: string | Uint8Array | Buffer | ArrayBuffer | URL;
+}): string {
     const { image } = imagePart;
     if (typeof image === 'string') {
         return image;

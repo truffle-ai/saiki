@@ -1,4 +1,4 @@
-import { UserSettings } from "./types.js";
+import { UserSettings } from './types.js';
 
 const defaultSettings: UserSettings = {
     toolApprovalRequired: false,

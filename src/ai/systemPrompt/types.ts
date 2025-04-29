@@ -3,12 +3,12 @@ import { ClientManager } from '../../client/manager.js';
 
 // Context passed to dynamic contributors
 export interface DynamicContributorContext {
-  clientManager: ClientManager;
+    clientManager: ClientManager;
 }
 
 // Interface for all system prompt contributors
 export interface SystemPromptContributor {
-  id: string;
-  priority: number;
-  getContent(context: DynamicContributorContext): Promise<string>;
-} 
+    id: string;
+    priority: number;
+    getContent(context: DynamicContributorContext): Promise<string>;
+}

@@ -69,8 +69,12 @@ export class AnthropicService implements ILLMService {
 
                 // Compute the system prompt and pass it to message manager to avoid duplicate computation
                 const context = { clientManager: this.clientManager };
-                const formattedSystemPrompt = await this.messageManager.getFormattedSystemPrompt(context);
-                const messages = await this.messageManager.getFormattedMessages(context, formattedSystemPrompt);
+                const formattedSystemPrompt =
+                    await this.messageManager.getFormattedSystemPrompt(context);
+                const messages = await this.messageManager.getFormattedMessages(
+                    context,
+                    formattedSystemPrompt
+                );
 
                 logger.debug(`Messages: ${JSON.stringify(messages, null, 2)}`);
 
@@ -153,7 +157,9 @@ export class AnthropicService implements ILLMService {
                             error: errorMessage,
                         });
 
-                        this.eventEmitter.emit('llmservice:toolResult', toolName, { error: errorMessage });
+                        this.eventEmitter.emit('llmservice:toolResult', toolName, {
+                            error: errorMessage,
+                        });
                     }
                 }
 

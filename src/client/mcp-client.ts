@@ -38,7 +38,7 @@ export class MCPClient implements ToolProvider {
     private serverAlias: string | null = null;
     private timeout: number | undefined = undefined;
 
-    constructor() { }
+    constructor() {}
 
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
         this.timeout = config.timeout ?? DEFAULT_TIMEOUT;
@@ -82,13 +82,21 @@ export class MCPClient implements ToolProvider {
 
         // --- Resolve path for bundled node scripts ---
         // TODO: Improve this logic to be less hacky
-        if (command === 'node' && this.resolvedArgs.length > 0 && this.resolvedArgs[0].startsWith('dist/')) {
+        if (
+            command === 'node' &&
+            this.resolvedArgs.length > 0 &&
+            this.resolvedArgs[0].startsWith('dist/')
+        ) {
             try {
                 const scriptRelativePath = this.resolvedArgs[0];
                 this.resolvedArgs[0] = resolvePackagePath(scriptRelativePath, true);
-                logger.debug(`Resolved bundled script path: ${scriptRelativePath} -> ${this.resolvedArgs[0]}`);
+                logger.debug(
+                    `Resolved bundled script path: ${scriptRelativePath} -> ${this.resolvedArgs[0]}`
+                );
             } catch (e) {
-                logger.warn(`Failed to resolve path for bundled script ${this.resolvedArgs[0]}: ${e}`);
+                logger.warn(
+                    `Failed to resolve path for bundled script ${this.resolvedArgs[0]}: ${e}`
+                );
             }
         }
         // --- End path resolution ---
@@ -148,7 +156,11 @@ export class MCPClient implements ToolProvider {
         }
     }
 
-    async connectViaSSE(url: string, headers: Record<string, string>, serverName: string): Promise<Client> {
+    async connectViaSSE(
+        url: string,
+        headers: Record<string, string>,
+        serverName: string
+    ): Promise<Client> {
         logger.debug(`Connecting to SSE MCP server at url: ${url}`);
 
         this.transport = new SSEClientTransport(new URL(url), {

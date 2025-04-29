@@ -5,7 +5,7 @@ import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
-import { getImageData, countMessagesTokens} from './utils.js';
+import { getImageData, countMessagesTokens } from './utils.js';
 import { SystemPromptContributor, DynamicContributorContext } from '../../systemPrompt/types.js';
 
 /**
@@ -70,7 +70,8 @@ export class MessageManager {
             new OldestRemovalStrategy(),
         ]
     ) {
-        if (!systemPromptContributors || systemPromptContributors.length === 0) throw new Error('systemPromptContributors is required');
+        if (!systemPromptContributors || systemPromptContributors.length === 0)
+            throw new Error('systemPromptContributors is required');
         if (maxTokens == null) throw new Error('maxTokens is required');
         if (!tokenizer) throw new Error('tokenizer is required');
         this.formatter = formatter;
@@ -102,9 +103,11 @@ export class MessageManager {
     async getSystemPrompt(context: DynamicContributorContext): Promise<string> {
         // Assemble the system prompt from all contributors
         const parts = await Promise.all(
-            this.systemPromptContributors.map(async c => {
+            this.systemPromptContributors.map(async (c) => {
                 const content = await c.getContent(context);
-                logger.debug(`[SystemPrompt] Contributor '${c.id}' (priority: ${c.priority}):\n${content}`);
+                logger.debug(
+                    `[SystemPrompt] Contributor '${c.id}' (priority: ${c.priority}):\n${content}`
+                );
                 return content;
             })
         );
@@ -250,12 +253,17 @@ export class MessageManager {
         let content: InternalMessage['content'];
         if (result && typeof result === 'object' && 'image' in result) {
             // Use shared helper to get base64/URL
-            const imagePart = result as { image: string | Uint8Array | Buffer | ArrayBuffer | URL; mimeType?: string };
-            content = [{
-                type: 'image',
-                image: getImageData(imagePart),
-                mimeType: imagePart.mimeType,
-            }];
+            const imagePart = result as {
+                image: string | Uint8Array | Buffer | ArrayBuffer | URL;
+                mimeType?: string;
+            };
+            content = [
+                {
+                    type: 'image',
+                    image: getImageData(imagePart),
+                    mimeType: imagePart.mimeType,
+                },
+            ];
         } else if (typeof result === 'string') {
             content = result;
         } else if (Array.isArray(result)) {
@@ -298,7 +306,7 @@ export class MessageManager {
 
         try {
             // Use pre-computed system prompt if provided
-            const prompt = systemPrompt ?? await this.getSystemPrompt(context);
+            const prompt = systemPrompt ?? (await this.getSystemPrompt(context));
             return this.formatter.format([...this.history], prompt);
         } catch (error) {
             logger.error('Error formatting messages:', error);
@@ -315,7 +323,9 @@ export class MessageManager {
      * @returns Formatted system prompt or null/undefined based on formatter implementation
      * @throws Error if formatting fails
      */
-    async getFormattedSystemPrompt(context: DynamicContributorContext): Promise<string | null | undefined> {
+    async getFormattedSystemPrompt(
+        context: DynamicContributorContext
+    ): Promise<string | null | undefined> {
         try {
             const systemPrompt = await this.getSystemPrompt(context);
             return this.formatter.formatSystemPrompt?.(systemPrompt);

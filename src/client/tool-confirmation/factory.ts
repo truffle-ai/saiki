@@ -19,13 +19,13 @@ import { NoOpConfirmationProvider } from './noop-confirmation-provider.js';
 // import { UIConfirmationProvider } from './ui-confirmation-provider.js';
 
 export function createToolConfirmationProvider(runMode: 'cli' | 'web'): ToolConfirmationProvider {
-  switch (runMode) {
-    case 'cli':
-      return new CLIConfirmationProvider();
-    case 'web':
-      // Fallback: No-op provider for now. Replace with real provider when available.
-      return new NoOpConfirmationProvider();
-    default:
-      throw new Error(`Unknown run mode for ToolConfirmationProvider: ${runMode}`);
-  }
-} 
+    switch (runMode) {
+        case 'cli':
+            return new CLIConfirmationProvider();
+        case 'web':
+            // Fallback: No-op provider for now. Replace with real provider when available.
+            return new NoOpConfirmationProvider();
+        default:
+            throw new Error(`Unknown run mode for ToolConfirmationProvider: ${runMode}`);
+    }
+}
