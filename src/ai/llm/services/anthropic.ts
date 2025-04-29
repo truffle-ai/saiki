@@ -17,14 +17,17 @@ export class AnthropicService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private maxIterations: number;
 
     constructor(
         clientManager: ClientManager,
         anthropic: Anthropic,
         agentEventBus: EventEmitter,
         messageManager: MessageManager,
-        model: string
+        model: string,
+        maxIterations: number = 10
     ) {
+        this.maxIterations = maxIterations;
         this.model = model;
         this.anthropic = anthropic;
         this.clientManager = clientManager;
@@ -58,12 +61,12 @@ export class AnthropicService implements ILLMService {
         this.eventEmitter.emit('llmservice:thinking');
 
         // Maximum number of tool use iterations
-        const MAX_ITERATIONS = 10;
+        const maxIterations = this.maxIterations;
         let iterationCount = 0;
         let fullResponse = '';
 
         try {
-            while (iterationCount < MAX_ITERATIONS) {
+            while (iterationCount < maxIterations) {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
@@ -168,7 +171,7 @@ export class AnthropicService implements ILLMService {
             }
 
             // If we reached max iterations
-            logger.warn(`Reached maximum iterations (${MAX_ITERATIONS}) for task.`);
+            logger.warn(`Reached maximum iterations (${maxIterations}) for task.`);
             this.eventEmitter.emit('llmservice:response', fullResponse);
             return (
                 fullResponse ||

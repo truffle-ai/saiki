@@ -22,14 +22,10 @@ export class VercelLLMService implements ILLMService {
     private maxIterations: number;
 
     constructor(
-        
         clientManager: ClientManager,
-       
         model: LanguageModelV1,
         agentEventBus: EventEmitter,
-       
-        messageManager: MessageManager
-    ,
+        messageManager: MessageManager,
         maxIterations: number = 50
     ) {
         this.maxIterations = maxIterations;

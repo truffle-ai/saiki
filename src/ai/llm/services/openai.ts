@@ -17,14 +17,17 @@ export class OpenAIService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private maxIterations: number;
 
     constructor(
         clientManager: ClientManager,
         openai: OpenAI,
         agentEventBus: EventEmitter,
         messageManager: MessageManager,
-        model: string
+        model: string,
+        maxIterations: number = 10
     ) {
+        this.maxIterations = maxIterations;
         this.model = model;
         this.openai = openai;
         this.clientManager = clientManager;
@@ -58,11 +61,11 @@ export class OpenAIService implements ILLMService {
         this.eventEmitter.emit('llmservice:thinking');
 
         // Maximum number of tool use iterations
-        const MAX_ITERATIONS = 10;
+        const maxIterations = this.maxIterations;
         let iterationCount = 0;
 
         try {
-            while (iterationCount < MAX_ITERATIONS) {
+            while (iterationCount < maxIterations) {
                 iterationCount++;
 
                 // Attempt to get a response, with retry logic
@@ -131,7 +134,7 @@ export class OpenAIService implements ILLMService {
             }
 
             // If we reached max iterations, return a message
-            logger.warn(`Reached maximum iterations (${MAX_ITERATIONS}) for task.`);
+            logger.warn(`Reached maximum iterations (${maxIterations}) for task.`);
             const finalResponse = 'Task completed but reached maximum tool call iterations.';
             this.messageManager.addAssistantMessage(finalResponse);
             this.eventEmitter.emit('llmservice:response', finalResponse);

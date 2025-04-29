@@ -58,7 +58,7 @@ export type LLMConfig = {
     model: string;
     systemPrompt: string | SystemPromptConfig;
     apiKey?: string;
-    /** Maximum number of tool-iteration steps (only for vercel provider) */
+    /** Maximum number of tool-iteration steps (for in-built and Vercel providers) */
     maxIterations?: number;
     providerOptions?: Record<string, any>;
 };

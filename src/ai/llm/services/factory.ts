@@ -55,6 +55,8 @@ function _createInBuiltLLMService(
 ): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
+    // Determine max tool iteration steps (default to 10)
+    const maxIter = config.maxIterations ?? 10;
 
     switch (config.provider.toLowerCase()) {
         case 'openai': {
@@ -64,7 +66,8 @@ function _createInBuiltLLMService(
                 openai,
                 agentEventBus,
                 messageManager,
-                config.model
+                config.model,
+                maxIter
             );
         }
         case 'anthropic': {
@@ -74,7 +77,8 @@ function _createInBuiltLLMService(
                 anthropic,
                 agentEventBus,
                 messageManager,
-                config.model
+                config.model,
+                maxIter
             );
         }
         default:
