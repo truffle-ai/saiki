@@ -245,22 +245,6 @@ export class MessageManager {
     }
 
     /**
-     * Counts total tokens in current InternalMessage history using the shared util.
-     * @returns Total token count or null if tokenizer is not set or counting fails.
-     */
-    countTotalTokens(): number | null {
-        if (!this.tokenizer) return null;
-        try {
-            const total = countMessagesTokens(this.history, this.tokenizer);
-            logger.debug(`MessageManager: Calculated total tokens: ${total}`);
-            return total;
-        } catch (error) {
-            logger.error(`MessageManager: Error counting tokens: ${error instanceof Error ? error.message : String(error)}`, { error });
-            return null;
-        }
-    }
-
-    /**
      * Gets the conversation history formatted for the target LLM provider.
      * Applies compression strategies sequentially if the manager is configured with a `maxTokens` limit
      * and a `tokenizer`, and the current token count exceeds the limit. Compression happens *before* formatting.
@@ -327,10 +311,11 @@ export class MessageManager {
         // Compression requires both maxTokens and a tokenizer
         if (!this.maxTokens || !this.tokenizer) return;
 
-        let currentTotalTokens = this.countTotalTokens();
+        // Count total tokens directly
+        let currentTotalTokens: number = countMessagesTokens(this.history, this.tokenizer);
         logger.debug(`MessageManager: Checking if history compression is needed.`);
         // If counting failed or we are within limits, do nothing
-        if (currentTotalTokens === null || currentTotalTokens <= this.maxTokens) {
+        if (currentTotalTokens <= this.maxTokens) {
             logger.debug(
                 `MessageManager: History compression not needed. Current token count: ${currentTotalTokens}, Max tokens: ${this.maxTokens}`
             );
@@ -359,16 +344,11 @@ export class MessageManager {
             }
 
             // Recalculate tokens after applying the strategy
-            currentTotalTokens = this.countTotalTokens();
+            currentTotalTokens = countMessagesTokens(this.history, this.tokenizer);
             const messagesRemoved = initialLength - this.history.length;
 
             // If counting failed or we are now within limits, stop applying strategies
-            if (currentTotalTokens === null) {
-                logger.error(
-                    `MessageManager: Token counting failed after applying ${strategyName}. Stopping compression.`
-                );
-                break;
-            } else if (currentTotalTokens <= this.maxTokens) {
+            if (currentTotalTokens <= this.maxTokens) {
                 logger.debug(
                     `MessageManager: Compression successful after ${strategyName}. New count: ${currentTotalTokens}, messages removed: ${messagesRemoved}`
                 );

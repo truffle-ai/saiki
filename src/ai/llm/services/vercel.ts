@@ -12,6 +12,8 @@ import { getMaxTokens } from '../tokenizer/utils.js';
 import { getProviderFromModel } from '../../utils.js';
 import { InternalMessage, ImageData } from '../messages/types.js';
 import { IMessageFormatter } from '../messages/formatters/types.js';
+import { countMessagesTokens } from '../messages/utils.js';
+import { ITokenizer } from '../tokenizer/types.js';
 
 /**
  * Vercel implementation of LLMService
@@ -23,6 +25,7 @@ export class VercelLLMService implements ILLMService {
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
     private formatter: IMessageFormatter;
+    private tokenizer: ITokenizer;
 
     constructor(clientManager: ClientManager, model: LanguageModelV1, agentEventBus: EventEmitter, systemPrompt: string) {
         this.model = model;
@@ -32,6 +35,7 @@ export class VercelLLMService implements ILLMService {
         // Detect provider, get tokenizer, and max tokens
         this.provider = getProviderFromModel(this.model.modelId);
         const tokenizer = createTokenizer(this.provider, this.model.modelId);
+        this.tokenizer = tokenizer;
         const rawMaxTokens = getMaxTokens(this.provider, this.model.modelId);
         const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
 
@@ -113,12 +117,12 @@ export class VercelLLMService implements ILLMService {
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
                 // Estimate tokens before sending (optional)
-                const currentTokens = this.messageManager.countTotalTokens();
-                if (currentTokens !== null) {
-                    logger.debug(
-                        `Estimated tokens being sent to Vercel provider: ${currentTokens}`
-                    );
-                }
+                const currentTokens = countMessagesTokens([
+                    ...this.messageManager.getHistory(),
+                ], this.tokenizer);
+                logger.debug(
+                    `Estimated tokens being sent to Vercel provider: ${currentTokens}`
+                );
 
                 // Choose between generateText or processStream
                 // generateText waits for the full response, processStream handles chunks
