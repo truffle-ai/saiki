@@ -100,12 +100,14 @@ export class MessageManager {
      * This is a placeholder; actual implementation should run getContent on each contributor with the correct context.
      */
     async getSystemPrompt(context: DynamicContributorContext): Promise<string> {
-        // If only one static contributor (legacy), return its content
-        if (this.systemPromptContributors.length === 1 && 'getContent' in this.systemPromptContributors[0]) {
-            return await this.systemPromptContributors[0].getContent(context);
-        }
-        // Otherwise, assemble from all contributors
-        const parts = await Promise.all(this.systemPromptContributors.map(c => c.getContent(context)));
+        // Assemble the system prompt from all contributors
+        const parts = await Promise.all(
+            this.systemPromptContributors.map(async c => {
+                const content = await c.getContent(context);
+                logger.debug(`[SystemPrompt] Contributor '${c.id}' (priority: ${c.priority}):\n${content}`);
+                return content;
+            })
+        );
         return parts.join('\n');
     }
 

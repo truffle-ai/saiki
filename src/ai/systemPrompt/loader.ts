@@ -37,6 +37,6 @@ export function loadContributors(
     }
     throw new Error(`Invalid contributor config: ${JSON.stringify(c)}`);
   });
-
+  // Lower priority number first, so 0 is highest priority
   return result.sort((a, b) => a.priority - b.priority);
 } 
