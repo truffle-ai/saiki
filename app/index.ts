@@ -9,7 +9,6 @@ import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
 import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
-import { runGameboy } from './gameboy/gameboy.js';
 
 // Load environment variables
 dotenv.config();
