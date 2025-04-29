@@ -5,7 +5,7 @@ import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
-import { countMessagesTokens, getImageData } from './utils.js';
+import { getImageData, DEFAULT_OVERHEAD_PER_MESSAGE } from './utils.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -26,7 +26,7 @@ export class MessageManager {
     /**
      * System prompt used for the conversation
      */
-    private systemPrompt: string | null = null;
+    private systemPrompt: string;
 
     /**
      * Formatter used to convert internal messages to LLM-specific format
@@ -36,12 +36,12 @@ export class MessageManager {
     /**
      * Maximum number of tokens allowed in the conversation (if specified)
      */
-    private maxTokens: number | null = null;
+    private maxTokens: number;
 
     /**
      * Tokenizer used for counting tokens and enabling compression (if specified)
      */
-    private tokenizer: ITokenizer | null = null;
+    private tokenizer: ITokenizer;
 
     /**
      * The sequence of compression strategies to apply when maxTokens is exceeded.
@@ -54,28 +54,63 @@ export class MessageManager {
      * Creates a new MessageManager instance
      *
      * @param formatter Formatter implementation for the target LLM provider
-     * @param systemPrompt Optional system prompt to initialize the conversation
+     * @param systemPrompt System prompt for the conversation
      * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
      * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
      * @param compressionStrategies Optional array of compression strategies to apply sequentially when maxTokens is exceeded. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
      */
     constructor(
         formatter: IMessageFormatter,
-        systemPrompt: string | null = null,
-        maxTokens: number | null = null,
-        tokenizer: ITokenizer | null = null,
+        systemPrompt: string,
+        maxTokens: number,
+        tokenizer: ITokenizer,
         compressionStrategies: ICompressionStrategy[] = [
             new MiddleRemovalStrategy(),
             new OldestRemovalStrategy(),
         ]
     ) {
+        if (!systemPrompt) throw new Error('systemPrompt is required');
+        if (maxTokens == null) throw new Error('maxTokens is required');
+        if (!tokenizer) throw new Error('tokenizer is required');
         this.formatter = formatter;
-        if (systemPrompt) {
-            this.setSystemPrompt(systemPrompt);
-        }
+        this.systemPrompt = systemPrompt;
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
         this.compressionStrategies = compressionStrategies;
+    }
+
+    /**
+     * Returns the current token count of the conversation history.
+     * @returns The number of tokens in the current history
+     */
+    getTokenCount(): number {
+        return this.countMessagesTokens(this.history, this.tokenizer);
+    }
+
+    /**
+     * Returns the configured maximum number of tokens for the conversation.
+     */
+    getMaxTokens(): number {
+        return this.maxTokens;
+    }
+
+    /**
+     * Retrieves the current system prompt
+     *
+     * @returns The system prompt
+     */
+    getSystemPrompt(): string {
+        return this.systemPrompt;
+    }
+
+    /**
+     * Gets the raw conversation history
+     * Returns a defensive copy to prevent modification
+     *
+     * @returns A read-only copy of the conversation history
+     */
+    getHistory(): Readonly<InternalMessage[]> {
+        return [...this.history];
     }
 
     /**
@@ -236,15 +271,6 @@ export class MessageManager {
     }
 
     /**
-     * Retrieves the current system prompt
-     *
-     * @returns The system prompt or null if not set
-     */
-    getSystemPrompt(): string | null {
-        return this.systemPrompt;
-    }
-
-    /**
      * Gets the conversation history formatted for the target LLM provider.
      * Applies compression strategies sequentially if the manager is configured with a `maxTokens` limit
      * and a `tokenizer`, and the current token count exceeds the limit. Compression happens *before* formatting.
@@ -295,24 +321,10 @@ export class MessageManager {
     }
 
     /**
-     * Gets the raw conversation history
-     * Returns a defensive copy to prevent modification
-     *
-     * @returns A read-only copy of the conversation history
-     */
-    getHistory(): Readonly<InternalMessage[]> {
-        return [...this.history];
-    }
-
-    /**
      * Checks if history compression is needed based on token count and applies strategies.
      */
     private compressHistoryIfNeeded(): void {
-        // Compression requires both maxTokens and a tokenizer
-        if (!this.maxTokens || !this.tokenizer) return;
-
-        // Count total tokens directly
-        let currentTotalTokens: number = countMessagesTokens(this.history, this.tokenizer);
+        let currentTotalTokens: number = this.countMessagesTokens(this.history, this.tokenizer);
         logger.debug(`MessageManager: Checking if history compression is needed.`);
         // If counting failed or we are within limits, do nothing
         if (currentTotalTokens <= this.maxTokens) {
@@ -344,7 +356,7 @@ export class MessageManager {
             }
 
             // Recalculate tokens after applying the strategy
-            currentTotalTokens = countMessagesTokens(this.history, this.tokenizer);
+            currentTotalTokens = this.countMessagesTokens(this.history, this.tokenizer);
             const messagesRemoved = initialLength - this.history.length;
 
             // If counting failed or we are now within limits, stop applying strategies
@@ -368,19 +380,66 @@ export class MessageManager {
     }
 
     /**
-     * Returns the current token count of the conversation history.
-     *
-     * @returns The number of tokens in the current history, or 0 if no tokenizer is set
+     * Counts the number of tokens in the given message history using the provided tokenizer.
+     * Used internally for compression and token limit enforcement.
      */
-    getTokenCount(): number {
-        if (!this.tokenizer) return 0;
-        return countMessagesTokens(this.history, this.tokenizer);
-    }
-
-    /**
-     * Returns the configured maximum number of tokens for the conversation, or null if not set.
-     */
-    getMaxTokens(): number | null {
-        return this.maxTokens;
+    private countMessagesTokens(
+        history: InternalMessage[],
+        tokenizer: ITokenizer,
+        overheadPerMessage: number = DEFAULT_OVERHEAD_PER_MESSAGE
+    ): number {
+        let total = 0;
+        try {
+            for (const message of history) {
+                if (message.content) {
+                    if (typeof message.content === 'string') {
+                        // Count string content directly
+                        total += tokenizer.countTokens(message.content);
+                    } else if (Array.isArray(message.content)) {
+                        // For multimodal array content, count text and approximate image parts
+                        message.content.forEach(part => {
+                            if (part.type === 'text' && typeof part.text === 'string') {
+                                total += tokenizer.countTokens(part.text);
+                            } else if (part.type === 'image') {
+                                // Approximate tokens for images: estimate ~1 token per 1KB or based on Base64 length
+                                if (typeof part.image === 'string') {
+                                    // Base64 string length -> bytes -> tokens (~4 bytes per token)
+                                    const byteLength = Math.floor((part.image.length * 3) / 4);
+                                    total += Math.ceil(byteLength / 1024);
+                                } else if (
+                                    part.image instanceof Uint8Array ||
+                                    part.image instanceof Buffer ||
+                                    part.image instanceof ArrayBuffer
+                                ) {
+                                    const bytes = part.image instanceof ArrayBuffer ? part.image.byteLength : (part.image as Uint8Array).length;
+                                    total += Math.ceil(bytes / 1024);
+                                }
+                            }
+                        });
+                    }
+                    // else: Handle other potential content types if necessary in the future
+                }
+                // Count tool calls
+                if (message.toolCalls) {
+                    for (const call of message.toolCalls) {
+                        if (call.function?.name) {
+                            total += tokenizer.countTokens(call.function.name);
+                        }
+                        if (call.function?.arguments) {
+                            total += tokenizer.countTokens(call.function.arguments);
+                        }
+                    }
+                }
+                // Add overhead for the message itself
+                total += overheadPerMessage;
+            }
+        } catch (error) {
+            console.error('countMessagesTokens: Error counting tokens:', error);
+            // Re-throw to indicate failure
+            throw new Error(
+                `Failed to count tokens: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+        return total;
     }
 }
