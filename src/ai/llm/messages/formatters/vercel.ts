@@ -66,7 +66,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
      *
      * @returns null as Vercel doesn't need a separate system prompt
      */
-    getSystemPrompt(): null {
+    formatSystemPrompt(): null {
         return null;
     }
 
@@ -82,7 +82,10 @@ export class VercelMessageFormatter implements IMessageFormatter {
             switch (role) {
                 case 'user':
                     if (typeof msg.content === 'string') {
-                        internal.push({ role: 'user', content: [{ type: 'text', text: msg.content }] });
+                        internal.push({
+                            role: 'user',
+                            content: [{ type: 'text', text: msg.content }],
+                        });
                     }
                     break;
                 case 'assistant': {
@@ -101,14 +104,21 @@ export class VercelMessageFormatter implements IMessageFormatter {
                                     type: 'function',
                                     function: {
                                         name: part.toolName,
-                                        arguments: typeof part.args === 'string' ? part.args : JSON.stringify(part.args),
+                                        arguments:
+                                            typeof part.args === 'string'
+                                                ? part.args
+                                                : JSON.stringify(part.args),
                                     },
                                 });
                             }
                         }
                         text = combined || null;
                     }
-                    internal.push({ role: 'assistant', content: text, toolCalls: calls.length ? calls : undefined });
+                    internal.push({
+                        role: 'assistant',
+                        content: text,
+                        toolCalls: calls.length ? calls : undefined,
+                    });
                     break;
                 }
                 case 'tool':
@@ -117,15 +127,23 @@ export class VercelMessageFormatter implements IMessageFormatter {
                             if (part.type === 'tool-result') {
                                 let content: InternalMessage['content'];
                                 if (Array.isArray(part.experimental_content)) {
-                                    content = part.experimental_content.map((img: any) => ({ type: 'image', image: img.data, mimeType: img.mimeType }));
+                                    content = part.experimental_content.map((img: any) => ({
+                                        type: 'image',
+                                        image: img.data,
+                                        mimeType: img.mimeType,
+                                    }));
                                 } else {
                                     // Ensure result is a string for InternalMessage.content
                                     const raw = part.result;
-                                    content = typeof raw === 'string'
-                                        ? raw
-                                        : JSON.stringify(raw ?? '');
+                                    content =
+                                        typeof raw === 'string' ? raw : JSON.stringify(raw ?? '');
                                 }
-                                internal.push({ role: 'tool', content, toolCallId: part.toolCallId, name: part.toolName });
+                                internal.push({
+                                    role: 'tool',
+                                    content,
+                                    toolCallId: part.toolCallId,
+                                    name: part.toolName,
+                                });
                             }
                         }
                     }
@@ -139,7 +157,10 @@ export class VercelMessageFormatter implements IMessageFormatter {
     }
 
     // Helper to format Assistant messages (with optional tool calls)
-    private formatAssistantMessage(msg: InternalMessage): { content: any; function_call?: { name: string; arguments: string } } {
+    private formatAssistantMessage(msg: InternalMessage): {
+        content: any;
+        function_call?: { name: string; arguments: string };
+    } {
         if (msg.toolCalls && msg.toolCalls.length > 0) {
             const contentParts: any[] = [];
             if (msg.content) {
@@ -150,18 +171,20 @@ export class VercelMessageFormatter implements IMessageFormatter {
                     type: 'tool-call',
                     toolCallId: toolCall.id,
                     toolName: toolCall.function.name,
-                    args: typeof toolCall.function.arguments === 'string'
-                        ? JSON.parse(toolCall.function.arguments)
-                        : toolCall.function.arguments,
+                    args:
+                        typeof toolCall.function.arguments === 'string'
+                            ? JSON.parse(toolCall.function.arguments)
+                            : toolCall.function.arguments,
                 });
             }
             return {
                 content: contentParts,
                 function_call: {
                     name: msg.toolCalls[0].function.name,
-                    arguments: typeof msg.toolCalls[0].function.arguments === 'string'
-                        ? msg.toolCalls[0].function.arguments
-                        : JSON.stringify(msg.toolCalls[0].function.arguments),
+                    arguments:
+                        typeof msg.toolCalls[0].function.arguments === 'string'
+                            ? msg.toolCalls[0].function.arguments
+                            : JSON.stringify(msg.toolCalls[0].function.arguments),
                 },
             };
         }
@@ -180,7 +203,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
                 toolName: msg.name!,
                 result: null,
                 experimental_content: [
-                    { type: 'image', data: imageDataBase64, mimeType: imagePart.mimeType }
+                    { type: 'image', data: imageDataBase64, mimeType: imagePart.mimeType },
                 ],
             };
         } else {

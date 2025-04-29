@@ -167,7 +167,7 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
      * @param systemPrompt The system prompt to format
      * @returns The system prompt without any modification
      */
-    getSystemPrompt(systemPrompt: string | null): string | null {
+    formatSystemPrompt(systemPrompt: string | null): string | null {
         // Anthropic uses system prompt as a separate parameter, no need for any formatting
         return systemPrompt;
     }
@@ -213,7 +213,7 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
             return content;
         }
         return content
-            .map(part => {
+            .map((part) => {
                 if (part.type === 'text') {
                     return { type: 'text', text: part.text };
                 }
@@ -226,7 +226,10 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
                         // Data URI: split metadata and base64 data
                         const [meta, b64] = raw.split(',', 2);
                         const mediaTypeMatch = meta.match(/data:(.*);base64/);
-                        const media_type = (mediaTypeMatch && mediaTypeMatch[1]) || part.mimeType || 'application/octet-stream';
+                        const media_type =
+                            (mediaTypeMatch && mediaTypeMatch[1]) ||
+                            part.mimeType ||
+                            'application/octet-stream';
                         source = { type: 'base64', media_type, data: b64 };
                     } else {
                         // Plain base64 string

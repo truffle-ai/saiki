@@ -4,7 +4,6 @@ import { logger } from '../utils/logger.js';
 import { ToolProvider, IMCPClientWrapper } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';
 import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
-import { ToolSet } from '../ai/types.js';
 
 export class ClientManager {
     private clients: Map<string, IMCPClientWrapper> = new Map();
@@ -135,7 +134,7 @@ export class ClientManager {
         // Request confirmation before executing
         const approved = await this.confirmationProvider.requestConfirmation({
             toolName,
-            args
+            args,
         });
 
         if (!approved) {

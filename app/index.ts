@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { existsSync } from 'fs';
 import { Command } from 'commander';
-import path from 'path';
 import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
 import { loadConfigFile } from '../src/config/loader.js';
@@ -109,7 +108,10 @@ async function startAgent() {
         logger.info('===============================================\n');
 
         // Use the shared initializer
-        const { clientManager, llmService, agentEventBus } = await initializeServices(config, connectionMode);
+        const { clientManager, llmService, agentEventBus } = await initializeServices(config, {
+            connectionMode,
+            runMode,
+        });
 
         // Start based on mode
         if (runMode === 'cli') {

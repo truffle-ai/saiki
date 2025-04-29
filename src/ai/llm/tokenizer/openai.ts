@@ -13,7 +13,9 @@ const DEFAULT_MODEL: TiktokenModel = 'gpt-4o'; // Fallback model
 function fetchTiktokenModel(model: string): TiktokenModel {
     for (const prefix of UNSUPPORTED_PREFIXES) {
         if (model.startsWith(prefix)) {
-            console.warn(`Model '${model}' might not be directly supported by tiktoken. Using default '${DEFAULT_MODEL}'.`);
+            console.warn(
+                `Model '${model}' might not be directly supported by tiktoken. Using default '${DEFAULT_MODEL}'.`
+            );
             return DEFAULT_MODEL;
         }
     }

@@ -49,7 +49,8 @@ async function getBrowserPage(): Promise<{ browser: Browser; page: Page }> {
         const chromePath = findChromePath();
 
         // Define a realistic User-Agent
-        const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'; // Example, update Chrome version periodically
+        const userAgent =
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'; // Example, update Chrome version periodically
 
         const launchOptions: any = {
             headless: false,
@@ -58,7 +59,7 @@ async function getBrowserPage(): Promise<{ browser: Browser; page: Page }> {
                 // '--start-maximized',
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
-                `--user-agent=${userAgent}` // Add User-Agent arg
+                `--user-agent=${userAgent}`, // Add User-Agent arg
             ],
         };
 
@@ -468,21 +469,44 @@ const getContentTool = {
 
                         // Check element importance for later prioritization
                         const importance = getElementImportance(element);
-                        const isInteractable = ['a', 'button', 'input', 'select', 'textarea'].includes(tagName);
+                        const isInteractable = [
+                            'a',
+                            'button',
+                            'input',
+                            'select',
+                            'textarea',
+                        ].includes(tagName);
 
                         // Gather attributes that add meaning
                         let attrs = '';
-                        const keptAttributes = ['id', 'name', 'class', 'role', 'aria-label', 'placeholder', 'value', 'type', 'href'];
-                        keptAttributes.forEach(attrName => {
+                        const keptAttributes = [
+                            'id',
+                            'name',
+                            'class',
+                            'role',
+                            'aria-label',
+                            'placeholder',
+                            'value',
+                            'type',
+                            'href',
+                        ];
+                        keptAttributes.forEach((attrName) => {
                             const attrValue = element.getAttribute(attrName);
                             if (attrValue) {
                                 // Special handling for class to avoid excessive length
                                 if (attrName === 'class') {
-                                    const classes = attrValue.split(' ').filter(c => c.length > 0 && c.length < 30).slice(0, 5).join(' '); // Keep first 5 short classes
+                                    const classes = attrValue
+                                        .split(' ')
+                                        .filter((c) => c.length > 0 && c.length < 30)
+                                        .slice(0, 5)
+                                        .join(' '); // Keep first 5 short classes
                                     if (classes) attrs += ` class="${classes}"`;
                                 } else if (attrName === 'href') {
                                     // Only include non-fragment/JS links
-                                    if (!attrValue.startsWith('#') && !attrValue.startsWith('javascript:')) {
+                                    if (
+                                        !attrValue.startsWith('#') &&
+                                        !attrValue.startsWith('javascript:')
+                                    ) {
                                         attrs += ` href="${attrValue}"`;
                                     }
                                 } else {
@@ -727,13 +751,17 @@ const checkForCaptchaTool = {
                         break;
                     }
                 }
-            } catch (e) { /* Ignore errors finding selector */ }
+            } catch (e) {
+                /* Ignore errors finding selector */
+            }
         }
 
         // If not detected by selector, check common text content
         if (!detected) {
             try {
-                const bodyText = await pageInstance.$eval('body', el => (el as HTMLElement).innerText.toLowerCase());
+                const bodyText = await pageInstance.$eval('body', (el) =>
+                    (el as HTMLElement).innerText.toLowerCase()
+                );
                 for (const text of textsToFind) {
                     if (bodyText.includes(text)) {
                         detected = true;
@@ -741,7 +769,9 @@ const checkForCaptchaTool = {
                         break;
                     }
                 }
-            } catch (e) { /* Ignore errors getting body text */ }
+            } catch (e) {
+                /* Ignore errors getting body text */
+            }
         }
 
         return { captchaDetected: detected, details: detected ? details : undefined };
@@ -1289,13 +1319,25 @@ const listInteractablesTool = {
     name: 'puppeteer_list_interactables',
     description:
         'Scans the current page and returns a list of interactable elements (links, buttons, inputs, selects, textareas) along with their key attributes and text content. Useful for identifying elements to click or type into.',
-    inputSchema: z.object({ // No specific input needed, maybe options later (e.g., filter by type)
-        maxResults: z.number().optional().default(50).describe('Maximum number of elements to return.')
+    inputSchema: z.object({
+        // No specific input needed, maybe options later (e.g., filter by type)
+        maxResults: z
+            .number()
+            .optional()
+            .default(50)
+            .describe('Maximum number of elements to return.'),
     }),
     async executeLogic(
         input: { maxResults?: number },
         pageInstance: Page
-    ): Promise<Array<{ tag: string; text: string; attributes: Record<string, string | null>, selector: string }>> {
+    ): Promise<
+        Array<{
+            tag: string;
+            text: string;
+            attributes: Record<string, string | null>;
+            selector: string;
+        }>
+    > {
         const maxResults = input.maxResults ?? 50;
         const interactableElements = await pageInstance.evaluate((limit) => {
             const results = [];
@@ -1310,7 +1352,7 @@ const listInteractablesTool = {
                 '[role="menuitem"]',
                 '[role="tab"]',
                 '[role="checkbox"]',
-                '[role="radio"]'
+                '[role="radio"]',
             ];
 
             const elements = document.querySelectorAll(selectors.join(', '));
@@ -1320,13 +1362,22 @@ const listInteractablesTool = {
 
                 // Basic visibility check
                 const style = window.getComputedStyle(element);
-                if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0' || (element as HTMLElement).offsetParent === null) {
+                if (
+                    style.display === 'none' ||
+                    style.visibility === 'hidden' ||
+                    style.opacity === '0' ||
+                    (element as HTMLElement).offsetParent === null
+                ) {
                     continue;
                 }
 
                 const tag = element.tagName.toLowerCase();
                 let text = '';
-                if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
+                if (
+                    element instanceof HTMLInputElement ||
+                    element instanceof HTMLTextAreaElement ||
+                    element instanceof HTMLSelectElement
+                ) {
                     text = element.value || '';
                 } else {
                     text = (element.textContent || '').trim();
@@ -1334,11 +1385,26 @@ const listInteractablesTool = {
 
                 // Add placeholder or aria-label if text is empty
                 if (!text) {
-                    text = element.getAttribute('aria-label') || element.getAttribute('placeholder') || '';
+                    text =
+                        element.getAttribute('aria-label') ||
+                        element.getAttribute('placeholder') ||
+                        '';
                 }
 
                 const attributes: Record<string, string | null> = {};
-                const importantAttributes = ['id', 'name', 'class', 'href', 'role', 'aria-label', 'placeholder', 'value', 'type', 'title', 'data-testid']; // Add data-testid
+                const importantAttributes = [
+                    'id',
+                    'name',
+                    'class',
+                    'href',
+                    'role',
+                    'aria-label',
+                    'placeholder',
+                    'value',
+                    'type',
+                    'title',
+                    'data-testid',
+                ]; // Add data-testid
                 for (const attr of importantAttributes) {
                     attributes[attr] = element.getAttribute(attr);
                 }
@@ -1353,26 +1419,32 @@ const listInteractablesTool = {
                     selector = `${tag}[name="${attributes.name}"]`;
                 } else if (attributes['aria-label']) {
                     selector = `${tag}[aria-label="${attributes['aria-label']}"]`;
-                } else if (attributes.role && !['generic', 'presentation', 'none'].includes(attributes.role)) {
+                } else if (
+                    attributes.role &&
+                    !['generic', 'presentation', 'none'].includes(attributes.role)
+                ) {
                     selector = `${tag}[role="${attributes.role}"]`;
-                } else if (text && text.length < 50) { // Use text if short and unique enough (heuristic)
-                     // Attempt to use text content for elements like buttons/links if other selectors fail
-                     // Note: This is less reliable than attributes but better than just class
-                     // Escaping text for CSS selector can be complex, keep it simple for now
-                     // Consider XPath for more complex text matching if needed later
-                     if (tag === 'button' || tag === 'a' || tag === 'span') {
+                } else if (text && text.length < 50) {
+                    // Use text if short and unique enough (heuristic)
+                    // Attempt to use text content for elements like buttons/links if other selectors fail
+                    // Note: This is less reliable than attributes but better than just class
+                    // Escaping text for CSS selector can be complex, keep it simple for now
+                    // Consider XPath for more complex text matching if needed later
+                    if (tag === 'button' || tag === 'a' || tag === 'span') {
                         // Basic attempt, might need refinement for quotes/special chars
                         // selector = `${tag}:contains("${text.replace(/"/g, '\\"')}")`; // This is jQuery syntax, not standard CSS
                         // Standard CSS has no direct text contains, skip for now or use XPath later
-                     }
+                    }
                 } else if (attributes.class) {
                     // Use more stable-looking classes if possible (avoid dynamic ones)
-                    const stableClass = (attributes.class || '').split(' ').find(c => c && !/\d/.test(c) && c.length > 3); // Heuristic: no digits, length > 3
-                    if(stableClass) selector = `${tag}.${stableClass}`;
+                    const stableClass = (attributes.class || '')
+                        .split(' ')
+                        .find((c) => c && !/\d/.test(c) && c.length > 3); // Heuristic: no digits, length > 3
+                    if (stableClass) selector = `${tag}.${stableClass}`;
                     else {
                         // Fallback to first class if no stable one found
                         const firstClass = (attributes.class || '').split(' ')[0];
-                        if(firstClass) selector = `${tag}.${firstClass}`;
+                        if (firstClass) selector = `${tag}.${firstClass}`;
                     }
                 }
                 // TODO: Consider adding XPath generation as a fallback
@@ -1381,7 +1453,7 @@ const listInteractablesTool = {
                     tag,
                     text: text.substring(0, 100), // Limit text length
                     attributes,
-                    selector // Add the generated selector
+                    selector, // Add the generated selector
                 });
             }
             return results;

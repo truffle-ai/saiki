@@ -9,7 +9,7 @@ export interface UserSettings {
 /**
  * Interface for settings provider
  * Possible implementations:
- * - In-memory settings provider    
+ * - In-memory settings provider
  * - File-based settings provider
  * - Database-based settings provider
  */
