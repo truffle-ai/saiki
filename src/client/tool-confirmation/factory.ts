@@ -18,14 +18,11 @@ import { NoOpConfirmationProvider } from './noop-confirmation-provider.js';
 // import { WebConfirmationProvider } from './web-confirmation-provider.js';
 // import { UIConfirmationProvider } from './ui-confirmation-provider.js';
 
-export function createToolConfirmationProvider(runMode: 'cli' | 'web' | 'gameboy'): ToolConfirmationProvider {
+export function createToolConfirmationProvider(runMode: 'cli' | 'web'): ToolConfirmationProvider {
     switch (runMode) {
         case 'cli':
             return new CLIConfirmationProvider();
         case 'web':
-            // Fallback: No-op provider for now. Replace with real provider when available.
-            return new NoOpConfirmationProvider();
-        case 'gameboy':
             // Fallback: No-op provider for now. Replace with real provider when available.
             return new NoOpConfirmationProvider();
         default:

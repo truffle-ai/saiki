@@ -68,8 +68,8 @@ const webPort = parseInt(options.webPort, 10);
 const resolveFromPackageRoot = configFile === DEFAULT_CONFIG_PATH; // Check if should resolve from package root
 
 // Validate run mode
-if (!['cli', 'web', 'gameboy'].includes(runMode)) {
-    logger.error(`Invalid mode: ${runMode}. Must be 'cli', 'web', or 'gameboy'.`);
+if (!['cli', 'web'].includes(runMode)) {
+    logger.error(`Invalid mode: ${runMode}. Must be 'cli', 'web'.`);
     process.exit(1);
 }
 
@@ -123,8 +123,6 @@ async function startAgent() {
             logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
             // Note: Web server runs indefinitely, no need to await here unless
             // you specifically want the script to only exit when the server does.
-        } else if (runMode === 'gameboy') {
-            await runGameboy(clientManager, llmService, agentEventBus);
         }
     } catch (error) {
         logger.error(
@@ -156,7 +154,7 @@ function validateAgentConfig(config: AgentConfig): void {
         logger.info('No LLM configuration found, applying defaults', 'yellow');
         config.llm = {
             provider: 'openai',
-            model: 'gpt-4o-mini',
+            model: 'gpt-4.1-mini',
             systemPrompt:
                 'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.',
             apiKey: '$OPENAI_API_KEY',
