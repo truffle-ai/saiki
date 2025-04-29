@@ -12,7 +12,7 @@ marked.use({ sanitize: true });
 // --- Wait for DOMContentLoaded before initializing UI and listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     // --- Get DOM Elements --- 
-    const messageListWrapper = document.getElementById('message-list-wrapper');
+    const chatLog = document.getElementById('message-list');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
     const resetButton = document.getElementById('reset-button');
@@ -24,15 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const serverTypeSelect = document.getElementById('server-type');
     const stdioOptionsDiv = document.getElementById('stdio-options');
     const sseOptionsDiv = document.getElementById('sse-options');
-    const chatLog = document.getElementById('message-list');
-    const userInput = document.getElementById('message-input');
     const imageUpload = document.getElementById('image-upload');
     const imagePreviewContainer = document.getElementById('image-preview-container');
     const imagePreview = document.getElementById('image-preview');
     const removeImageBtn = document.getElementById('remove-image-btn');
 
     // --- Check if critical elements exist ---
-    if (!chatLog || !messageListWrapper || !userInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv || !imageUpload || !imagePreviewContainer || !imagePreview || !removeImageBtn) {
+    if (!chatLog || !messageInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv || !imageUpload || !imagePreviewContainer || !imagePreview || !removeImageBtn) {
         console.error("Initialization failed: One or more required DOM elements not found.");
         // Display error to user if possible
         if (chatLog) {
@@ -45,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function scrollToBottom() {
-       messageListWrapper.scrollTop = messageListWrapper.scrollHeight;
+        chatLog.scrollTop = chatLog.scrollHeight;
     }
 
     function displaySystemMessage(text, type = 'info') {
@@ -77,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         chatLog.appendChild(messageElement);
-        messageListWrapper.scrollTop = messageListWrapper.scrollHeight;
+        scrollToBottom();
     }
 
     function appendExpandableMessage(headerHtml, contentHtml, type) {
@@ -121,13 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isScrolledToBottom() {
-        const threshold = 5; 
-        return messageListWrapper.scrollHeight - messageListWrapper.scrollTop - messageListWrapper.clientHeight <= threshold;
+        const threshold = 5;
+        return chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight <= threshold;
     }
 
     function adjustTextareaHeight() {
-        userInput.style.height = 'auto'; // Reset height to calculate new height
-        userInput.style.height = `${userInput.scrollHeight}px`; // Set to scroll height
+        messageInput.style.height = 'auto';
+        messageInput.style.height = `${messageInput.scrollHeight}px`;
 
         // Adjust chat log padding based on input area height
         const inputAreaHeight = document.getElementById('input-area').offsetHeight;
@@ -137,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modify sendMessage to include image data
     async function sendMessage() {
-        const messageText = userInput.value.trim();
+        const messageText = messageInput.value.trim();
 
         // Require text input even if image is present
         if (!messageText) {
@@ -147,15 +145,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } 
 
         appendMessage('user', messageText, currentImageData ? currentImageData.base64 : null);
-        userInput.value = '';
-        userInput.style.height = 'auto'; // Reset height before sending
-        const messageToSend = messageText;
+        messageInput.value = '';
+        messageInput.style.height = 'auto'; // Reset height before sending
         const imageDataToSend = currentImageData; 
         removeImage(); // Clear image after grabbing data for sending
 
         // Send via WebSocket instead of fetch
         if (ws && ws.readyState === WebSocket.OPEN) {
-            const payload = { type: 'message', content: messageToSend, imageData: imageDataToSend };
+            const payload = { type: 'message', content: messageText, imageData: imageDataToSend };
             ws.send(JSON.stringify(payload));
         } else {
             displaySystemMessage('Cannot send message: Not connected to server.', 'error');
@@ -468,12 +465,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             reader.onerror = function(e) {
                 console.error("FileReader error: ", e);
-                appendMessage('error', 'Error reading image file.');
-                removeImage(); 
+                displaySystemMessage('Error reading image file.', 'error');
+                removeImage();
             }
             reader.readAsDataURL(file);
         } else if (file) {
-            appendMessage('error', 'Please select a valid image file.');
+            displaySystemMessage('Please select a valid image file.', 'error');
             removeImage(); // Clear any previous selection
         }
     }
