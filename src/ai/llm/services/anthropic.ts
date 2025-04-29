@@ -1,12 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from './types.js';
+import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { AnthropicMessageFormatter } from '../messages/formatters/anthropic.js';
-import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import { ImageData } from '../messages/types.js';
 
@@ -192,8 +190,8 @@ export class AnthropicService implements ILLMService {
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information
      */
-    getConfig(): { provider: string; model: string; [key: string]: any } {
-        const configuredMaxTokens = (this.messageManager as any).maxTokens;
+    getConfig(): LLMServiceConfig {
+        const configuredMaxTokens = this.messageManager.getMaxTokens();
         return {
             provider: 'anthropic',
             model: this.model,

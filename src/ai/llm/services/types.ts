@@ -28,8 +28,19 @@ export interface ILLMService {
     getAllTools(): Promise<ToolSet>;
 
     // Get configuration information about the LLM service
-    getConfig(): { provider: string; model: string } | { model: LanguageModelV1 };
+    getConfig(): LLMServiceConfig;
 
     // Get event emitter for subscribing to events
     getEventEmitter(): EventEmitter;
 }
+
+/**
+ * Configuration object returned by LLMService.getConfig()
+ */
+export type LLMServiceConfig = {
+    provider: string;
+    model: string | LanguageModelV1;
+    configuredMaxTokens?: number | null;
+    modelMaxTokens?: number | null;
+    [key: string]: any;
+};

@@ -376,4 +376,11 @@ export class MessageManager {
         if (!this.tokenizer) return 0;
         return countMessagesTokens(this.history, this.tokenizer);
     }
+
+    /**
+     * Returns the configured maximum number of tokens for the conversation, or null if not set.
+     */
+    getMaxTokens(): number | null {
+        return this.maxTokens;
+    }
 }

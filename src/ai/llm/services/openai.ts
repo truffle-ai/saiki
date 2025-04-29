@@ -1,35 +1,12 @@
 import OpenAI from 'openai';
 import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from './types.js';
+import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
-import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
-import { countMessagesTokens } from '../messages/utils.js';
-import { ITokenizer } from '../tokenizer/types.js';
 import { ImageData } from '../messages/types.js';
-
-// System prompt constants
-
-const DETAILED_SYSTEM_PROMPT_TEMPLATE = `You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks by calling appropriate tools.
-
-
-## Follow these guidelines when using tools:
-1. Use tools whenever they can help complete the user's request. Do not ever say you don't have access to tools, read your tools completely and try to use them.
-2. You can call multiple tools in sequence to solve complex problems.
-3. After each tool returns a result, analyze the result carefully to determine next steps.
-4. If the result indicates you need additional information, call another tool to get that information.
-5. Continue this process until you have all the information needed to fulfill the user's request.
-6. Be concise in your responses, focusing on the task at hand.
-7. If a tool returns an error, try a different approach or ask the user for clarification.
-
-Remember: You can use multiple tool calls in a sequence to solve multi-step problems.
-
-## Available tools:
-TOOL_DESCRIPTIONS`;
 
 /**
  * OpenAI implementation of LLMService
@@ -180,8 +157,8 @@ export class OpenAIService implements ILLMService {
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information
      */
-    getConfig(): { provider: string; model: string; [key: string]: any } {
-        const configuredMaxTokens = (this.messageManager as any).maxTokens;
+    getConfig(): LLMServiceConfig {
+        const configuredMaxTokens = this.messageManager.getMaxTokens();
         return {
             provider: 'openai',
             model: this.model,

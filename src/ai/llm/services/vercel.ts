@@ -1,5 +1,5 @@
 import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from './types.js';
+import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../utils/logger.js';
 import { streamText, generateText, CoreMessage, LanguageModelV1 } from 'ai';
 import { ToolSet } from '../../types.js';
@@ -293,7 +293,7 @@ export class VercelLLMService implements ILLMService {
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information
      */
-    getConfig(): { provider: string; model: LanguageModelV1; [key: string]: any } {
+    getConfig(): LLMServiceConfig {
         const configuredMaxTokens = (this.messageManager as any).maxTokens;
         return {
             provider: `vercel:${this.provider}`,
