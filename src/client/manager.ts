@@ -89,21 +89,20 @@ export class ClientManager {
 
     /**
      * Get all available tools from all connected clients, updating the cache.
-     * @returns Promise resolving to a map of tool names to tool definitions
+     * @returns Promise resolving to a ToolSet mapping tool names to Tool definitions
      */
-    async getAllTools(): Promise<Record<string, ToolSet>> {
-        let allTools: Record<string, any> = {};
-
-        // Clear existing maps to avoid stale entries
-        this.toolToClientMap.clear();
-
+    async getAllTools(): Promise<ToolSet> {
+        // Refresh all caches before retrieving tools
+        await this.rebuildAllCaches();
+        const allTools: ToolSet = {};
         for (const [toolName, client] of this.toolToClientMap.entries()) {
             const clientTools = await client.getTools();
-            if(clientTools[toolName]) {
-                 allTools[toolName] = clientTools[toolName];
+            // clientTools is itself a ToolSet, so extract the specific Tool
+            const toolDef = clientTools[toolName];
+            if (toolDef) {
+                allTools[toolName] = toolDef;
             }
         }
-
         logger.silly(`All tools: ${JSON.stringify(allTools, null, 2)}`);
         return allTools;
     }
