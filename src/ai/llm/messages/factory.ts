@@ -50,7 +50,7 @@ export function createMessageManager(
 
     return new MessageManager(
         formatter,
-        config.systemPrompt ?? null,
+        config.systemPrompt,
         maxTokens,
         tokenizer
     );
