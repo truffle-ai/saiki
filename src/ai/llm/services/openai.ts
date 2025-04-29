@@ -120,7 +120,9 @@ export class OpenAIService implements ILLMService {
                             error: errorMessage,
                         });
 
-                        this.eventEmitter.emit('llmservice:toolResult', toolName, { error: errorMessage });
+                        this.eventEmitter.emit('llmservice:toolResult', toolName, {
+                            error: errorMessage,
+                        });
                     }
                 }
 
@@ -180,7 +182,9 @@ export class OpenAIService implements ILLMService {
 
             try {
                 // Get formatted messages from message manager
-                const formattedMessages = await this.messageManager.getFormattedMessages({ clientManager: this.clientManager });
+                const formattedMessages = await this.messageManager.getFormattedMessages({
+                    clientManager: this.clientManager,
+                });
 
                 logger.silly(
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`

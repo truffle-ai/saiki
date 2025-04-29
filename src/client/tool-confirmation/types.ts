@@ -12,7 +12,7 @@ export interface ToolConfirmationProvider {
             displayDetails?: (details: ToolExecutionDetails) => void;
             collectInput?: () => Promise<string | boolean>;
             parseResponse?: (response: any) => boolean;
-        },
+        }
     ): Promise<boolean>;
 }
 

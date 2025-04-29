@@ -1,5 +1,5 @@
-import { SettingsProvider, UserSettings } from "./types.js";
-import { getDefaultUserSettings } from "./utils.js";
+import { SettingsProvider, UserSettings } from './types.js';
+import { getDefaultUserSettings } from './utils.js';
 
 export class InMemorySettingsProvider implements SettingsProvider {
     private userSettings: UserSettings = getDefaultUserSettings();

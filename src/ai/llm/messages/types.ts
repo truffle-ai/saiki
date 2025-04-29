@@ -3,17 +3,17 @@
  * Standardizes message format across different LLM providers.
  */
 export interface ImageData {
-  image: string | Uint8Array | Buffer | ArrayBuffer | URL;
-  mimeType?: string;
+    image: string | Uint8Array | Buffer | ArrayBuffer | URL;
+    mimeType?: string;
 }
 
 export interface TextPart {
-  type: 'text';
-  text: string;
+    type: 'text';
+    text: string;
 }
 
 export interface ImagePart extends ImageData {
-  type: 'image';
+    type: 'image';
 }
 
 export interface InternalMessage {

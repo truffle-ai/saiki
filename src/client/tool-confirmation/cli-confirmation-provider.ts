@@ -18,10 +18,7 @@ export class CLIConfirmationProvider implements ToolConfirmationProvider {
     private rl: readline.Interface | null = null;
     public settingsProvider: SettingsProvider;
 
-    constructor(
-        allowedToolsProvider?: AllowedToolsProvider,
-        settingsProvider?: SettingsProvider
-    ) {
+    constructor(allowedToolsProvider?: AllowedToolsProvider, settingsProvider?: SettingsProvider) {
         this.allowedToolsProvider = allowedToolsProvider ?? new InMemoryAllowedToolsProvider();
         this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider();
     }
@@ -66,8 +63,7 @@ export class CLIConfirmationProvider implements ToolConfirmationProvider {
         // Add an approved tool to the list
         if (choice) {
             await this.allowedToolsProvider.allowTool(toolDetails.toolName, effectiveUserId);
-        }
-        else {
+        } else {
             logger.warn(`Tool '${toolDetails.toolName}' execution denied`);
         }
 
@@ -93,12 +89,12 @@ export class CLIConfirmationProvider implements ToolConfirmationProvider {
             console.log(
                 boxen(
                     `${chalk.cyan('Confirm execution of this tool?')}\n\n` +
-                    `Use ${chalk.yellow('←/→')} arrow keys to select, ${chalk.yellow('Enter')} to confirm`,
+                        `Use ${chalk.yellow('←/→')} arrow keys to select, ${chalk.yellow('Enter')} to confirm`,
                     {
                         padding: 1,
                         borderColor: 'yellow',
                         title: '🔐 Tool Confirmation',
-                        titleAlignment: 'center'
+                        titleAlignment: 'center',
                     }
                 )
             );
@@ -112,8 +108,7 @@ export class CLIConfirmationProvider implements ToolConfirmationProvider {
                 if (key.name === 'left') {
                     selection = true; // Left = Approve
                     this.renderSelection(selection);
-                }
-                else if (key.name === 'right') {
+                } else if (key.name === 'right') {
                     selection = false; // Right = Deny
                     this.renderSelection(selection);
                 }
@@ -128,14 +123,14 @@ export class CLIConfirmationProvider implements ToolConfirmationProvider {
                     // Display confirmation result
                     console.log(
                         boxen(
-                            selection ?
-                                chalk.green('Tool execution approved') :
-                                chalk.red('Tool execution denied'),
+                            selection
+                                ? chalk.green('Tool execution approved')
+                                : chalk.red('Tool execution denied'),
                             {
                                 padding: 1,
                                 borderColor: selection ? 'green' : 'red',
                                 title: selection ? '✅ Approved' : '❌ Denied',
-                                titleAlignment: 'center'
+                                titleAlignment: 'center',
                             }
                         )
                     );
@@ -152,15 +147,12 @@ export class CLIConfirmationProvider implements ToolConfirmationProvider {
                     }
 
                     console.log(
-                        boxen(
-                            chalk.red('Tool execution aborted'),
-                            {
-                                padding: 1,
-                                borderColor: 'red',
-                                title: '❌ Aborted',
-                                titleAlignment: 'center'
-                            }
-                        )
+                        boxen(chalk.red('Tool execution aborted'), {
+                            padding: 1,
+                            borderColor: 'red',
+                            title: '❌ Aborted',
+                            titleAlignment: 'center',
+                        })
                     );
 
                     // Resolve with false (deny)
@@ -182,12 +174,15 @@ export class CLIConfirmationProvider implements ToolConfirmationProvider {
         process.stdout.write('\r\x1b[K');
         // Render current selection with horizontal layout
         if (selection) {
-            process.stdout.write(`${chalk.green('▶')}${chalk.green.bold('Approve')}   ${chalk.gray('Deny')}`);
+            process.stdout.write(
+                `${chalk.green('▶')}${chalk.green.bold('Approve')}   ${chalk.gray('Deny')}`
+            );
         } else {
-            process.stdout.write(` ${chalk.gray('Approve')}  ${chalk.red('▶')}${chalk.red.bold('Deny')}`);
+            process.stdout.write(
+                ` ${chalk.gray('Approve')}  ${chalk.red('▶')}${chalk.red.bold('Deny')}`
+            );
         }
     }
-
 
     /**
      * Close the readline interface if it's open

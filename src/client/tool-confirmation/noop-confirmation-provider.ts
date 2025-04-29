@@ -10,9 +10,9 @@ import { ToolConfirmationProvider } from './types.js';
 import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
 
 export class NoOpConfirmationProvider implements ToolConfirmationProvider {
-  public allowedToolsProvider = new InMemoryAllowedToolsProvider();
+    public allowedToolsProvider = new InMemoryAllowedToolsProvider();
 
-  async requestConfirmation(/* details */): Promise<boolean> {
-    return true; // Always approve
-  }
-} 
+    async requestConfirmation(/* details */): Promise<boolean> {
+        return true; // Always approve
+    }
+}

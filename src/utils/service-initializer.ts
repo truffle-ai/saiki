@@ -66,11 +66,11 @@ export type AgentServices = {
 export type InitializeServicesOptions = {
     runMode?: 'cli' | 'web'; // Context/mode override
     connectionMode?: 'strict' | 'lenient'; // Connection mode override
-    clientManager?: ClientManager;     // Inject a custom or mock ClientManager
-    llmService?: ILLMService;         // Inject a custom or mock LLMService
-    agentEventBus?: EventEmitter;     // Inject a custom or mock EventEmitter
+    clientManager?: ClientManager; // Inject a custom or mock ClientManager
+    llmService?: ILLMService; // Inject a custom or mock LLMService
+    agentEventBus?: EventEmitter; // Inject a custom or mock EventEmitter
     llmRouter?: LLMRouter; // Route LLM calls via Vercel (default) or use in-built
-    messageManager?: MessageManager;  // Inject a custom or mock MessageManager
+    messageManager?: MessageManager; // Inject a custom or mock MessageManager
     // Add more overrides as needed
     // configOverride?: Partial<AgentConfig>; // (optional) for field-level config overrides
 };
@@ -114,14 +114,17 @@ export async function initializeServices(
      */
     const router: LLMRouter = options?.llmRouter ?? 'vercel';
     const contributors = loadContributors(config.llm.systemPrompt);
-    const messageManager = options?.messageManager ?? createMessageManager(config.llm, router, contributors);
+    const messageManager =
+        options?.messageManager ?? createMessageManager(config.llm, router, contributors);
 
     /**
      * 4. Initialize or use the LLMService (allows override for tests/mocks)
      *    - Use llmRouter from options to select LLM routing backend
      *    - 'vercel' = route via Vercel LLM service (default), 'default' = use in-built LLM services
      */
-    const llmService = options?.llmService ?? createLLMService(config.llm, router, clientManager, agentEventBus, messageManager);
+    const llmService =
+        options?.llmService ??
+        createLLMService(config.llm, router, clientManager, agentEventBus, messageManager);
     if (!options?.llmService) {
         logger.debug(`LLM service initialized using router: ${router}`);
     } else {
