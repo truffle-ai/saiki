@@ -9,6 +9,7 @@
  *   const provider = createToolConfirmationProvider(runMode);
  *
  * This centralizes provider selection logic, making it easy to extend and maintain.
+ * TODO: implement web tool confirmation provider
  */
 
 import { ToolConfirmationProvider } from './types.js';
@@ -24,8 +25,6 @@ export function createToolConfirmationProvider(runMode: 'cli' | 'web'): ToolConf
     case 'web':
       // Fallback: No-op provider for now. Replace with real provider when available.
       return new NoOpConfirmationProvider();
-    // case 'ui':
-    //   return new UIConfirmationProvider();
     default:
       throw new Error(`Unknown run mode for ToolConfirmationProvider: ${runMode}`);
   }
