@@ -1,6 +1,6 @@
 {
     "name": "@truffle-ai/saiki",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
     "main": "dist/app/index.js",
