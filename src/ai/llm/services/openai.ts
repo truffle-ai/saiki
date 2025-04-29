@@ -180,7 +180,7 @@ export class OpenAIService implements ILLMService {
 
             try {
                 // Get formatted messages from message manager
-                const formattedMessages = this.messageManager.getFormattedMessages();
+                const formattedMessages = await this.messageManager.getFormattedMessages({ clientManager: this.clientManager });
 
                 logger.silly(
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`

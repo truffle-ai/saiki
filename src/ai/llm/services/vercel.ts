@@ -89,7 +89,7 @@ export class VercelLLMService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Get formatted messages from message manager
-                const formattedMessages = this.messageManager.getFormattedMessages();
+                const formattedMessages = await this.messageManager.getFormattedMessages({ clientManager: this.clientManager });
 
                 logger.debug(
                     `Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`

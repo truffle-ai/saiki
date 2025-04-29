@@ -67,16 +67,17 @@ export class AnthropicService implements ILLMService {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
-                // Get formatted messages from message manager
-                const messages = this.messageManager.getFormattedMessages();
-                const systemPrompt = this.messageManager.getFormattedSystemPrompt();
+                // Compute the system prompt and pass it to message manager to avoid duplicate computation
+                const context = { clientManager: this.clientManager };
+                const formattedSystemPrompt = await this.messageManager.getFormattedSystemPrompt(context);
+                const messages = await this.messageManager.getFormattedMessages(context, formattedSystemPrompt);
 
                 logger.debug(`Messages: ${JSON.stringify(messages, null, 2)}`);
 
                 const response = await this.anthropic.messages.create({
                     model: this.model,
                     messages: messages,
-                    system: systemPrompt,
+                    system: formattedSystemPrompt,
                     tools: formattedTools,
                     max_tokens: 4096,
                 });
