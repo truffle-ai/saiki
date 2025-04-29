@@ -91,8 +91,10 @@ export function getImageData(imagePart: { image: string | Uint8Array | Buffer | 
         return image;
     } else if (image instanceof Buffer) {
         return image.toString('base64');
-    } else if (image instanceof Uint8Array || image instanceof ArrayBuffer) {
+    } else if (image instanceof Uint8Array) {
         return Buffer.from(image).toString('base64');
+    } else if (image instanceof ArrayBuffer) {
+        return Buffer.from(new Uint8Array(image)).toString('base64');
     } else if (image instanceof URL) {
         return image.toString();
     }

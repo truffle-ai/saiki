@@ -5,7 +5,7 @@ import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
-import { countMessagesTokens, getImageData } from './utils.js';
+import { getImageData, countMessagesTokens} from './utils.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -26,7 +26,7 @@ export class MessageManager {
     /**
      * System prompt used for the conversation
      */
-    private systemPrompt: string | null = null;
+    private systemPrompt: string;
 
     /**
      * Formatter used to convert internal messages to LLM-specific format
@@ -36,12 +36,12 @@ export class MessageManager {
     /**
      * Maximum number of tokens allowed in the conversation (if specified)
      */
-    private maxTokens: number | null = null;
+    private maxTokens: number;
 
     /**
      * Tokenizer used for counting tokens and enabling compression (if specified)
      */
-    private tokenizer: ITokenizer | null = null;
+    private tokenizer: ITokenizer;
 
     /**
      * The sequence of compression strategies to apply when maxTokens is exceeded.
@@ -54,28 +54,63 @@ export class MessageManager {
      * Creates a new MessageManager instance
      *
      * @param formatter Formatter implementation for the target LLM provider
-     * @param systemPrompt Optional system prompt to initialize the conversation
+     * @param systemPrompt System prompt for the conversation
      * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
      * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
      * @param compressionStrategies Optional array of compression strategies to apply sequentially when maxTokens is exceeded. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
      */
     constructor(
         formatter: IMessageFormatter,
-        systemPrompt: string | null = null,
-        maxTokens: number | null = null,
-        tokenizer: ITokenizer | null = null,
+        systemPrompt: string,
+        maxTokens: number,
+        tokenizer: ITokenizer,
         compressionStrategies: ICompressionStrategy[] = [
             new MiddleRemovalStrategy(),
             new OldestRemovalStrategy(),
         ]
     ) {
+        if (!systemPrompt) throw new Error('systemPrompt is required');
+        if (maxTokens == null) throw new Error('maxTokens is required');
+        if (!tokenizer) throw new Error('tokenizer is required');
         this.formatter = formatter;
-        if (systemPrompt) {
-            this.setSystemPrompt(systemPrompt);
-        }
+        this.systemPrompt = systemPrompt;
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
         this.compressionStrategies = compressionStrategies;
+    }
+
+    /**
+     * Returns the current token count of the conversation history.
+     * @returns The number of tokens in the current history
+     */
+    getTokenCount(): number {
+        return countMessagesTokens(this.history, this.tokenizer);
+    }
+
+    /**
+     * Returns the configured maximum number of tokens for the conversation.
+     */
+    getMaxTokens(): number {
+        return this.maxTokens;
+    }
+
+    /**
+     * Retrieves the current system prompt
+     *
+     * @returns The system prompt
+     */
+    getSystemPrompt(): string {
+        return this.systemPrompt;
+    }
+
+    /**
+     * Gets the raw conversation history
+     * Returns a defensive copy to prevent modification
+     *
+     * @returns A read-only copy of the conversation history
+     */
+    getHistory(): Readonly<InternalMessage[]> {
+        return [...this.history];
     }
 
     /**
@@ -236,15 +271,6 @@ export class MessageManager {
     }
 
     /**
-     * Retrieves the current system prompt
-     *
-     * @returns The system prompt or null if not set
-     */
-    getSystemPrompt(): string | null {
-        return this.systemPrompt;
-    }
-
-    /**
      * Gets the conversation history formatted for the target LLM provider.
      * Applies compression strategies sequentially if the manager is configured with a `maxTokens` limit
      * and a `tokenizer`, and the current token count exceeds the limit. Compression happens *before* formatting.
@@ -295,24 +321,10 @@ export class MessageManager {
     }
 
     /**
-     * Gets the raw conversation history
-     * Returns a defensive copy to prevent modification
-     *
-     * @returns A read-only copy of the conversation history
-     */
-    getHistory(): Readonly<InternalMessage[]> {
-        return [...this.history];
-    }
-
-    /**
      * Checks if history compression is needed based on token count and applies strategies.
      */
     private compressHistoryIfNeeded(): void {
-        // Compression requires both maxTokens and a tokenizer
-        if (!this.maxTokens || !this.tokenizer) return;
-
-        // Count total tokens directly
-        let currentTotalTokens: number = countMessagesTokens(this.history, this.tokenizer);
+        let currentTotalTokens: number = this.getTokenCount();
         logger.debug(`MessageManager: Checking if history compression is needed.`);
         // If counting failed or we are within limits, do nothing
         if (currentTotalTokens <= this.maxTokens) {
@@ -344,7 +356,7 @@ export class MessageManager {
             }
 
             // Recalculate tokens after applying the strategy
-            currentTotalTokens = countMessagesTokens(this.history, this.tokenizer);
+            currentTotalTokens = this.getTokenCount();
             const messagesRemoved = initialLength - this.history.length;
 
             // If counting failed or we are now within limits, stop applying strategies
@@ -355,5 +367,15 @@ export class MessageManager {
                 break;
             }
         }
+    }
+
+    /**
+     * Parses a raw LLM response, converts it into internal messages and adds them to the history.
+     *
+     * @param response The response from the LLM provider
+     */
+    processLLMResponse(response: any): void {
+        const msgs = this.formatter.parseResponse(response) ?? [];
+        msgs.forEach((m) => this.addMessage(m));
     }
 }

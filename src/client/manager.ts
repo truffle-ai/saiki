@@ -4,6 +4,7 @@ import { logger } from '../utils/logger.js';
 import { ToolProvider } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';
 import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
+import { ToolSet } from '../ai/types.js';
 
 export class ClientManager {
     private clients: Map<string, ToolProvider> = new Map();
@@ -34,8 +35,8 @@ export class ClientManager {
      * Get all available tools from all connected clients
      * @returns Promise resolving to a map of tool names to tool definitions
      */
-    async getAllTools(): Promise<Record<string, any>> {
-        let allTools: Record<string, any> = {};
+    async getAllTools(): Promise<ToolSet> {
+        let allTools: ToolSet = {};
 
         // Clear existing maps to avoid stale entries
         this.toolToClientMap.clear();

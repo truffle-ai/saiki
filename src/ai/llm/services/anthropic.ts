@@ -1,12 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from './types.js';
+import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { AnthropicMessageFormatter } from '../messages/formatters/anthropic.js';
-import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import { ImageData } from '../messages/types.js';
 
@@ -22,29 +20,16 @@ export class AnthropicService implements ILLMService {
 
     constructor(
         clientManager: ClientManager,
-        systemPrompt: string,
-        apiKey: string,
+        anthropic: Anthropic,
         agentEventBus: EventEmitter,
-        model?: string
+        messageManager: MessageManager,
+        model: string
     ) {
-        this.model = model || 'claude-3-7-sonnet-20250219';
-        this.anthropic = new Anthropic({ apiKey });
+        this.model = model;
+        this.anthropic = anthropic;
         this.clientManager = clientManager;
-
-        const formatter = new AnthropicMessageFormatter();
-        const tokenizer = createTokenizer('anthropic', this.model);
-
-        const rawMaxTokens = getMaxTokens('anthropic', this.model);
-        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-
-        this.messageManager = new MessageManager(
-            formatter,
-            systemPrompt,
-            maxTokensWithMargin,
-            tokenizer
-        );
-
         this.eventEmitter = agentEventBus;
+        this.messageManager = messageManager;
     }
 
     getEventEmitter(): EventEmitter {
@@ -205,8 +190,8 @@ export class AnthropicService implements ILLMService {
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information
      */
-    getConfig(): { provider: string; model: string; [key: string]: any } {
-        const configuredMaxTokens = (this.messageManager as any).maxTokens;
+    getConfig(): LLMServiceConfig {
+        const configuredMaxTokens = this.messageManager.getMaxTokens();
         return {
             provider: 'anthropic',
             model: this.model,
