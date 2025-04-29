@@ -1,9 +1,10 @@
 import { MCPClient } from './mcp-client.js';
 import { ServerConfigs, McpServerConfig } from '../config/types.js';
 import { logger } from '../utils/logger.js';
-import { ToolProvider, IMCPClientWrapper } from './types.js';
+import { IMCPClientWrapper } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';
 import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
+import { ToolSet } from '../ai/types.js';
 
 export class ClientManager {
     private clients: Map<string, IMCPClientWrapper> = new Map();
