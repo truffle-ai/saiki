@@ -1,5 +1,6 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
+import { getImageData } from '../utils.js';
 
 /**
  * Message formatter for OpenAI's Chat Completion API.
@@ -42,7 +43,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
                 case 'user':
                     formatted.push({
                         role: 'user',
-                        content: msg.content,
+                        content: this.formatUserContent(msg.content),
                     });
                     break;
 
@@ -133,5 +134,30 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
             }
         }
         return internal;
+    }
+
+    // Helper to format user message parts (text + image) into chat API shape
+    private formatUserContent(content: InternalMessage['content']): any {
+        if (!Array.isArray(content)) {
+            return content;
+        }
+        return content
+            .map(part => {
+                if (part.type === 'text') {
+                    return { type: 'text', text: part.text };
+                }
+                if (part.type === 'image') {
+                    const raw = getImageData(part);
+                    const url =
+                        raw.startsWith('http://') ||
+                        raw.startsWith('https://') ||
+                        raw.startsWith('data:')
+                            ? raw
+                            : `data:${part.mimeType || 'application/octet-stream'};base64,${raw}`;
+                    return { type: 'image_url', image_url: { url } };
+                }
+                return null;
+            })
+            .filter(Boolean);
     }
 }

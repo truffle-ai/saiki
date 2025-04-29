@@ -1,6 +1,7 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
 import { logger } from '../../../../utils/logger.js';
+import { getImageData } from '../utils.js';
 
 /**
  * Message formatter for Anthropic's Claude API.
@@ -46,7 +47,7 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
             if (msg.role === 'user' && !msg.toolCallId) {
                 formatted.push({
                     role: 'user',
-                    content: msg.content,
+                    content: this.formatUserContent(msg.content),
                 });
                 continue;
             }
@@ -204,5 +205,37 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
             toolCalls: calls.length > 0 ? calls : undefined,
         });
         return internal;
+    }
+
+    // Helper to format user message parts (text + image) into Anthropic multimodal API format
+    private formatUserContent(content: InternalMessage['content']): any {
+        if (!Array.isArray(content)) {
+            return content;
+        }
+        return content
+            .map(part => {
+                if (part.type === 'text') {
+                    return { type: 'text', text: part.text };
+                }
+                if (part.type === 'image') {
+                    const raw = getImageData(part);
+                    let source: any;
+                    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+                        source = { type: 'url', url: raw };
+                    } else if (raw.startsWith('data:')) {
+                        // Data URI: split metadata and base64 data
+                        const [meta, b64] = raw.split(',', 2);
+                        const mediaTypeMatch = meta.match(/data:(.*);base64/);
+                        const media_type = (mediaTypeMatch && mediaTypeMatch[1]) || part.mimeType || 'application/octet-stream';
+                        source = { type: 'base64', media_type, data: b64 };
+                    } else {
+                        // Plain base64 string
+                        source = { type: 'base64', media_type: part.mimeType, data: raw };
+                    }
+                    return { type: 'image', source };
+                }
+                return null;
+            })
+            .filter(Boolean);
     }
 }

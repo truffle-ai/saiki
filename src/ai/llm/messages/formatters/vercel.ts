@@ -38,6 +38,8 @@ export class VercelMessageFormatter implements IMessageFormatter {
             switch (msg.role) {
                 case 'user':
                 case 'system':
+                    // Images (and text) in user/system content arrays are handled natively
+                    // by the Vercel SDK. We can forward the array of TextPart/ImagePart directly.
                     formatted.push({
                         role: msg.role,
                         content: msg.content,
