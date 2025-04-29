@@ -90,9 +90,48 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
 
     /**
      * Parses OpenAI API response into internal message objects.
-     * Currently a no-op stub; implement as needed.
      */
     parseResponse(response: any): InternalMessage[] {
-        return [];
+        const internal: InternalMessage[] = [];
+        if (!response.choices || !Array.isArray(response.choices)) return internal;
+        for (const choice of response.choices) {
+            const msg = (choice as any).message;
+            if (!msg || !msg.role) continue;
+            const role = msg.role as InternalMessage['role'];
+            // Assistant messages
+            if (role === 'assistant') {
+                const content = msg.content ?? null;
+                // Handle tool calls if present
+                if (msg.tool_calls && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+                    const calls = msg.tool_calls.map((call: any) => ({
+                        id: call.id,
+                        type: 'function' as const,
+                        function: {
+                            name: call.function.name,
+                            arguments: call.function.arguments,
+                        },
+                    }));
+                    internal.push({ role: 'assistant', content, toolCalls: calls });
+                } else {
+                    internal.push({ role: 'assistant', content });
+                }
+            }
+            // Tool result messages
+            else if (role === 'tool') {
+                internal.push({
+                    role: 'tool',
+                    content: msg.content!,
+                    toolCallId: msg.tool_call_id!,
+                    name: msg.name!,
+                });
+            }
+            // User or system messages (rare in responses)
+            else if (role === 'user' || role === 'system') {
+                if (msg.content) {
+                    internal.push({ role, content: msg.content });
+                }
+            }
+        }
+        return internal;
     }
 }

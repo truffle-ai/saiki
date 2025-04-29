@@ -173,9 +173,36 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
 
     /**
      * Parses Anthropic API response into internal message objects.
-     * Currently a no-op stub; implement actual parsing logic as needed.
      */
     parseResponse(response: any): InternalMessage[] {
-        return [];
+        const internal: InternalMessage[] = [];
+        // Ensure response has content blocks
+        if (!response || !Array.isArray(response.content)) {
+            return internal;
+        }
+        // Accumulate text and tool calls
+        let combinedText: string | null = null;
+        const calls: InternalMessage['toolCalls'] = [];
+        for (const block of response.content) {
+            if (block.type === 'text') {
+                combinedText = (combinedText ?? '') + block.text;
+            } else if (block.type === 'tool_use') {
+                calls.push({
+                    id: block.id,
+                    type: 'function',
+                    function: {
+                        name: block.name,
+                        arguments: JSON.stringify(block.input),
+                    },
+                });
+            }
+        }
+        // Push assistant message with optional tool calls
+        internal.push({
+            role: 'assistant',
+            content: combinedText,
+            toolCalls: calls.length > 0 ? calls : undefined,
+        });
+        return internal;
     }
 }
