@@ -18,6 +18,11 @@ export interface IMessageFormatter {
     format(history: Readonly<InternalMessage[]>, systemPrompt?: string | null): any[];
 
     /**
+     * Parses raw LLM response into an array of InternalMessage objects.
+     */
+    parseResponse(response: any): InternalMessage[];
+
+    /**
      * Optional method for handling system prompt separately.
      * Some LLM providers (like Anthropic) don't include the system prompt in the
      * messages array but pass it as a separate parameter.

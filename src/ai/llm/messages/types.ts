@@ -2,6 +2,20 @@
  * Internal representation of a message in a conversation.
  * Standardizes message format across different LLM providers.
  */
+export interface ImageData {
+  image: string | Uint8Array | Buffer | ArrayBuffer | URL;
+  mimeType?: string;
+}
+
+export interface TextPart {
+  type: 'text';
+  text: string;
+}
+
+export interface ImagePart extends ImageData {
+  type: 'image';
+}
+
 export interface InternalMessage {
     /**
      * The role of the entity sending the message.
@@ -14,10 +28,11 @@ export interface InternalMessage {
 
     /**
      * The content of the message.
-     * - String for regular messages
-     * - null if message only contains tool calls
+     * - String for system, assistant (text only), and tool messages.
+     * - Array of parts for user messages (can include text and images).
+     * - null if an assistant message only contains tool calls.
      */
-    content: string | null;
+    content: string | null | Array<TextPart | ImagePart>;
 
     /**
      * Tool calls made by the assistant.

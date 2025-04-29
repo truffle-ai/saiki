@@ -1,10 +1,11 @@
 import { IMessageFormatter } from './formatters/types.js';
-import { InternalMessage } from './types.js';
+import { InternalMessage, ImageData } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
+import { countMessagesTokens, getImageData } from './utils.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -93,11 +94,16 @@ export class MessageManager {
 
         switch (message.role) {
             case 'user':
-                if (typeof message.content !== 'string' || message.content.trim() === '') {
+                if (
+                    // Allow array content for user messages
+                    !(Array.isArray(message.content) && message.content.length > 0) &&
+                    (typeof message.content !== 'string' || message.content.trim() === '')
+                ) {
                     throw new Error(
-                        'MessageManager: User message content should be a non-empty string.'
+                        'MessageManager: User message content should be a non-empty string or a non-empty array of parts.'
                     );
                 }
+                // Optional: Add validation for the structure of array parts if needed
                 break;
             case 'assistant':
                 // Content can be null if toolCalls are present, but one must exist
@@ -154,11 +160,17 @@ export class MessageManager {
      * @param content The user message content
      * @throws Error if content is empty or not a string
      */
-    addUserMessage(content: string): void {
-        if (typeof content !== 'string' || content.trim() === '') {
+    addUserMessage(textContent: string, imageData?: ImageData): void {
+        if (typeof textContent !== 'string' || textContent.trim() === '') {
             throw new Error('addUserMessage: Content must be a non-empty string.');
         }
-        this.addMessage({ role: 'user', content });
+        const messageParts: InternalMessage['content'] = imageData
+            ? [
+                  { type: 'text', text: textContent },
+                  { type: 'image', image: imageData.image, mimeType: imageData.mimeType },
+              ]
+            : [{ type: 'text', text: textContent }];
+        this.addMessage({ role: 'user', content: messageParts });
     }
 
     /**
@@ -190,13 +202,27 @@ export class MessageManager {
         if (!toolCallId || !name) {
             throw new Error('addToolResult: toolCallId and name are required.');
         }
-        // Ensure content is always a string for the internal message
-        const content =
-            result === undefined || result === null
-                ? ''
-                : typeof result === 'string'
-                  ? result
-                  : JSON.stringify(result);
+
+        // Simplest image detection: if result has an 'image' field, treat as ImagePart
+        let content: InternalMessage['content'];
+        if (result && typeof result === 'object' && 'image' in result) {
+            // Use shared helper to get base64/URL
+            const imagePart = result as { image: string | Uint8Array | Buffer | ArrayBuffer | URL; mimeType?: string };
+            content = [{
+                type: 'image',
+                image: getImageData(imagePart),
+                mimeType: imagePart.mimeType,
+            }];
+        } else if (typeof result === 'string') {
+            content = result;
+        } else if (Array.isArray(result)) {
+            // Assume array of parts already
+            content = result;
+        } else {
+            // Fallback: stringify all other values
+            content = JSON.stringify(result ?? '');
+        }
+
         this.addMessage({ role: 'tool', content, toolCallId, name });
     }
 
@@ -216,52 +242,6 @@ export class MessageManager {
      */
     getSystemPrompt(): string | null {
         return this.systemPrompt;
-    }
-
-    /**
-     * Counts total tokens in current conversation including system prompt.
-     * Requires a tokenizer to be configured.
-     * @returns Total token count or null if no tokenizer is available.
-     */
-    countTotalTokens(): number | null {
-        if (!this.tokenizer) return null;
-
-        let total = 0;
-        const overheadPerMessage = 4; // Approximation for message format overhead
-
-        try {
-            // Count system prompt
-            if (this.systemPrompt) {
-                total += this.tokenizer.countTokens(this.systemPrompt);
-            }
-
-            // Count each message
-            for (const message of this.history) {
-                if (message.content) {
-                    total += this.tokenizer.countTokens(message.content);
-                }
-
-                // Count tool calls if present
-                if (message.toolCalls) {
-                    for (const call of message.toolCalls) {
-                        total += this.tokenizer.countTokens(call.function.name);
-                        // Ensure arguments exist and are strings before counting
-                        if (call.function.arguments) {
-                            total += this.tokenizer.countTokens(call.function.arguments);
-                        }
-                    }
-                }
-                // Add overhead for each message structure
-                total += overheadPerMessage;
-            }
-        } catch (error) {
-            logger.error('MessageManager: Error counting tokens:', error);
-            // Decide on error handling: return null, throw, or return current total?
-            // Returning null indicates counting failed.
-            return null;
-        }
-
-        return total;
     }
 
     /**
@@ -331,10 +311,11 @@ export class MessageManager {
         // Compression requires both maxTokens and a tokenizer
         if (!this.maxTokens || !this.tokenizer) return;
 
-        let currentTotalTokens = this.countTotalTokens();
+        // Count total tokens directly
+        let currentTotalTokens: number = countMessagesTokens(this.history, this.tokenizer);
         logger.debug(`MessageManager: Checking if history compression is needed.`);
         // If counting failed or we are within limits, do nothing
-        if (currentTotalTokens === null || currentTotalTokens <= this.maxTokens) {
+        if (currentTotalTokens <= this.maxTokens) {
             logger.debug(
                 `MessageManager: History compression not needed. Current token count: ${currentTotalTokens}, Max tokens: ${this.maxTokens}`
             );
@@ -363,35 +344,16 @@ export class MessageManager {
             }
 
             // Recalculate tokens after applying the strategy
-            currentTotalTokens = this.countTotalTokens();
+            currentTotalTokens = countMessagesTokens(this.history, this.tokenizer);
             const messagesRemoved = initialLength - this.history.length;
 
             // If counting failed or we are now within limits, stop applying strategies
-            if (currentTotalTokens === null) {
-                logger.error(
-                    `MessageManager: Token counting failed after applying ${strategyName}. Stopping compression.`
+            if (currentTotalTokens <= this.maxTokens) {
+                logger.debug(
+                    `MessageManager: Compression successful after ${strategyName}. New count: ${currentTotalTokens}, messages removed: ${messagesRemoved}`
                 );
                 break;
-            } else if (currentTotalTokens <= this.maxTokens) {
-                logger.debug(
-                    `MessageManager: Compression successful after ${strategyName}. New count: ${currentTotalTokens}, Total messages removed: ${messagesRemoved}`
-                );
-                break; // Stop applying further strategies
-            } else {
-                logger.debug(
-                    `MessageManager: Still over limit (${currentTotalTokens} > ${this.maxTokens}) after ${strategyName}. Proceeding to next strategy if any.`
-                );
             }
-        }
-
-        // Final check and logging (after all strategies have been attempted or loop was broken)
-        if (currentTotalTokens !== null && currentTotalTokens > this.maxTokens) {
-            logger.warn(
-                `MessageManager: Compression strategies finished, but still over token limit (${currentTotalTokens} > ${this.maxTokens}). History length: ${this.history.length}`
-            );
-        } else if (currentTotalTokens === null && this.history.length < initialLength) {
-            // If counting failed but we did remove messages, log that
-            logger.error('MessageManager: Token counting failed after attempting compression.');
         }
     }
 }

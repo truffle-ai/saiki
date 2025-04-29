@@ -4,6 +4,7 @@ import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js'; 
 let ws;
 let currentAiMessageElement = null;
 let thinkingIndicatorElement = null;
+let currentImageData = null; // Store { base64: string, mimeType: string }
 
 // Configure marked with sanitization (IMPORTANT!)
 marked.use({ sanitize: true });
@@ -11,8 +12,7 @@ marked.use({ sanitize: true });
 // --- Wait for DOMContentLoaded before initializing UI and listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     // --- Get DOM Elements --- 
-    const messageList = document.getElementById('message-list');
-    const messageListWrapper = document.getElementById('message-list-wrapper');
+    const chatLog = document.getElementById('message-list');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
     const resetButton = document.getElementById('reset-button');
@@ -24,50 +24,58 @@ document.addEventListener('DOMContentLoaded', () => {
     const serverTypeSelect = document.getElementById('server-type');
     const stdioOptionsDiv = document.getElementById('stdio-options');
     const sseOptionsDiv = document.getElementById('sse-options');
+    const imageUpload = document.getElementById('image-upload');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const imagePreview = document.getElementById('image-preview');
+    const removeImageBtn = document.getElementById('remove-image-btn');
 
     // --- Check if critical elements exist ---
-    if (!messageList || !messageListWrapper || !messageInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv) {
+    if (!chatLog || !messageInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv || !imageUpload || !imagePreviewContainer || !imagePreview || !removeImageBtn) {
         console.error("Initialization failed: One or more required DOM elements not found.");
         // Display error to user if possible
-        if (messageList) {
+        if (chatLog) {
              const errorElement = document.createElement('div');
              errorElement.classList.add('message', 'system-error'); // Use existing class
              errorElement.textContent = '[System: Critical UI elements failed to load. Please refresh.]';
-             messageList.appendChild(errorElement);
+             chatLog.appendChild(errorElement);
         }
         return; // Stop further execution
     }
 
-    // --- Helper Functions (Defined inside DOMContentLoaded) ---
-
     function scrollToBottom() {
-       messageListWrapper.scrollTop = messageListWrapper.scrollHeight;
+        chatLog.scrollTop = chatLog.scrollHeight;
     }
 
     function displaySystemMessage(text, type = 'info') {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', `system-${type}`);
         messageElement.textContent = `[System: ${text}]`;
-        messageList.appendChild(messageElement);
+        chatLog.appendChild(messageElement);
         scrollToBottom();
     }
     
-    function appendMessage(content, type = 'status', isStreaming = false, isHtml = false) {
+    function appendMessage(sender, text, imageBase64 = null) {
         const messageElement = document.createElement('div');
-        messageElement.classList.add('message', type);
-        
-        if (isHtml) {
-            messageElement.innerHTML = content; 
-        } else {
-            messageElement.textContent = content;
+        // Use the classes targeted by style.css: 'message' and 'user' or 'ai'
+        const senderClass = sender === 'user' ? 'user' : 'ai'; // Map 'assistant' or others to 'ai' for styling
+        messageElement.classList.add('message', senderClass);
+        // messageElement.classList.add('chat-message', `${sender}-message`); // REMOVE old class logic
+
+        const textElement = document.createElement('p');
+        textElement.textContent = text;
+        messageElement.appendChild(textElement);
+
+        // If it's a user message with an image, display the image
+        if (sender === 'user' && imageBase64) {
+            const imgElement = document.createElement('img');
+            imgElement.src = imageBase64;
+            imgElement.alt = "User uploaded image";
+            imgElement.classList.add('message-image'); 
+            messageElement.appendChild(imgElement); // Add image below text
         }
 
-        if (isStreaming) {
-            messageElement.classList.add('streaming');
-        }
-        messageList.appendChild(messageElement);
-        // Scroll handled by caller (handleWebSocketMessage or sendMessage)
-        return messageElement; 
+        chatLog.appendChild(messageElement);
+        scrollToBottom();
     }
 
     function appendExpandableMessage(headerHtml, contentHtml, type) {
@@ -79,8 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
             messageElement.classList.toggle('expanded');
         });
 
-        messageList.appendChild(messageElement);
-        // Scroll handled by caller (handleWebSocketMessage)
+        chatLog.appendChild(messageElement);
+        let shouldScroll = isScrolledToBottom();
+        if (shouldScroll) {
+            scrollToBottom();
+        }
         return messageElement;
     }
 
@@ -93,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
             thinkingIndicatorElement.appendChild(innerSpan);
             thinkingIndicatorElement.setAttribute('role', 'status');
             thinkingIndicatorElement.setAttribute('aria-live', 'polite');
-            messageList.appendChild(thinkingIndicatorElement);
+            chatLog.appendChild(thinkingIndicatorElement);
             if (shouldScroll) {
                 scrollToBottom();
             }
@@ -108,25 +119,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isScrolledToBottom() {
-        const threshold = 5; 
-        return messageListWrapper.scrollHeight - messageListWrapper.scrollTop - messageListWrapper.clientHeight <= threshold;
+        const threshold = 5;
+        return chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight <= threshold;
     }
 
     function adjustTextareaHeight() {
         messageInput.style.height = 'auto';
-        messageInput.style.height = messageInput.scrollHeight + 'px';
+        messageInput.style.height = `${messageInput.scrollHeight}px`;
+
+        // Adjust chat log padding based on input area height
+        const inputAreaHeight = document.getElementById('input-area').offsetHeight;
+        const previewHeight = imagePreviewContainer.style.display === 'none' ? 0 : imagePreviewContainer.offsetHeight + 10; // + margin/padding
+        chatLog.style.paddingBottom = `${inputAreaHeight + previewHeight}px`;
     }
 
-    function sendMessage() {
+    // Modify sendMessage to include image data
+    async function sendMessage() {
         const messageText = messageInput.value.trim();
-        if (messageText && ws && ws.readyState === WebSocket.OPEN) {
-            appendMessage(messageText, 'user'); 
-            scrollToBottom(); 
-            ws.send(JSON.stringify({ type: 'message', content: messageText }));
-            messageInput.value = '';
-            adjustTextareaHeight(); // Adjust height after clearing
-            messageInput.focus();
-        } else if (!ws || ws.readyState !== WebSocket.OPEN) {
+
+        // Require text input even if image is present
+        if (!messageText) {
+            // Optionally show a message to the user
+            console.log("User input text is required.")
+            return;
+        } 
+
+        appendMessage('user', messageText, currentImageData ? currentImageData.base64 : null);
+        messageInput.value = '';
+        messageInput.style.height = 'auto'; // Reset height before sending
+        const imageDataToSend = currentImageData; 
+        removeImage(); // Clear image after grabbing data for sending
+
+        // Send via WebSocket instead of fetch
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            const payload = { type: 'message', content: messageText, imageData: imageDataToSend };
+            ws.send(JSON.stringify(payload));
+        } else {
             displaySystemMessage('Cannot send message: Not connected to server.', 'error');
         }
     }
@@ -152,31 +180,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'chunk': {
                 if (!currentAiMessageElement) {
-                    currentAiMessageElement = appendMessage('', 'ai', true, true);
+                    // Create the container div directly for streaming AI messages
+                    currentAiMessageElement = document.createElement('div');
+                    // Use the correct base classes targeted by CSS: 'message' and 'ai'
+                    currentAiMessageElement.classList.add('message', 'ai'); 
+                    currentAiMessageElement.classList.add('streaming'); // Add streaming class if needed
+                    chatLog.appendChild(currentAiMessageElement);
                 }
                 if (currentAiMessageElement) {
                    let currentHtml = currentAiMessageElement.innerHTML || '';
-                   // Basic handling for chunks, might need refinement for complex markdown
-                   currentAiMessageElement.innerHTML = currentHtml + message.data.text.replace(/\n/g, '<br>');
+                   // Append the raw chunk text (or parsed text if needed, depends on source)
+                   // Assuming message.data.text is the raw delta
+                   // We need to parse the *accumulated* text at the end, not each chunk
+                   let accumulatedText = (currentAiMessageElement.dataset.rawText || '') + message.data.text;
+                   currentAiMessageElement.dataset.rawText = accumulatedText; // Store raw text
+                   
+                   // Render the parsed version of the *accumulated* text
+                   try {
+                        currentAiMessageElement.innerHTML = marked.parse(accumulatedText);
+                   } catch(e) {
+                        console.error("Streaming Markdown parsing error:", e);
+                        // Fallback: display escaped text
+                        currentAiMessageElement.innerHTML = escapeHtml(accumulatedText).replace(/\n/g, '<br>');
+                   }
                 }
                 break;
             }
             case 'response': {
                  let finalHtmlContent = '';
+                 let finalText = message.data.text || ''; // Get the final text
+                 
+                 // Use the final text if currentAiMessageElement exists (meaning it was streamed)
+                 if (currentAiMessageElement && currentAiMessageElement.dataset.rawText) {
+                     finalText = currentAiMessageElement.dataset.rawText; // Use accumulated raw text
+                 }
+
                  try {
-                     finalHtmlContent = marked.parse(message.data.text || '');
+                     finalHtmlContent = marked.parse(finalText);
                  } catch(e) {
                      console.error("Markdown parsing error:", e);
-                     finalHtmlContent = escapeHtml(message.data.text || '').replace(/\n/g, '<br>');
+                     finalHtmlContent = escapeHtml(finalText).replace(/\n/g, '<br>');
                  }
 
                  if (currentAiMessageElement) {
-                    currentAiMessageElement.innerHTML = finalHtmlContent;
+                    currentAiMessageElement.innerHTML = finalHtmlContent; // Set final parsed content
                     currentAiMessageElement.classList.remove('streaming');
+                    delete currentAiMessageElement.dataset.rawText; // Clean up dataset
                     currentAiMessageElement = null;
                 } else {
-                    appendMessage(finalHtmlContent, 'ai', false, true);
+                    // If it's a non-streaming response, create the element directly
+                    // and set innerHTML instead of using appendMessage which sets textContent
+                    const messageElement = document.createElement('div');
+                    // Ensure class matches the streaming case for consistency: 'message' and 'ai'
+                    messageElement.classList.add('message', 'ai'); 
+                    messageElement.innerHTML = finalHtmlContent; // Set the parsed HTML content
+                    chatLog.appendChild(messageElement);
                 }
+                // done handling AI response
                 break;
             }
             case 'toolCall': {
@@ -206,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             }
             case 'conversationReset': {
-                messageList.innerHTML = '';
+                chatLog.innerHTML = '';
                 displaySystemMessage('Conversation history cleared.', 'status');
                 currentAiMessageElement = null;
                 shouldScroll = true;
@@ -227,14 +287,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const wsUrl = `${wsProtocol}//${window.location.host}`;
 
         console.log(`Attempting to connect WebSocket to: ${wsUrl}`);
-        statusIndicator.className = 'connecting';
+        statusIndicator.classList.add('connecting');
         statusIndicator.setAttribute('data-tooltip', 'Connecting...');
 
         ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
             console.log('WebSocket connection established');
-            statusIndicator.className = 'connected';
+            // Connection status indicator
+            statusIndicator.classList.remove('error', 'connecting');
+            statusIndicator.classList.add('connected');
             statusIndicator.setAttribute('data-tooltip', 'Connected');
             messageInput.disabled = false;
             sendButton.disabled = false;
@@ -254,7 +316,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ws.onerror = (error) => {
             console.error('WebSocket error:', error);
-            statusIndicator.className = 'error';
+            statusIndicator.classList.remove('connected');
+            statusIndicator.classList.add('error');
             statusIndicator.setAttribute('data-tooltip', 'Connection Error');
             displaySystemMessage('WebSocket connection error. Please try refreshing.', 'error');
             messageInput.disabled = true;
@@ -264,13 +327,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ws.onclose = (event) => {
             console.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
-            const reasonText = event.reason || 'Trying to reconnect...';
-            statusIndicator.className = 'error';
-            statusIndicator.setAttribute('data-tooltip', `Disconnected: ${reasonText}`);
+            statusIndicator.classList.remove('connected');
+            statusIndicator.classList.add('error');
+            statusIndicator.setAttribute('data-tooltip', `Disconnected: ${event.reason || 'Connection closed'}`);
             messageInput.disabled = true;
             sendButton.disabled = true;
             resetButton.disabled = true;
-            setTimeout(connectWebSocket, 5000); // Attempt reconnect
+            setTimeout(connectWebSocket, 5000);
         };
     }
 
@@ -381,6 +444,44 @@ document.addEventListener('DOMContentLoaded', () => {
             displaySystemMessage(`Failed to send connection request: ${error.message}`, 'error');
         }
     });
+
+    // --- Image Handling --- 
+    imageUpload.addEventListener('change', handleImageUpload);
+    removeImageBtn.addEventListener('click', removeImage);
+
+    function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                currentImageData = {
+                    base64: e.target.result, // base64 data URL
+                    mimeType: file.type
+                };
+                imagePreview.src = e.target.result;
+                imagePreviewContainer.style.display = 'flex'; // Show preview
+                adjustTextareaHeight(); // Adjust height after preview shown
+            }
+            reader.onerror = function(e) {
+                console.error("FileReader error: ", e);
+                displaySystemMessage('Error reading image file.', 'error');
+                removeImage();
+            }
+            reader.readAsDataURL(file);
+        } else if (file) {
+            displaySystemMessage('Please select a valid image file.', 'error');
+            removeImage(); // Clear any previous selection
+        }
+    }
+
+    function removeImage() {
+        imagePreview.src = '#';
+        imagePreviewContainer.style.display = 'none';
+        imageUpload.value = ''; // Reset file input
+        currentImageData = null;
+        adjustTextareaHeight(); // Adjust height after preview hidden
+    }
 
     // --- Initial UI State Setup ---
     messageInput.disabled = true;

@@ -8,6 +8,9 @@ import { MessageManager } from '../messages/manager.js';
 import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
+import { countMessagesTokens } from '../messages/utils.js';
+import { ITokenizer } from '../tokenizer/types.js';
+import { ImageData } from '../messages/types.js';
 
 // System prompt constants
 
@@ -37,6 +40,7 @@ export class OpenAIService implements ILLMService {
     private clientManager: ClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private tokenizer: ITokenizer;
 
     constructor(
         clientManager: ClientManager,
@@ -52,6 +56,7 @@ export class OpenAIService implements ILLMService {
         // Initialize Formatter, Tokenizer, and get Max Tokens
         const formatter = new OpenAIMessageFormatter();
         const tokenizer = createTokenizer('openai', this.model);
+        this.tokenizer = tokenizer;
         const rawMaxTokens = getMaxTokens('openai', this.model);
         const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
 
@@ -78,9 +83,9 @@ export class OpenAIService implements ILLMService {
         this.messageManager.setSystemPrompt(newSystemPrompt);
     }
 
-    async completeTask(userInput: string): Promise<string> {
-        // Add user message to history
-        this.messageManager.addUserMessage(userInput);
+    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+        // Add user message with optional image data
+        this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();
@@ -220,10 +225,9 @@ export class OpenAIService implements ILLMService {
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`
                 );
 
-                const currentTokens = this.messageManager.countTotalTokens();
-                if (currentTokens !== null) {
-                    logger.debug(`Estimated tokens being sent to OpenAI: ${currentTokens}`);
-                }
+                // Directly count tokens and log
+                const currentTokens = countMessagesTokens([...this.messageManager.getHistory()], this.tokenizer);
+                logger.debug(`Estimated tokens being sent to OpenAI: ${currentTokens}`);
 
                 // Call OpenAI API
                 const response = await this.openai.chat.completions.create({
