@@ -25,7 +25,7 @@
  * This pattern ensures a clean, scalable, and maintainable architecture, balancing flexibility with simplicity.
  */
 
-import { ClientManager } from '../client/manager.js';
+import { MCPClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/services/types.js';
 import { AgentConfig } from '../config/types.js';
 import { createLLMService } from '../ai/llm/services/factory.js';
@@ -41,7 +41,7 @@ import { loadContributors } from '../ai/systemPrompt/loader.js';
  * Type for the core agent services returned by initializeServices
  */
 export type AgentServices = {
-    clientManager: ClientManager;
+    clientManager: MCPClientManager;
     llmService: ILLMService;
     agentEventBus: EventEmitter;
     messageManager: MessageManager;
@@ -66,7 +66,7 @@ export type AgentServices = {
 export type InitializeServicesOptions = {
     runMode?: 'cli' | 'web'; // Context/mode override
     connectionMode?: 'strict' | 'lenient'; // Connection mode override
-    clientManager?: ClientManager; // Inject a custom or mock ClientManager
+    clientManager?: MCPClientManager; // Inject a custom or mock MCPClientManager
     llmService?: ILLMService; // Inject a custom or mock LLMService
     agentEventBus?: EventEmitter; // Inject a custom or mock EventEmitter
     llmRouter?: LLMRouter; // Route LLM calls via Vercel (default) or use in-built
@@ -99,7 +99,7 @@ export async function initializeServices(
     const connectionMode = options?.connectionMode ?? 'lenient';
     const runMode = options?.runMode ?? 'cli';
     const confirmationProvider = createToolConfirmationProvider(runMode);
-    const clientManager = options?.clientManager ?? new ClientManager(confirmationProvider);
+    const clientManager = options?.clientManager ?? new MCPClientManager(confirmationProvider);
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
     if (!options?.clientManager) {
         logger.debug('Client manager and MCP servers initialized');

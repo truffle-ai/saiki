@@ -1,4 +1,4 @@
-import { ClientManager } from '../../../client/manager.js';
+import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
 import { LLMConfig } from '../../../config/types.js';
 import { logger } from '../../../utils/logger.js';
@@ -49,13 +49,13 @@ function extractApiKey(config: LLMConfig): string {
  */
 function _createInBuiltLLMService(
     config: LLMConfig,
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     agentEventBus: EventEmitter,
     messageManager: MessageManager
 ): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
-
+    
     switch (config.provider.toLowerCase()) {
         case 'openai': {
             const openai = new OpenAI({ apiKey });
@@ -64,7 +64,8 @@ function _createInBuiltLLMService(
                 openai,
                 agentEventBus,
                 messageManager,
-                config.model
+                config.model,
+                config.maxIterations
             );
         }
         case 'anthropic': {
@@ -74,7 +75,8 @@ function _createInBuiltLLMService(
                 anthropic,
                 agentEventBus,
                 messageManager,
-                config.model
+                config.model,
+                config.maxIterations
             );
         }
         default:
@@ -97,12 +99,12 @@ function _createVercelModel(provider: string, model: string): LanguageModelV1 {
 
 function _createVercelLLMService(
     config: LLMConfig,
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     agentEventBus: EventEmitter,
     messageManager: MessageManager
 ): VercelLLMService {
     const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
-    return new VercelLLMService(clientManager, model, agentEventBus, messageManager);
+    return new VercelLLMService(clientManager, model, agentEventBus, messageManager, config.maxIterations);
 }
 
 /**
@@ -112,7 +114,7 @@ function _createVercelLLMService(
 export function createLLMService(
     config: LLMConfig,
     router: LLMRouter = 'vercel',
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     agentEventBus: EventEmitter,
     messageManager: MessageManager
 ): ILLMService {

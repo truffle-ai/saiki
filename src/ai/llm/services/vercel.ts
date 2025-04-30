@@ -1,4 +1,4 @@
-import { ClientManager } from '../../../client/manager.js';
+import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../utils/logger.js';
 import { streamText, generateText, CoreMessage, LanguageModelV1 } from 'ai';
@@ -16,16 +16,19 @@ import { ImageData } from '../messages/types.js';
 export class VercelLLMService implements ILLMService {
     private model: LanguageModelV1;
     private provider: string;
-    private clientManager: ClientManager;
+    private clientManager: MCPClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private maxIterations: number;
 
     constructor(
-        clientManager: ClientManager,
+        clientManager: MCPClientManager,
         model: LanguageModelV1,
         agentEventBus: EventEmitter,
-        messageManager: MessageManager
+        messageManager: MessageManager,
+        maxIterations: number = 50
     ) {
+        this.maxIterations = maxIterations;
         this.model = model;
         this.clientManager = clientManager;
         this.eventEmitter = agentEventBus;
@@ -77,8 +80,6 @@ export class VercelLLMService implements ILLMService {
             `[VercelLLMService] Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`
         );
 
-        // Maximum number of tool use iterations
-        const MAX_ITERATIONS = 50;
         let iterationCount = 0;
         let fullResponse = '';
 
@@ -107,7 +108,7 @@ export class VercelLLMService implements ILLMService {
                 fullResponse = await this.generateText(
                     formattedMessages,
                     formattedTools,
-                    MAX_ITERATIONS
+                    this.maxIterations
                 );
                 // OR
                 // fullResponse = await this.processStream(formattedMessages, formattedTools, MAX_ITERATIONS);
@@ -132,7 +133,7 @@ export class VercelLLMService implements ILLMService {
     async generateText(
         messages: CoreMessage[],
         tools: VercelToolSet,
-        maxSteps: number = 10
+        maxSteps: number = 50
     ): Promise<string> {
         let stepIteration = 0;
 

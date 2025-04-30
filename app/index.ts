@@ -153,7 +153,7 @@ function validateAgentConfig(config: AgentConfig): void {
         logger.info('No LLM configuration found, applying defaults', 'yellow');
         config.llm = {
             provider: 'openai',
-            model: 'gpt-4o-mini',
+            model: 'gpt-4.1-mini',
             systemPrompt:
                 'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.',
             apiKey: '$OPENAI_API_KEY',

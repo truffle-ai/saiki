@@ -2,30 +2,19 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { z } from 'zod';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { McpServerConfig, StdioServerConfig, SSEServerConfig } from '../config/types.js';
 import { ToolSet } from '../ai/types.js';
-import { ToolProvider } from './types.js';
+import { IMCPClient } from './types.js';
 import { resolvePackagePath } from '../utils/path.js';
-
-const ToolsListSchema = z.object({
-    tools: z.array(
-        z.object({
-            name: z.string(),
-            description: z.string().optional(),
-            inputSchema: z.any().optional(),
-        })
-    ),
-    nextCursor: z.string().optional(),
-});
+import { GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
+import { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
 const DEFAULT_TIMEOUT = 60000;
 /**
  * Wrapper on top of Client class provided in model context protocol SDK, to add additional metadata about the server
  */
-export class MCPClient implements ToolProvider {
+export class MCPClient implements IMCPClient {
     private client: Client | null = null;
     private transport: any = null;
     private isConnected = false;
@@ -261,21 +250,108 @@ export class MCPClient implements ToolProvider {
      * @returns Array of available tools
      */
     async getTools(): Promise<ToolSet> {
+        const tools: ToolSet = {};
         try {
-            const response = await this.client.request(
-                { method: 'tools/list', params: {} },
-                ToolsListSchema
-            );
-            return response.tools.reduce<ToolSet>((acc, tool) => {
-                acc[tool.name] = {
-                    description: tool.description,
-                    parameters: tool.inputSchema,
-                };
-                return acc;
-            }, {});
+            // Call listTools with parameters only
+            const listToolResult = await this.client.listTools({});
+            logger.debug(`listTools result: ${JSON.stringify(listToolResult, null, 2)}`);
+
+            // Assume listToolResult.tools exists and iterate
+            if (listToolResult && listToolResult.tools) {
+                listToolResult.tools.forEach((tool: any) => {
+                    if (!tool.description) {
+                        throw new Error(`Tool '${tool.name}' is missing a description`);
+                    }
+                    if (!tool.inputSchema) {
+                        throw new Error(`Tool '${tool.name}' is missing an input schema`);
+                    }
+                    tools[tool.name] = {
+                        description: tool.description,
+                        parameters: tool.inputSchema,
+                    };
+                });
+            } else {
+                throw new Error('listTools did not return the expected structure: missing tools');
+            }
         } catch (error) {
-            logger.error('Failed to list tools:', error);
-            return {};
+            logger.error('Failed to get tools from MCP server:', error);
+            throw error;
+        }
+        return tools;
+    }
+
+    /**
+     * Get the list of prompts provided by this client
+     * @returns Array of available prompt names
+     */
+    async listPrompts(): Promise<string[]> {
+        this.ensureConnected();
+        try {
+            const response = await this.client.listPrompts();
+            logger.debug(`listPrompts response: ${JSON.stringify(response, null, 2)}`);
+            return response.prompts.map((p: any) => p.name);
+        } catch (error) {
+            logger.error('Failed to list prompts from MCP server (optional feature), skipping:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Get a specific prompt definition
+     * @param name Name of the prompt
+     * @param args Arguments for the prompt (optional)
+     * @returns Prompt definition (structure depends on SDK)
+     */
+    async getPrompt(name: string, args?: any): Promise<GetPromptResult> {
+        this.ensureConnected();
+        try {
+            logger.debug(`Getting prompt '${name}' with args: ${JSON.stringify(args, null, 2)}`);
+            // Pass params first, then options
+            const response = await this.client.getPrompt({ name, arguments: args }, { timeout: this.timeout });
+            logger.debug(`getPrompt '${name}' response: ${JSON.stringify(response, null, 2)}`);
+            return response; // Return the full response object
+        } catch (error: any) {
+            logger.error(`Failed to get prompt '${name}' from MCP server:`, error);
+            throw new Error(
+                `Error getting prompt '${name}': ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+    }
+
+    /**
+     * Get the list of resources provided by this client
+     * @returns Array of available resource URIs
+     */
+    async listResources(): Promise<string[]> {
+        this.ensureConnected();
+        try {
+            const response = await this.client.listResources();
+            logger.debug(`listResources response: ${JSON.stringify(response, null, 2)}`);
+            return response.resources.map((r: any) => r.uri);
+        } catch (error) {
+            logger.error('Failed to list resources from MCP server (optional feature), skipping:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Read the content of a specific resource
+     * @param uri URI of the resource
+     * @returns Content of the resource (structure depends on SDK)
+     */
+    async readResource(uri: string): Promise<ReadResourceResult> {
+        this.ensureConnected();
+        try {
+            logger.debug(`Reading resource '${uri}'`);
+            // Pass params first, then options
+            const response = await this.client.readResource({ uri }, { timeout: this.timeout });
+            logger.debug(`readResource '${uri}' response: ${JSON.stringify(response, null, 2)}`);
+            return response; // Return the full response object
+        } catch (error: any) {
+            logger.error(`Failed to read resource '${uri}' from MCP server:`, error);
+            throw new Error(
+                `Error reading resource '${uri}': ${error instanceof Error ? error.message : String(error)}`
+            );
         }
     }
 
@@ -321,20 +397,15 @@ export class MCPClient implements ToolProvider {
      * @returns Promise with the MCP client
      */
     async getConnectedClient(): Promise<Client> {
-        if (this.client && this.isConnected) {
-            return this.client;
+        if (!this.client || !this.isConnected) {
+            throw new Error('MCP client is not connected.');
         }
+        return this.client;
+    }
 
-        if (!this.serverCommand) {
-            throw new Error('Cannot get client: Connection has not been initialized');
+    private ensureConnected(): void {
+        if (!this.isConnected || !this.client) {
+            throw new Error('Client not connected. Please call connect() first.');
         }
-
-        // If connection is in progress, wait for it to complete
-        return this.connectViaStdio(
-            this.serverCommand,
-            this.originalArgs || [],
-            this.serverEnv || undefined,
-            this.serverAlias || undefined
-        );
     }
 }

@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ClientManager } from '../../../client/manager.js';
+import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
@@ -14,17 +14,20 @@ import { ImageData } from '../messages/types.js';
 export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
-    private clientManager: ClientManager;
+    private clientManager: MCPClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private maxIterations: number;
 
     constructor(
-        clientManager: ClientManager,
+        clientManager: MCPClientManager,
         anthropic: Anthropic,
         agentEventBus: EventEmitter,
         messageManager: MessageManager,
-        model: string
+        model: string,
+        maxIterations: number = 10
     ) {
+        this.maxIterations = maxIterations;
         this.model = model;
         this.anthropic = anthropic;
         this.clientManager = clientManager;
@@ -57,13 +60,11 @@ export class AnthropicService implements ILLMService {
         // Notify thinking
         this.eventEmitter.emit('llmservice:thinking');
 
-        // Maximum number of tool use iterations
-        const MAX_ITERATIONS = 10;
         let iterationCount = 0;
         let fullResponse = '';
 
         try {
-            while (iterationCount < MAX_ITERATIONS) {
+            while (iterationCount < this.maxIterations) {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
@@ -168,7 +169,7 @@ export class AnthropicService implements ILLMService {
             }
 
             // If we reached max iterations
-            logger.warn(`Reached maximum iterations (${MAX_ITERATIONS}) for task.`);
+            logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
             this.eventEmitter.emit('llmservice:response', fullResponse);
             return (
                 fullResponse ||
