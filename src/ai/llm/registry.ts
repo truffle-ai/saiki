@@ -15,31 +15,33 @@ export interface ProviderInfo {
 export const LLM_REGISTRY: Record<string, ProviderInfo> = {
     openai: {
         models: [
-            { name: 'gpt-4o-mini', maxTokens: 16384 },
+            { name: 'gpt-4.1', maxTokens: 1047576 },
+            { name: 'gpt-4.1-mini', maxTokens: 1047576 },
+            { name: 'gpt-4.1-nano', maxTokens: 1047576 },
             { name: 'gpt-4o', maxTokens: 128000 },
-            { name: 'gpt-4-turbo', maxTokens: 128000 },
-            { name: 'gpt-4', maxTokens: 8192 },
-            { name: 'gpt-3.5-turbo', maxTokens: 16385 },
-            { name: 'gpt-4.1-mini', maxTokens: 1000000 },
+            { name: 'gpt-4o-mini', maxTokens: 128000 },
+            { name: 'o4-mini', maxTokens: 200000 },
+            { name: 'o3', maxTokens: 200000 },
+            { name: 'o3-mini', maxTokens: 200000 },
+            { name: 'o1', maxTokens: 200000 },
         ],
     },
     anthropic: {
         models: [
+            { name: 'claude-3-7-sonnet', maxTokens: 200000 },
             { name: 'claude-3-5-sonnet-20240620', maxTokens: 200000 },
+            { name: 'claude-3-haiku-20240307', maxTokens: 200000 },
             { name: 'claude-3-opus-20240229', maxTokens: 200000 },
             { name: 'claude-3-sonnet-20240229', maxTokens: 200000 },
-            { name: 'claude-3-haiku-20240307', maxTokens: 200000 },
-            { name: 'claude-3-7-sonnet', maxTokens: 200000 },
         ],
     },
     google: {
         models: [
-            { name: 'gemini-1.5-pro-latest', maxTokens: 1048576 },
-            { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 },
-            { name: 'gemini-pro', maxTokens: 32768 },
             { name: 'gemini-2.5-pro', maxTokens: 1048576 },
             { name: 'gemini-2.0-flash', maxTokens: 1048576 },
             { name: 'gemini-2.0-flash-lite', maxTokens: 1048576 },
+            { name: 'gemini-1.5-pro-latest', maxTokens: 1048576 },
+            { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 }
         ],
     },
     // Add other providers like Groq, Cohere, etc., as needed
