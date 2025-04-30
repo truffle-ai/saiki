@@ -66,7 +66,7 @@ export type AgentServices = {
 export type InitializeServicesOptions = {
     runMode?: 'cli' | 'web'; // Context/mode override
     connectionMode?: 'strict' | 'lenient'; // Connection mode override
-    clientManager?: MCPClientManager; // Inject a custom or mock ClientManager
+    clientManager?: MCPClientManager; // Inject a custom or mock MCPClientManager
     llmService?: ILLMService; // Inject a custom or mock LLMService
     agentEventBus?: EventEmitter; // Inject a custom or mock EventEmitter
     llmRouter?: LLMRouter; // Route LLM calls via Vercel (default) or use in-built

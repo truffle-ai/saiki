@@ -5,6 +5,7 @@ import { IMCPClient } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';
 import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
 import { ToolSet } from '../ai/types.js';
+import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
 export class MCPClientManager {
     private clients: Map<string, IMCPClient> = new Map();
@@ -22,7 +23,7 @@ export class MCPClientManager {
     /**
      * Register a client that provides tools (and potentially more)
      * @param name Unique name for the client
-     * @param client The client instance, expected to be IMCPClientWrapper
+     * @param client The client instance, expected to be IMCPClient
      */
     registerClient(name: string, client: IMCPClient): void {
         if (this.clients.has(name)) {
@@ -82,19 +83,6 @@ export class MCPClientManager {
         } catch (error) {
             logger.debug(`Skipping resources for client ${clientName}: ${error}`);
         }
-    }
-
-    //Not used at the moment
-    private async rebuildAllCaches(): Promise<void> {
-        this.toolToClientMap.clear();
-        this.promptToClientMap.clear();
-        this.resourceToClientMap.clear();
-        logger.debug('Cleared all caches.');
-
-        for (const [name, client] of this.clients.entries()) {
-            await this.updateClientCache(name, client);
-        }
-        logger.debug('Finished rebuilding all caches.');
     }
 
     /**
@@ -165,7 +153,7 @@ export class MCPClientManager {
      * @param args Arguments for the prompt (optional).
      * @returns Promise resolving to the prompt definition.
      */
-    async getPrompt(name: string, args?: any): Promise<any> {
+    async getPrompt(name: string, args?: any): Promise<GetPromptResult> {
         const client = this.getPromptClient(name);
         if (!client) {
             throw new Error(`No client found for prompt: ${name}`);
@@ -195,7 +183,7 @@ export class MCPClientManager {
      * @param uri URI of the resource.
      * @returns Promise resolving to the resource content.
      */
-    async readResource(uri: string): Promise<any> {
+    async readResource(uri: string): Promise<ReadResourceResult> {
         const client = this.getResourceClient(uri);
         if (!client) {
             throw new Error(`No client found for resource: ${uri}`);

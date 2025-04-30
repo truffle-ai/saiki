@@ -60,13 +60,11 @@ export class AnthropicService implements ILLMService {
         // Notify thinking
         this.eventEmitter.emit('llmservice:thinking');
 
-        // Maximum number of tool use iterations
-        const maxIterations = this.maxIterations;
         let iterationCount = 0;
         let fullResponse = '';
 
         try {
-            while (iterationCount < maxIterations) {
+            while (iterationCount < this.maxIterations) {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
@@ -171,7 +169,7 @@ export class AnthropicService implements ILLMService {
             }
 
             // If we reached max iterations
-            logger.warn(`Reached maximum iterations (${maxIterations}) for task.`);
+            logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
             this.eventEmitter.emit('llmservice:response', fullResponse);
             return (
                 fullResponse ||

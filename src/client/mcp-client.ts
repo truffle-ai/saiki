@@ -7,17 +7,8 @@ import { McpServerConfig, StdioServerConfig, SSEServerConfig } from '../config/t
 import { ToolSet } from '../ai/types.js';
 import { IMCPClient } from './types.js';
 import { resolvePackagePath } from '../utils/path.js';
-
-const ToolsListSchema = z.object({
-    tools: z.array(
-        z.object({
-            name: z.string(),
-            description: z.string().optional(),
-            inputSchema: z.any().optional(),
-        })
-    ),
-    nextCursor: z.string().optional(),
-});
+import { GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
+import { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
 const DEFAULT_TIMEOUT = 60000;
 /**
@@ -268,19 +259,23 @@ export class MCPClient implements IMCPClient {
             // Assume listToolResult.tools exists and iterate
             if (listToolResult && listToolResult.tools) {
                 listToolResult.tools.forEach((tool: any) => {
+                    if (!tool.description) {
+                        throw new Error(`Tool '${tool.name}' is missing a description`);
+                    }
+                    if (!tool.inputSchema) {
+                        throw new Error(`Tool '${tool.name}' is missing an input schema`);
+                    }
                     tools[tool.name] = {
-                        description: tool.description || 'No description provided',
-                        // Map inputSchema from SDK to parameters in local Tool type
-                        parameters: tool.inputSchema || { type: 'object', properties: {} },
+                        description: tool.description,
+                        parameters: tool.inputSchema,
                     };
                 });
             } else {
-                logger.warn('listTools did not return the expected structure.');
+                throw new Error('listTools did not return the expected structure: missing tools');
             }
         } catch (error) {
             logger.error('Failed to get tools from MCP server:', error);
-            // Return empty set or throw error depending on desired behavior
-            return {};
+            throw error;
         }
         return tools;
     }
@@ -296,7 +291,7 @@ export class MCPClient implements IMCPClient {
             logger.debug(`listPrompts response: ${JSON.stringify(response, null, 2)}`);
             return response.prompts.map((p: any) => p.name);
         } catch (error) {
-            logger.debug('Failed to list prompts from MCP server (optional feature), skipping:', error);
+            logger.error('Failed to list prompts from MCP server (optional feature), skipping:', error);
             return [];
         }
     }
@@ -307,7 +302,7 @@ export class MCPClient implements IMCPClient {
      * @param args Arguments for the prompt (optional)
      * @returns Prompt definition (structure depends on SDK)
      */
-    async getPrompt(name: string, args?: any): Promise<any> {
+    async getPrompt(name: string, args?: any): Promise<GetPromptResult> {
         this.ensureConnected();
         try {
             logger.debug(`Getting prompt '${name}' with args: ${JSON.stringify(args, null, 2)}`);
@@ -334,7 +329,7 @@ export class MCPClient implements IMCPClient {
             logger.debug(`listResources response: ${JSON.stringify(response, null, 2)}`);
             return response.resources.map((r: any) => r.uri);
         } catch (error) {
-            logger.debug('Failed to list resources from MCP server (optional feature), skipping:', error);
+            logger.error('Failed to list resources from MCP server (optional feature), skipping:', error);
             return [];
         }
     }
@@ -344,7 +339,7 @@ export class MCPClient implements IMCPClient {
      * @param uri URI of the resource
      * @returns Content of the resource (structure depends on SDK)
      */
-    async readResource(uri: string): Promise<any> {
+    async readResource(uri: string): Promise<ReadResourceResult> {
         this.ensureConnected();
         try {
             logger.debug(`Reading resource '${uri}'`);

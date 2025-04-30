@@ -55,8 +55,7 @@ function _createInBuiltLLMService(
 ): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
-    const maxIter = config.maxIterations
-
+    
     switch (config.provider.toLowerCase()) {
         case 'openai': {
             const openai = new OpenAI({ apiKey });
@@ -66,7 +65,7 @@ function _createInBuiltLLMService(
                 agentEventBus,
                 messageManager,
                 config.model,
-                maxIter
+                config.maxIterations
             );
         }
         case 'anthropic': {
@@ -77,7 +76,7 @@ function _createInBuiltLLMService(
                 agentEventBus,
                 messageManager,
                 config.model,
-                maxIter
+                config.maxIterations
             );
         }
         default:
@@ -105,8 +104,7 @@ function _createVercelLLMService(
     messageManager: MessageManager
 ): VercelLLMService {
     const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
-    const maxIter = config.maxIterations
-    return new VercelLLMService(clientManager, model, agentEventBus, messageManager, maxIter);
+    return new VercelLLMService(clientManager, model, agentEventBus, messageManager, config.maxIterations);
 }
 
 /**
