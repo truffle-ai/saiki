@@ -7,16 +7,13 @@ export interface ModelInfo {
 }
 
 export interface ProviderInfo {
-    name: string;
     models: ModelInfo[];
-    defaultRouter?: string; // Optional: specify a default router if different
     // Add other provider-specific metadata if needed
 }
 
 // Central registry of supported LLM providers and their models
 export const LLM_REGISTRY: Record<string, ProviderInfo> = {
     openai: {
-        name: 'openai',
         models: [
             { name: 'gpt-4o-mini', maxTokens: 16384 },
             { name: 'gpt-4o', maxTokens: 128000 },
@@ -25,10 +22,8 @@ export const LLM_REGISTRY: Record<string, ProviderInfo> = {
             { name: 'gpt-3.5-turbo', maxTokens: 16385 },
             { name: 'gpt-4.1-mini', maxTokens: 1000000 },
         ],
-        defaultRouter: 'vercel',
     },
     anthropic: {
-        name: 'anthropic',
         models: [
             { name: 'claude-3-5-sonnet-20240620', maxTokens: 200000 },
             { name: 'claude-3-opus-20240229', maxTokens: 200000 },
@@ -36,10 +31,8 @@ export const LLM_REGISTRY: Record<string, ProviderInfo> = {
             { name: 'claude-3-haiku-20240307', maxTokens: 200000 },
             { name: 'claude-3-7-sonnet', maxTokens: 200000 },
         ],
-        defaultRouter: 'vercel',
     },
     google: {
-        name: 'google',
         models: [
             { name: 'gemini-1.5-pro-latest', maxTokens: 1048576 },
             { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 },
@@ -48,7 +41,6 @@ export const LLM_REGISTRY: Record<string, ProviderInfo> = {
             { name: 'gemini-2.0-flash', maxTokens: 1048576 },
             { name: 'gemini-2.0-flash-lite', maxTokens: 1048576 },
         ],
-        defaultRouter: 'vercel',
     },
     // Add other providers like Groq, Cohere, etc., as needed
 };
@@ -72,22 +64,32 @@ export function getSupportedModels(provider: string): string[] {
 }
 
 /**
- * Gets the maximum tokens allowed for a specific model.
- * @param provider The name of the provider.
- * @param model The name of the model.
- * @returns The maximum token count, or null if the model or provider is not found.
+ * Retrieves the maximum token limit for a given provider and model from the registry.
+ * Throws an error if the provider or model is not found.
+ * @param provider The name of the provider (e.g., 'openai', 'anthropic', 'google').
+ * @param model The specific model name.
+ * @returns The maximum token limit for the model.
+ * @throws {Error} If the provider or model is not found in the registry.
  */
-export function getMaxTokensForModel(provider: string, model: string): number | null {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase()];
+export function getMaxTokensForModel(provider: string, model: string): number {
+    const lowerProvider = provider?.toLowerCase();
+    const lowerModel = model?.toLowerCase();
+
+    const providerInfo = LLM_REGISTRY[lowerProvider];
     if (!providerInfo) {
-        logger.warn(`Provider '${provider}' not found in LLM registry.`);
-        return null;
+        const supportedProviders = getSupportedProviders().join(', ');
+        logger.error(`Provider '${provider}' not found in LLM registry. Supported: ${supportedProviders}`);
+        throw new Error(`Provider '${provider}' not found in LLM registry. Supported providers are: ${supportedProviders}`);
     }
-    const modelInfo = providerInfo.models.find((m) => m.name === model.toLowerCase());
+
+    const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === lowerModel);
     if (!modelInfo) {
-        logger.warn(`Model '${model}' not found for provider '${provider}' in LLM registry.`);
-        return null;
+        const supportedModels = getSupportedModels(lowerProvider).join(', ');
+        logger.error(`Model '${model}' not found for provider '${provider}' in LLM registry. Supported models: ${supportedModels}`);
+        throw new Error(`Model '${model}' not found for provider '${provider}' in LLM registry. Supported models for '${provider}' are: ${supportedModels}`);
     }
+
+    logger.debug(`Found max tokens for ${provider}/${model}: ${modelInfo.maxTokens}`);
     return modelInfo.maxTokens;
 }
 

@@ -5,7 +5,7 @@ import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { getMaxTokens } from '../tokenizer/utils.js';
+import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 
 /**
@@ -162,11 +162,12 @@ export class OpenAIService implements ILLMService {
      */
     getConfig(): LLMServiceConfig {
         const configuredMaxTokens = this.messageManager.getMaxTokens();
+
         return {
             provider: 'openai',
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens: getMaxTokens('openai', this.model),
+            modelMaxTokens: getMaxTokensForModel('openai', this.model),
         };
     }
 
