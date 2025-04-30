@@ -170,9 +170,6 @@ export class MCPClientManager {
         if (!client) {
             throw new Error(`No client found for prompt: ${name}`);
         }
-        if (typeof client.getPrompt !== 'function') {
-            throw new Error(`Client found for prompt '${name}' does not support getPrompt.`);
-        }
         return await client.getPrompt(name, args);
     }
 
@@ -202,9 +199,6 @@ export class MCPClientManager {
         const client = this.getResourceClient(uri);
         if (!client) {
             throw new Error(`No client found for resource: ${uri}`);
-        }
-        if (typeof client.readResource !== 'function') {
-            throw new Error(`Client found for resource '${uri}' does not support readResource.`);
         }
         return await client.readResource(uri);
     }

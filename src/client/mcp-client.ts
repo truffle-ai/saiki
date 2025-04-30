@@ -315,9 +315,11 @@ export class MCPClient implements IMCPClient {
             const response = await this.client.getPrompt({ name, arguments: args }, { timeout: this.timeout });
             logger.debug(`getPrompt '${name}' response: ${JSON.stringify(response, null, 2)}`);
             return response; // Return the full response object
-        } catch (error) {
+        } catch (error: any) {
             logger.error(`Failed to get prompt '${name}' from MCP server:`, error);
-            throw new Error(`Error getting prompt '${name}': ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(
+                `Error getting prompt '${name}': ${error instanceof Error ? error.message : String(error)}`
+            );
         }
     }
 
@@ -350,9 +352,11 @@ export class MCPClient implements IMCPClient {
             const response = await this.client.readResource({ uri }, { timeout: this.timeout });
             logger.debug(`readResource '${uri}' response: ${JSON.stringify(response, null, 2)}`);
             return response; // Return the full response object
-        } catch (error) {
+        } catch (error: any) {
             logger.error(`Failed to read resource '${uri}' from MCP server:`, error);
-            throw new Error(`Error reading resource '${uri}': ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(
+                `Error reading resource '${uri}': ${error instanceof Error ? error.message : String(error)}`
+            );
         }
     }
 
