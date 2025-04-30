@@ -52,7 +52,7 @@ program
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
-    .option('--mode <mode>', 'Run mode: cli, web, or gameboy', 'cli')
+    .option('--mode <mode>', 'Run mode: cli or web', 'cli')
     .option('--web-port <port>', 'Port for WebUI', '3000')
     .version('0.2.0');
 
@@ -68,7 +68,7 @@ const resolveFromPackageRoot = configFile === DEFAULT_CONFIG_PATH; // Check if s
 
 // Validate run mode
 if (!['cli', 'web'].includes(runMode)) {
-    logger.error(`Invalid mode: ${runMode}. Must be 'cli', 'web'.`);
+    logger.error(`Invalid mode: ${runMode}. Must be 'cli' or 'web'.`);
     process.exit(1);
 }
 
