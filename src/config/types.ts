@@ -2,6 +2,8 @@
  * Type definitions for application configuration
  */
 
+import { LLMRouter } from '../ai/llm/types.js';
+
 /**
  * Configuration for stdio-based MCP server connections
  * - type: Must be 'stdio'
@@ -61,6 +63,7 @@ export type LLMConfig = {
     /** Maximum number of tool-iteration steps (for in-built and Vercel providers) */
     maxIterations?: number;
     providerOptions?: Record<string, any>;
+    router?: LLMRouter; // Optional router field
 };
 
 /**
@@ -71,3 +74,12 @@ export type AgentConfig = {
     llm: LLMConfig;
     [key: string]: any; // Allow for future extensions
 };
+
+/**
+ * CLI config override type for allowed fields
+ */
+export type CLIConfigOverrides = Partial<{
+    model: string;
+    provider: string;
+    router: LLMRouter;
+}>;

@@ -9,6 +9,7 @@ import { AgentConfig } from '../src/config/types.js';
 import { initializeServices } from '../src/utils/service-initializer.js';
 import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
+import { resolveConfiguration } from '../src/config/resolver.js';
 
 // Load environment variables
 dotenv.config();
@@ -54,6 +55,9 @@ program
     .option('--no-verbose', 'Disable verbose output')
     .option('--mode <mode>', 'Run mode: cli or web', 'cli')
     .option('--web-port <port>', 'Port for WebUI', '3000')
+    .option('-m, --model <model>', 'Specify the LLM model to use')
+    .option('-p, --provider <provider>', 'Specify the LLM provider to use')
+    .option('-r, --router <router>', 'Specify the LLM router to use (vercel or default)')
     .version('0.2.0');
 
 program.parse();
@@ -98,16 +102,23 @@ if (runMode === 'cli') {
 // Main start function
 async function startAgent() {
     try {
-        // Load the agent configuration
+        // Load the agent configuration from file
         const config: AgentConfig = await loadConfigFile(normalizedConfigPath);
-        validateAgentConfig(config);
+        // Resolve configuration with CLI overrides (model, provider, router)
+        const cliArgs = {
+            model: options.model,
+            provider: options.provider,
+            router: options.router,
+        };
+        const resolvedConfig = resolveConfiguration(config, cliArgs);
+        validateAgentConfig(resolvedConfig);
 
         logger.info('===============================================');
         logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
         logger.info('===============================================\n');
 
-        // Use the shared initializer
-        const { clientManager, llmService, agentEventBus } = await initializeServices(config, {
+        // Use the shared initializer with resolved config
+        const { clientManager, llmService, agentEventBus } = await initializeServices(resolvedConfig, {
             connectionMode,
             runMode,
         });
@@ -120,8 +131,6 @@ async function startAgent() {
             // Run WebUI
             initializeWebUI(clientManager, llmService, agentEventBus, webPort);
             logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
-            // Note: Web server runs indefinitely, no need to await here unless
-            // you specifically want the script to only exit when the server does.
         }
     } catch (error) {
         logger.error(

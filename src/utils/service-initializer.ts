@@ -69,16 +69,15 @@ export type InitializeServicesOptions = {
     clientManager?: MCPClientManager; // Inject a custom or mock MCPClientManager
     llmService?: ILLMService; // Inject a custom or mock LLMService
     agentEventBus?: EventEmitter; // Inject a custom or mock EventEmitter
-    llmRouter?: LLMRouter; // Route LLM calls via Vercel (default) or use in-built
     messageManager?: MessageManager; // Inject a custom or mock MessageManager
     // Add more overrides as needed
     // configOverride?: Partial<AgentConfig>; // (optional) for field-level config overrides
 };
 
 /**
- * Initialize services and clients based on the provided configuration and optional overrides.
+ * Initialize services and clients based on the provided resolved configuration and optional overrides.
  * This is the central point for creating all services and dependencies.
- * @param config Agent configuration including MCP servers and LLM settings
+ * @param config Resolved agent configuration including MCP servers and LLM settings
  * @param options Optional overrides for testability, context, or advanced configuration
  * @returns All the initialized services/dependencies necessary to run saiki
  */
@@ -109,18 +108,16 @@ export async function initializeServices(
 
     /**
      * 3. Initialize or use the MessageManager (allows override for tests/mocks)
-     *    - Uses llmRouter from options to select the correct message formatting/tokenization backend
-     *    - 'vercel' = Vercel-style message formatting (default), 'default' = in-built provider-specific formatting
+     *    - Uses router from resolved config
      */
-    const router: LLMRouter = options?.llmRouter ?? 'vercel';
+    const router: LLMRouter = config.llm.router ?? 'vercel';
     const contributors = loadContributors(config.llm.systemPrompt);
     const messageManager =
         options?.messageManager ?? createMessageManager(config.llm, router, contributors);
 
     /**
      * 4. Initialize or use the LLMService (allows override for tests/mocks)
-     *    - Use llmRouter from options to select LLM routing backend
-     *    - 'vercel' = route via Vercel LLM service (default), 'default' = use in-built LLM services
+     *    - Uses router from resolved config
      */
     const llmService =
         options?.llmService ??
