@@ -303,7 +303,7 @@ export class VercelLLMService implements ILLMService {
      * @returns Configuration object with provider and model information
      */
     getConfig(): LLMServiceConfig {
-        const configuredMaxTokens = (this.messageManager as any).getMaxTokens();
+        const configuredMaxTokens = this.messageManager.getMaxTokens();
 
         return {
             provider: `vercel:${this.provider}`,
