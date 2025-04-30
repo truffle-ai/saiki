@@ -1,10 +1,12 @@
 ---
-sidebar_position: 3
+sidebar_position: 5
 ---
 
 # AI Agents vs. LLM Workflows
 
-Understanding the distinction between **AI agents** and **LLM (Large Language Model) workflows** is key to choosing the right automation approach in Saiki.
+People often get confused between AI Agents and LLM workflows.
+
+Understanding the distinction between **AI agents** and **LLM (Large Language Model) workflows** is key to choosing the right automation approach for your use-case.
 
 ## What is an AI Agent?
 
@@ -24,26 +26,24 @@ Understanding the distinction between **AI agents** and **LLM (Large Language Mo
 |------------------------|------------------------------------------|--------------------------------------|
 | Autonomy               | High (makes decisions)                   | Low (follows set steps)              |
 | Adaptability           | Can handle unexpected situations         | Rigid, limited to defined flow       |
-| Use of Tools/Services  | Orchestrates multiple tools/services     | May call tools, but in fixed order   |
+| Use of Tools/Services  | Orchestrates multiple tools/services     | May call tools, but generally in fixed order   |
 | User Interaction       | Can ask clarifying questions, replan     | Usually no dynamic interaction       |
-| Example Use Case       | "Book a flight and notify me on Slack"  | "Summarize this document"           |
+| Example Use Case       | "Book a flight and notify me on Slack"  | "A button on a web page to summarize a document"           |
 
 ## When to Use Each
 
 - **Use an AI Agent when:**
-  - The task requires decision-making, adaptation, or chaining multiple services.
-  - The process may change based on context or user input.
-  - You want a conversational, interactive experience.
+  - The problem is vague and complex - requires decision-making, adaptation, or chaining multiple services.
+  - The process may change based on context, user input or something else.
 
 - **Use an LLM Workflow when:**
-  - The task is a repeatable, well-defined sequence.
+  - The problem is small, and requires a repeatable, well-defined sequence.
   - You want predictable, consistent output.
   - The process does not require dynamic decision-making.
 
+
 ## In Saiki
 
-Saiki supports both approaches:
-- Build powerful, adaptive automations with AI agents.
-- Use LLM workflows for simple, repeatable tasks.
+Saiki is a powerful AI Agent you can use for solving complex problems
 
-Choosing the right tool for the job helps you get the most out of Saiki's automation capabilities. 
+Choosing the right tools for the job helps you get the most out of Saiki's automation capabilities. 

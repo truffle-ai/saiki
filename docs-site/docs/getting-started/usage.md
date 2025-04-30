@@ -30,6 +30,20 @@ saiki --mode web --web-port 3000
 
 Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Running saiki with npm locally
+
+This is for developers who have cloned saiki repository locally, as an alternative to `saiki` command
+
+CLI mode: 
+```bash
+npm run build && npm start
+```
+
+Web UI mode:
+```bash
+npm run build && npm start -- --mode web
+```
+
 ## Example Commands
 
 - **Natural language task:**
@@ -40,3 +54,5 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 Saiki will interpret your request, select the right tools, and execute the workflow for you.
 
 For more advanced usage, see the rest of the documentation! 
+
+Our [Configuration guide](../configuring-saiki/configuration) is the best place to start, it describes exactly how you can customize Saiki for your specific use-case!
