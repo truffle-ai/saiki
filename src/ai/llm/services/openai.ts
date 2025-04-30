@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { ClientManager } from '../../../client/manager.js';
+import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
@@ -14,13 +14,13 @@ import { ImageData } from '../messages/types.js';
 export class OpenAIService implements ILLMService {
     private openai: OpenAI;
     private model: string;
-    private clientManager: ClientManager;
+    private clientManager: MCPClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
     private maxIterations: number;
 
     constructor(
-        clientManager: ClientManager,
+        clientManager: MCPClientManager,
         openai: OpenAI,
         agentEventBus: EventEmitter,
         messageManager: MessageManager,
@@ -60,12 +60,10 @@ export class OpenAIService implements ILLMService {
         // Notify thinking
         this.eventEmitter.emit('llmservice:thinking');
 
-        // Maximum number of tool use iterations
-        const maxIterations = this.maxIterations;
         let iterationCount = 0;
 
         try {
-            while (iterationCount < maxIterations) {
+            while (iterationCount < this.maxIterations) {
                 iterationCount++;
 
                 // Attempt to get a response, with retry logic
@@ -134,7 +132,7 @@ export class OpenAIService implements ILLMService {
             }
 
             // If we reached max iterations, return a message
-            logger.warn(`Reached maximum iterations (${maxIterations}) for task.`);
+            logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
             const finalResponse = 'Task completed but reached maximum tool call iterations.';
             this.messageManager.addAssistantMessage(finalResponse);
             this.eventEmitter.emit('llmservice:response', finalResponse);

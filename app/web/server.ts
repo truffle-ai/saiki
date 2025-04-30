@@ -2,14 +2,14 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { WebUISubscriber } from './web-subscriber.js';
-import { ClientManager } from '../../src/client/manager.js';
+import { MCPClientManager } from '../../src/client/manager.js';
 import { ILLMService } from '../../src/ai/llm/services/types.js';
 import { logger } from '../../src/utils/logger.js';
 import { resolvePackagePath } from '../../src/utils/path.js';
 import { EventEmitter } from 'events';
 
 export async function initializeWebUI(
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     llmService: ILLMService,
     agentEventBus: EventEmitter,
     port = 3000

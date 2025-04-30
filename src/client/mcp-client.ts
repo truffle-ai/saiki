@@ -2,12 +2,10 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { z } from 'zod';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { McpServerConfig, StdioServerConfig, SSEServerConfig } from '../config/types.js';
 import { ToolSet } from '../ai/types.js';
-import { ToolProvider } from './types.js';
+import { IMCPClient } from './types.js';
 import { resolvePackagePath } from '../utils/path.js';
 
 const ToolsListSchema = z.object({
@@ -25,7 +23,7 @@ const DEFAULT_TIMEOUT = 60000;
 /**
  * Wrapper on top of Client class provided in model context protocol SDK, to add additional metadata about the server
  */
-export class MCPClient implements ToolProvider {
+export class MCPClient implements IMCPClient {
     private client: Client | null = null;
     private transport: any = null;
     private isConnected = false;

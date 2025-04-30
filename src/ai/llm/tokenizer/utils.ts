@@ -10,7 +10,7 @@ const MODEL_TOKEN_LIMITS: Record<string, Record<string, number>> = {
         'gpt-4.1': 1000000,
         'gpt-4o-mini': 128000,
         'gpt-4o': 128000,
-        'o4-mini': 128000,
+        'o4-mini': 200000,
     },
     anthropic: {
         'claude-3-7-sonnet': 200000,

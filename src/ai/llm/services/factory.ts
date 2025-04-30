@@ -1,4 +1,4 @@
-import { ClientManager } from '../../../client/manager.js';
+import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
 import { LLMConfig } from '../../../config/types.js';
 import { logger } from '../../../utils/logger.js';
@@ -49,14 +49,13 @@ function extractApiKey(config: LLMConfig): string {
  */
 function _createInBuiltLLMService(
     config: LLMConfig,
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     agentEventBus: EventEmitter,
     messageManager: MessageManager
 ): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
-    // Determine max tool iteration steps (default to 10)
-    const maxIter = config.maxIterations ?? 10;
+    const maxIter = config.maxIterations
 
     switch (config.provider.toLowerCase()) {
         case 'openai': {
@@ -101,13 +100,12 @@ function _createVercelModel(provider: string, model: string): LanguageModelV1 {
 
 function _createVercelLLMService(
     config: LLMConfig,
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     agentEventBus: EventEmitter,
     messageManager: MessageManager
 ): VercelLLMService {
     const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
-    // Allow overriding of maxIterations via config.llm.maxIterations
-    const maxIter = config.maxIterations ?? 50;
+    const maxIter = config.maxIterations
     return new VercelLLMService(clientManager, model, agentEventBus, messageManager, maxIter);
 }
 
@@ -118,7 +116,7 @@ function _createVercelLLMService(
 export function createLLMService(
     config: LLMConfig,
     router: LLMRouter = 'vercel',
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     agentEventBus: EventEmitter,
     messageManager: MessageManager
 ): ILLMService {

@@ -1,4 +1,4 @@
-import { ClientManager } from '../../../client/manager.js';
+import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../utils/logger.js';
 import { streamText, generateText, CoreMessage, LanguageModelV1 } from 'ai';
@@ -16,13 +16,13 @@ import { ImageData } from '../messages/types.js';
 export class VercelLLMService implements ILLMService {
     private model: LanguageModelV1;
     private provider: string;
-    private clientManager: ClientManager;
+    private clientManager: MCPClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
     private maxIterations: number;
 
     constructor(
-        clientManager: ClientManager,
+        clientManager: MCPClientManager,
         model: LanguageModelV1,
         agentEventBus: EventEmitter,
         messageManager: MessageManager,
@@ -80,7 +80,6 @@ export class VercelLLMService implements ILLMService {
             `[VercelLLMService] Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`
         );
 
-        // Use configured maximum number of tool iterations
         let iterationCount = 0;
         let fullResponse = '';
 

@@ -1,44 +1,29 @@
 import { McpServerConfig } from '../config/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ToolSet } from '../ai/types.js';
-
-// Defining types as any because we can't import the types from the SDK
-export type VercelMCPClient = any;
-
-export type IMCPClient = Client | VercelMCPClient;
+import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * Interface for any provider of tools
  */
 export interface ToolProvider {
-    /**
-     * Get the list of tools provided by this client
-     */
     getTools(): Promise<ToolSet>;
-
-    /**
-     * Call a specific tool with the given arguments
-     */
     callTool(toolName: string, args: any): Promise<any>;
-
-    /**
-     * Disconnect the client (if applicable)
-     */
-    disconnect?(): Promise<void>;
 }
 
 /**
  * Interface for MCP clients specifically, that can provide tools
  */
-export interface IMCPClientWrapper extends ToolProvider {
+export interface IMCPClient extends ToolProvider {
     // Connection Management
-    connect(config: McpServerConfig, serverName: string): Promise<IMCPClient>;
+    connect(config: McpServerConfig, serverName: string): Promise<Client>;
+    disconnect?(): Promise<void>;
 
     // Prompt Management
     listPrompts(): Promise<string[]>;
-    getPrompt(name: string, args?: any): Promise<any>; // Return type might need refinement based on SDK
+    getPrompt(name: string, args?: any): Promise<GetPromptResult>;
 
     // Resource Management
     listResources(): Promise<string[]>;
-    readResource(uri: string): Promise<any>; // Return type might need refinement based on SDK
+    readResource(uri: string): Promise<ReadResourceResult>;
 }

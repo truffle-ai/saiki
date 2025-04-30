@@ -1,17 +1,17 @@
 import { MCPClient } from './mcp-client.js';
 import { ServerConfigs, McpServerConfig } from '../config/types.js';
 import { logger } from '../utils/logger.js';
-import { IMCPClientWrapper } from './types.js';
+import { IMCPClient } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';
 import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
 import { ToolSet } from '../ai/types.js';
 
-export class ClientManager {
-    private clients: Map<string, IMCPClientWrapper> = new Map();
+export class MCPClientManager {
+    private clients: Map<string, IMCPClient> = new Map();
     private connectionErrors: { [key: string]: string } = {};
-    private toolToClientMap: Map<string, IMCPClientWrapper> = new Map();
-    private promptToClientMap: Map<string, IMCPClientWrapper> = new Map();
-    private resourceToClientMap: Map<string, IMCPClientWrapper> = new Map();
+    private toolToClientMap: Map<string, IMCPClient> = new Map();
+    private promptToClientMap: Map<string, IMCPClient> = new Map();
+    private resourceToClientMap: Map<string, IMCPClient> = new Map();
     private confirmationProvider?: ToolConfirmationProvider;
 
     constructor(confirmationProvider?: ToolConfirmationProvider) {
@@ -24,7 +24,7 @@ export class ClientManager {
      * @param name Unique name for the client
      * @param client The client instance, expected to be IMCPClientWrapper
      */
-    registerClient(name: string, client: IMCPClientWrapper): void {
+    registerClient(name: string, client: IMCPClient): void {
         if (this.clients.has(name)) {
             logger.warn(`Client '${name}' already registered. Overwriting.`);
         }
@@ -49,32 +49,42 @@ export class ClientManager {
         logger.debug(`Cleared cache for client: ${clientName}`);
     }
 
-    private async updateClientCache(clientName: string, client: IMCPClientWrapper): Promise<void> {
+    private async updateClientCache(clientName: string, client: IMCPClient): Promise<void> {
+        // Cache tools
         try {
             const tools = await client.getTools();
             for (const toolName in tools) {
                 this.toolToClientMap.set(toolName, client);
             }
-
-            if (typeof client.listPrompts === 'function') {
-                const prompts = await client.listPrompts();
-                prompts.forEach(promptName => {
-                    this.promptToClientMap.set(promptName, client);
-                });
-            }
-
-            if (typeof client.listResources === 'function') {
-                const resources = await client.listResources();
-                resources.forEach(resourceUri => {
-                    this.resourceToClientMap.set(resourceUri, client);
-                });
-            }
-            logger.debug(`Updated cache for client: ${clientName}`);
+            logger.debug(`Cached tools for client: ${clientName}`);
         } catch (error) {
-            logger.error(`Error updating cache for client ${clientName}:`, error);
+            logger.error(`Error retrieving tools for client ${clientName}:`, error);
+        }
+
+        // Cache prompts, if supported
+        try {
+            const prompts = await client.listPrompts();
+            prompts.forEach(promptName => {
+                this.promptToClientMap.set(promptName, client);
+            });
+            logger.debug(`Cached prompts for client: ${clientName}`);
+        } catch (error) {
+            logger.debug(`Skipping prompts for client ${clientName}: ${error}`);
+        }
+
+        // Cache resources, if supported
+        try {
+            const resources = await client.listResources();
+            resources.forEach(resourceUri => {
+                this.resourceToClientMap.set(resourceUri, client);
+            });
+            logger.debug(`Cached resources for client: ${clientName}`);
+        } catch (error) {
+            logger.debug(`Skipping resources for client ${clientName}: ${error}`);
         }
     }
 
+    //Not used at the moment
     private async rebuildAllCaches(): Promise<void> {
         this.toolToClientMap.clear();
         this.promptToClientMap.clear();
@@ -92,8 +102,6 @@ export class ClientManager {
      * @returns Promise resolving to a ToolSet mapping tool names to Tool definitions
      */
     async getAllTools(): Promise<ToolSet> {
-        // Refresh all caches before retrieving tools
-        await this.rebuildAllCaches();
         const allTools: ToolSet = {};
         for (const [toolName, client] of this.toolToClientMap.entries()) {
             const clientTools = await client.getTools();
@@ -112,7 +120,7 @@ export class ClientManager {
      * @param toolName Name of the tool
      * @returns The client that provides the tool, or undefined if not found
      */
-    getToolClient(toolName: string): IMCPClientWrapper | undefined {
+    getToolClient(toolName: string): IMCPClient | undefined {
         return this.toolToClientMap.get(toolName);
     }
 
@@ -125,23 +133,11 @@ export class ClientManager {
     async executeTool(toolName: string, args: any): Promise<any> {
         const client = this.getToolClient(toolName);
         if (!client) {
-            logger.warn(`Tool '${toolName}' not found in cache. Rebuilding cache and retrying.`);
-            await this.rebuildAllCaches();
-            const refreshedClient = this.getToolClient(toolName);
-            if (!refreshedClient) {
-                throw new Error(`No client found for tool: ${toolName} even after cache rebuild.`);
-            }
-
-        // Request confirmation before executing
-        const approved = await this.confirmationProvider.requestConfirmation({
-            toolName,
-            args,
-        });
-
+            throw new Error(`No client found for tool: ${toolName}`);
+        }
+        const approved = await this.confirmationProvider.requestConfirmation({ toolName, args });
         if (!approved) {
             throw new Error(`Execution of tool '${toolName}' was denied`);
-        }
-            return await refreshedClient.callTool(toolName, args);
         }
         return await client.callTool(toolName, args);
     }
@@ -159,7 +155,7 @@ export class ClientManager {
      * @param promptName Name of the prompt.
      * @returns The client instance or undefined.
      */
-    getPromptClient(promptName: string): IMCPClientWrapper | undefined {
+    getPromptClient(promptName: string): IMCPClient | undefined {
         return this.promptToClientMap.get(promptName);
     }
 
@@ -172,19 +168,10 @@ export class ClientManager {
     async getPrompt(name: string, args?: any): Promise<any> {
         const client = this.getPromptClient(name);
         if (!client) {
-            logger.warn(`Prompt '${name}' not found in cache. Rebuilding cache and retrying.`);
-            await this.rebuildAllCaches();
-            const refreshedClient = this.getPromptClient(name);
-            if (!refreshedClient) {
-                throw new Error(`No client found for prompt: ${name} even after cache rebuild.`);
-            }
-            if (typeof refreshedClient.getPrompt !== 'function') {
-                 throw new Error(`Client found for prompt '${name}' does not support getPrompt.`);
-            }
-            return await refreshedClient.getPrompt(name, args);
+            throw new Error(`No client found for prompt: ${name}`);
         }
         if (typeof client.getPrompt !== 'function') {
-             throw new Error(`Client found for prompt '${name}' does not support getPrompt.`);
+            throw new Error(`Client found for prompt '${name}' does not support getPrompt.`);
         }
         return await client.getPrompt(name, args);
     }
@@ -202,7 +189,7 @@ export class ClientManager {
      * @param resourceUri URI of the resource.
      * @returns The client instance or undefined.
      */
-    getResourceClient(resourceUri: string): IMCPClientWrapper | undefined {
+    getResourceClient(resourceUri: string): IMCPClient | undefined {
         return this.resourceToClientMap.get(resourceUri);
     }
 
@@ -214,19 +201,10 @@ export class ClientManager {
     async readResource(uri: string): Promise<any> {
         const client = this.getResourceClient(uri);
         if (!client) {
-             logger.warn(`Resource '${uri}' not found in cache. Rebuilding cache and retrying.`);
-            await this.rebuildAllCaches();
-            const refreshedClient = this.getResourceClient(uri);
-             if (!refreshedClient) {
-                throw new Error(`No client found for resource: ${uri} even after cache rebuild.`);
-            }
-            if (typeof refreshedClient.readResource !== 'function') {
-                 throw new Error(`Client found for resource '${uri}' does not support readResource.`);
-            }
-            return await refreshedClient.readResource(uri);
+            throw new Error(`No client found for resource: ${uri}`);
         }
         if (typeof client.readResource !== 'function') {
-             throw new Error(`Client found for resource '${uri}' does not support readResource.`);
+            throw new Error(`Client found for resource '${uri}' does not support readResource.`);
         }
         return await client.readResource(uri);
     }
@@ -256,8 +234,6 @@ export class ClientManager {
         }
 
         await Promise.all(connectionPromises);
-
-        await this.rebuildAllCaches();
 
         const requiredSuccessfulConnections =
             connectionMode === 'strict'
@@ -309,7 +285,7 @@ export class ClientManager {
      * Get all registered clients
      * @returns Map of client names to client instances
      */
-    getClients(): Map<string, IMCPClientWrapper> {
+    getClients(): Map<string, IMCPClient> {
         return this.clients;
     }
 
