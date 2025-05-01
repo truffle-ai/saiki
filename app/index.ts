@@ -9,6 +9,7 @@ import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
 import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
 import { z } from 'zod';
+import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
 
 // Load environment variables
 dotenv.config();
@@ -57,7 +58,6 @@ program
     .option('--web-port <port>', 'Port for WebUI', '3000')
     // LLM Options
     .option('-m, --model <model>', 'Specify the LLM model to use')
-    .option('-p, --provider <provider>', 'Specify the LLM provider to use')
     .option('-r, --router <router>', 'Specify the LLM router to use (vercel or default)')
     .version('0.2.0');
 
@@ -65,6 +65,20 @@ program.parse();
 
 // Get options
 const options = program.opts();
+// Dynamically infer provider from the supplied model (no more explicit --provider flag)
+if (options.model) {
+  const modelProvider = getProviderFromModel(options.model);
+  if (modelProvider === 'unknown') {
+    logger.error(
+      `ERROR: Unrecognized model '${options.model}'. Could not infer provider.\n` +
+      `Supported models are:\n` +
+      getAllSupportedModels().join(', ')
+    );
+    process.exit(1);
+  }
+  options.provider = modelProvider;
+}
+
 const configFile = options.configFile;
 const connectionMode = options.strict ? 'strict' : ('lenient' as 'strict' | 'lenient');
 const runMode = options.mode.toLowerCase();

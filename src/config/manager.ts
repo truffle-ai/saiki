@@ -106,11 +106,7 @@ export class ConfigManager {
           const p = e.path.join('.') || 'config';
           return `  • ${p}: ${e.message}`;
         });
-        const provLines = Object.entries(this.provenance.llm).map(([field, src]) => {
-          const val = (this.resolved.llm as any)[field];
-          return `  • ${field}: '${val}' (${src})`;
-        });
-        throw new Error(`Invalid LLM configuration:\n${issues.join('\n')}\nConfiguration provenance:\n${provLines.join('\n')}`);
+        throw new Error(`Invalid LLM configuration:\n${issues.join('\n')}`);
       }
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(`Unexpected error during LLM config validation: ${msg}`);

@@ -13,7 +13,7 @@ export function validateCliOptions(opts: any): void {
   const supportedProviders = getSupportedProviders().map(p => p.toLowerCase());
 
   // Base schema for primitive shape
-  const base = z.object({
+  const cliOptionShape = z.object({
     configFile: z.string().nonempty('Config file path must not be empty'),
     strict: z.boolean().optional().default(false),
     verbose: z.boolean().optional().default(true),
@@ -31,8 +31,8 @@ export function validateCliOptions(opts: any): void {
     router: z.enum(['vercel', 'default']).optional(),
   });
 
-  // Add semantic refinements
-  const generalSchema = base
+  // Basic semantic validation
+  const cliOptionSchema = cliOptionShape
     // 1) provider must be one of the supported set if provided
     .refine(
       data => !data.provider || supportedProviders.includes(data.provider.toLowerCase()),
@@ -41,23 +41,9 @@ export function validateCliOptions(opts: any): void {
         message: `Provider must be one of: ${supportedProviders.join(', ')}`,
       }
     )
-    // 2) if model is provided, provider must also be provided and model must exist for that provider
-    .refine(
-      data => {
-        if (!data.model) return true;
-        if (!data.provider) return false;
-        return getSupportedModels(data.provider.toLowerCase())
-          .map(m => m.toLowerCase())
-          .includes(data.model.toLowerCase());
-      },
-      {
-        path: ['model'],
-        message: `Model must be one of the supported models for the given provider.`,
-      }
-    );
 
   // Execute validation
-  generalSchema.parse({
+  cliOptionSchema.parse({
     configFile: opts.configFile,
     strict: opts.strict,
     verbose: opts.verbose,

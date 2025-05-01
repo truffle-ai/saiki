@@ -133,4 +133,12 @@ export function getProviderFromModel(model: string): string {
     }
     logger.warn(`Could not determine provider for model: ${model}. Defaulting to 'unknown'.`);
     return 'unknown';
+}
+
+/**
+ * Returns a flat array of all supported model names from all providers.
+ */
+export function getAllSupportedModels(): string[] {
+    return Object.values(LLM_REGISTRY)
+        .flatMap(info => info.models.map(m => m.name));
 } 

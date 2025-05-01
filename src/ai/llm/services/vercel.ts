@@ -306,7 +306,8 @@ export class VercelLLMService implements ILLMService {
         const configuredMaxTokens = this.messageManager.getMaxTokens();
 
         return {
-            provider: `vercel:${this.provider}`,
+            router: 'vercel',
+            provider: `${this.provider}`,
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
             modelMaxTokens: getMaxTokensForModel(this.provider, this.model.modelId),
