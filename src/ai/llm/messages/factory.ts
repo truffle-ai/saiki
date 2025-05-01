@@ -1,7 +1,5 @@
 import { MessageManager } from './manager.js';
-import { VercelMessageFormatter } from './formatters/vercel.js';
-import { OpenAIMessageFormatter } from './formatters/openai.js';
-import { AnthropicMessageFormatter } from './formatters/anthropic.js';
+import { createMessageFormatter } from './formatters/factory.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { LLMConfig } from '../../../config/types.js';
 import { LLMRouter } from '../types.js';
@@ -26,40 +24,18 @@ export function createMessageManager(
     router: LLMRouter = 'vercel',
     contributors: SystemPromptContributor[]
 ): MessageManager {
-    let formatter: IMessageFormatter;
-    let tokenizer: ITokenizer;
-    let maxTokens: number;
 
     const provider = config.provider.toLowerCase();
     const model = config.model.toLowerCase();
 
     const registryMaxTokens = getMaxTokensForModel(provider, model);
+    const maxTokens = Math.floor(registryMaxTokens! * 0.9);
 
-    maxTokens = Math.floor(registryMaxTokens * 0.9);
+    const tokenizer = createTokenizer(provider, model);
+    logger.debug(`Tokenizer created for ${provider}/${model}`);
 
-    try {
-        tokenizer = createTokenizer(provider, model);
-        logger.debug(`Tokenizer created for ${provider}/${model}`);
-    } catch (error) {
-        logger.error(`Failed to create tokenizer for ${provider}/${model}. Error: ${error}`);
-        throw new Error(`Unsupported tokenizer or invalid model for provider ${provider}: ${model}`);
-    }
-
-    if (router === 'vercel') {
-        formatter = new VercelMessageFormatter();
-    } else if (router === 'default') {
-        if (provider === 'openai') {
-            formatter = new OpenAIMessageFormatter();
-        } else if (provider === 'anthropic') {
-            formatter = new AnthropicMessageFormatter();
-        } else {
-            logger.error(`Provider '${provider}' supported by registry but not configured for 'default' router message formatting.`);
-            throw new Error(`Unsupported LLM provider: ${provider} for router: ${router}`);
-        }
-    } else {
-        logger.error(`Unsupported LLM router specified: ${router}`);
-        throw new Error(`Unsupported LLM router: ${router}`);
-    }
+    const formatter = createMessageFormatter(provider, router);
+    logger.debug(`Message formatter created for ${provider}/${model}`);
 
     logger.debug(
         `Creating MessageManager for ${provider}/${model} using ${router} router with maxTokens: ${maxTokens}`
