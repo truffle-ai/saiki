@@ -1,38 +1,7 @@
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
 import { llmConfigSchema } from './schemas.js';
-import type { AgentConfig, CLIConfigOverrides, LLMConfig } from './types.js';
-
-/**
- * Validates the general command-line options.
- * @param opts - The command-line options object from commander.
- * @throws {z.ZodError} If validation fails.
- */
-export function validateGeneralOptions(opts: any): void {
-  logger.debug('Validating general options', 'cyanBright');
-  const generalSchema = z.object({
-    configFile: z.string().nonempty('Config file path must not be empty'),
-    strict: z.boolean().optional().default(false),
-    verbose: z.boolean().optional().default(true),
-    mode: z.enum(['cli', 'web'], { errorMap: () => ({ message: 'Mode must be either "cli" or "web"' }) }),
-    webPort: z.string().refine(
-      (val) => {
-        const port = parseInt(val, 10);
-        return !isNaN(port) && port > 0 && port <= 65535;
-      },
-      { message: 'Web port must be a number between 1 and 65535' }
-    ),
-  });
-
-  generalSchema.parse({
-    configFile: opts.configFile,
-    strict: opts.strict,
-    verbose: opts.verbose,
-    mode: opts.mode.toLowerCase(),
-    webPort: opts.webPort,
-  });
-  logger.debug('General options validated successfully', 'green');
-}
+import type { AgentConfig, CLIConfigOverrides, LLMConfig, LLMProvenance } from './types.js';
 
 /**
  * ConfigManager encapsulates merging file-based configuration, CLI overrides,

@@ -7,7 +7,7 @@ import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
 import { createAgentServices } from '../src/utils/service-initializer.js';
 import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
-import { validateGeneralOptions } from '../src/config/manager.js';
+import { validateOptions } from '../utils/validate-options.js';
 import { z } from 'zod';
 
 // Load environment variables
@@ -75,13 +75,12 @@ const normalizedConfigPath = resolvePackagePath(configFile, resolveFromPackageRo
 
 // Validate options by group
 try {
-    validateGeneralOptions(options);
+    validateOptions(options);
 } catch (error) {
     // Improved error logging for Zod errors
     if (error instanceof z.ZodError) {
         logger.error('Invalid command-line options detected:');
         error.errors.forEach((err) => {
-            // Prefix with "Option" and use the field path
             const fieldName = err.path.join('.') || 'Unknown Option';
             logger.error(`- Option '${fieldName}': ${err.message}`);
         });
