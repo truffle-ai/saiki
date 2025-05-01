@@ -83,3 +83,17 @@ export type CLIConfigOverrides = Partial<{
     provider: string;
     router: LLMRouter;
 }>;
+
+/**
+ * Possible sources for configuration field overrides
+ */
+export type Source = 'file' | 'cli' | 'default';
+
+/**
+ * Provenance for configuration fields: tracks where a value originated from
+ */
+export type LLMProvenance = {
+  provider: Source;
+  model: Source;
+  router: Source;
+};

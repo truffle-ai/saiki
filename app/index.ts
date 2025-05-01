@@ -3,15 +3,12 @@ import { existsSync } from 'fs';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
-import { loadConfigFile } from '../src/config/loader.js';
 import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
-import { AgentConfig } from '../src/config/types.js';
-import { initializeServices } from '../src/utils/service-initializer.js';
+import { createAgentServices } from '../src/utils/service-initializer.js';
 import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
-import { resolveConfiguration } from '../src/config/resolver.js';
+import { validateGeneralOptions } from '../src/config/manager.js';
 import { z } from 'zod';
-import { validateGeneralOptions, validateResolvedAgentConfig } from '../src/config/validator.js';
 
 // Load environment variables
 dotenv.config();
@@ -111,26 +108,30 @@ if (runMode === 'cli') {
 
 // Main start function
 async function startAgent() {
-    // Load the agent configuration from file
-    const config: AgentConfig = await loadConfigFile(normalizedConfigPath);
-    // Resolve configuration with CLI overrides (model, provider, router)
-    const cliArgs = {
-        model: options.model,
-        provider: options.provider,
-        router: options.router,
-    };
-    const resolvedConfig = resolveConfiguration(config, cliArgs);
-    validateResolvedAgentConfig(resolvedConfig);
+    // Use createAgentServices to load, validate config and initialize all agent services
+    const cliArgs = { model: options.model, provider: options.provider, router: options.router };
+    let services;
+    try {
+        services = await createAgentServices(
+            normalizedConfigPath,
+            cliArgs,
+            { connectionMode, runMode }
+        );
+    } catch (err) {
+        if (err instanceof Error) {
+            err.message.split('\n').forEach(line => logger.error(line));
+        } else {
+            logger.error('Unexpected error during startup:', err);
+        }
+        process.exit(1);
+    }
 
     logger.info('===============================================');
     logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
     logger.info('===============================================\n');
 
-    // Use the shared initializer with resolved config
-    const { clientManager, llmService, agentEventBus } = await initializeServices(resolvedConfig, {
-        connectionMode,
-        runMode,
-    });
+    // Destructure the agent runtime services
+    const { clientManager, llmService, agentEventBus } = services;
 
     // Start based on mode
     if (runMode === 'cli') {

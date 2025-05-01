@@ -254,7 +254,7 @@ export class MCPClient implements IMCPClient {
         try {
             // Call listTools with parameters only
             const listToolResult = await this.client.listTools({});
-            logger.debug(`listTools result: ${JSON.stringify(listToolResult, null, 2)}`);
+            logger.silly(`listTools result: ${JSON.stringify(listToolResult, null, 2)}`);
 
             // Assume listToolResult.tools exists and iterate
             if (listToolResult && listToolResult.tools) {

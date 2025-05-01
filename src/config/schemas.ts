@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { LLMConfig, AgentConfig, ContributorConfig, SystemPromptConfig } from './types.js';
 import { SchemaFromInterface } from '../utils/zod.js';
-import { getSupportedProviders, isValidProviderModel } from '../ai/llm/registry.js';
+import { getSupportedProviders, getSupportedModels, isValidProviderModel } from '../ai/llm/registry.js';
 
 export const contributorConfigSchema = z.object({
   id: z.string(),
@@ -26,18 +26,26 @@ export const llmConfigSchema = z.object({
   maxIterations: z.number().optional(),
   providerOptions: z.record(z.any()).optional(),
   router: z.any().optional(),
-}).refine(
-  (data) => getSupportedProviders().includes(data.provider.toLowerCase()),
-  {
-    message: `Unsupported provider specified in resolved config.`,
-    path: ['provider'],
+})
+.superRefine((data, ctx) => {
+  // 1. Provider must be one of the supported list
+  const supportedProviders = getSupportedProviders();
+  if (!supportedProviders.includes(data.provider.toLowerCase())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['provider'],
+      message: `Provider '${data.provider}' is not supported. Supported: ${supportedProviders.join(', ')}`,
+    });
   }
-).refine(
-  (data) => isValidProviderModel(data.provider, data.model),
-  {
-    message: `Unsupported model specified for the given provider in resolved config.`,
-    path: ['model'],
+  // 2. Model must be valid for that provider
+  const supportedModels = getSupportedModels(data.provider);
+  if (!isValidProviderModel(data.provider, data.model)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['model'],
+      message: `Model '${data.model}' is not supported for provider '${data.provider}'. Supported: ${supportedModels.join(', ')}`,
+    });
   }
-);
+});
 
 // You can add more schemas for AgentConfig, etc., as needed. 
