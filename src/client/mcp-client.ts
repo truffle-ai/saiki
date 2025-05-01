@@ -1,9 +1,10 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
-import { McpServerConfig, StdioServerConfig, SSEServerConfig } from '../config/types.js';
+import type { McpServerConfig, StdioServerConfig, SSEServerConfig, HttpServerConfig } from '../config/types.js';
 import { ToolSet } from '../ai/types.js';
 import { IMCPClient } from './types.js';
 import { resolvePackagePath } from '../utils/path.js';
@@ -44,8 +45,11 @@ export class MCPClient implements IMCPClient {
         } else if (config.type === 'sse') {
             const sseConfig: SSEServerConfig = config;
             return this.connectViaSSE(sseConfig.url, sseConfig.headers, serverName);
+        } else if (config.type === 'http') {
+            const httpConfig: HttpServerConfig = config;
+            return this.connectViaHttp(httpConfig.baseUrl, httpConfig.headers ?? {}, httpConfig.timeout, serverName);
         } else {
-            throw new Error(`Unsupported server type`);
+            throw new Error('Unsupported server type');
         }
     }
 
@@ -188,6 +192,38 @@ export class MCPClient implements IMCPClient {
     }
 
     /**
+     * Connect to an MCP server via Streamable HTTP transport
+     */
+    private async connectViaHttp(
+        baseUrl: string,
+        headers: Record<string, string>,
+        timeout: number | undefined,
+        serverAlias?: string
+    ): Promise<Client> {
+        logger.info(`Connecting to HTTP MCP server at ${baseUrl}`);
+        this.transport = new StreamableHTTPClientTransport(
+            new URL(baseUrl),
+            {
+                requestInit: { headers }
+            }
+        );
+        this.client = new Client(
+            { name: 'Saiki-http-mcp-client', version: '1.0.0' },
+            { capabilities: { tools: {} } }
+        );
+        try {
+            logger.info('Establishing HTTP connection...');
+            await this.client.connect(this.transport);
+            this.isConnected = true;
+            logger.info(`✅ HTTP SERVER ${serverAlias ?? baseUrl} CONNECTED`);
+            return this.client;
+        } catch (error: any) {
+            logger.error(`Failed to connect to HTTP MCP server ${baseUrl}: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
      * Disconnect from the server
      */
     async disconnect(): Promise<void> {
@@ -256,17 +292,17 @@ export class MCPClient implements IMCPClient {
             const listToolResult = await this.client.listTools({});
             logger.debug(`listTools result: ${JSON.stringify(listToolResult, null, 2)}`);
 
-            // Assume listToolResult.tools exists and iterate
+            // Populate tools
             if (listToolResult && listToolResult.tools) {
                 listToolResult.tools.forEach((tool: any) => {
                     if (!tool.description) {
-                        throw new Error(`Tool '${tool.name}' is missing a description`);
+                        logger.warn(`Tool '${tool.name}' is missing a description`);
                     }
                     if (!tool.inputSchema) {
                         throw new Error(`Tool '${tool.name}' is missing an input schema`);
                     }
                     tools[tool.name] = {
-                        description: tool.description,
+                        description: tool.description ?? '',
                         parameters: tool.inputSchema,
                     };
                 });
@@ -274,8 +310,8 @@ export class MCPClient implements IMCPClient {
                 throw new Error('listTools did not return the expected structure: missing tools');
             }
         } catch (error) {
-            logger.error('Failed to get tools from MCP server:', error);
-            throw error;
+            logger.warn('Failed to get tools from MCP server, proceeding with zero tools:', error);
+            return tools;
         }
         return tools;
     }

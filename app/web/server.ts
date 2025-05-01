@@ -12,7 +12,7 @@ export async function initializeWebUI(
     agentEventBus: EventEmitter,
     port = 3000
 ) {
-    const { app, server, wss, webSubscriber } = initializeApi(clientManager, llmService, agentEventBus);
+    const { app, server, wss, webSubscriber } = await initializeApi(clientManager, llmService, agentEventBus);
 
     const publicPath = resolvePackagePath('public', true);
     logger.info(`Serving static files from: ${publicPath}`);

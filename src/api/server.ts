@@ -6,8 +6,12 @@ import { MCPClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/services/types.js';
 import { logger } from '../utils/logger.js';
 import { EventEmitter } from 'events';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import { randomUUID } from 'crypto';
 
-export function initializeApi(
+export async function initializeApi(
     clientManager: MCPClientManager,
     llmService: ILLMService,
     agentEventBus: EventEmitter
@@ -121,6 +125,31 @@ export function initializeApi(
         ws.on('error', (error) => {
             logger.error(`WebSocket error: ${error.message}`);
         });
+    });
+
+    // --- Expose Saiki via MCP protocol on /mcp ---
+    const mcpTransport = new StreamableHTTPServerTransport({ sessionIdGenerator: randomUUID, enableJsonResponse: true });
+    const mcpServer = new McpServer({ name: 'saiki', version: '1.0.0' });
+    // Register a single 'chat' tool
+    mcpServer.tool(
+        'chat',
+        'Hey! I am Saiki, a remote AI agent that can chat with you or you can use to delegate tasks.',
+        { message: z.string() },
+        async ({ message }) => {
+            const text = await llmService.completeTask(message);
+            return { content: [{ type: 'text', text }] };
+        }
+    );
+    // Initialize the MCP protocol on this transport before mounting endpoints
+    logger.info('Initializing MCP protocol server...');
+    await mcpServer.connect(mcpTransport);
+    logger.info('✅ MCP server protocol initialized on /mcp');
+    // Mount root for JSON-RPC and SSE handling (so baseUrl can be just host)
+    app.post('/', express.json(), (req, res) => {
+        mcpTransport.handleRequest(req, res, req.body).catch(err => logger.error('MCP POST error:', err));
+    });
+    app.get('/', (req, res) => {
+        mcpTransport.handleRequest(req, res).catch(err => logger.error('MCP GET error:', err));
     });
 
     return { app, server, wss, webSubscriber };

@@ -256,6 +256,13 @@ export class MCPClientManager {
             logger.info(`Successfully connected and cached new server '${name}'`);
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
+            // If server has already been initialized (duplicate handshake), treat as connected
+            if (errorMsg.includes('Server already initialized')) {
+                logger.warn(`Server '${name}' already initialized; registering client anyways.`);
+                this.registerClient(name, client);
+                await this.updateClientCache(name, client);
+                return;
+            }
             this.connectionErrors[name] = errorMsg;
             logger.error(`Failed to connect to new server '${name}': ${errorMsg}`);
             this.clients.delete(name);
