@@ -65,7 +65,7 @@ program.parse();
 
 // Get options
 const options = program.opts();
-// Dynamically infer provider from the supplied model (no more explicit --provider flag)
+// Dynamically infer provider from the supplied model
 if (options.model) {
   const modelProvider = getProviderFromModel(options.model);
   if (modelProvider === 'unknown') {
