@@ -67,19 +67,31 @@ export class ConfigManager {
   }
 
   /**
-   * Validate resolved config. Throws Error with both schema issues and provenance.
+   * Validate the current resolved config. Throws Error with both schema issues and provenance.
+   * Delegates to helper methods for each section of the config.
    */
   validate(): void {
-    // 1. MCP servers
+    this.validateMcpServers();
+    this.validateLlm();
+    logger.debug('LLM config validation successful', 'green');
+  }
+
+  /**
+   * Validates the MCP servers configuration
+   */
+  private validateMcpServers(): void {
     if (!this.resolved.mcpServers || Object.keys(this.resolved.mcpServers).length === 0) {
       throw new Error('No MCP server configurations provided in the resolved config.');
     }
-    // 2. LLM section sanity
+  }
+
+  /**
+   * Validates the LLM configuration
+   */
+  private validateLlm(): void {
     if (!this.resolved.llm) {
       throw new Error('LLM configuration is missing in the resolved config.');
     }
-
-    // 3. LLM schema via Zod
     try {
       llmConfigSchema.parse(this.resolved.llm);
     } catch (err) {
@@ -97,7 +109,5 @@ export class ConfigManager {
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(`Unexpected error during LLM config validation: ${msg}`);
     }
-
-    logger.debug('LLM config validation successful', 'green');
   }
 } 
