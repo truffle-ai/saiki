@@ -69,4 +69,20 @@ export function validateCliOptions(opts: any): void {
   });
 
   logger.debug('Command-line options validated successfully', 'green');
+}
+
+export function handleCliOptionsError(error: unknown): never {
+  if (error instanceof z.ZodError) {
+    logger.error('Invalid command-line options detected:');
+    error.errors.forEach((err) => {
+      const fieldName = err.path.join('.') || 'Unknown Option';
+      logger.error(`- Option '${fieldName}': ${err.message}`);
+    });
+    logger.error('Please check your command-line arguments or run with --help for usage details.');
+  } else {
+    logger.error(
+      `Validation error: ${error instanceof Error ? error.message : JSON.stringify(error)}`
+    );
+  }
+  process.exit(1);
 } 

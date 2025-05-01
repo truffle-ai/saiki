@@ -7,7 +7,7 @@ import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
 import { createAgentServices } from '../src/utils/service-initializer.js';
 import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
-import { validateCliOptions } from '../src/utils/options.js';
+import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
 import { z } from 'zod';
 
 // Load environment variables
@@ -73,22 +73,11 @@ const resolveFromPackageRoot = configFile === DEFAULT_CONFIG_PATH; // Check if s
 // Platform-independent path handling
 const normalizedConfigPath = resolvePackagePath(configFile, resolveFromPackageRoot);
 
-// Validate options by group
+// basic validation of options here
 try {
     validateCliOptions(options);
 } catch (error) {
-    // Improved error logging for Zod errors
-    if (error instanceof z.ZodError) {
-        logger.error('Invalid command-line options detected:');
-        error.errors.forEach((err) => {
-            const fieldName = err.path.join('.') || 'Unknown Option';
-            logger.error(`- Option '${fieldName}': ${err.message}`);
-        });
-        logger.error('Please check your command-line arguments or run with --help for usage details.');
-    } else {
-        logger.error(`Validation error: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
-    }
-    process.exit(1);
+    handleCliOptionsError(error);
 }
 
 logger.info(`Initializing Saiki with config: ${normalizedConfigPath}`, null, 'blue');
