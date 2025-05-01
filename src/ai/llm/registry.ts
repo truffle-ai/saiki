@@ -114,4 +114,23 @@ export function isValidProviderModel(provider?: string, model?: string): boolean
         return false;
     }
     return providerInfo.models.some((m) => m.name === lowerModel);
+}
+
+/**
+ * Infers the LLM provider from the model name by searching the registry.
+ * Matches the model name (case-insensitive) against all registered models.
+ * Returns the provider name if found, or 'unknown' if not found.
+ *
+ * @param model The model name (e.g., 'gpt-4o-mini', 'claude-3-7-sonnet-20250219')
+ * @returns The inferred provider name ('openai', 'anthropic', etc.), or 'unknown' if no match is found.
+ */
+export function getProviderFromModel(model: string): string {
+    const lowerModel = model.toLowerCase();
+    for (const [provider, info] of Object.entries(LLM_REGISTRY)) {
+        if (info.models.some(m => m.name.toLowerCase() === lowerModel)) {
+            return provider;
+        }
+    }
+    logger.warn(`Could not determine provider for model: ${model}. Defaulting to 'unknown'.`);
+    return 'unknown';
 } 

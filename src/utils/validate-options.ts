@@ -69,4 +69,4 @@ export function validateOptions(opts: any): void {
   });
 
   logger.debug('Command-line options validated successfully', 'green');
-} 
+}

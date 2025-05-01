@@ -6,7 +6,7 @@ import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { getProviderFromModel } from '../../utils.js';
+import { getProviderFromModel } from '../registry.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 
