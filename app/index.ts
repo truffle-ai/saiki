@@ -8,7 +8,6 @@ import { createAgentServices } from '../src/utils/service-initializer.js';
 import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
 import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
-import { z } from 'zod';
 import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
 
 // Load environment variables
