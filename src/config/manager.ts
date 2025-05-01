@@ -60,7 +60,7 @@ export class ConfigManager {
   print(): void {
     logger.info('Resolved configuration:');
     logger.info(JSON.stringify(this.resolved, null, 2));
-    logger.info('Configuration provenance:');
+    logger.info('Configuration sources:');
     for (const [field, src] of Object.entries(this.provenance.llm)) {
       logger.info(`  • ${field}: ${src}`);
     }
@@ -71,9 +71,15 @@ export class ConfigManager {
    * Delegates to helper methods for each section of the config.
    */
   validate(): void {
-    this.validateMcpServers();
-    this.validateLlm();
-    logger.debug('LLM config validation successful', 'green');
+    try {
+      this.validateMcpServers();
+      this.validateLlm();
+      logger.debug('LLM config validation successful', 'green');
+    } catch (err) {
+      // On validation failure, dump resolved config and provenance for debugging
+      this.print();
+      throw err;
+    }
   }
 
   /**
