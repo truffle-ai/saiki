@@ -7,7 +7,7 @@ import { getSupportedProviders, getSupportedModels } from '../ai/llm/registry.js
  * @param opts - The command-line options object from commander.
  * @throws {z.ZodError} If validation fails.
  */
-export function validateOptions(opts: any): void {
+export function validateCliOptions(opts: any): void {
   logger.debug('Validating command-line options', 'cyanBright');
 
   const supportedProviders = getSupportedProviders().map(p => p.toLowerCase());
@@ -69,4 +69,4 @@ export function validateOptions(opts: any): void {
   });
 
   logger.debug('Command-line options validated successfully', 'green');
-}
+} 
