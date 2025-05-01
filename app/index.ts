@@ -11,12 +11,7 @@ import { runAiCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
 import { resolveConfiguration } from '../src/config/resolver.js';
 import { z } from 'zod';
-import {
-    LLM_REGISTRY,
-    getSupportedProviders,
-    getSupportedModels,
-    isValidProviderModel,
-} from '../src/ai/llm/registry.js';
+import { validateGeneralOptions, validateResolvedAgentConfig } from '../src/config/validator.js';
 
 // Load environment variables
 dotenv.config();
@@ -78,26 +73,27 @@ const connectionMode = options.strict ? 'strict' : ('lenient' as 'strict' | 'len
 const runMode = options.mode.toLowerCase();
 const webPort = parseInt(options.webPort, 10);
 const resolveFromPackageRoot = configFile === DEFAULT_CONFIG_PATH; // Check if should resolve from package root
+// Platform-independent path handling
+const normalizedConfigPath = resolvePackagePath(configFile, resolveFromPackageRoot);
 
 // Validate options by group
 try {
     validateGeneralOptions(options);
-    validateLlmOptions(options);
 } catch (error) {
     // Improved error logging for Zod errors
     if (error instanceof z.ZodError) {
-        logger.error('Validation error(s):');
+        logger.error('Invalid command-line options detected:');
         error.errors.forEach((err) => {
-            logger.error(`- ${err.path.join('.') || 'Options'}: ${err.message}`);
+            // Prefix with "Option" and use the field path
+            const fieldName = err.path.join('.') || 'Unknown Option';
+            logger.error(`- Option '${fieldName}': ${err.message}`);
         });
+        logger.error('Please check your command-line arguments or run with --help for usage details.');
     } else {
         logger.error(`Validation error: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
     }
     process.exit(1);
 }
-
-// Platform-independent path handling
-const normalizedConfigPath = resolvePackagePath(configFile, resolveFromPackageRoot);
 
 logger.info(`Initializing Saiki with config: ${normalizedConfigPath}`, null, 'blue');
 
@@ -115,46 +111,35 @@ if (runMode === 'cli') {
 
 // Main start function
 async function startAgent() {
-    try {
-        // Load the agent configuration from file
-        const config: AgentConfig = await loadConfigFile(normalizedConfigPath);
-        // Resolve configuration with CLI overrides (model, provider, router)
-        const cliArgs = {
-            model: options.model,
-            provider: options.provider,
-            router: options.router,
-        };
-        const resolvedConfig = resolveConfiguration(config, cliArgs);
-        validateAgentConfig(resolvedConfig);
+    // Load the agent configuration from file
+    const config: AgentConfig = await loadConfigFile(normalizedConfigPath);
+    // Resolve configuration with CLI overrides (model, provider, router)
+    const cliArgs = {
+        model: options.model,
+        provider: options.provider,
+        router: options.router,
+    };
+    const resolvedConfig = resolveConfiguration(config, cliArgs);
+    validateResolvedAgentConfig(resolvedConfig);
 
-        logger.info('===============================================');
-        logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
-        logger.info('===============================================\n');
+    logger.info('===============================================');
+    logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
+    logger.info('===============================================\n');
 
-        // Use the shared initializer with resolved config
-        const { clientManager, llmService, agentEventBus } = await initializeServices(resolvedConfig, {
-            connectionMode,
-            runMode,
-        });
+    // Use the shared initializer with resolved config
+    const { clientManager, llmService, agentEventBus } = await initializeServices(resolvedConfig, {
+        connectionMode,
+        runMode,
+    });
 
-        // Start based on mode
-        if (runMode === 'cli') {
-            // Run CLI
-            await runAiCli(clientManager, llmService, agentEventBus);
-        } else if (runMode === 'web') {
-            // Run WebUI
-            initializeWebUI(clientManager, llmService, agentEventBus, webPort);
-            logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
-        }
-    } catch (error) {
-        logger.error(
-            `Error: Failed to initialize AI CLI from config file ${normalizedConfigPath}: ${
-                error instanceof Error
-                    ? `${error.message}\n${error.stack}`
-                    : JSON.stringify(error, null, 2)
-            }`
-        );
-        process.exit(1);
+    // Start based on mode
+    if (runMode === 'cli') {
+        // Run CLI
+        await runAiCli(clientManager, llmService, agentEventBus);
+    } else if (runMode === 'web') {
+        // Run WebUI
+        initializeWebUI(clientManager, llmService, agentEventBus, webPort);
+        logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
     }
 }
 
@@ -164,140 +149,3 @@ startAgent().catch((error) => {
     logger.error(error);
     process.exit(1);
 });
-
-function validateAgentConfig(config: AgentConfig): void {
-    logger.info('Validating agent config', 'cyanBright');
-    if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
-        throw new Error('No MCP server configurations provided in config file.');
-    }
-
-    // Validate LLM section exists, use defaults if not
-    if (!config.llm) {
-        logger.info('No LLM configuration found, applying defaults', 'yellow');
-        config.llm = {
-            provider: 'openai',
-            model: 'gpt-4.1-mini',
-            systemPrompt:
-                'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.',
-            apiKey: '$OPENAI_API_KEY',
-        };
-    } else {
-        // Ensure required LLM fields are present if section exists
-        if (!config.llm.provider || !config.llm.model) {
-            throw new Error('LLM configuration must specify provider and model in config file.');
-        }
-        // **Optional**: Validate config file provider/model against registry
-        if (!isValidProviderModel(config.llm.provider, config.llm.model)) {
-            const supportedModels = getSupportedModels(config.llm.provider);
-            const supportedProviders = getSupportedProviders();
-            let errorMsg = `Invalid provider/model combination in config file: provider='${config.llm.provider}', model='${config.llm.model}'.`;
-            if (supportedModels.length > 0) {
-                errorMsg += ` Supported models for '${config.llm.provider}': ${supportedModels.join(', ')}.`;
-            } else {
-                errorMsg += ` Supported providers are: ${supportedProviders.join(', ')}.`;
-            }
-             throw new Error(errorMsg);
-        }
-        // Provide default system prompt if missing
-        if (!config.llm.systemPrompt) {
-            logger.info('No system prompt found, using default', 'yellow');
-            config.llm.systemPrompt =
-                'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.';
-        }
-    }
-
-    logger.info(
-        `Found ${Object.keys(config.mcpServers).length} server configurations. Validation successful.`,
-        'green'
-    );
-}
-
-// Validation Functions
-function validateGeneralOptions(opts: any): void {
-    // Define Zod schema for general options
-    const generalSchema = z.object({
-        configFile: z.string().nonempty('Config file path must not be empty'),
-        strict: z.boolean(),
-        verbose: z.boolean(),
-        mode: z.enum(['cli', 'web'], { errorMap: () => ({ message: 'Mode must be either "cli" or "web"' }) }),
-        webPort: z.string().refine(
-            (val) => {
-                const port = parseInt(val, 10);
-                return !isNaN(port) && port > 0 && port <= 65535;
-            },
-            { message: 'Web port must be a number between 1 and 65535' }
-        ),
-    });
-
-    // Parse and validate the options
-    generalSchema.parse({
-        configFile: opts.configFile,
-        strict: opts.strict,
-        verbose: opts.verbose,
-        mode: opts.mode.toLowerCase(),
-        webPort: opts.webPort,
-    });
-}
-
-function validateLlmOptions(opts: any): void {
-    const supportedProviders = getSupportedProviders();
-    // Define Zod schema for LLM options
-    const llmSchema = z
-        .object({
-            model: z.string().optional(),
-            provider: z.string().optional(),
-            router: z.string().optional(), // Keep router validation simple for now
-        })
-        .refine(
-            (data) => !((data.provider && !data.model) || (!data.provider && data.model)),
-            {
-                message: 'Provider and model must both be specified via CLI or neither should be specified.',
-                // Specify path for better error reporting if needed, e.g., path: ["provider", "model"]
-            }
-        )
-        .refine(
-            (data) => !data.provider || supportedProviders.includes(data.provider.toLowerCase()),
-            {
-                // This message will be customized below using errorMap for better context
-                message: `Unsupported provider specified via CLI.`,
-                path: ['provider'],
-            }
-        )
-        .refine(
-            (data) => isValidProviderModel(data.provider, data.model),
-            {
-                // This message will be customized below using errorMap for better context
-                message: `Unsupported model specified for the given provider via CLI.`,
-                path: ['model'], // Associate error with the model field
-            }
-        );
-
-
-    // Use errorMap to provide more detailed messages including supported options
-    llmSchema
-        .parse(
-            {
-                model: opts.model,
-                provider: opts.provider,
-                router: opts.router,
-            },
-            {
-                errorMap: (issue, ctx) => {
-                    if (issue.code === z.ZodIssueCode.custom) {
-                         // Handle custom refine errors
-                         if (issue.path?.includes('provider') && !issue.path?.includes('model') && issue.message.includes('Unsupported provider')) {
-                             return { message: `Unsupported provider '${opts.provider}'. Supported providers are: ${supportedProviders.join(', ')}` };
-                         }
-                         if (issue.path?.includes('model') && issue.message.includes('Unsupported model')) {
-                              const models = getSupportedModels(opts.provider);
-                              return { message: `Unsupported model '${opts.model}' for provider '${opts.provider}'. Supported models are: ${models.join(', ')}` };
-                         }
-                         // Fallback for other custom errors (like the both-or-neither check)
-                         return { message: issue.message ?? ctx.defaultError };
-                    }
-                    // Default error handling for other Zod issues (e.g., wrong type)
-                    return { message: ctx.defaultError };
-                },
-            }
-        );
-}
