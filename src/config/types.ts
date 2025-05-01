@@ -93,7 +93,7 @@ export type Source = 'file' | 'cli' | 'default';
  * Provenance for configuration fields: tracks where a value originated from
  */
 export type LLMProvenance = {
-  provider: Source;
-  model: Source;
-  router: Source;
+    provider: Source;
+    model: Source;
+    router: Source;
 };

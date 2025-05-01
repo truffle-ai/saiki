@@ -41,7 +41,7 @@ export const LLM_REGISTRY: Record<string, ProviderInfo> = {
             { name: 'gemini-2.0-flash', maxTokens: 1048576 },
             { name: 'gemini-2.0-flash-lite', maxTokens: 1048576 },
             { name: 'gemini-1.5-pro-latest', maxTokens: 1048576 },
-            { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 }
+            { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 },
         ],
     },
     // Add other providers like Groq, Cohere, etc., as needed
@@ -80,15 +80,23 @@ export function getMaxTokensForModel(provider: string, model: string): number {
     const providerInfo = LLM_REGISTRY[lowerProvider];
     if (!providerInfo) {
         const supportedProviders = getSupportedProviders().join(', ');
-        logger.error(`Provider '${provider}' not found in LLM registry. Supported: ${supportedProviders}`);
-        throw new Error(`Provider '${provider}' not found in LLM registry. Supported providers are: ${supportedProviders}`);
+        logger.error(
+            `Provider '${provider}' not found in LLM registry. Supported: ${supportedProviders}`
+        );
+        throw new Error(
+            `Provider '${provider}' not found in LLM registry. Supported providers are: ${supportedProviders}`
+        );
     }
 
     const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === lowerModel);
     if (!modelInfo) {
         const supportedModels = getSupportedModels(lowerProvider).join(', ');
-        logger.error(`Model '${model}' not found for provider '${provider}' in LLM registry. Supported models: ${supportedModels}`);
-        throw new Error(`Model '${model}' not found for provider '${provider}' in LLM registry. Supported models for '${provider}' are: ${supportedModels}`);
+        logger.error(
+            `Model '${model}' not found for provider '${provider}' in LLM registry. Supported models: ${supportedModels}`
+        );
+        throw new Error(
+            `Model '${model}' not found for provider '${provider}' in LLM registry. Supported models for '${provider}' are: ${supportedModels}`
+        );
     }
 
     logger.debug(`Found max tokens for ${provider}/${model}: ${modelInfo.maxTokens}`);
@@ -127,7 +135,7 @@ export function isValidProviderModel(provider?: string, model?: string): boolean
 export function getProviderFromModel(model: string): string {
     const lowerModel = model.toLowerCase();
     for (const [provider, info] of Object.entries(LLM_REGISTRY)) {
-        if (info.models.some(m => m.name.toLowerCase() === lowerModel)) {
+        if (info.models.some((m) => m.name.toLowerCase() === lowerModel)) {
             return provider;
         }
     }
@@ -139,6 +147,5 @@ export function getProviderFromModel(model: string): string {
  * Returns a flat array of all supported model names from all providers.
  */
 export function getAllSupportedModels(): string[] {
-    return Object.values(LLM_REGISTRY)
-        .flatMap(info => info.models.map(m => m.name));
-} 
+    return Object.values(LLM_REGISTRY).flatMap((info) => info.models.map((m) => m.name));
+}

@@ -6,5 +6,5 @@ import { ZodObject, ZodType } from 'zod';
 // better type safety when using the schemas.
 // We need to ensure that we update usages of this type whenever we update the interfaces it is based on.
 export type SchemaFromInterface<T> = ZodObject<{
-  [K in keyof Partial<T>]: K extends keyof T ? ZodType<T[K]> : never;
-}>; 
+    [K in keyof Partial<T>]: K extends keyof T ? ZodType<T[K]> : never;
+}>;

@@ -67,16 +67,16 @@ program.parse();
 const options = program.opts();
 // Dynamically infer provider from the supplied model
 if (options.model) {
-  const modelProvider = getProviderFromModel(options.model);
-  if (modelProvider === 'unknown') {
-    logger.error(
-      `ERROR: Unrecognized model '${options.model}'. Could not infer provider.\n` +
-      `Supported models are:\n` +
-      getAllSupportedModels().join(', ')
-    );
-    process.exit(1);
-  }
-  options.provider = modelProvider;
+    const modelProvider = getProviderFromModel(options.model);
+    if (modelProvider === 'unknown') {
+        logger.error(
+            `ERROR: Unrecognized model '${options.model}'. Could not infer provider.\n` +
+                `Supported models are:\n` +
+                getAllSupportedModels().join(', ')
+        );
+        process.exit(1);
+    }
+    options.provider = modelProvider;
 }
 
 const configFile = options.configFile;
@@ -114,14 +114,13 @@ async function startAgent() {
     const cliArgs = { model: options.model, provider: options.provider, router: options.router };
     let services;
     try {
-        services = await createAgentServices(
-            normalizedConfigPath,
-            cliArgs,
-            { connectionMode, runMode }
-        );
+        services = await createAgentServices(normalizedConfigPath, cliArgs, {
+            connectionMode,
+            runMode,
+        });
     } catch (err) {
         if (err instanceof Error) {
-            err.message.split('\n').forEach(line => logger.error(line));
+            err.message.split('\n').forEach((line) => logger.error(line));
         } else {
             logger.error('Unexpected error during startup:', err);
         }

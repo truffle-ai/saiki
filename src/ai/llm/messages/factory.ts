@@ -24,7 +24,6 @@ export function createMessageManager(
     router: LLMRouter = 'vercel',
     contributors: SystemPromptContributor[]
 ): MessageManager {
-
     const provider = config.provider.toLowerCase();
     const model = config.model.toLowerCase();
 
@@ -42,4 +41,3 @@ export function createMessageManager(
     );
     return new MessageManager(formatter, contributors, maxTokens, tokenizer);
 }
-

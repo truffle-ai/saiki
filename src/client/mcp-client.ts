@@ -291,7 +291,10 @@ export class MCPClient implements IMCPClient {
             logger.debug(`listPrompts response: ${JSON.stringify(response, null, 2)}`);
             return response.prompts.map((p: any) => p.name);
         } catch (error) {
-            logger.error('Failed to list prompts from MCP server (optional feature), skipping:', error);
+            logger.error(
+                'Failed to list prompts from MCP server (optional feature), skipping:',
+                error
+            );
             return [];
         }
     }
@@ -307,7 +310,10 @@ export class MCPClient implements IMCPClient {
         try {
             logger.debug(`Getting prompt '${name}' with args: ${JSON.stringify(args, null, 2)}`);
             // Pass params first, then options
-            const response = await this.client.getPrompt({ name, arguments: args }, { timeout: this.timeout });
+            const response = await this.client.getPrompt(
+                { name, arguments: args },
+                { timeout: this.timeout }
+            );
             logger.debug(`getPrompt '${name}' response: ${JSON.stringify(response, null, 2)}`);
             return response; // Return the full response object
         } catch (error: any) {
@@ -329,7 +335,10 @@ export class MCPClient implements IMCPClient {
             logger.debug(`listResources response: ${JSON.stringify(response, null, 2)}`);
             return response.resources.map((r: any) => r.uri);
         } catch (error) {
-            logger.error('Failed to list resources from MCP server (optional feature), skipping:', error);
+            logger.error(
+                'Failed to list resources from MCP server (optional feature), skipping:',
+                error
+            );
             return [];
         }
     }

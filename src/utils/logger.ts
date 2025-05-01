@@ -57,7 +57,6 @@ const consoleFormat = winston.format.printf(({ level, message, timestamp, color 
     return `${chalk.dim(timestamp)} ${colorize(level.toUpperCase())}: ${formattedMessage}`;
 });
 
-
 /**
  * Logic to redact sensitive information from logs.
  * This is useful for preventing sensitive information from being logged in production.

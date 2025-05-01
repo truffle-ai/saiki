@@ -55,7 +55,7 @@ function _createInBuiltLLMService(
 ): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
-    
+
     switch (config.provider.toLowerCase()) {
         case 'openai': {
             const openai = new OpenAI({ apiKey });
@@ -104,7 +104,13 @@ function _createVercelLLMService(
     messageManager: MessageManager
 ): VercelLLMService {
     const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
-    return new VercelLLMService(clientManager, model, agentEventBus, messageManager, config.maxIterations);
+    return new VercelLLMService(
+        clientManager,
+        model,
+        agentEventBus,
+        messageManager,
+        config.maxIterations
+    );
 }
 
 /**

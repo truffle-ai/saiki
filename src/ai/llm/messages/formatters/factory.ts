@@ -13,11 +13,13 @@ export function createMessageFormatter(provider: string, router: string): IMessa
         } else if (provider === 'anthropic') {
             return new AnthropicMessageFormatter();
         } else {
-            logger.error(`Provider '${provider}' supported by registry but not configured for 'default' router message formatting.`);
+            logger.error(
+                `Provider '${provider}' supported by registry but not configured for 'default' router message formatting.`
+            );
             throw new Error(`Unsupported LLM provider: ${provider} for router: ${router}`);
         }
     } else {
         logger.error(`Unsupported LLM router specified: ${router}`);
         throw new Error(`Unsupported LLM router: ${router}`);
     }
-} 
+}

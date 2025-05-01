@@ -40,13 +40,15 @@ export class MCPClientManager {
         const client = this.clients.get(clientName);
         if (!client) return;
 
-        [this.toolToClientMap, this.promptToClientMap, this.resourceToClientMap].forEach(cacheMap => {
-            for (const [key, mappedClient] of cacheMap.entries()) {
-                if (mappedClient === client) {
-                    cacheMap.delete(key);
+        [this.toolToClientMap, this.promptToClientMap, this.resourceToClientMap].forEach(
+            (cacheMap) => {
+                for (const [key, mappedClient] of cacheMap.entries()) {
+                    if (mappedClient === client) {
+                        cacheMap.delete(key);
+                    }
                 }
             }
-        });
+        );
         logger.debug(`Cleared cache for client: ${clientName}`);
     }
 
@@ -65,7 +67,7 @@ export class MCPClientManager {
         // Cache prompts, if supported
         try {
             const prompts = await client.listPrompts();
-            prompts.forEach(promptName => {
+            prompts.forEach((promptName) => {
                 this.promptToClientMap.set(promptName, client);
             });
             logger.debug(`Cached prompts for client: ${clientName}`);
@@ -76,7 +78,7 @@ export class MCPClientManager {
         // Cache resources, if supported
         try {
             const resources = await client.listResources();
-            resources.forEach(resourceUri => {
+            resources.forEach((resourceUri) => {
                 this.resourceToClientMap.set(resourceUri, client);
             });
             logger.debug(`Cached resources for client: ${clientName}`);
@@ -287,9 +289,12 @@ export class MCPClientManager {
         for (const [name, client] of this.clients.entries()) {
             if (client.disconnect) {
                 disconnectPromises.push(
-                    client.disconnect()
+                    client
+                        .disconnect()
                         .then(() => logger.info(`Disconnected client: ${name}`))
-                        .catch(error => logger.error(`Failed to disconnect client '${name}': ${error}`))
+                        .catch((error) =>
+                            logger.error(`Failed to disconnect client '${name}': ${error}`)
+                        )
                 );
             }
         }

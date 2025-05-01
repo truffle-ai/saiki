@@ -87,50 +87,50 @@ export type InitializeServicesOptions = {
  * @returns All the initialized services and the config manager
  */
 export async function createAgentServices(
-  configPath: string,
-  cliArgs: CLIConfigOverrides,
-  overrides?: InitializeServicesOptions
+    configPath: string,
+    cliArgs: CLIConfigOverrides,
+    overrides?: InitializeServicesOptions
 ): Promise<AgentServices> {
-  // 1. Load raw configuration from file
-  const rawConfig = await loadConfigFile(configPath);
+    // 1. Load raw configuration from file
+    const rawConfig = await loadConfigFile(configPath);
 
-  // 2. Initialize config manager, apply CLI config level overrides and validate
-  const configManager = new ConfigManager(rawConfig).overrideCLI(cliArgs);
-  configManager.validate();
-  const config = configManager.getConfig();
+    // 2. Initialize config manager, apply CLI config level overrides and validate
+    const configManager = new ConfigManager(rawConfig).overrideCLI(cliArgs);
+    configManager.validate();
+    const config = configManager.getConfig();
 
-  // 3. Initialize shared event bus
-  const agentEventBus = overrides?.agentEventBus ?? new EventEmitter();
-  logger.debug('Agent event bus initialized');
+    // 3. Initialize shared event bus
+    const agentEventBus = overrides?.agentEventBus ?? new EventEmitter();
+    logger.debug('Agent event bus initialized');
 
-  // 4. Initialize client manager
-  const connectionMode = overrides?.connectionMode ?? 'lenient';
-  const runMode = overrides?.runMode ?? 'cli';
-  const confirmationProvider = createToolConfirmationProvider(runMode);
-  const clientManager = overrides?.clientManager ?? new MCPClientManager(confirmationProvider);
-  await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
-  logger.debug(
-    overrides?.clientManager
-      ? 'Client manager and MCP servers initialized via override'
-      : 'Client manager and MCP servers initialized'
-  );
+    // 4. Initialize client manager
+    const connectionMode = overrides?.connectionMode ?? 'lenient';
+    const runMode = overrides?.runMode ?? 'cli';
+    const confirmationProvider = createToolConfirmationProvider(runMode);
+    const clientManager = overrides?.clientManager ?? new MCPClientManager(confirmationProvider);
+    await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
+    logger.debug(
+        overrides?.clientManager
+            ? 'Client manager and MCP servers initialized via override'
+            : 'Client manager and MCP servers initialized'
+    );
 
-  // 5. Initialize message manager
-  const router: LLMRouter = config.llm.router ?? 'vercel';
-  const contributors = loadContributors(config.llm.systemPrompt);
-  const messageManager =
-    overrides?.messageManager ?? createMessageManager(config.llm, router, contributors);
+    // 5. Initialize message manager
+    const router: LLMRouter = config.llm.router ?? 'vercel';
+    const contributors = loadContributors(config.llm.systemPrompt);
+    const messageManager =
+        overrides?.messageManager ?? createMessageManager(config.llm, router, contributors);
 
-  // 6. Initialize LLM service
-  const llmService =
-    overrides?.llmService ??
-    createLLMService(config.llm, router, clientManager, agentEventBus, messageManager);
-  logger.debug(
-    overrides?.llmService
-      ? 'LLM service provided via override'
-      : `LLM service initialized using router: ${router}`
-  );
+    // 6. Initialize LLM service
+    const llmService =
+        overrides?.llmService ??
+        createLLMService(config.llm, router, clientManager, agentEventBus, messageManager);
+    logger.debug(
+        overrides?.llmService
+            ? 'LLM service provided via override'
+            : `LLM service initialized using router: ${router}`
+    );
 
-  // 7. Return the full service graph, including the ConfigManager
-  return { clientManager, llmService, agentEventBus, messageManager, configManager };
+    // 7. Return the full service graph, including the ConfigManager
+    return { clientManager, llmService, agentEventBus, messageManager, configManager };
 }
