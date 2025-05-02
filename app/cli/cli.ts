@@ -155,7 +155,7 @@ export async function runAiCli(
  * Run a single headless command via CLI without interactive prompt
  */
 export async function runHeadlessCli(
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     llmService: ILLMService,
     agentEventBus: EventEmitter,
     prompt: string
