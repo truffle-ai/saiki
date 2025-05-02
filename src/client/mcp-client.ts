@@ -283,6 +283,7 @@ export class MCPClient implements IMCPClient {
     /**
      * Get the list of prompts provided by this client
      * @returns Array of available prompt names
+     * TODO: Turn exception logs back into error and only call this based on capabilities of the server
      */
     async listPrompts(): Promise<string[]> {
         this.ensureConnected();
@@ -303,6 +304,7 @@ export class MCPClient implements IMCPClient {
      * @param name Name of the prompt
      * @param args Arguments for the prompt (optional)
      * @returns Prompt definition (structure depends on SDK)
+     * TODO: Turn exception logs back into error and only call this based on capabilities of the server
      */
     async getPrompt(name: string, args?: any): Promise<GetPromptResult> {
         this.ensureConnected();
@@ -326,6 +328,7 @@ export class MCPClient implements IMCPClient {
     /**
      * Get the list of resources provided by this client
      * @returns Array of available resource URIs
+     * TODO: Turn exception logs back into error and only call this based on capabilities of the server
      */
     async listResources(): Promise<string[]> {
         this.ensureConnected();
