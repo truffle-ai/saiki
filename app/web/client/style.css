@@ -375,6 +375,7 @@ header h1 {
     display: flex;
     align-items: center;
     gap: 10px;
+    position: relative; /* Needed for absolute positioning of remove button */
 }
 
 #message-input {
@@ -479,6 +480,19 @@ header h1 {
 
 #status-indicator.connecting {
     background-color: #e69b6b; /* Orange/Accent */
+}
+
+/* Add style for thinking state */
+#status-indicator.thinking {
+    background-color: #e69b6b; /* Use same orange/accent color for thinking */
+    /* Optionally add animation */
+    animation: thinking-pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes thinking-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 
 /* Code Blocks inside AI messages - Warm */
@@ -663,4 +677,74 @@ header h1 {
     content: "";
     display: table;
     clear: both;
-} 
+}
+
+/* Add styles for image upload and preview */
+.upload-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em; /* Adjust size as needed */
+    cursor: pointer;
+    padding: 5px 10px;
+    color: #ccc;
+    transition: color 0.2s;
+}
+
+.upload-btn:hover {
+    color: #fff;
+}
+
+#image-preview-container {
+    display: flex; /* Use flexbox for alignment */
+    align-items: flex-start; /* Align items to the top */
+    padding: 5px;
+    margin-bottom: 5px; /* Space below the preview */
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #3a3a3a; /* Slightly different background */
+    max-height: 100px; /* Limit preview height */
+    overflow: hidden; /* Hide overflow */
+}
+
+#image-preview {
+    max-width: 100px; /* Limit image width */
+    max-height: 90px; /* Limit image height */
+    height: auto;
+    border-radius: 3px;
+    object-fit: cover; /* Scale image nicely */
+    margin-right: 10px; /* Space between image and remove button */
+}
+
+#remove-image-btn {
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 16px; /* Center the '✖' */
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    text-align: center;
+    /* Position top-right relative to container if needed, but flex alignment is okay for now */
+}
+
+#remove-image-btn:hover {
+    background: rgba(255, 0, 0, 0.7);
+}
+
+.message-image {
+    display: block; /* Ensure image is on its own line */
+    max-width: 80%; /* Limit image width within message */
+    max-height: 300px; /* Limit image height */
+    height: auto;
+    border-radius: 5px;
+    margin-top: 8px; /* Space above the image */
+    border: 1px solid #555; /* Optional border */
+}
+
+/* Adjust chat log padding dynamically via JS now */
+/* #chat-log {
+    padding-bottom: 120px; /* Increase padding to make space for taller input area */
+/* } */ 

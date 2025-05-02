@@ -1,6 +1,6 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { ClientManager } from '../../src/client/manager.js'; // Adjusted path
+import { MCPClientManager } from '../../src/client/manager.js'; // Adjusted path
 import { logger } from '../../src/utils/logger.js'; // Adjusted path
 import { ILLMService } from '../../src/ai/llm/services/types.js'; // Adjusted path
 import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new location
@@ -21,7 +21,7 @@ ${validLogLevels.join('|')} - Set logging level directly
  * @param llmService LLM service implementation
  */
 export async function runAiCli(
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     llmService: ILLMService,
     agentEventBus: EventEmitter
 ) {

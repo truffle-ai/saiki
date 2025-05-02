@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 import { existsSync } from 'fs';
 import { Command } from 'commander';
-import path from 'path';
 import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
-import { loadConfigFile } from '../src/config/loader.js';
 import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
-import { AgentConfig } from '../src/config/types.js';
-import { initializeServices } from '../src/utils/service-initializer.js';
+import { createAgentServices } from '../src/utils/service-initializer.js';
 import { runAiCli, runHeadlessCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
+import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
+import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
 
 // Load environment variables
 dotenv.config();
@@ -51,11 +50,15 @@ program
     .name('saiki')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
     .argument('[prompt...]', 'Optional headless prompt for single command mode')
+    // General Options
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .option('--mode <mode>', 'Run mode: cli or web', 'cli')
     .option('--web-port <port>', 'Port for WebUI', '3000')
+    // LLM Options
+    .option('-m, --model <model>', 'Specify the LLM model to use')
+    .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
     .version('0.2.0');
 
 program.parse();
@@ -63,26 +66,51 @@ const headlessInput = program.args.length > 0 ? program.args.join(' ') : undefin
 
 // Get options
 const options = program.opts();
+// Dynamically infer provider and api key from the supplied model
+if (options.model) {
+    let modelProvider: string;
+    try {
+        modelProvider = getProviderFromModel(options.model);
+    } catch (err) {
+        // Model inference failed
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`ERROR: ${msg}`);
+        logger.error(`Supported models are:\n${getAllSupportedModels().join(', ')}`);
+        process.exit(1);
+    }
+    options.provider = modelProvider;
+
+    // Dynamically extract the actual API key for the provider
+    const providerEnvMap: Record<string, string> = {
+        openai: 'OPENAI_API_KEY',
+        anthropic: 'ANTHROPIC_API_KEY',
+        google: 'GOOGLE_GENERATIVE_AI_API_KEY',
+    };
+    const envVarName = providerEnvMap[modelProvider];
+    if (envVarName) {
+        const key = process.env[envVarName];
+        if (!key) {
+            logger.error(`ERROR: Missing ${envVarName} environment variable for provider '${modelProvider}'.`);
+            process.exit(1);
+        }
+        options.apiKey = key;
+    }
+}
+
 const configFile = options.configFile;
 const connectionMode = options.strict ? 'strict' : ('lenient' as 'strict' | 'lenient');
 const runMode = options.mode.toLowerCase();
 const webPort = parseInt(options.webPort, 10);
 const resolveFromPackageRoot = configFile === DEFAULT_CONFIG_PATH; // Check if should resolve from package root
-
-// Validate run mode
-if (!['cli', 'web'].includes(runMode)) {
-    logger.error(`Invalid mode: ${runMode}. Must be 'cli' or 'web'.`);
-    process.exit(1);
-}
-
-// Validate web port
-if (isNaN(webPort) || webPort <= 0 || webPort > 65535) {
-    logger.error(`Invalid web port: ${options.webPort}. Must be a number between 1 and 65535.`);
-    process.exit(1);
-}
-
 // Platform-independent path handling
 const normalizedConfigPath = resolvePackagePath(configFile, resolveFromPackageRoot);
+
+// basic validation of options here
+try {
+    validateCliOptions(options);
+} catch (error) {
+    handleCliOptionsError(error);
+}
 
 logger.info(`Initializing Saiki with config: ${normalizedConfigPath}`, null, 'blue');
 
@@ -100,43 +128,43 @@ if (runMode === 'cli') {
 
 // Main start function
 async function startAgent() {
+    // Use createAgentServices to load, validate config and initialize all agent services
+    const cliArgs = { model: options.model, provider: options.provider, router: options.router, apiKey: options.apiKey };
+    let services;
     try {
-        // Load the agent configuration
-        const config: AgentConfig = await loadConfigFile(normalizedConfigPath);
-        validateAgentConfig(config);
+        services = await createAgentServices(normalizedConfigPath, cliArgs, {
+            connectionMode,
+            runMode,
+        });
+    } catch (err) {
+        if (err instanceof Error) {
+            err.message.split('\n').forEach((line) => logger.error(line));
+        } else {
+            logger.error('Unexpected error during startup:', err);
+        }
+        process.exit(1);
+    }
 
-        logger.info('===============================================');
-        logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
-        logger.info('===============================================\n');
+    logger.info('===============================================');
+    logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
+    logger.info('===============================================\n');
 
-        // Use the shared initializer
-        const { clientManager, llmService, agentEventBus } = await initializeServices(config, connectionMode);
+    // Destructure the agent runtime services
+    const { clientManager, llmService, agentEventBus } = services;
 
-        // Start based on mode
-        if (runMode === 'cli') {
+    // Start based on mode
+    if (runMode === 'cli') {
             if (headlessInput) {
                 await runHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
                 process.exit(0);
             } else {
-                // Run CLI
-                await runAiCli(clientManager, llmService, agentEventBus);
+            // Run CLI
+            await runAiCli(clientManager, llmService, agentEventBus);
             }
-        } else if (runMode === 'web') {
-            // Run WebUI
-            initializeWebUI(clientManager, llmService, agentEventBus, webPort);
-            logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
-            // Note: Web server runs indefinitely, no need to await here unless
-            // you specifically want the script to only exit when the server does.
-        }
-    } catch (error) {
-        logger.error(
-            `Error: Failed to initialize AI CLI from config file ${normalizedConfigPath}: ${
-                error instanceof Error
-                    ? `${error.message}\n${error.stack}`
-                    : JSON.stringify(error, null, 2)
-            }`
-        );
-        process.exit(1);
+    } else if (runMode === 'web') {
+        // Run WebUI
+        initializeWebUI(clientManager, llmService, agentEventBus, webPort);
+        logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
     }
 }
 
@@ -146,38 +174,3 @@ startAgent().catch((error) => {
     logger.error(error);
     process.exit(1);
 });
-
-function validateAgentConfig(config: AgentConfig): void {
-    logger.info('Validating agent config', 'cyanBright');
-    if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
-        throw new Error('No MCP server configurations provided in config file.');
-    }
-
-    // Validate LLM section exists, use defaults if not
-    if (!config.llm) {
-        logger.info('No LLM configuration found, applying defaults', 'yellow');
-        config.llm = {
-            provider: 'openai',
-            model: 'gpt-4o-mini',
-            systemPrompt:
-                'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.',
-            apiKey: '$OPENAI_API_KEY',
-        };
-    } else {
-        // Ensure required LLM fields are present if section exists
-        if (!config.llm.provider || !config.llm.model) {
-            throw new Error('LLM configuration must specify provider and model');
-        }
-        // Provide default system prompt if missing
-        if (!config.llm.systemPrompt) {
-            logger.info('No system prompt found, using default', 'yellow');
-            config.llm.systemPrompt =
-                'You are Saiki, a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems. After each tool result, determine if you need more information or can provide a final answer.';
-        }
-    }
-
-    logger.info(
-        `Found ${Object.keys(config.mcpServers).length} server configurations. Validation successful.`,
-        'green'
-    );
-}

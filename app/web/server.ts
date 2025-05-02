@@ -2,14 +2,14 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { WebUISubscriber } from './web-subscriber.js';
-import { ClientManager } from '../../src/client/manager.js';
+import { MCPClientManager } from '../../src/client/manager.js';
 import { ILLMService } from '../../src/ai/llm/services/types.js';
 import { logger } from '../../src/utils/logger.js';
 import { resolvePackagePath } from '../../src/utils/path.js';
 import { EventEmitter } from 'events';
 
 export async function initializeWebUI(
-    clientManager: ClientManager,
+    clientManager: MCPClientManager,
     llmService: ILLMService,
     agentEventBus: EventEmitter,
     port = 3000
@@ -27,7 +27,10 @@ export async function initializeWebUI(
     agentEventBus.on('llmservice:toolResult', webSubscriber.onToolResult.bind(webSubscriber));
     agentEventBus.on('llmservice:response', webSubscriber.onResponse.bind(webSubscriber));
     agentEventBus.on('llmservice:error', webSubscriber.onError.bind(webSubscriber));
-    agentEventBus.on('llmservice:conversationReset', webSubscriber.onConversationReset.bind(webSubscriber));
+    agentEventBus.on(
+        'llmservice:conversationReset',
+        webSubscriber.onConversationReset.bind(webSubscriber)
+    );
 
     // Serve static files from the package's public directory using the helper
     const publicPath = resolvePackagePath('public', true);
@@ -105,8 +108,20 @@ export async function initializeWebUI(
                     logger.info(
                         `Processing message from WebSocket: ${data.content.substring(0, 50)}...`
                     );
-                    // Let the LLM process the task, events will flow back via webSubscriber
-                    await llmService.completeTask(data.content);
+                    // Extract potential image data
+                    const imageDataInput = data.imageData
+                        ? {
+                              image: data.imageData.base64, // Use the base64 string directly
+                              mimeType: data.imageData.mimeType,
+                          }
+                        : undefined;
+
+                    if (imageDataInput) {
+                        logger.info('Image data included in message.');
+                    }
+
+                    // Let the LLM process the task with both text and potentially image data
+                    await llmService.completeTask(data.content, imageDataInput);
                 } else if (data.type === 'reset') {
                     logger.info('Processing reset command from WebSocket.');
                     llmService.resetConversation(); // Trigger reset event

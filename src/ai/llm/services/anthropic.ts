@@ -1,13 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from './types.js';
+import { MCPClientManager } from '../../../client/manager.js';
+import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { AnthropicMessageFormatter } from '../messages/formatters/anthropic.js';
-import { createTokenizer } from '../tokenizer/factory.js';
-import { getMaxTokens } from '../tokenizer/utils.js';
+import { getMaxTokensForModel } from '../registry.js';
+import { ImageData } from '../messages/types.js';
 
 /**
  * Anthropic implementation of LLMService
@@ -15,35 +14,25 @@ import { getMaxTokens } from '../tokenizer/utils.js';
 export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
-    private clientManager: ClientManager;
+    private clientManager: MCPClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private maxIterations: number;
 
     constructor(
-        clientManager: ClientManager,
-        systemPrompt: string,
-        apiKey: string,
+        clientManager: MCPClientManager,
+        anthropic: Anthropic,
         agentEventBus: EventEmitter,
-        model?: string
+        messageManager: MessageManager,
+        model: string,
+        maxIterations: number = 10
     ) {
-        this.model = model || 'claude-3-7-sonnet-20250219';
-        this.anthropic = new Anthropic({ apiKey });
+        this.maxIterations = maxIterations;
+        this.model = model;
+        this.anthropic = anthropic;
         this.clientManager = clientManager;
-
-        const formatter = new AnthropicMessageFormatter();
-        const tokenizer = createTokenizer('anthropic', this.model);
-
-        const rawMaxTokens = getMaxTokens('anthropic', this.model);
-        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-
-        this.messageManager = new MessageManager(
-            formatter,
-            systemPrompt,
-            maxTokensWithMargin,
-            tokenizer
-        );
-
         this.eventEmitter = agentEventBus;
+        this.messageManager = messageManager;
     }
 
     getEventEmitter(): EventEmitter {
@@ -58,9 +47,9 @@ export class AnthropicService implements ILLMService {
         this.messageManager.setSystemPrompt(newSystemPrompt);
     }
 
-    async completeTask(userInput: string): Promise<string> {
-        // Add user message to message manager
-        this.messageManager.addUserMessage(userInput);
+    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+        // Add user message with optional image data
+        this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();
@@ -71,26 +60,29 @@ export class AnthropicService implements ILLMService {
         // Notify thinking
         this.eventEmitter.emit('llmservice:thinking');
 
-        // Maximum number of tool use iterations
-        const MAX_ITERATIONS = 10;
         let iterationCount = 0;
         let fullResponse = '';
 
         try {
-            while (iterationCount < MAX_ITERATIONS) {
+            while (iterationCount < this.maxIterations) {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
-                // Get formatted messages from message manager
-                const messages = this.messageManager.getFormattedMessages();
-                const systemPrompt = this.messageManager.getFormattedSystemPrompt();
+                // Compute the system prompt and pass it to message manager to avoid duplicate computation
+                const context = { clientManager: this.clientManager };
+                const formattedSystemPrompt =
+                    await this.messageManager.getFormattedSystemPrompt(context);
+                const messages = await this.messageManager.getFormattedMessages(
+                    context,
+                    formattedSystemPrompt
+                );
 
                 logger.debug(`Messages: ${JSON.stringify(messages, null, 2)}`);
 
                 const response = await this.anthropic.messages.create({
                     model: this.model,
                     messages: messages,
-                    system: systemPrompt,
+                    system: formattedSystemPrompt,
                     tools: formattedTools,
                     max_tokens: 4096,
                 });
@@ -166,7 +158,9 @@ export class AnthropicService implements ILLMService {
                             error: errorMessage,
                         });
 
-                        this.eventEmitter.emit('llmservice:toolResult', toolName, { error: errorMessage });
+                        this.eventEmitter.emit('llmservice:toolResult', toolName, {
+                            error: errorMessage,
+                        });
                     }
                 }
 
@@ -175,7 +169,7 @@ export class AnthropicService implements ILLMService {
             }
 
             // If we reached max iterations
-            logger.warn(`Reached maximum iterations (${MAX_ITERATIONS}) for task.`);
+            logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
             this.eventEmitter.emit('llmservice:response', fullResponse);
             return (
                 fullResponse ||
@@ -204,13 +198,15 @@ export class AnthropicService implements ILLMService {
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information
      */
-    getConfig(): { provider: string; model: string; [key: string]: any } {
-        const configuredMaxTokens = (this.messageManager as any).maxTokens;
+    getConfig(): LLMServiceConfig {
+        const configuredMaxTokens = this.messageManager.getMaxTokens();
+
         return {
+            router: 'in-built',
             provider: 'anthropic',
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens: getMaxTokens('anthropic', this.model),
+            modelMaxTokens: getMaxTokensForModel('anthropic', this.model),
         };
     }
 

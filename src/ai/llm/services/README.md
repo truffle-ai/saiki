@@ -91,66 +91,43 @@ Let's look at each step in more detail.
 This is the core step where you tie everything together.
 
 1.  **Create the Service File:** Create `src/ai/llm/services/your-provider.ts`.
-2.  **Implement the Class:**
+2.  **Implement the Class:** The factory (`factory.ts`) typically handles the instantiation of the `MessageManager` and the provider's SDK client, passing them to your service's constructor along with the `MCPClientManager` and an `EventEmitter`.
 
 ```typescript
 import YourProviderSDK from '@provider/sdk-library'; // Your provider's SDK
-import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from './types.js';
+import { MCPClientManager } from '../../../client/manager.js'; // Use MCPClientManager
+import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { YourProviderMessageFormatter } from '../messages/formatters/your-provider.js'; // Your formatter
-import { createTokenizer } from '../tokenizer/factory.js'; // Or direct tokenizer import
-import { ITokenizer } from '../tokenizer/types.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
-import { ICompressionStrategy } from '../messages/compression/types.js';
-import { OldestRemovalStrategy, MiddleRemovalStrategy } from '../messages/compression/index.js'; // Example strategies
+import { ImageData } from '../messages/types.js'; // For potential image support
 
 export class YourProviderService implements ILLMService {
-    private providerClient: YourProviderSDK; // Provider SDK instance
-    private model: string;
-    private clientManager: ClientManager; // Passed in from factory
-    private messageManager: MessageManager; // Manages history, formatting, compression
-    private eventEmitter: EventEmitter; // For emitting lifecycle events
-    private tokenizer: ITokenizer; // Tokenizer instance
+    private providerClient: YourProviderSDK; // Provider SDK instance (passed in)
+    private model: string;                  // Model identifier (passed in)
+    private clientManager: MCPClientManager; // Passed in from factory
+    private messageManager: MessageManager;  // Passed in from factory
+    private eventEmitter: EventEmitter;      // Passed in from factory
+    private maxIterations: number;           // Max tool call loops
 
     constructor(
-        clientManager: ClientManager, // Provided by factory
-        systemPrompt: string,      // Provided by factory from config
-        apiKey: string,          // Provided by factory
-        model?: string,           // Provided by factory from config
-        // Optionally pass specific compression strategies if not using default
-        compressionStrategies: ICompressionStrategy[] = [
-            new MiddleRemovalStrategy(), 
-            new OldestRemovalStrategy()
-        ] 
+        clientManager: MCPClientManager,     // Provided by factory
+        providerClient: YourProviderSDK,   // Provided by factory
+        agentEventBus: EventEmitter,       // Provided by factory
+        messageManager: MessageManager,    // Provided by factory
+        model: string,                     // Provided by factory
+        maxIterations: number = 10         // Or a default suitable for the provider
     ) {
-        this.model = model || 'default-your-provider-model';
-        this.providerClient = new YourProviderSDK({ apiKey });
+        this.model = model;
+        this.providerClient = providerClient;
         this.clientManager = clientManager;
-        this.eventEmitter = new EventEmitter();
+        this.eventEmitter = agentEventBus;   // Use the passed-in emitter
+        this.messageManager = messageManager; // Use the passed-in message manager
+        this.maxIterations = maxIterations;
 
-        // --- Initialize Tokenizer ---
-        // Preferably use the factory
-        this.tokenizer = createTokenizer('your-provider-name', this.model); 
-        // Alternatively: Instantiate directly if not using factory
-        // this.tokenizer = new YourSpecificTokenizerLibrary(); 
-
-        // --- Initialize Message Manager ---
-        const formatter = new YourProviderMessageFormatter();
-        const rawMaxTokens = getMaxTokens('your-provider-name', this.model);
-        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9); // Safety margin
-
-        this.messageManager = new MessageManager(
-            formatter,
-            systemPrompt,
-            maxTokensWithMargin,
-            this.tokenizer, // Pass the instantiated tokenizer
-            compressionStrategies // Pass chosen compression strategies
-        );
-
+        // Initialization logic simplified as MessageManager, etc. are pre-configured
         logger.info(`Initialized YourProviderService with model ${this.model}`);
     }
 
@@ -168,158 +145,184 @@ export class YourProviderService implements ILLMService {
         this.messageManager.setSystemPrompt(newSystemPrompt);
         logger.debug('System context updated.');
     }
-    
+
     resetConversation(): void {
-        this.messageManager.reset();
-        this.eventEmitter.emit('conversationReset');
+        this.messageManager.reset(); // Reset keeps the system prompt by default
+        this.eventEmitter.emit('llmservice:conversationReset'); // Use specific event names
         logger.debug('Conversation reset.');
     }
-    
-    getConfig(): { provider: string; model: string; [key: string]: any } {
-        const configuredMaxTokens = (this.messageManager as any).maxTokens; 
+
+    getConfig(): LLMServiceConfig {
+        const configuredMaxTokens = this.messageManager.getMaxTokens();
         return {
-            provider: 'your-provider-name',
+            // Use the provider name registered in the factory
+            provider: 'your-provider-name', 
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
+            // Ensure getMaxTokens uses the same provider name and model
             modelMaxTokens: getMaxTokens('your-provider-name', this.model)
         };
     }
 
-    async completeTask(userInput: string): Promise<string> {
-        this.messageManager.addUserMessage(userInput);
+    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+        // Add user message (potentially with image data) via MessageManager
+        this.messageManager.addUserMessage(userInput, imageData);
+
         const rawTools = await this.clientManager.getAllTools();
-        const formattedTools = this.formatToolsForProvider(rawTools);
+        // Provider-specific formatting is still needed
+        const formattedTools = this.formatToolsForProvider(rawTools); 
         
-        this.eventEmitter.emit('thinking');
+        // Emit standardized event
+        this.eventEmitter.emit('llmservice:thinking'); 
         logger.debug('Starting completeTask loop');
 
-        const MAX_ITERATIONS = 10;
         let iterationCount = 0;
-        let finalResponseText = '';
+        let finalResponseText = ''; // Store final text across iterations if needed
 
         try {
-            while (iterationCount < MAX_ITERATIONS) {
+            while (iterationCount < this.maxIterations) {
                 iterationCount++;
                 logger.debug(`LLM Iteration ${iterationCount}`);
 
-                // Get formatted messages (compression applied if needed)
-                const messages = this.messageManager.getFormattedMessages();
-                const systemPrompt = this.messageManager.getFormattedSystemPrompt(); // Use if needed by provider
+                // Get formatted messages from MessageManager (handles history, compression, formatting)
+                const messages = await this.messageManager.getFormattedMessages({ 
+                    clientManager: this.clientManager // May be needed for certain formatters
+                }); 
+                
+                // Estimate and log token count (optional but useful)
+                const currentTokens = this.messageManager.getTokenCount();
+                logger.debug(`Estimated tokens being sent: ${currentTokens}`);
 
                 logger.silly("Messages sent to provider:", messages);
                 logger.silly("Formatted tools:", formattedTools);
 
                 // --- Call Provider API ---
-                const response = await this.providerClient.someApiCall({ // Replace with actual SDK call
+                // Adapt based on provider SDK (e.g., chat completions, generateText)
+                const response = await this.providerClient.someApiCall({ 
                     model: this.model,
-                    messages: messages,
-                    system: systemPrompt, // If applicable
-                    tools: formattedTools,
+                    messages: messages, // Use messages from MessageManager
+                    tools: formattedTools, // Send formatted tools
+                    tool_choice: 'auto', // Or provider-specific equivalent
                     // ... other provider options
                 });
                 logger.silly("Raw response from provider:", response);
 
                 // --- Process Response --- 
-                const { textContent, toolCalls } = this.parseProviderResponse(response);
+                // Provider-specific parsing is required
+                const { textContent, toolCalls } = this.parseProviderResponse(response); 
                 logger.silly("Parsed response:", { textContent, toolCalls });
 
-                // Add assistant message (handles text and/or tool calls)
+                // Add assistant message via MessageManager (handles text and/or tool calls)
                 this.messageManager.addAssistantMessage(textContent, toolCalls);
 
                 // --- Handle Tool Calls (if any) --- 
                 if (!toolCalls || toolCalls.length === 0) {
                     logger.debug('No tool calls. Task complete.');
-                    finalResponseText = textContent || '';
-                    this.eventEmitter.emit('response', finalResponseText);
+                    finalResponseText = textContent || ''; 
+                    this.eventEmitter.emit('llmservice:response', finalResponseText); // Emit final response
                     return finalResponseText; // Exit loop and return
                 }
                 
-                // Optional: Accumulate intermediate text if provider sends text alongside tool calls
-                if (textContent) {
-                    finalResponseText += textContent + '\n'; 
-                }
+                // Optional: Accumulate intermediate text if needed
+                // if (textContent) { finalResponseText += textContent + '\\n'; }
 
                 logger.debug(`Processing ${toolCalls.length} tool calls.`);
                 for (const toolCall of toolCalls) { 
-                    const toolName = toolCall.function.name;
-                    const toolCallId = toolCall.id;
+                    // Extract provider-specific details (ID, function name, arguments)
+                    const toolName = toolCall.function.name; 
+                    const toolCallId = toolCall.id; // Provider-specific ID
                     let args: any = {};
+                    
                     try {
-                        args = JSON.parse(toolCall.function.arguments);
+                        // Arguments might already be objects or need parsing
+                        args = typeof toolCall.function.arguments === 'string' 
+                            ? JSON.parse(toolCall.function.arguments) 
+                            : toolCall.function.arguments;
                     } catch (e) {
+                        const errorMsg = `Invalid arguments format: ${e instanceof Error ? e.message : String(e)}`;
                         logger.error(`Failed to parse arguments for tool ${toolName}: ${toolCall.function.arguments}`, e);
-                        this.messageManager.addToolResult(toolCallId, toolName, { error: `Invalid arguments format: ${e}` });
-                        this.eventEmitter.emit('toolResult', toolName, { error: `Invalid arguments format: ${e}` });
-                        continue; // Skip executing this tool call
+                        // Add error result via MessageManager
+                        this.messageManager.addToolResult(toolCallId, toolName, { error: errorMsg });
+                        this.eventEmitter.emit('llmservice:toolResult', toolName, { error: errorMsg });
+                        continue; // Skip execution
                     }
 
-                    this.eventEmitter.emit('toolCall', toolName, args);
+                    this.eventEmitter.emit('llmservice:toolCall', toolName, args);
                     let result: any;
                     try {
                         result = await this.clientManager.executeTool(toolName, args);
                         logger.debug(`Tool ${toolName} executed successfully.`);
+                        // Add success result via MessageManager
                         this.messageManager.addToolResult(toolCallId, toolName, result);
-                        this.eventEmitter.emit('toolResult', toolName, result);
+                        this.eventEmitter.emit('llmservice:toolResult', toolName, result);
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error);
                         logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
                         result = { error: errorMessage }; 
+                        // Add error result via MessageManager
                         this.messageManager.addToolResult(toolCallId, toolName, result);
-                        this.eventEmitter.emit('toolResult', toolName, result);
+                        this.eventEmitter.emit('llmservice:toolResult', toolName, result);
                     }
                 }
                 
                 // Prepare for next iteration
-                this.eventEmitter.emit('thinking'); 
+                this.eventEmitter.emit('llmservice:thinking'); 
 
             } // End while loop
 
             // Max iterations reached
-            logger.warn(`Reached maximum iterations (${MAX_ITERATIONS}).`);
+            logger.warn(`Reached maximum iterations (${this.maxIterations}).`);
             const maxIterResponse = finalResponseText || 'Reached maximum tool call iterations without a final answer.';
-            this.eventEmitter.emit('response', maxIterResponse);
+            // Add final assistant message if loop ended due to iterations
+            if (!finalResponseText) {
+                 this.messageManager.addAssistantMessage(maxIterResponse);
+            }
+            this.eventEmitter.emit('llmservice:response', maxIterResponse);
             return maxIterResponse;
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error during completeTask execution: ${errorMessage}`, { error });
-            this.eventEmitter.emit('error', error instanceof Error ? error : new Error(errorMessage));
-            // Consider adding the error to message history if appropriate for the provider
+            this.eventEmitter.emit('llmservice:error', error instanceof Error ? error : new Error(errorMessage));
+            // Optionally add an error message to history via MessageManager if desired
             // this.messageManager.addAssistantMessage(`Error processing request: ${errorMessage}`);
             return `Error processing request: ${errorMessage}`;
         }
     }
 
-    // --- Private Helper Methods --- 
+    // --- Private Helper Methods (Still Provider-Specific) --- 
 
     // Translates Saiki's internal ToolSet into the provider's specific format
     private formatToolsForProvider(tools: ToolSet): any[] { // Return type depends on provider SDK
         logger.debug(`Formatting ${Object.keys(tools).length} tools for provider.`);
-        return Object.entries(tools).map(([toolName, toolDefinition]) => {
-            // *** Provider-Specific Transformation Logic Here ***
-            return {
+        // *** Provider-Specific Transformation Logic Here ***
+        // Example (adapt based on provider's requirements, e.g., OpenAI, Vercel AI SDK):
+        return Object.entries(tools).map(([toolName, toolDefinition]) => ({
+            type: 'function', // Or appropriate type for the provider
+            function: {
                 name: toolName,
                 description: toolDefinition.description,
-                input_schema: toolDefinition.parameters || { type: 'object', properties: {} } 
-                // Add/modify fields based on provider's requirements
-            };
-        });
+                parameters: toolDefinition.parameters || { type: 'object', properties: {} } 
+            }
+        }));
     }
 
     // Parses the raw response from the provider's API 
     private parseProviderResponse(response: any): { textContent: string | null; toolCalls: any[] | null } {
          // *** Provider-Specific Parsing Logic Here ***
          // Needs to extract:
-         // 1. The main textual response (if any)
-         // 2. Any tool call requests, formatted into the structure MessageManager expects:
-         //    { id: string, type: 'function', function: { name: string, arguments: string } }[]
+         // 1. The main textual response content.
+         // 2. Tool call requests, formatted into the structure MessageManager expects:
+         //    { id: string, type: 'function', function: { name: string, arguments: string | object } }[]
+         //    (Note: MessageManager's addAssistantMessage handles the internal conversion)
          
-         // Example structure (adapt heavily):
-         let textContent: string | null = response?.choices?.[0]?.message?.content || null;
-         let toolCalls: any[] | null = response?.choices?.[0]?.message?.tool_calls || null; 
+         // Example structure (adapt heavily based on provider response structure):
+         const message = response?.choices?.[0]?.message; // Example for OpenAI-like structure
+         let textContent: string | null = message?.content || null;
+         let toolCalls: any[] | null = message?.tool_calls || null; 
 
-         // If textContent and toolCalls are mixed (like Anthropic), parse and separate them.
-         // Ensure tool call 'arguments' are stringified JSON.
+         // Handle providers that might mix text and tool calls differently (e.g., Anthropic).
+         // Ensure tool call 'arguments' are accessible (stringified JSON or object).
 
          return { textContent, toolCalls };
        }
@@ -340,10 +343,43 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
     ```typescript
     case 'your-provider-name': apiKeyEnvVar = 'YOUR_PROVIDER_API_KEY'; break;
     ```
-4.  **Optional: Add Vercel AI SDK Support:** If your provider is supported by `@ai-sdk` and you want to enable Vercel mode, import its SDK function (e.g., `import { yourProvider } from '@ai-sdk/your-provider';`) and add a case to `_createVercelModel`:
-    ```typescript
-     case 'your-provider-name': return yourProvider(model);
-    ```
+4.  **Update `createMessageManager`:** Modify the `createMessageManager` function in `factory.ts` to handle your provider:
+    *   Ensure `getMaxTokens` is updated for your model(s).
+    *   Import and instantiate your `YourProviderMessageFormatter`.
+    *   Select appropriate `ICompressionStrategy` instances (or use defaults).
+    *   Create the `ITokenizer` for your provider (often via `createTokenizer`).
+    *   Add a `case` for your provider name to return a correctly configured `MessageManager`.
+        ```typescript
+         case 'your-provider-name': {
+             const tokenizer = createTokenizer('your-provider-name', config.model);
+             const formatter = new YourProviderMessageFormatter(); // Your formatter
+             const rawMaxTokens = getMaxTokens('your-provider-name', config.model);
+             // Calculate margin, potentially based on provider specifics
+             const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9); 
+             // Choose compression strategies
+             const compressionStrategies: ICompressionStrategy[] = [
+                 new MiddleRemovalStrategy(), // Example default
+                 new OldestRemovalStrategy()
+             ]; 
+             return new MessageManager(
+                 formatter,
+                 config.systemPrompt,
+                 maxTokensWithMargin,
+                 tokenizer,
+                 compressionStrategies
+             );
+         }
+        ```
+5.  **Optional: Add Vercel AI SDK Support:** If your provider is supported by `@ai-sdk` and you want to enable Vercel mode:
+    *   Import its SDK model creation function (e.g., `import { yourProvider } from '@ai-sdk/your-provider';`).
+    *   Add a `case` to the `switch` statement in `_createVercelModel` within `factory.ts`:
+        ```typescript
+         case 'your-provider-name': 
+              modelInstance = yourProvider(modelId, { apiKey }); // Pass API key if needed
+              provider = 'your-provider-name'; // Set provider name for MessageManager lookup
+              break; // Don't forget break!
+        ```
+    *   Ensure `createMessageManager` can handle the Vercel provider name derived (e.g., using `getProviderFromModel`).
 
 ## Step 7: Test Your Implementation
 
@@ -367,4 +403,4 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
     *   Monitor the logs (set log level to `debug` or `silly` for detailed info during development).
     *   Check for expected events from the `EventEmitter` if applicable.
 
-By following these steps, you should be able to successfully integrate a new LLM provider into Saiki's extensible architecture. 
+By following these steps, you should be able to successfully integrate a new LLM provider into Saiki's extensible architecture. Remember to adapt the provider-specific logic (`formatToolsForProvider`, `parseProviderResponse`, API calls) based on the chosen provider's SDK and API documentation. 

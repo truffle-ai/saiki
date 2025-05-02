@@ -1,32 +1,12 @@
 import OpenAI from 'openai';
-import { ClientManager } from '../../../client/manager.js';
-import { ILLMService } from './types.js';
+import { MCPClientManager } from '../../../client/manager.js';
+import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { OpenAIMessageFormatter } from '../messages/formatters/openai.js';
-import { createTokenizer } from '../tokenizer/factory.js';
-import { getMaxTokens } from '../tokenizer/utils.js';
-
-// System prompt constants
-
-const DETAILED_SYSTEM_PROMPT_TEMPLATE = `You are an AI assistant with access to MCP tools. Your job is to help users accomplish their tasks by calling appropriate tools.
-
-
-## Follow these guidelines when using tools:
-1. Use tools whenever they can help complete the user's request. Do not ever say you don't have access to tools, read your tools completely and try to use them.
-2. You can call multiple tools in sequence to solve complex problems.
-3. After each tool returns a result, analyze the result carefully to determine next steps.
-4. If the result indicates you need additional information, call another tool to get that information.
-5. Continue this process until you have all the information needed to fulfill the user's request.
-6. Be concise in your responses, focusing on the task at hand.
-7. If a tool returns an error, try a different approach or ask the user for clarification.
-
-Remember: You can use multiple tool calls in a sequence to solve multi-step problems.
-
-## Available tools:
-TOOL_DESCRIPTIONS`;
+import { getMaxTokensForModel } from '../registry.js';
+import { ImageData } from '../messages/types.js';
 
 /**
  * OpenAI implementation of LLMService
@@ -34,36 +14,25 @@ TOOL_DESCRIPTIONS`;
 export class OpenAIService implements ILLMService {
     private openai: OpenAI;
     private model: string;
-    private clientManager: ClientManager;
+    private clientManager: MCPClientManager;
     private messageManager: MessageManager;
     private eventEmitter: EventEmitter;
+    private maxIterations: number;
 
     constructor(
-        clientManager: ClientManager,
-        systemPrompt: string,
-        apiKey: string,
+        clientManager: MCPClientManager,
+        openai: OpenAI,
         agentEventBus: EventEmitter,
-        model?: string
+        messageManager: MessageManager,
+        model: string,
+        maxIterations: number = 10
     ) {
-        this.model = model || 'gpt-4o-mini';
-        this.openai = new OpenAI({ apiKey });
+        this.maxIterations = maxIterations;
+        this.model = model;
+        this.openai = openai;
         this.clientManager = clientManager;
-
-        // Initialize Formatter, Tokenizer, and get Max Tokens
-        const formatter = new OpenAIMessageFormatter();
-        const tokenizer = createTokenizer('openai', this.model);
-        const rawMaxTokens = getMaxTokens('openai', this.model);
-        const maxTokensWithMargin = Math.floor(rawMaxTokens * 0.9);
-
-        // Initialize MessageManager with OpenAIFormatter
-        this.messageManager = new MessageManager(
-            formatter,
-            systemPrompt || DETAILED_SYSTEM_PROMPT_TEMPLATE,
-            maxTokensWithMargin,
-            tokenizer
-        );
-
         this.eventEmitter = agentEventBus;
+        this.messageManager = messageManager;
     }
 
     getEventEmitter(): EventEmitter {
@@ -78,9 +47,9 @@ export class OpenAIService implements ILLMService {
         this.messageManager.setSystemPrompt(newSystemPrompt);
     }
 
-    async completeTask(userInput: string): Promise<string> {
-        // Add user message to history
-        this.messageManager.addUserMessage(userInput);
+    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+        // Add user message with optional image data
+        this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();
@@ -91,12 +60,10 @@ export class OpenAIService implements ILLMService {
         // Notify thinking
         this.eventEmitter.emit('llmservice:thinking');
 
-        // Maximum number of tool use iterations
-        const MAX_ITERATIONS = 10;
         let iterationCount = 0;
 
         try {
-            while (iterationCount < MAX_ITERATIONS) {
+            while (iterationCount < this.maxIterations) {
                 iterationCount++;
 
                 // Attempt to get a response, with retry logic
@@ -154,7 +121,9 @@ export class OpenAIService implements ILLMService {
                             error: errorMessage,
                         });
 
-                        this.eventEmitter.emit('llmservice:toolResult', toolName, { error: errorMessage });
+                        this.eventEmitter.emit('llmservice:toolResult', toolName, {
+                            error: errorMessage,
+                        });
                     }
                 }
 
@@ -163,7 +132,7 @@ export class OpenAIService implements ILLMService {
             }
 
             // If we reached max iterations, return a message
-            logger.warn(`Reached maximum iterations (${MAX_ITERATIONS}) for task.`);
+            logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
             const finalResponse = 'Task completed but reached maximum tool call iterations.';
             this.messageManager.addAssistantMessage(finalResponse);
             this.eventEmitter.emit('llmservice:response', finalResponse);
@@ -191,13 +160,15 @@ export class OpenAIService implements ILLMService {
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information
      */
-    getConfig(): { provider: string; model: string; [key: string]: any } {
-        const configuredMaxTokens = (this.messageManager as any).maxTokens;
+    getConfig(): LLMServiceConfig {
+        const configuredMaxTokens = this.messageManager.getMaxTokens();
+
         return {
+            router: 'in-built',
             provider: 'openai',
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens: getMaxTokens('openai', this.model),
+            modelMaxTokens: getMaxTokensForModel('openai', this.model),
         };
     }
 
@@ -214,16 +185,17 @@ export class OpenAIService implements ILLMService {
 
             try {
                 // Get formatted messages from message manager
-                const formattedMessages = this.messageManager.getFormattedMessages();
+                const formattedMessages = await this.messageManager.getFormattedMessages({
+                    clientManager: this.clientManager,
+                });
 
                 logger.silly(
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`
                 );
 
-                const currentTokens = this.messageManager.countTotalTokens();
-                if (currentTokens !== null) {
-                    logger.debug(`Estimated tokens being sent to OpenAI: ${currentTokens}`);
-                }
+                // Directly count tokens and log
+                const currentTokens = this.messageManager.getTokenCount();
+                logger.debug(`Estimated tokens being sent to OpenAI: ${currentTokens}`);
 
                 // Call OpenAI API
                 const response = await this.openai.chat.completions.create({

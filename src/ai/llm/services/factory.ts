@@ -1,4 +1,4 @@
-import { ClientManager } from '../../../client/manager.js';
+import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
 import { LLMConfig } from '../../../config/types.js';
 import { logger } from '../../../utils/logger.js';
@@ -10,6 +10,10 @@ import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
 import { LanguageModelV1 } from 'ai';
 import { EventEmitter } from 'events';
+import { LLMRouter } from '../types.js';
+import { MessageManager } from '../messages/manager.js';
+import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
 /**
  * Extract and validate API key from config or environment variables
@@ -36,17 +40,45 @@ function extractApiKey(config: LLMConfig): string {
 }
 
 /**
- * Create an LLM service instance based on the provided configuration
+ * Create an instance of one of our in-built LLM services
+ * @param config LLM configuration from the config file
+ * @param clientManager Client manager instance
+ * @param agentEventBus Event emitter instance
+ * @param messageManager Message manager instance
+ * @returns ILLMService instance
  */
-function _createLLMService(config: LLMConfig, clientManager: ClientManager, agentEventBus: EventEmitter): ILLMService {
+function _createInBuiltLLMService(
+    config: LLMConfig,
+    clientManager: MCPClientManager,
+    agentEventBus: EventEmitter,
+    messageManager: MessageManager
+): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
 
     switch (config.provider.toLowerCase()) {
-        case 'openai':
-            return new OpenAIService(clientManager, config.systemPrompt, apiKey, agentEventBus, config.model);
-        case 'anthropic':
-            return new AnthropicService(clientManager, config.systemPrompt, apiKey, agentEventBus, config.model);
+        case 'openai': {
+            const openai = new OpenAI({ apiKey });
+            return new OpenAIService(
+                clientManager,
+                openai,
+                agentEventBus,
+                messageManager,
+                config.model,
+                config.maxIterations
+            );
+        }
+        case 'anthropic': {
+            const anthropic = new Anthropic({ apiKey });
+            return new AnthropicService(
+                clientManager,
+                anthropic,
+                agentEventBus,
+                messageManager,
+                config.model,
+                config.maxIterations
+            );
+        }
         default:
             throw new Error(`Unsupported LLM provider: ${config.provider}`);
     }
@@ -67,22 +99,33 @@ function _createVercelModel(provider: string, model: string): LanguageModelV1 {
 
 function _createVercelLLMService(
     config: LLMConfig,
-    clientManager: ClientManager,
-    agentEventBus: EventEmitter
+    clientManager: MCPClientManager,
+    agentEventBus: EventEmitter,
+    messageManager: MessageManager
 ): VercelLLMService {
     const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
-    return new VercelLLMService(clientManager, model, agentEventBus, config.systemPrompt);
+    return new VercelLLMService(
+        clientManager,
+        model,
+        agentEventBus,
+        messageManager,
+        config.maxIterations
+    );
 }
 
+/**
+ * Enum/type for LLM routing backend selection.
+ */
 export function createLLMService(
     config: LLMConfig,
-    vercel: boolean = false,
-    clientManager: ClientManager,
-    agentEventBus: EventEmitter
+    router: LLMRouter = 'vercel',
+    clientManager: MCPClientManager,
+    agentEventBus: EventEmitter,
+    messageManager: MessageManager
 ): ILLMService {
-    if (vercel) {
-        return _createVercelLLMService(config, clientManager, agentEventBus);
+    if (router === 'vercel') {
+        return _createVercelLLMService(config, clientManager, agentEventBus, messageManager);
     } else {
-        return _createLLMService(config, clientManager, agentEventBus);
+        return _createInBuiltLLMService(config, clientManager, agentEventBus, messageManager);
     }
 }

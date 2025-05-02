@@ -1,10 +1,12 @@
 import { IMessageFormatter } from './formatters/types.js';
-import { InternalMessage } from './types.js';
+import { InternalMessage, ImageData } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
+import { getImageData, countMessagesTokens } from './utils.js';
+import { SystemPromptContributor, DynamicContributorContext } from '../../systemPrompt/types.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -23,9 +25,9 @@ export class MessageManager {
     private history: InternalMessage[] = [];
 
     /**
-     * System prompt used for the conversation
+     * System prompt contributors used for the conversation
      */
-    private systemPrompt: string | null = null;
+    private systemPromptContributors: SystemPromptContributor[];
 
     /**
      * Formatter used to convert internal messages to LLM-specific format
@@ -35,12 +37,12 @@ export class MessageManager {
     /**
      * Maximum number of tokens allowed in the conversation (if specified)
      */
-    private maxTokens: number | null = null;
+    private maxTokens: number;
 
     /**
      * Tokenizer used for counting tokens and enabling compression (if specified)
      */
-    private tokenizer: ITokenizer | null = null;
+    private tokenizer: ITokenizer;
 
     /**
      * The sequence of compression strategies to apply when maxTokens is exceeded.
@@ -53,28 +55,73 @@ export class MessageManager {
      * Creates a new MessageManager instance
      *
      * @param formatter Formatter implementation for the target LLM provider
-     * @param systemPrompt Optional system prompt to initialize the conversation
+     * @param systemPromptContributors System prompt contributors for the conversation
      * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
      * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
      * @param compressionStrategies Optional array of compression strategies to apply sequentially when maxTokens is exceeded. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
      */
     constructor(
         formatter: IMessageFormatter,
-        systemPrompt: string | null = null,
-        maxTokens: number | null = null,
-        tokenizer: ITokenizer | null = null,
+        systemPromptContributors: SystemPromptContributor[],
+        maxTokens: number,
+        tokenizer: ITokenizer,
         compressionStrategies: ICompressionStrategy[] = [
             new MiddleRemovalStrategy(),
             new OldestRemovalStrategy(),
         ]
     ) {
+        if (!systemPromptContributors || systemPromptContributors.length === 0)
+            throw new Error('systemPromptContributors is required');
+        if (maxTokens == null) throw new Error('maxTokens is required');
+        if (!tokenizer) throw new Error('tokenizer is required');
         this.formatter = formatter;
-        if (systemPrompt) {
-            this.setSystemPrompt(systemPrompt);
-        }
+        this.systemPromptContributors = systemPromptContributors;
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
         this.compressionStrategies = compressionStrategies;
+    }
+
+    /**
+     * Returns the current token count of the conversation history.
+     * @returns The number of tokens in the current history
+     */
+    getTokenCount(): number {
+        return countMessagesTokens(this.history, this.tokenizer);
+    }
+
+    /**
+     * Returns the configured maximum number of tokens for the conversation.
+     */
+    getMaxTokens(): number {
+        return this.maxTokens;
+    }
+
+    /**
+     * Assembles and returns the current system prompt by running all contributors.
+     * This is a placeholder; actual implementation should run getContent on each contributor with the correct context.
+     */
+    async getSystemPrompt(context: DynamicContributorContext): Promise<string> {
+        // Assemble the system prompt from all contributors
+        const parts = await Promise.all(
+            this.systemPromptContributors.map(async (c) => {
+                const content = await c.getContent(context);
+                logger.debug(
+                    `[SystemPrompt] Contributor '${c.id}' (priority: ${c.priority}):\n${content}`
+                );
+                return content;
+            })
+        );
+        return parts.join('\n');
+    }
+
+    /**
+     * Gets the raw conversation history
+     * Returns a defensive copy to prevent modification
+     *
+     * @returns A read-only copy of the conversation history
+     */
+    getHistory(): Readonly<InternalMessage[]> {
+        return [...this.history];
     }
 
     /**
@@ -93,11 +140,16 @@ export class MessageManager {
 
         switch (message.role) {
             case 'user':
-                if (typeof message.content !== 'string' || message.content.trim() === '') {
+                if (
+                    // Allow array content for user messages
+                    !(Array.isArray(message.content) && message.content.length > 0) &&
+                    (typeof message.content !== 'string' || message.content.trim() === '')
+                ) {
                     throw new Error(
-                        'MessageManager: User message content should be a non-empty string.'
+                        'MessageManager: User message content should be a non-empty string or a non-empty array of parts.'
                     );
                 }
+                // Optional: Add validation for the structure of array parts if needed
                 break;
             case 'assistant':
                 // Content can be null if toolCalls are present, but one must exist
@@ -154,11 +206,17 @@ export class MessageManager {
      * @param content The user message content
      * @throws Error if content is empty or not a string
      */
-    addUserMessage(content: string): void {
-        if (typeof content !== 'string' || content.trim() === '') {
+    addUserMessage(textContent: string, imageData?: ImageData): void {
+        if (typeof textContent !== 'string' || textContent.trim() === '') {
             throw new Error('addUserMessage: Content must be a non-empty string.');
         }
-        this.addMessage({ role: 'user', content });
+        const messageParts: InternalMessage['content'] = imageData
+            ? [
+                  { type: 'text', text: textContent },
+                  { type: 'image', image: imageData.image, mimeType: imageData.mimeType },
+              ]
+            : [{ type: 'text', text: textContent }];
+        this.addMessage({ role: 'user', content: messageParts });
     }
 
     /**
@@ -190,13 +248,32 @@ export class MessageManager {
         if (!toolCallId || !name) {
             throw new Error('addToolResult: toolCallId and name are required.');
         }
-        // Ensure content is always a string for the internal message
-        const content =
-            result === undefined || result === null
-                ? ''
-                : typeof result === 'string'
-                  ? result
-                  : JSON.stringify(result);
+
+        // Simplest image detection: if result has an 'image' field, treat as ImagePart
+        let content: InternalMessage['content'];
+        if (result && typeof result === 'object' && 'image' in result) {
+            // Use shared helper to get base64/URL
+            const imagePart = result as {
+                image: string | Uint8Array | Buffer | ArrayBuffer | URL;
+                mimeType?: string;
+            };
+            content = [
+                {
+                    type: 'image',
+                    image: getImageData(imagePart),
+                    mimeType: imagePart.mimeType,
+                },
+            ];
+        } else if (typeof result === 'string') {
+            content = result;
+        } else if (Array.isArray(result)) {
+            // Assume array of parts already
+            content = result;
+        } else {
+            // Fallback: stringify all other values
+            content = JSON.stringify(result ?? '');
+        }
+
         this.addMessage({ role: 'tool', content, toolCallId, name });
     }
 
@@ -206,62 +283,7 @@ export class MessageManager {
      * @param prompt The system prompt text
      */
     setSystemPrompt(prompt: string): void {
-        this.systemPrompt = prompt;
-    }
-
-    /**
-     * Retrieves the current system prompt
-     *
-     * @returns The system prompt or null if not set
-     */
-    getSystemPrompt(): string | null {
-        return this.systemPrompt;
-    }
-
-    /**
-     * Counts total tokens in current conversation including system prompt.
-     * Requires a tokenizer to be configured.
-     * @returns Total token count or null if no tokenizer is available.
-     */
-    countTotalTokens(): number | null {
-        if (!this.tokenizer) return null;
-
-        let total = 0;
-        const overheadPerMessage = 4; // Approximation for message format overhead
-
-        try {
-            // Count system prompt
-            if (this.systemPrompt) {
-                total += this.tokenizer.countTokens(this.systemPrompt);
-            }
-
-            // Count each message
-            for (const message of this.history) {
-                if (message.content) {
-                    total += this.tokenizer.countTokens(message.content);
-                }
-
-                // Count tool calls if present
-                if (message.toolCalls) {
-                    for (const call of message.toolCalls) {
-                        total += this.tokenizer.countTokens(call.function.name);
-                        // Ensure arguments exist and are strings before counting
-                        if (call.function.arguments) {
-                            total += this.tokenizer.countTokens(call.function.arguments);
-                        }
-                    }
-                }
-                // Add overhead for each message structure
-                total += overheadPerMessage;
-            }
-        } catch (error) {
-            logger.error('MessageManager: Error counting tokens:', error);
-            // Decide on error handling: return null, throw, or return current total?
-            // Returning null indicates counting failed.
-            return null;
-        }
-
-        return total;
+        // This method is no longer used with systemPromptContributors
     }
 
     /**
@@ -270,16 +292,22 @@ export class MessageManager {
      * and a `tokenizer`, and the current token count exceeds the limit. Compression happens *before* formatting.
      * Uses the injected formatter to convert internal messages (potentially compressed) to the provider's format.
      *
+     * @param context The DynamicContributorContext for system prompt contributors and formatting
+     * @param systemPrompt (Optional) Precomputed system prompt string. If provided, it will be used instead of recomputing the system prompt. Useful for avoiding duplicate computation when both the formatted messages and the raw system prompt are needed in the same request.
      * @returns Formatted messages ready to send to the LLM provider API
      * @throws Error if formatting or compression fails critically
      */
-    getFormattedMessages(): any[] {
+    async getFormattedMessages(
+        context: DynamicContributorContext,
+        systemPrompt?: string
+    ): Promise<any[]> {
         // Apply compression if needed *before* formatting
         this.compressHistoryIfNeeded();
 
         try {
-            // Pass a read-only view of the potentially compressed history to the formatter
-            return this.formatter.format([...this.history], this.systemPrompt);
+            // Use pre-computed system prompt if provided
+            const prompt = systemPrompt ?? (await this.getSystemPrompt(context));
+            return this.formatter.format([...this.history], prompt);
         } catch (error) {
             logger.error('Error formatting messages:', error);
             throw new Error(
@@ -295,10 +323,12 @@ export class MessageManager {
      * @returns Formatted system prompt or null/undefined based on formatter implementation
      * @throws Error if formatting fails
      */
-    getFormattedSystemPrompt(): string | null | undefined {
+    async getFormattedSystemPrompt(
+        context: DynamicContributorContext
+    ): Promise<string | null | undefined> {
         try {
-            // Check if the formatter implements getSystemPrompt and call it
-            return this.formatter.getSystemPrompt?.(this.systemPrompt);
+            const systemPrompt = await this.getSystemPrompt(context);
+            return this.formatter.formatSystemPrompt?.(systemPrompt);
         } catch (error) {
             console.error('Error getting formatted system prompt:', error);
             throw new Error(`Failed to get formatted system prompt: ${error}`);
@@ -315,26 +345,13 @@ export class MessageManager {
     }
 
     /**
-     * Gets the raw conversation history
-     * Returns a defensive copy to prevent modification
-     *
-     * @returns A read-only copy of the conversation history
-     */
-    getHistory(): Readonly<InternalMessage[]> {
-        return [...this.history];
-    }
-
-    /**
      * Checks if history compression is needed based on token count and applies strategies.
      */
     private compressHistoryIfNeeded(): void {
-        // Compression requires both maxTokens and a tokenizer
-        if (!this.maxTokens || !this.tokenizer) return;
-
-        let currentTotalTokens = this.countTotalTokens();
+        let currentTotalTokens: number = this.getTokenCount();
         logger.debug(`MessageManager: Checking if history compression is needed.`);
         // If counting failed or we are within limits, do nothing
-        if (currentTotalTokens === null || currentTotalTokens <= this.maxTokens) {
+        if (currentTotalTokens <= this.maxTokens) {
             logger.debug(
                 `MessageManager: History compression not needed. Current token count: ${currentTotalTokens}, Max tokens: ${this.maxTokens}`
             );
@@ -363,35 +380,26 @@ export class MessageManager {
             }
 
             // Recalculate tokens after applying the strategy
-            currentTotalTokens = this.countTotalTokens();
+            currentTotalTokens = this.getTokenCount();
             const messagesRemoved = initialLength - this.history.length;
 
             // If counting failed or we are now within limits, stop applying strategies
-            if (currentTotalTokens === null) {
-                logger.error(
-                    `MessageManager: Token counting failed after applying ${strategyName}. Stopping compression.`
+            if (currentTotalTokens <= this.maxTokens) {
+                logger.debug(
+                    `MessageManager: Compression successful after ${strategyName}. New count: ${currentTotalTokens}, messages removed: ${messagesRemoved}`
                 );
                 break;
-            } else if (currentTotalTokens <= this.maxTokens) {
-                logger.debug(
-                    `MessageManager: Compression successful after ${strategyName}. New count: ${currentTotalTokens}, Total messages removed: ${messagesRemoved}`
-                );
-                break; // Stop applying further strategies
-            } else {
-                logger.debug(
-                    `MessageManager: Still over limit (${currentTotalTokens} > ${this.maxTokens}) after ${strategyName}. Proceeding to next strategy if any.`
-                );
             }
         }
+    }
 
-        // Final check and logging (after all strategies have been attempted or loop was broken)
-        if (currentTotalTokens !== null && currentTotalTokens > this.maxTokens) {
-            logger.warn(
-                `MessageManager: Compression strategies finished, but still over token limit (${currentTotalTokens} > ${this.maxTokens}). History length: ${this.history.length}`
-            );
-        } else if (currentTotalTokens === null && this.history.length < initialLength) {
-            // If counting failed but we did remove messages, log that
-            logger.error('MessageManager: Token counting failed after attempting compression.');
-        }
+    /**
+     * Parses a raw LLM response, converts it into internal messages and adds them to the history.
+     *
+     * @param response The response from the LLM provider
+     */
+    processLLMResponse(response: any): void {
+        const msgs = this.formatter.parseResponse(response) ?? [];
+        msgs.forEach((m) => this.addMessage(m));
     }
 }

@@ -32,7 +32,13 @@
             <div id="message-list-wrapper">
                  <div id="message-list"></div>
             </div>
+            <div id="image-preview-container" style="display: none;">
+                <img id="image-preview" src="#" alt="Image preview"/>
+                <button id="remove-image-btn">✖</button>
+            </div>
             <div id="input-area">
+                <label for="image-upload" class="upload-btn">🖼️</label>
+                <input type="file" id="image-upload" accept="image/*" style="display: none;">
                 <textarea id="message-input" placeholder="Ask Saiki anything..." rows="1"></textarea>
                 <button id="send-button" title="Send Message"></button>
             </div>

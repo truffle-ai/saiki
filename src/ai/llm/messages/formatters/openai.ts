@@ -1,5 +1,6 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
+import { getImageData } from '../utils.js';
 
 /**
  * Message formatter for OpenAI's Chat Completion API.
@@ -42,7 +43,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
                 case 'user':
                     formatted.push({
                         role: 'user',
-                        content: msg.content,
+                        content: this.formatUserContent(msg.content),
                     });
                     break;
 
@@ -84,7 +85,79 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
      *
      * @returns null as OpenAI doesn't need a separate system prompt
      */
-    getSystemPrompt(): null {
+    formatSystemPrompt(): null {
         return null;
+    }
+
+    /**
+     * Parses OpenAI API response into internal message objects.
+     */
+    parseResponse(response: any): InternalMessage[] {
+        const internal: InternalMessage[] = [];
+        if (!response.choices || !Array.isArray(response.choices)) return internal;
+        for (const choice of response.choices) {
+            const msg = (choice as any).message;
+            if (!msg || !msg.role) continue;
+            const role = msg.role as InternalMessage['role'];
+            // Assistant messages
+            if (role === 'assistant') {
+                const content = msg.content ?? null;
+                // Handle tool calls if present
+                if (msg.tool_calls && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+                    const calls = msg.tool_calls.map((call: any) => ({
+                        id: call.id,
+                        type: 'function' as const,
+                        function: {
+                            name: call.function.name,
+                            arguments: call.function.arguments,
+                        },
+                    }));
+                    internal.push({ role: 'assistant', content, toolCalls: calls });
+                } else {
+                    internal.push({ role: 'assistant', content });
+                }
+            }
+            // Tool result messages
+            else if (role === 'tool') {
+                internal.push({
+                    role: 'tool',
+                    content: msg.content!,
+                    toolCallId: msg.tool_call_id!,
+                    name: msg.name!,
+                });
+            }
+            // User or system messages (rare in responses)
+            else if (role === 'user' || role === 'system') {
+                if (msg.content) {
+                    internal.push({ role, content: msg.content });
+                }
+            }
+        }
+        return internal;
+    }
+
+    // Helper to format user message parts (text + image) into chat API shape
+    private formatUserContent(content: InternalMessage['content']): any {
+        if (!Array.isArray(content)) {
+            return content;
+        }
+        return content
+            .map((part) => {
+                if (part.type === 'text') {
+                    return { type: 'text', text: part.text };
+                }
+                if (part.type === 'image') {
+                    const raw = getImageData(part);
+                    const url =
+                        raw.startsWith('http://') ||
+                        raw.startsWith('https://') ||
+                        raw.startsWith('data:')
+                            ? raw
+                            : `data:${part.mimeType || 'application/octet-stream'};base64,${raw}`;
+                    return { type: 'image_url', image_url: { url } };
+                }
+                return null;
+            })
+            .filter(Boolean);
     }
 }

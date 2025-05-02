@@ -2,7 +2,7 @@ import { ITokenizer, TokenizationError } from './types.js';
 import { encoding_for_model, TiktokenModel } from 'tiktoken';
 
 // List of model prefixes potentially unsupported by tiktoken or needing mapping
-const UNSUPPORTED_PREFIXES: string[] = ['gpt-4.1-'];
+const UNSUPPORTED_PREFIXES: string[] = ['gpt-4.1'];
 const DEFAULT_MODEL: TiktokenModel = 'gpt-4o'; // Fallback model
 
 /**
@@ -13,7 +13,9 @@ const DEFAULT_MODEL: TiktokenModel = 'gpt-4o'; // Fallback model
 function fetchTiktokenModel(model: string): TiktokenModel {
     for (const prefix of UNSUPPORTED_PREFIXES) {
         if (model.startsWith(prefix)) {
-            console.warn(`Model '${model}' might not be directly supported by tiktoken. Using default '${DEFAULT_MODEL}'.`);
+            console.warn(
+                `Model '${model}' might not be directly supported by tiktoken. Using default '${DEFAULT_MODEL}'.`
+            );
             return DEFAULT_MODEL;
         }
     }
