@@ -38,6 +38,7 @@ export interface ILLMService {
  * Configuration object returned by LLMService.getConfig()
  */
 export type LLMServiceConfig = {
+    router: string;
     provider: string;
     model: string | LanguageModelV1;
     configuredMaxTokens?: number | null;

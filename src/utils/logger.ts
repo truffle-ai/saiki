@@ -57,6 +57,24 @@ const consoleFormat = winston.format.printf(({ level, message, timestamp, color 
     return `${chalk.dim(timestamp)} ${colorize(level.toUpperCase())}: ${formattedMessage}`;
 });
 
+/**
+ * Logic to redact sensitive information from logs.
+ * This is useful for preventing sensitive information from being logged in production.
+ * On by default, we can set the environment variable REDACT_SECRETS to false to disable this behavior.
+ */
+const SHOULD_REDACT = process.env.REDACT_SECRETS !== 'false';
+const SENSITIVE_KEYS = ['apiKey', 'password', 'secret', 'token'];
+const MASK_REGEX = new RegExp(
+    `(${SENSITIVE_KEYS.join('|')})(["']?\\s*[:=]\\s*)(["'])?.*?\\3`,
+    'gi'
+);
+const maskFormat = winston.format((info) => {
+    if (SHOULD_REDACT && typeof info.message === 'string') {
+        info.message = info.message.replace(MASK_REGEX, '$1$2$3[REDACTED]$3');
+    }
+    return info;
+});
+
 export interface LoggerOptions {
     level?: string;
     silent?: boolean;
@@ -86,6 +104,7 @@ export class Logger {
             silent: options.silent || false,
             format: winston.format.combine(
                 winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+                maskFormat(),
                 winston.format.errors({ stack: true }),
                 winston.format.splat(),
                 winston.format.json()
@@ -94,6 +113,7 @@ export class Logger {
                 new winston.transports.Console({
                     format: winston.format.combine(
                         winston.format.timestamp({ format: 'HH:mm:ss' }),
+                        maskFormat(),
                         consoleFormat
                     ),
                 }),

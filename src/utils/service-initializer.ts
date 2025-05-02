@@ -36,6 +36,9 @@ import { MessageManager } from '../ai/llm/messages/manager.js';
 import { createMessageManager } from '../ai/llm/messages/factory.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
 import { loadContributors } from '../ai/systemPrompt/loader.js';
+import { loadConfigFile } from '../config/loader.js';
+import { ConfigManager } from '../config/manager.js';
+import type { CLIConfigOverrides } from '../config/types.js';
 
 /**
  * Type for the core agent services returned by initializeServices
@@ -45,6 +48,7 @@ export type AgentServices = {
     llmService: ILLMService;
     agentEventBus: EventEmitter;
     messageManager: MessageManager;
+    configManager: ConfigManager;
 };
 
 /**
@@ -69,67 +73,64 @@ export type InitializeServicesOptions = {
     clientManager?: MCPClientManager; // Inject a custom or mock MCPClientManager
     llmService?: ILLMService; // Inject a custom or mock LLMService
     agentEventBus?: EventEmitter; // Inject a custom or mock EventEmitter
-    llmRouter?: LLMRouter; // Route LLM calls via Vercel (default) or use in-built
     messageManager?: MessageManager; // Inject a custom or mock MessageManager
     // Add more overrides as needed
     // configOverride?: Partial<AgentConfig>; // (optional) for field-level config overrides
 };
 
+// High-level factory to load, validate, and wire up all agent services in one call
 /**
- * Initialize services and clients based on the provided configuration and optional overrides.
- * This is the central point for creating all services and dependencies.
- * @param config Agent configuration including MCP servers and LLM settings
- * @param options Optional overrides for testability, context, or advanced configuration
- * @returns All the initialized services/dependencies necessary to run saiki
+ * Loads and validates configuration and initializes all agent services as a single unit.
+ * @param configPath Path to the agent config file
+ * @param cliArgs Overrides from the CLI
+ * @param overrides Optional service overrides for testing or advanced scenarios
+ * @returns All the initialized services and the config manager
  */
-export async function initializeServices(
-    config: AgentConfig,
-    options?: InitializeServicesOptions
+export async function createAgentServices(
+    configPath: string,
+    cliArgs: CLIConfigOverrides,
+    overrides?: InitializeServicesOptions
 ): Promise<AgentServices> {
-    /**
-     * 1. Create or use the shared event bus (allows override for tests/mocks)
-     */
-    const agentEventBus = options?.agentEventBus ?? new EventEmitter();
+    // 1. Load raw configuration from file
+    const rawConfig = await loadConfigFile(configPath);
+
+    // 2. Initialize config manager, apply CLI config level overrides and validate
+    const configManager = new ConfigManager(rawConfig).overrideCLI(cliArgs);
+    configManager.validate();
+    const config = configManager.getConfig();
+
+    // 3. Initialize shared event bus
+    const agentEventBus = overrides?.agentEventBus ?? new EventEmitter();
     logger.debug('Agent event bus initialized');
 
-    /**
-     * 2. Initialize or use the client manager (allows override for tests/mocks)
-     *    - Selects the appropriate ToolConfirmationProvider based on runMode (cli/web/etc) using the factory.
-     */
-    const connectionMode = options?.connectionMode ?? 'lenient';
-    const runMode = options?.runMode ?? 'cli';
+    // 4. Initialize client manager
+    const connectionMode = overrides?.connectionMode ?? 'lenient';
+    const runMode = overrides?.runMode ?? 'cli';
     const confirmationProvider = createToolConfirmationProvider(runMode);
-    const clientManager = options?.clientManager ?? new MCPClientManager(confirmationProvider);
+    const clientManager = overrides?.clientManager ?? new MCPClientManager(confirmationProvider);
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
-    if (!options?.clientManager) {
-        logger.debug('Client manager and MCP servers initialized');
-    } else {
-        logger.debug('Client manager and MCP servers initialized via options override');
-    }
+    logger.debug(
+        overrides?.clientManager
+            ? 'Client manager and MCP servers initialized via override'
+            : 'Client manager and MCP servers initialized'
+    );
 
-    /**
-     * 3. Initialize or use the MessageManager (allows override for tests/mocks)
-     *    - Uses llmRouter from options to select the correct message formatting/tokenization backend
-     *    - 'vercel' = Vercel-style message formatting (default), 'default' = in-built provider-specific formatting
-     */
-    const router: LLMRouter = options?.llmRouter ?? 'vercel';
+    // 5. Initialize message manager
+    const router: LLMRouter = config.llm.router ?? 'vercel';
     const contributors = loadContributors(config.llm.systemPrompt);
     const messageManager =
-        options?.messageManager ?? createMessageManager(config.llm, router, contributors);
+        overrides?.messageManager ?? createMessageManager(config.llm, router, contributors);
 
-    /**
-     * 4. Initialize or use the LLMService (allows override for tests/mocks)
-     *    - Use llmRouter from options to select LLM routing backend
-     *    - 'vercel' = route via Vercel LLM service (default), 'default' = use in-built LLM services
-     */
+    // 6. Initialize LLM service
     const llmService =
-        options?.llmService ??
+        overrides?.llmService ??
         createLLMService(config.llm, router, clientManager, agentEventBus, messageManager);
-    if (!options?.llmService) {
-        logger.debug(`LLM service initialized using router: ${router}`);
-    } else {
-        logger.debug('LLM service provided via options override');
-    }
+    logger.debug(
+        overrides?.llmService
+            ? 'LLM service provided via override'
+            : `LLM service initialized using router: ${router}`
+    );
 
-    return { clientManager, llmService, agentEventBus, messageManager };
+    // 7. Return the full service graph, including the ConfigManager
+    return { clientManager, llmService, agentEventBus, messageManager, configManager };
 }

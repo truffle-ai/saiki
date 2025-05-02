@@ -6,8 +6,8 @@ import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { getProviderFromModel } from '../../utils.js';
-import { getMaxTokens } from '../tokenizer/utils.js';
+import { getProviderFromModel } from '../registry.js';
+import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 
 /**
@@ -303,12 +303,14 @@ export class VercelLLMService implements ILLMService {
      * @returns Configuration object with provider and model information
      */
     getConfig(): LLMServiceConfig {
-        const configuredMaxTokens = (this.messageManager as any).maxTokens;
+        const configuredMaxTokens = this.messageManager.getMaxTokens();
+
         return {
-            provider: `vercel:${this.provider}`,
+            router: 'vercel',
+            provider: `${this.provider}`,
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens: getMaxTokens(this.provider, this.model.modelId),
+            modelMaxTokens: getMaxTokensForModel(this.provider, this.model.modelId),
         };
     }
 }
