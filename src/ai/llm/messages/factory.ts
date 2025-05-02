@@ -11,10 +11,10 @@ import { getMaxTokensForModel } from '../registry.js';
 
 /**
  * Factory function to create a MessageManager instance with the correct formatter, tokenizer, and maxTokens
- * based on the LLM config and router (vercel, default, or future types).
+ * based on the LLM config and router
  *
  * @param config LLMConfig object containing provider, model, systemPrompt, etc.
- * @param router LLMRouter flag ('vercel', 'default', etc.)
+ * @param router LLMRouter flag
  * @param contributors SystemPromptContributor[]
  * @returns MessageManager instance
  * TODO: Make compression strategy also configurable

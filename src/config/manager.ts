@@ -43,6 +43,10 @@ export class ConfigManager {
             this.resolved.llm.router = cliArgs.router;
             this.provenance.llm.router = 'cli';
         }
+        if (cliArgs.apiKey) {
+            this.resolved.llm.apiKey = cliArgs.apiKey;
+            // Optionally track provenance for apiKey if desired
+        }
         return this;
     }
 

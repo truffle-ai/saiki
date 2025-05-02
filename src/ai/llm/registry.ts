@@ -28,7 +28,7 @@ export const LLM_REGISTRY: Record<string, ProviderInfo> = {
     },
     anthropic: {
         models: [
-            { name: 'claude-3-7-sonnet', maxTokens: 200000 },
+            { name: 'claude-3-7-sonnet-20250219', maxTokens: 200000 },
             { name: 'claude-3-5-sonnet-20240620', maxTokens: 200000 },
             { name: 'claude-3-haiku-20240307', maxTokens: 200000 },
             { name: 'claude-3-opus-20240229', maxTokens: 200000 },
@@ -139,8 +139,7 @@ export function getProviderFromModel(model: string): string {
             return provider;
         }
     }
-    logger.warn(`Could not determine provider for model: ${model}. Defaulting to 'unknown'.`);
-    return 'unknown';
+    throw new Error(`Unrecognized model '${model}'. Could not infer provider.`);
 }
 
 /**

@@ -57,25 +57,42 @@ program
     .option('--web-port <port>', 'Port for WebUI', '3000')
     // LLM Options
     .option('-m, --model <model>', 'Specify the LLM model to use')
-    .option('-r, --router <router>', 'Specify the LLM router to use (vercel or default)')
+    .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
     .version('0.2.0');
 
 program.parse();
 
 // Get options
 const options = program.opts();
-// Dynamically infer provider from the supplied model
+// Dynamically infer provider and api key from the supplied model
 if (options.model) {
-    const modelProvider = getProviderFromModel(options.model);
-    if (modelProvider === 'unknown') {
-        logger.error(
-            `ERROR: Unrecognized model '${options.model}'. Could not infer provider.\n` +
-                `Supported models are:\n` +
-                getAllSupportedModels().join(', ')
-        );
+    let modelProvider: string;
+    try {
+        modelProvider = getProviderFromModel(options.model);
+    } catch (err) {
+        // Model inference failed
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`ERROR: ${msg}`);
+        logger.error(`Supported models are:\n${getAllSupportedModels().join(', ')}`);
         process.exit(1);
     }
     options.provider = modelProvider;
+
+    // Dynamically extract the actual API key for the provider
+    const providerEnvMap: Record<string, string> = {
+        openai: 'OPENAI_API_KEY',
+        anthropic: 'ANTHROPIC_API_KEY',
+        google: 'GOOGLE_GENERATIVE_AI_API_KEY',
+    };
+    const envVarName = providerEnvMap[modelProvider];
+    if (envVarName) {
+        const key = process.env[envVarName];
+        if (!key) {
+            logger.error(`ERROR: Missing ${envVarName} environment variable for provider '${modelProvider}'.`);
+            process.exit(1);
+        }
+        options.apiKey = key;
+    }
 }
 
 const configFile = options.configFile;
@@ -110,7 +127,7 @@ if (runMode === 'cli') {
 // Main start function
 async function startAgent() {
     // Use createAgentServices to load, validate config and initialize all agent services
-    const cliArgs = { model: options.model, provider: options.provider, router: options.router };
+    const cliArgs = { model: options.model, provider: options.provider, router: options.router, apiKey: options.apiKey };
     let services;
     try {
         services = await createAgentServices(normalizedConfigPath, cliArgs, {

@@ -82,6 +82,7 @@ export type CLIConfigOverrides = Partial<{
     model: string;
     provider: string;
     router: LLMRouter;
+    apiKey: string;
 }>;
 
 /**

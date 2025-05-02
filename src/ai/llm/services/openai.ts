@@ -164,7 +164,7 @@ export class OpenAIService implements ILLMService {
         const configuredMaxTokens = this.messageManager.getMaxTokens();
 
         return {
-            router: 'default',
+            router: 'in-built',
             provider: 'openai',
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,

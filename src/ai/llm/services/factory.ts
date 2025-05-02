@@ -115,7 +115,6 @@ function _createVercelLLMService(
 
 /**
  * Enum/type for LLM routing backend selection.
- * 'vercel' = use Vercel LLM service, 'default' = use in-built LLM service
  */
 export function createLLMService(
     config: LLMConfig,

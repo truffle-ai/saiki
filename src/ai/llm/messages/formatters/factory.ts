@@ -7,7 +7,7 @@ import { logger } from '../../../../utils/logger.js';
 export function createMessageFormatter(provider: string, router: string): IMessageFormatter {
     if (router === 'vercel') {
         return new VercelMessageFormatter();
-    } else if (router === 'default') {
+    } else if (router === 'in-built') {
         if (provider === 'openai') {
             return new OpenAIMessageFormatter();
         } else if (provider === 'anthropic') {

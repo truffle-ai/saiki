@@ -29,7 +29,7 @@ export function validateCliOptions(opts: any): void {
         ),
         provider: z.string().optional(),
         model: z.string().optional(),
-        router: z.enum(['vercel', 'default']).optional(),
+        router: z.enum(['vercel', 'in-built']).optional(),
     });
 
     // Basic semantic validation
