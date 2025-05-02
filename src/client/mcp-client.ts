@@ -291,9 +291,8 @@ export class MCPClient implements IMCPClient {
             logger.debug(`listPrompts response: ${JSON.stringify(response, null, 2)}`);
             return response.prompts.map((p: any) => p.name);
         } catch (error) {
-            logger.error(
-                'Failed to list prompts from MCP server (optional feature), skipping:',
-                error
+            logger.debug(
+                `Failed to list prompts from MCP server (optional feature), skipping: ${JSON.stringify(error, null, 2)}`
             );
             return [];
         }
@@ -317,7 +316,7 @@ export class MCPClient implements IMCPClient {
             logger.debug(`getPrompt '${name}' response: ${JSON.stringify(response, null, 2)}`);
             return response; // Return the full response object
         } catch (error: any) {
-            logger.error(`Failed to get prompt '${name}' from MCP server:`, error);
+            logger.debug(`Failed to get prompt '${name}' from MCP server: ${JSON.stringify(error, null, 2)}`);
             throw new Error(
                 `Error getting prompt '${name}': ${error instanceof Error ? error.message : String(error)}`
             );
@@ -335,9 +334,8 @@ export class MCPClient implements IMCPClient {
             logger.debug(`listResources response: ${JSON.stringify(response, null, 2)}`);
             return response.resources.map((r: any) => r.uri);
         } catch (error) {
-            logger.error(
-                'Failed to list resources from MCP server (optional feature), skipping:',
-                error
+            logger.debug(
+                `Failed to list resources from MCP server (optional feature), skipping: ${JSON.stringify(error, null, 2)}`
             );
             return [];
         }
@@ -357,7 +355,7 @@ export class MCPClient implements IMCPClient {
             logger.debug(`readResource '${uri}' response: ${JSON.stringify(response, null, 2)}`);
             return response; // Return the full response object
         } catch (error: any) {
-            logger.error(`Failed to read resource '${uri}' from MCP server:`, error);
+            logger.debug(`Failed to read resource '${uri}' from MCP server: ${JSON.stringify(error, null, 2)}`);
             throw new Error(
                 `Error reading resource '${uri}': ${error instanceof Error ? error.message : String(error)}`
             );
