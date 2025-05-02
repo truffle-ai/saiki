@@ -144,11 +144,11 @@ export async function initializeApi(
     logger.info('Initializing MCP protocol server...');
     await mcpServer.connect(mcpTransport);
     logger.info('✅ MCP server protocol initialized on /mcp');
-    // Mount root for JSON-RPC and SSE handling (so baseUrl can be just host)
-    app.post('/', express.json(), (req, res) => {
+    // Mount /mcp for JSON-RPC and SSE handling (so baseUrl is /mcp)
+    app.post('/mcp', express.json(), (req, res) => {
         mcpTransport.handleRequest(req, res, req.body).catch(err => logger.error('MCP POST error:', err));
     });
-    app.get('/', (req, res) => {
+    app.get('/mcp', (req, res) => {
         mcpTransport.handleRequest(req, res).catch(err => logger.error('MCP GET error:', err));
     });
 
