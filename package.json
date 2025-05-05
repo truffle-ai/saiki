@@ -11,7 +11,7 @@
         "clean": "npx rimraf dist",
         "prebuild": "",
         "build": "npm run clean && npx tsc && npm run copy-client",
-        "prepare": "npm run build",
+        "prepare": "husky install",
         "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"app/web/client/*\" public",
         "start": "node dist/app/index.js",
         "dev": "tsc --watch",
@@ -19,9 +19,9 @@
         "lint:fix": "eslint . --ext .ts --fix",
         "format": "prettier --write \"src/**/*.ts\" \"app/**/*.ts\"",
         "format:check": "prettier --check \"src/**/*.ts\" \"app/**/*.ts\"",
-        "test": "vitest",
+        "test": "vitest run",
         "test:ci": "vitest run --coverage",
-        "test:watch": "vitest --watch"
+        "test:watch": "vitest watch"
     },
     "keywords": [
         "mcp",
@@ -72,11 +72,20 @@
         "@types/readline-sync": "^1.4.8",
         "@typescript-eslint/eslint-plugin": "^8.28.0",
         "@typescript-eslint/parser": "^8.28.0",
+        "@vitest/coverage-v8": "^3.1.3",
         "eslint": "^9.23.0",
         "eslint-config-prettier": "^10.1.1",
+        "husky": "^9.1.7",
+        "lint-staged": "^15.5.1",
         "prettier": "^3.5.3",
         "supertest": "^7.1.0",
         "ts-node": "^10.9.2",
         "vitest": "^3.1.3"
+    },
+    "lint-staged": {
+        "*.ts": [
+            "prettier --write",
+            "eslint --fix"
+        ]
     }
 }
