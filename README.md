@@ -51,9 +51,6 @@ npm start
 
 </details>
 
-### CLI Reference
-
-Simply run `saiki -h` for a full list of CLI flags and options.
 
 ### Web UI Mode
 
@@ -115,6 +112,23 @@ saiki --config-file ./configuration/examples/website_designer.yml
 
 _For more examples, see the [Examples](docs/README.md#examples--demos) section in the docs._
 
+## CLI Reference
+
+The `saiki` command supports several options to customize its behavior. Run `saiki --help` for the full list.
+
+**Common Examples:**
+
+*   **Specify a custom configuration file:**
+    ```bash
+    cp configuration/saiki.yml configuration/custom_config.yml
+    saiki --config-file configuration/custom_config.yml
+    ```
+
+*   **Use a specific AI model (if configured):**
+    ```bash
+    saiki -m gemini-2.5-pro-exp-03-25
+    ```
+
 ## Configuration
 
 Saiki uses a YAML config file (`configuration/saiki.yml` by default) to configure tool servers (MCP servers) and LLM providers.
@@ -153,12 +167,12 @@ Saiki communicates with your tools via Model Context Protocol (MCP) servers. You
 ```bash
 npm search @modelcontextprotocol/server
 ```
-
 3. Add servers to your `configuration/saiki.yml` under the `mcpServers` key (see the snippet above).
 
 4. Create custom servers:
    - Use the MCP TypeScript SDK: https://github.com/modelcontextprotocol/typescript-sdk
    - Follow the MCP spec: https://modelcontextprotocol.io/introduction
+
 
 ## Documentation
 
@@ -196,7 +210,7 @@ We welcome contributions! Here's how to get started:
 
 ## Community & Support
 
-Saiki was built by the team at Truffle AI.
+Saiki was built by the team at [Truffle AI](www.trytruffle.ai).
 
 Saiki is better with you! Join our Discord whether you want to say hello, share your projects, ask questions, or get help setting things up:
 
@@ -213,3 +227,4 @@ Elastic License 2.0. See [LICENSE](LICENSE) for details.
 Thanks to all these amazing people for contributing to Saiki! ([full list](https://github.com/truffle-ai/saiki/graphs/contributors)):
 
 [![Contributors](https://contrib.rocks/image?repo=truffle-ai/saiki)](https://github.com/truffle-ai/saiki/graphs/contributors)
+
