@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { WebSocketServer, WebSocket } from 'ws';
-import { EventSubscriber } from './subscriber.js';
+import { EventSubscriber } from './types.js';
 
 /**
  * Subscribes to core events and broadcasts them over all open WebSocket connections.
