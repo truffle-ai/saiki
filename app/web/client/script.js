@@ -4,7 +4,8 @@ import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js'; 
 let ws;
 let currentAiMessageElement = null;
 let thinkingIndicatorElement = null;
-let currentImageData = null; // Store { base64: string, mimeType: string }
+let currentImageData = null; // Store { base64: string, mimeType: string } for user uploads
+let lastToolImageSrc = null; // Store image source from the last tool result
 
 // Configure marked with sanitization (IMPORTANT!)
 marked.use({ sanitize: true });
@@ -154,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ws && ws.readyState === WebSocket.OPEN) {
             const payload = { type: 'message', content: messageText, imageData: imageDataToSend };
             ws.send(JSON.stringify(payload));
+            lastToolImageSrc = null; // Clear any stored tool image when user sends a new message
         } else {
             displaySystemMessage('Cannot send message: Not connected to server.', 'error');
         }
@@ -215,11 +217,21 @@ document.addEventListener('DOMContentLoaded', () => {
                      finalText = currentAiMessageElement.dataset.rawText; // Use accumulated raw text
                  }
 
+                 // --- Add image if available from last tool result ---
+                 let imageHtml = '';
+                 if (lastToolImageSrc) {
+                     imageHtml = `<img src="${escapeHtml(lastToolImageSrc)}" class="message-image" alt="AI generated image"/>`;
+                     lastToolImageSrc = null; // Clear after use
+                 }
+                 // --- End image addition ---
+
                  try {
-                     finalHtmlContent = marked.parse(finalText);
+                     // Combine parsed text and image HTML
+                     finalHtmlContent = marked.parse(finalText) + imageHtml;
                  } catch(e) {
                      console.error("Markdown parsing error:", e);
-                     finalHtmlContent = escapeHtml(finalText).replace(/\n/g, '<br>');
+                     // Fallback: display escaped text and image HTML
+                     finalHtmlContent = escapeHtml(finalText).replace(/\n/g, '<br>') + imageHtml;
                  }
 
                  if (currentAiMessageElement) {
@@ -229,14 +241,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentAiMessageElement = null;
                 } else {
                     // If it's a non-streaming response, create the element directly
-                    // and set innerHTML instead of using appendMessage which sets textContent
                     const messageElement = document.createElement('div');
-                    // Ensure class matches the streaming case for consistency: 'message' and 'ai'
-                    messageElement.classList.add('message', 'ai'); 
-                    messageElement.innerHTML = finalHtmlContent; // Set the parsed HTML content
+                    messageElement.classList.add('message', 'ai');
+                    messageElement.innerHTML = finalHtmlContent; // Set the combined HTML content
                     chatLog.appendChild(messageElement);
                 }
-                // done handling AI response
                 break;
             }
             case 'toolCall': {
@@ -249,14 +258,53 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             case 'toolResult': {
                 let resultString;
+                const result = message.data.result; // Store result for easier access
                 try {
-                    resultString = JSON.stringify(message.data.result, null, 2);
+                    resultString = JSON.stringify(result, null, 2);
                 } catch {
-                    resultString = String(message.data.result);
+                    resultString = String(result);
                 }
                 const headerHtml = `<strong>Tool Result:</strong> ${escapeHtml(message.data.toolName)}`;
                 const contentHtml = `<pre><code>${escapeHtml(resultString)}</code></pre>`;
                 appendExpandableMessage(headerHtml, contentHtml, 'tool-result');
+
+                // --- Check for image data and store it ---
+                // Clear previous image source first
+                lastToolImageSrc = null;
+
+                if (result && Array.isArray(result.content)) {
+                    // Prioritize structured image data with mimeType
+                    const imagePartWithData = result.content.find(item => item.type === 'image' && item.data && item.mimeType);
+                    if (imagePartWithData) {
+                        lastToolImageSrc = `data:${imagePartWithData.mimeType};base64,${imagePartWithData.data}`;
+                    } else {
+                        // Fallback: Check for image part with direct url/image source
+                        const imagePartWithSrc = result.content.find(item => item.type === 'image' && (item.url || item.image));
+                        if (imagePartWithSrc) {
+                            lastToolImageSrc = imagePartWithSrc.url || imagePartWithSrc.image;
+                        }
+                    }
+                } 
+                // Fallback 1: Direct data URI string?
+                else if (typeof result === 'string' && result.startsWith('data:image')) {
+                    lastToolImageSrc = result;
+                } 
+                // Fallback 2: Object with known image properties?
+                else if (result && typeof result === 'object') {
+                    if (result.screenshot) { // Prioritize screenshot as it's often specific
+                        lastToolImageSrc = result.screenshot;
+                    } else if (result.image) {
+                        lastToolImageSrc = result.image;
+                    } else if (result.url && typeof result.url === 'string' && (result.url.startsWith('data:image') || result.url.startsWith('http'))) { 
+                        // Ensure URL is likely an image source
+                        lastToolImageSrc = result.url;
+                    } else if (Array.isArray(result.images) && result.images.length > 0 && typeof result.images[0] === 'string') {
+                         // Handle HF-style { images: [...] }
+                        lastToolImageSrc = result.images[0];
+                    }
+                }
+                // --- End image check ---
+
                 currentAiMessageElement = null;
                 break;
             }
