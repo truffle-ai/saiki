@@ -1,9 +1,15 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
-import { McpServerConfig, StdioServerConfig, SSEServerConfig } from '../config/types.js';
+import type {
+    McpServerConfig,
+    StdioServerConfig,
+    SSEServerConfig,
+    HttpServerConfig,
+} from '../config/types.js';
 import { ToolSet } from '../ai/types.js';
 import { IMCPClient } from './types.js';
 import { resolvePackagePath } from '../utils/path.js';
@@ -44,8 +50,11 @@ export class MCPClient implements IMCPClient {
         } else if (config.type === 'sse') {
             const sseConfig: SSEServerConfig = config;
             return this.connectViaSSE(sseConfig.url, sseConfig.headers, serverName);
+        } else if (config.type === 'http') {
+            const httpConfig: HttpServerConfig = config;
+            return this.connectViaHttp(httpConfig.baseUrl, httpConfig.headers ?? {}, serverName);
         } else {
-            throw new Error(`Unsupported server type`);
+            throw new Error('Unsupported server type');
         }
     }
 
@@ -84,7 +93,7 @@ export class MCPClient implements IMCPClient {
                 );
             } catch (e) {
                 logger.warn(
-                    `Failed to resolve path for bundled script ${this.resolvedArgs[0]}: ${e}`
+                    `Failed to resolve path for bundled script ${this.resolvedArgs[0]}: ${JSON.stringify(e, null, 2)}`
                 );
             }
         }
@@ -140,7 +149,9 @@ export class MCPClient implements IMCPClient {
 
             return this.client;
         } catch (error: any) {
-            logger.error(`Failed to connect to MCP server ${serverName}:`, error.message);
+            logger.error(
+                `Failed to connect to MCP server ${serverName}: ${JSON.stringify(error.message, null, 2)}`
+            );
             throw error;
         }
     }
@@ -182,7 +193,39 @@ export class MCPClient implements IMCPClient {
 
             return this.client;
         } catch (error: any) {
-            logger.error(`Failed to connect to SSE MCP server ${url}:`, error.message);
+            logger.error(
+                `Failed to connect to SSE MCP server ${url}: ${JSON.stringify(error.message, null, 2)}`
+            );
+            throw error;
+        }
+    }
+
+    /**
+     * Connect to an MCP server via Streamable HTTP transport
+     */
+    private async connectViaHttp(
+        baseUrl: string,
+        headers: Record<string, string>,
+        serverAlias?: string
+    ): Promise<Client> {
+        logger.info(`Connecting to HTTP MCP server at ${baseUrl}`);
+        this.transport = new StreamableHTTPClientTransport(new URL(baseUrl), {
+            requestInit: { headers },
+        });
+        this.client = new Client(
+            { name: 'Saiki-http-mcp-client', version: '1.0.0' },
+            { capabilities: { tools: {} } }
+        );
+        try {
+            logger.info('Establishing HTTP connection...');
+            await this.client.connect(this.transport);
+            this.isConnected = true;
+            logger.info(`✅ HTTP SERVER ${serverAlias ?? baseUrl} CONNECTED`);
+            return this.client;
+        } catch (error: any) {
+            logger.error(
+                `Failed to connect to HTTP MCP server ${baseUrl}: ${JSON.stringify(error.message, null, 2)}`
+            );
             throw error;
         }
     }
@@ -198,7 +241,9 @@ export class MCPClient implements IMCPClient {
                 this.serverSpawned = false;
                 logger.info('Disconnected from MCP server');
             } catch (error: any) {
-                logger.error('Error disconnecting from MCP server:', error.message);
+                logger.error(
+                    `Error disconnecting from MCP server: ${JSON.stringify(error.message, null, 2)}`
+                );
             }
         }
     }
@@ -240,7 +285,7 @@ export class MCPClient implements IMCPClient {
             }
             return result;
         } catch (error) {
-            logger.error(`Tool call '${name}' failed:`, error);
+            logger.error(`Tool call '${name}' failed: ${JSON.stringify(error, null, 2)}`);
             return `Error executing tool '${name}': ${error instanceof Error ? error.message : String(error)}`;
         }
     }
@@ -256,17 +301,17 @@ export class MCPClient implements IMCPClient {
             const listToolResult = await this.client.listTools({});
             logger.silly(`listTools result: ${JSON.stringify(listToolResult, null, 2)}`);
 
-            // Assume listToolResult.tools exists and iterate
+            // Populate tools
             if (listToolResult && listToolResult.tools) {
                 listToolResult.tools.forEach((tool: any) => {
                     if (!tool.description) {
-                        throw new Error(`Tool '${tool.name}' is missing a description`);
+                        logger.warn(`Tool '${tool.name}' is missing a description`);
                     }
                     if (!tool.inputSchema) {
                         throw new Error(`Tool '${tool.name}' is missing an input schema`);
                     }
                     tools[tool.name] = {
-                        description: tool.description,
+                        description: tool.description ?? '',
                         parameters: tool.inputSchema,
                     };
                 });
@@ -274,8 +319,10 @@ export class MCPClient implements IMCPClient {
                 throw new Error('listTools did not return the expected structure: missing tools');
             }
         } catch (error) {
-            logger.error('Failed to get tools from MCP server:', error);
-            throw error;
+            logger.warn(
+                `Failed to get tools from MCP server, proceeding with zero tools: ${JSON.stringify(error, null, 2)}`
+            );
+            return tools;
         }
         return tools;
     }
@@ -318,7 +365,9 @@ export class MCPClient implements IMCPClient {
             logger.debug(`getPrompt '${name}' response: ${JSON.stringify(response, null, 2)}`);
             return response; // Return the full response object
         } catch (error: any) {
-            logger.debug(`Failed to get prompt '${name}' from MCP server: ${JSON.stringify(error, null, 2)}`);
+            logger.debug(
+                `Failed to get prompt '${name}' from MCP server: ${JSON.stringify(error, null, 2)}`
+            );
             throw new Error(
                 `Error getting prompt '${name}': ${error instanceof Error ? error.message : String(error)}`
             );
@@ -358,7 +407,9 @@ export class MCPClient implements IMCPClient {
             logger.debug(`readResource '${uri}' response: ${JSON.stringify(response, null, 2)}`);
             return response; // Return the full response object
         } catch (error: any) {
-            logger.debug(`Failed to read resource '${uri}' from MCP server: ${JSON.stringify(error, null, 2)}`);
+            logger.debug(
+                `Failed to read resource '${uri}' from MCP server: ${JSON.stringify(error, null, 2)}`
+            );
             throw new Error(
                 `Error reading resource '${uri}': ${error instanceof Error ? error.message : String(error)}`
             );

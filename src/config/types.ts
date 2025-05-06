@@ -30,9 +30,19 @@ export interface SSEServerConfig {
 }
 
 /**
+ * Add HTTP transport configuration
+ */
+export interface HttpServerConfig {
+    type: 'http';
+    baseUrl: string;
+    headers?: Record<string, string>;
+    timeout?: number; // in milliseconds
+}
+
+/**
  * Union type for MCP server configurations
  */
-export type McpServerConfig = StdioServerConfig | SSEServerConfig;
+export type McpServerConfig = StdioServerConfig | SSEServerConfig | HttpServerConfig;
 
 /**
  * Type for server configurations dictionary
