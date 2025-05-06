@@ -11,6 +11,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 
+
+
+// TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(
     clientManager: MCPClientManager,
     llmService: ILLMService,
@@ -133,7 +136,7 @@ export async function initializeApi(
     // Register a single 'chat' tool
     mcpServer.tool(
         'chat',
-        'Hey! I am Saiki, a remote AI agent that can chat with you or you can use to delegate tasks.',
+        'Hey! I am Saiki as an MCP server, a remote AI agent that can chat with you or you can use to delegate tasks.',
         { message: z.string() },
         async ({ message }) => {
             const text = await llmService.completeTask(message);
