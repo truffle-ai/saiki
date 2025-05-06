@@ -90,7 +90,9 @@ if (options.model) {
     if (envVarName) {
         const key = process.env[envVarName];
         if (!key) {
-            logger.error(`ERROR: Missing ${envVarName} environment variable for provider '${modelProvider}'.`);
+            logger.error(
+                `ERROR: Missing ${envVarName} environment variable for provider '${modelProvider}'.`
+            );
             process.exit(1);
         }
         options.apiKey = key;
@@ -129,7 +131,12 @@ if (runMode === 'cli') {
 // Main start function
 async function startAgent() {
     // Use createAgentServices to load, validate config and initialize all agent services
-    const cliArgs = { model: options.model, provider: options.provider, router: options.router, apiKey: options.apiKey };
+    const cliArgs = {
+        model: options.model,
+        provider: options.provider,
+        router: options.router,
+        apiKey: options.apiKey,
+    };
     let services;
     try {
         services = await createAgentServices(normalizedConfigPath, cliArgs, {
@@ -154,13 +161,13 @@ async function startAgent() {
 
     // Start based on mode
     if (runMode === 'cli') {
-            if (headlessInput) {
-                await runHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
-                process.exit(0);
-            } else {
+        if (headlessInput) {
+            await runHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
+            process.exit(0);
+        } else {
             // Run CLI
             await runAiCli(clientManager, llmService, agentEventBus);
-            }
+        }
     } else if (runMode === 'web') {
         // Run WebUI
         initializeWebUI(clientManager, llmService, agentEventBus, webPort);

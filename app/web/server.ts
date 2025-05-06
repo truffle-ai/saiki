@@ -13,7 +13,11 @@ export async function initializeWebUI(
     agentEventBus: EventEmitter,
     port = 3000
 ) {
-    const { app, server, wss, webSubscriber } = await initializeApi(clientManager, llmService, agentEventBus);
+    const { app, server, wss, webSubscriber } = await initializeApi(
+        clientManager,
+        llmService,
+        agentEventBus
+    );
 
     const publicPath = resolvePackagePath('public', true);
     logger.info(`Serving static files from: ${publicPath}`);
@@ -22,8 +26,8 @@ export async function initializeWebUI(
     server.listen(port, '0.0.0.0', () => {
         const networkInterfaces = os.networkInterfaces();
         let localIp = 'localhost';
-        Object.keys(networkInterfaces).forEach(ifaceName => {
-            networkInterfaces[ifaceName]?.forEach(iface => {
+        Object.keys(networkInterfaces).forEach((ifaceName) => {
+            networkInterfaces[ifaceName]?.forEach((iface) => {
                 if (iface.family === 'IPv4' && !iface.internal) {
                     localIp = iface.address;
                     return;

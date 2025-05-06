@@ -8,4 +8,4 @@ export interface EventSubscriber {
      * Attach event handlers to the given event bus.
      */
     subscribe(eventBus: EventEmitter): void;
-} 
+}

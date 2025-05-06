@@ -11,8 +11,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 
-
-
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(
     clientManager: MCPClientManager,
@@ -87,9 +85,12 @@ export async function initializeApi(
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error during connection';
+            const errorMessage =
+                error instanceof Error ? error.message : 'Unknown error during connection';
             logger.error(`Error handling POST /api/connect-server for '${name}': ${errorMessage}`);
-            res.status(500).send({ error: `Failed to connect to server '${name}': ${errorMessage}` });
+            res.status(500).send({
+                error: `Failed to connect to server '${name}': ${errorMessage}`,
+            });
         }
     });
 
@@ -104,7 +105,9 @@ export async function initializeApi(
             try {
                 const data = JSON.parse(messageString);
                 if (data.type === 'message' && data.content) {
-                    logger.info(`Processing message from WebSocket: ${data.content.substring(0, 50)}...`);
+                    logger.info(
+                        `Processing message from WebSocket: ${data.content.substring(0, 50)}...`
+                    );
                     const imageDataInput = data.imageData
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
@@ -115,11 +118,21 @@ export async function initializeApi(
                     llmService.resetConversation();
                 } else {
                     logger.warn(`Received unknown WebSocket message type: ${data.type}`);
-                    ws.send(JSON.stringify({ event: 'error', data: { message: 'Unknown message type' } }));
+                    ws.send(
+                        JSON.stringify({
+                            event: 'error',
+                            data: { message: 'Unknown message type' },
+                        })
+                    );
                 }
             } catch (error) {
                 logger.error(`Error processing WebSocket message: ${error.message}`);
-                ws.send(JSON.stringify({ event: 'error', data: { message: 'Failed to process message' } }));
+                ws.send(
+                    JSON.stringify({
+                        event: 'error',
+                        data: { message: 'Failed to process message' },
+                    })
+                );
             }
         });
         ws.on('close', () => {
@@ -130,9 +143,11 @@ export async function initializeApi(
         });
     });
 
-    
     // --- Expose Saiki via MCP protocol on /mcp (Experimental) ---
-    const mcpTransport = new StreamableHTTPServerTransport({ sessionIdGenerator: randomUUID, enableJsonResponse: true });
+    const mcpTransport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: randomUUID,
+        enableJsonResponse: true,
+    });
     const mcpServer = new McpServer({ name: 'saiki', version: '1.0.0' });
     // Register a single 'chat' tool
     // TODO: Make a more formal way to define this via config file
@@ -146,16 +161,20 @@ export async function initializeApi(
         }
     );
     // Initialize the MCP protocol on this transport before mounting endpoints
-    logger.info('Initializing MCP protocol server...');
+    logger.info(`Initializing MCP protocol server...`);
     await mcpServer.connect(mcpTransport);
-    logger.info('✅ MCP server protocol initialized on /mcp');
+    logger.info(`✅ MCP server protocol initialized on /mcp`);
     // Mount /mcp for JSON-RPC and SSE handling (so baseUrl is /mcp)
     app.post('/mcp', express.json(), (req, res) => {
-        mcpTransport.handleRequest(req, res, req.body).catch(err => logger.error('MCP POST error:', err));
+        mcpTransport
+            .handleRequest(req, res, req.body)
+            .catch((err) => logger.error(`MCP POST error: ${JSON.stringify(err, null, 2)}`));
     });
     app.get('/mcp', (req, res) => {
-        mcpTransport.handleRequest(req, res).catch(err => logger.error('MCP GET error:', err));
+        mcpTransport
+            .handleRequest(req, res)
+            .catch((err) => logger.error(`MCP GET error: ${JSON.stringify(err, null, 2)}`));
     });
 
     return { app, server, wss, webSubscriber };
-} 
+}

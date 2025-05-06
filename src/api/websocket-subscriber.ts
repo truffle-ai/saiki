@@ -44,4 +44,4 @@ export class WebSocketEventSubscriber implements EventSubscriber {
             }
         }
     }
-} 
+}
