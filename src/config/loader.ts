@@ -39,7 +39,7 @@ export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
         const resolveFromPackageRoot = configPath === DEFAULT_CONFIG_PATH;
         const absolutePath = resolvePackagePath(configPath, resolveFromPackageRoot);
 
-        logger.debug(`Attempting to load config from: ${absolutePath}`);
+        logger.debug(`Loading saiki config from: ${absolutePath}`);
 
         // Read and parse the config file
         const fileContent = await fs.readFile(absolutePath, 'utf-8');
