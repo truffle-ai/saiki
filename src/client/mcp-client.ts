@@ -47,7 +47,7 @@ export class MCPClient implements IMCPClient {
             return this.connectViaSSE(sseConfig.url, sseConfig.headers, serverName);
         } else if (config.type === 'http') {
             const httpConfig: HttpServerConfig = config;
-            return this.connectViaHttp(httpConfig.baseUrl, httpConfig.headers ?? {}, httpConfig.timeout, serverName);
+            return this.connectViaHttp(httpConfig.baseUrl, httpConfig.headers ?? {}, serverName);
         } else {
             throw new Error('Unsupported server type');
         }
@@ -197,7 +197,6 @@ export class MCPClient implements IMCPClient {
     private async connectViaHttp(
         baseUrl: string,
         headers: Record<string, string>,
-        timeout: number | undefined,
         serverAlias?: string
     ): Promise<Client> {
         logger.info(`Connecting to HTTP MCP server at ${baseUrl}`);
