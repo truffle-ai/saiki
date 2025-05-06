@@ -130,10 +130,12 @@ export async function initializeApi(
         });
     });
 
-    // --- Expose Saiki via MCP protocol on /mcp ---
+    
+    // --- Expose Saiki via MCP protocol on /mcp (Experimental) ---
     const mcpTransport = new StreamableHTTPServerTransport({ sessionIdGenerator: randomUUID, enableJsonResponse: true });
     const mcpServer = new McpServer({ name: 'saiki', version: '1.0.0' });
     // Register a single 'chat' tool
+    // TODO: Make a more formal way to define this via config file
     mcpServer.tool(
         'chat',
         'Hey! I am Saiki as an MCP server, a remote AI agent that can chat with you or you can use to delegate tasks.',
