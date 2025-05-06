@@ -87,9 +87,7 @@ export class MCPClient implements IMCPClient {
                     `Resolved bundled script path: ${scriptRelativePath} -> ${this.resolvedArgs[0]}`
                 );
             } catch (e) {
-                logger.warn(
-                    `Failed to resolve path for bundled script ${this.resolvedArgs[0]}: ${e}`
-                );
+                logger.warn(`Failed to resolve path for bundled script ${this.resolvedArgs[0]}: ${JSON.stringify(e, null, 2)}`);
             }
         }
         // --- End path resolution ---
@@ -144,7 +142,7 @@ export class MCPClient implements IMCPClient {
 
             return this.client;
         } catch (error: any) {
-            logger.error(`Failed to connect to MCP server ${serverName}:`, error.message);
+            logger.error(`Failed to connect to MCP server ${serverName}: ${JSON.stringify(error.message, null, 2)}`);
             throw error;
         }
     }
@@ -186,7 +184,7 @@ export class MCPClient implements IMCPClient {
 
             return this.client;
         } catch (error: any) {
-            logger.error(`Failed to connect to SSE MCP server ${url}:`, error.message);
+            logger.error(`Failed to connect to SSE MCP server ${url}: ${JSON.stringify(error.message, null, 2)}`);
             throw error;
         }
     }
@@ -217,7 +215,7 @@ export class MCPClient implements IMCPClient {
             logger.info(`✅ HTTP SERVER ${serverAlias ?? baseUrl} CONNECTED`);
             return this.client;
         } catch (error: any) {
-            logger.error(`Failed to connect to HTTP MCP server ${baseUrl}: ${error.message}`);
+            logger.error(`Failed to connect to HTTP MCP server ${baseUrl}: ${JSON.stringify(error.message, null, 2)}`);
             throw error;
         }
     }
@@ -233,7 +231,7 @@ export class MCPClient implements IMCPClient {
                 this.serverSpawned = false;
                 logger.info('Disconnected from MCP server');
             } catch (error: any) {
-                logger.error('Error disconnecting from MCP server:', error.message);
+                logger.error(`Error disconnecting from MCP server: ${JSON.stringify(error.message, null, 2)}`);
             }
         }
     }
@@ -275,7 +273,7 @@ export class MCPClient implements IMCPClient {
             }
             return result;
         } catch (error) {
-            logger.error(`Tool call '${name}' failed:`, error);
+            logger.error(`Tool call '${name}' failed: ${JSON.stringify(error, null, 2)}`);
             return `Error executing tool '${name}': ${error instanceof Error ? error.message : String(error)}`;
         }
     }
@@ -309,7 +307,7 @@ export class MCPClient implements IMCPClient {
                 throw new Error('listTools did not return the expected structure: missing tools');
             }
         } catch (error) {
-            logger.warn('Failed to get tools from MCP server, proceeding with zero tools:', error);
+            logger.warn(`Failed to get tools from MCP server, proceeding with zero tools: ${JSON.stringify(error, null, 2)}`);
             return tools;
         }
         return tools;
