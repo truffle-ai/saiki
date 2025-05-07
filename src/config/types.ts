@@ -107,4 +107,5 @@ export type LLMProvenance = {
     provider: Source;
     model: Source;
     router: Source;
+    apiKey: Source;
 };

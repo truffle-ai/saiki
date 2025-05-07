@@ -49,6 +49,7 @@ export class ConfigManager {
         }
         if (cliArgs.apiKey) {
             this.resolved.llm.apiKey = cliArgs.apiKey;
+            this.provenance.llm.apiKey = 'cli';
             // Optionally track provenance for apiKey if desired
         }
         // Re-apply defaults in case some overrides were incorrect
