@@ -20,7 +20,9 @@ export class ConfigManager {
     constructor(fileConfig: AgentConfig) {
         // Note: structuredClone requires Node.js v17.0.0+. For older versions, use a polyfill or lodash.cloneDeep.
         this.resolved = structuredClone(fileConfig);
-        this.provenance = { llm: { provider: 'file', model: 'file', router: 'default' } };
+        this.provenance = {
+            llm: { provider: 'file', model: 'file', router: 'default', apiKey: 'file' },
+        };
         this.applyDefaults();
         this.validate(); // Fail fast on invalid fileConfig
     }
