@@ -86,14 +86,14 @@ export type AgentConfig = {
 };
 
 /**
+ * Keys in LLMConfig that can be overridden via CLI
+ */
+export type LLMOverrideKey = 'provider' | 'model' | 'router' | 'apiKey';
+
+/**
  * CLI config override type for allowed fields
  */
-export type CLIConfigOverrides = Partial<{
-    model: string;
-    provider: string;
-    router: LLMRouter;
-    apiKey: string;
-}>;
+export type CLIConfigOverrides = Partial<Pick<LLMConfig, LLMOverrideKey>>;
 
 /**
  * Possible sources for configuration field overrides
@@ -101,10 +101,6 @@ export type CLIConfigOverrides = Partial<{
 export type Source = 'file' | 'cli' | 'default';
 
 /**
- * Provenance for configuration fields: tracks where a value originated from
+ * Provenance for CLI-overridable LLM fields only
  */
-export type LLMProvenance = {
-    provider: Source;
-    model: Source;
-    router: Source;
-};
+export type LLMProvenance = Record<LLMOverrideKey, Source>;

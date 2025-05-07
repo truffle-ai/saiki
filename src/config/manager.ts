@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
 import { llmConfigSchema } from './schemas.js';
-import type { AgentConfig, CLIConfigOverrides, LLMConfig, LLMProvenance } from './types.js';
+import type { AgentConfig, CLIConfigOverrides, LLMProvenance } from './types.js';
+
+declare function structuredClone<T>(value: T): T;
 
 /**
  * ConfigManager encapsulates merging file-based configuration, CLI overrides,
@@ -16,9 +18,13 @@ export class ConfigManager {
     private provenance: { llm: LLMProvenance };
 
     constructor(fileConfig: AgentConfig) {
+        // Note: structuredClone requires Node.js v17.0.0+. For older versions, use a polyfill or lodash.cloneDeep.
         this.resolved = structuredClone(fileConfig);
-        this.provenance = { llm: { provider: 'file', model: 'file', router: 'default' } };
+        this.provenance = {
+            llm: { provider: 'file', model: 'file', router: 'default', apiKey: 'file' },
+        };
         this.applyDefaults();
+        this.validate(); // Fail fast on invalid fileConfig
     }
 
     private applyDefaults() {
@@ -45,8 +51,12 @@ export class ConfigManager {
         }
         if (cliArgs.apiKey) {
             this.resolved.llm.apiKey = cliArgs.apiKey;
+            this.provenance.llm.apiKey = 'cli';
             // Optionally track provenance for apiKey if desired
         }
+        // Re-apply defaults in case some overrides were incorrect
+        this.applyDefaults();
+        this.validate(); // Fail fast on invalid overrides
         return this;
     }
 

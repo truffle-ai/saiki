@@ -152,16 +152,6 @@ export class Logger {
         this.logger.silly(message, { ...meta, color });
     }
 
-    // Special formatting for agent-related logging
-    // AI interaction logging
-    chatUser(message: string) {
-        console.log(`${chalk.blue.bold('👤 User')}: ${chalk.white(message)}`);
-    }
-
-    chatAI(message: string) {
-        console.log(`${chalk.green.bold('🤖 AI')}: ${chalk.white(message)}`);
-    }
-
     // Display AI response in a box
     displayAIResponse(response: any) {
         if (response.content) {
@@ -251,19 +241,6 @@ export class Logger {
                 titleAlignment: 'center',
             })
         );
-    }
-
-    // Workflow logging
-    workflowStart(name: string) {
-        console.log(`${chalk.magenta.bold('🏃 Workflow Started')}: ${chalk.white(name)}`);
-    }
-
-    workflowStep(step: string) {
-        console.log(`${chalk.magenta('➡️ Step')}: ${chalk.white(step)}`);
-    }
-
-    workflowComplete(name: string) {
-        console.log(`${chalk.magenta.bold('✅ Workflow Completed')}: ${chalk.white(name)}`);
     }
 
     // Configuration

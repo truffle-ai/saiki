@@ -121,7 +121,7 @@ export function isValidProviderModel(provider?: string, model?: string): boolean
     if (!providerInfo) {
         return false;
     }
-    return providerInfo.models.some((m) => m.name === lowerModel);
+    return providerInfo.models.some((m) => m.name.toLowerCase() === lowerModel);
 }
 
 /**
