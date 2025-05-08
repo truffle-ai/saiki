@@ -9,6 +9,7 @@ export type SourceHandler = (context: DynamicContributorContext) => Promise<stri
 export const sourceHandlerRegistry: Record<string, SourceHandler> = {
     dateTime: handlers.getCurrentDateTime,
     memorySummary: handlers.getMemorySummary,
+    resources: handlers.getResourceData,
     // Add other handlers here
 };
 

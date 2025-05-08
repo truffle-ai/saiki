@@ -16,7 +16,8 @@ import { initializeMcpServerEndpoints } from './mcp_handler.js';
 export async function initializeApi(
     clientManager: MCPClientManager,
     llmService: ILLMService,
-    agentEventBus: EventEmitter
+    agentEventBus: EventEmitter,
+    agentCardOverride?: Partial<AgentCard>
 ) {
     const app = express();
     const server = http.createServer(app);
@@ -144,33 +145,43 @@ export async function initializeApi(
         });
     });
 
+    // Apply agentCard overrides (if any)
+    const cardConfig = agentCardOverride ?? {};
+
     // Common agent and MCP server information
-    const agentName = 'saiki';
-    const agentVersion = '1.0.0';
+    const agentName = cardConfig.name ?? 'saiki';
+    const agentVersion = cardConfig.version ?? '1.0.0';
 
     // Construct Agent Card data (used by both A2A and MCP setup)
     const baseApiUrl = process.env.SAIKI_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     // Define the fixed tool details (must match what's used in mcp_handler.ts)
     const mcpToolName = 'chat';
     const mcpToolDescription =
-        'Allows you to chat with the Saiki agent. Send a message to interact.';
+        'Allows you to chat with the an AI agent. Send a message to interact.';
 
     const agentCardData: AgentCard = {
         name: agentName,
         description:
-            'Saiki is an AI assistant capable of chat and task delegation, accessible via multiple protocols.',
-        url: `${baseApiUrl}/mcp`, // Primary MCP endpoint
+            cardConfig.description ??
+            'Alfred is an AI assistant capable of chat and task delegation, accessible via multiple protocols.',
+        url: cardConfig.url ?? `${baseApiUrl}/mcp`, // Primary MCP endpoint
         version: agentVersion,
         capabilities: {
-            streaming: true,
-            pushNotifications: !!webSubscriber,
+            streaming: cardConfig.capabilities?.streaming ?? true,
+            pushNotifications: cardConfig.capabilities?.pushNotifications ?? !!webSubscriber,
+            stateTransitionHistory: cardConfig.capabilities?.stateTransitionHistory ?? false,
         },
         authentication: {
-            schemes: [],
+            schemes: cardConfig.authentication?.schemes ?? [],
+            credentials: cardConfig.authentication?.credentials,
         },
-        defaultInputModes: ['application/json', 'text/plain'],
-        defaultOutputModes: ['application/json', 'text/event-stream', 'text/plain'],
-        skills: [], // Skills will be populated based on registered MCP tools for the A2A card
+        defaultInputModes: cardConfig.defaultInputModes ?? ['application/json', 'text/plain'],
+        defaultOutputModes: cardConfig.defaultOutputModes ?? [
+            'application/json',
+            'text/event-stream',
+            'text/plain',
+        ],
+        skills: [...(cardConfig.skills ?? [])], // Skills will be populated based on registered MCP tools for the A2A card
     };
 
     // Populate skills for AgentCard from the fixed MCP tool details

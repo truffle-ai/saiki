@@ -29,7 +29,7 @@ export async function initializeMcpServerEndpoints(
 
     // Register the primary 'chat' tool with fixed details
     const toolName = 'chat_with_agent'; // Simplified tool name
-    const toolDescription = 'Allows you to chat with the Saiki agent. Send a message to interact.';
+    const toolDescription = 'Allows you to chat with the an AI agent. Send a message to interact.';
 
     mcpServer.tool(
         toolName,

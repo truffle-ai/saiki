@@ -22,3 +22,33 @@ export async function getMemorySummary(_context: DynamicContributorContext): Pro
     // Placeholder for actual memory logic
     return '<memorySummary>Memory summary: [not implemented]</memorySummary>';
 }
+
+export async function getResourceData(context: DynamicContributorContext): Promise<string> {
+    const uris = await context.clientManager.listAllResources();
+    if (!uris || uris.length === 0) {
+        return '<resources></resources>';
+    }
+    const parts = await Promise.all(
+        uris.map(async (uri) => {
+            try {
+                const response = await context.clientManager.readResource(uri);
+                let content: string;
+                if (typeof response === 'string') {
+                    content = response;
+                } else if (response && typeof response === 'object') {
+                    if ('content' in response && typeof response.content === 'string') {
+                        content = response.content;
+                    } else {
+                        content = JSON.stringify(response, null, 2);
+                    }
+                } else {
+                    content = String(response);
+                }
+                return `<resource uri="${uri}">${content}</resource>`;
+            } catch (error: any) {
+                return `<resource uri="${uri}">Error loading resource: ${error.message || error}</resource>`;
+            }
+        })
+    );
+    return `<resources>\n${parts.join('\n')}\n</resources>`;
+}
