@@ -169,7 +169,7 @@ async function startAgent() {
             await runAiCli(clientManager, llmService, agentEventBus);
         }
     } else if (runMode === 'web') {
-        // Run WebUI
+        // Run WebUI with configured MCP identity
         initializeWebUI(clientManager, llmService, agentEventBus, webPort);
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
     }

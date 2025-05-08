@@ -1,15 +1,16 @@
 import express from 'express';
 import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocketServer } from 'ws';
 import { WebSocketEventSubscriber } from './websocket-subscriber.js';
 import { MCPClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/services/types.js';
 import { logger } from '../utils/logger.js';
 import { EventEmitter } from 'events';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import type { AgentCard } from '../config/types.js';
+import { setupA2ARoutes } from './a2a.js';
+import { initializeMcpServerEndpoints } from './mcp_handler.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(
@@ -96,7 +97,7 @@ export async function initializeApi(
 
     // WebSocket handling
     // handle inbound client messages over WebSocket
-    wss.on('connection', (ws: WebSocket) => {
+    wss.on('connection', (ws) => {
         logger.info('WebSocket client connected.');
 
         ws.on('message', async (messageBuffer) => {
@@ -143,38 +144,67 @@ export async function initializeApi(
         });
     });
 
-    // --- Expose Saiki via MCP protocol on /mcp (Experimental) ---
+    // Common agent and MCP server information
+    const agentName = 'saiki';
+    const agentVersion = '1.0.0';
+
+    // Construct Agent Card data (used by both A2A and MCP setup)
+    const baseApiUrl = process.env.SAIKI_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    // Define the fixed tool details (must match what's used in mcp_handler.ts)
+    const mcpToolName = 'chat';
+    const mcpToolDescription =
+        'Allows you to chat with the Saiki agent. Send a message to interact.';
+
+    const agentCardData: AgentCard = {
+        name: agentName,
+        description:
+            'Saiki is an AI assistant capable of chat and task delegation, accessible via multiple protocols.',
+        url: `${baseApiUrl}/mcp`, // Primary MCP endpoint
+        version: agentVersion,
+        capabilities: {
+            streaming: true,
+            pushNotifications: !!webSubscriber,
+        },
+        authentication: {
+            schemes: [],
+        },
+        defaultInputModes: ['application/json', 'text/plain'],
+        defaultOutputModes: ['application/json', 'text/event-stream', 'text/plain'],
+        skills: [], // Skills will be populated based on registered MCP tools for the A2A card
+    };
+
+    // Populate skills for AgentCard from the fixed MCP tool details
+    agentCardData.skills.push({
+        id: mcpToolName, // Skill ID matches MCP tool name
+        name: mcpToolName, // Human-readable name
+        description: mcpToolDescription,
+        tags: ['chat', 'AI', 'assistant', 'mcp', 'natural language'],
+        examples: [
+            `Send a JSON-RPC request to /mcp with method: "${mcpToolName}" and params: {"message":"Your query..."}`,
+            'Alternatively, use a compatible MCP client library.',
+        ],
+        inputModes: ['text/plain'], // Abstract input mode for the skill
+        outputModes: ['text/plain'], // Abstract output mode for the skill
+    });
+
+    // Setup A2A routes
+    setupA2ARoutes(app, agentCardData);
+
+    // --- Initialize and Setup MCP Server and Endpoints ---
     const mcpTransport = new StreamableHTTPServerTransport({
         sessionIdGenerator: randomUUID,
         enableJsonResponse: true,
     });
-    const mcpServer = new McpServer({ name: 'saiki', version: '1.0.0' });
-    // Register a single 'chat' tool
-    // TODO: Make a more formal way to define this via config file
-    mcpServer.tool(
-        'chat',
-        'Hey! I am Saiki as an MCP server, a remote AI agent that can chat with you or you can use to delegate tasks.',
-        { message: z.string() },
-        async ({ message }) => {
-            const text = await llmService.completeTask(message);
-            return { content: [{ type: 'text', text }] };
-        }
+
+    // TODO: Think of a better way to handle the MCP implementation
+    await initializeMcpServerEndpoints(
+        app,
+        llmService,
+        agentName,
+        agentVersion,
+        agentCardData, // Pass the agent card data for the MCP resource
+        mcpTransport
     );
-    // Initialize the MCP protocol on this transport before mounting endpoints
-    logger.info(`Initializing MCP protocol server...`);
-    await mcpServer.connect(mcpTransport);
-    logger.info(`✅ MCP server protocol initialized on /mcp`);
-    // Mount /mcp for JSON-RPC and SSE handling (so baseUrl is /mcp)
-    app.post('/mcp', express.json(), (req, res) => {
-        mcpTransport
-            .handleRequest(req, res, req.body)
-            .catch((err) => logger.error(`MCP POST error: ${JSON.stringify(err, null, 2)}`));
-    });
-    app.get('/mcp', (req, res) => {
-        mcpTransport
-            .handleRequest(req, res)
-            .catch((err) => logger.error(`MCP GET error: ${JSON.stringify(err, null, 2)}`));
-    });
 
     return { app, server, wss, webSubscriber };
 }

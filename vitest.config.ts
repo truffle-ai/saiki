@@ -6,6 +6,5 @@ export default defineConfig({
         environment: 'node',
         include: ['**/*.test.ts', '**/*.spec.ts'],
         watch: true,
-        threads: true,
     },
 });

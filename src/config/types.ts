@@ -104,3 +104,36 @@ export type Source = 'file' | 'cli' | 'default';
  * Provenance for CLI-overridable LLM fields only
  */
 export type LLMProvenance = Record<LLMOverrideKey, Source>;
+
+// Agent Card interface (based on A2A specification)
+export interface AgentCard {
+    name: string;
+    description: string;
+    url: string; // URL to the agent's MCP endpoint
+    provider?: {
+        organization: string;
+        url: string;
+    };
+    version: string;
+    documentationUrl?: string;
+    capabilities: {
+        streaming?: boolean;
+        pushNotifications?: boolean;
+        stateTransitionHistory?: boolean;
+    };
+    authentication: {
+        schemes: string[];
+        credentials?: string;
+    };
+    defaultInputModes: string[];
+    defaultOutputModes: string[];
+    skills: {
+        id: string;
+        name: string;
+        description: string;
+        tags: string[];
+        examples?: string[];
+        inputModes?: string[];
+        outputModes?: string[];
+    }[];
+}
