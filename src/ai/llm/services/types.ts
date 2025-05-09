@@ -18,9 +18,6 @@ export interface ILLMService {
      */
     completeTask(userInput: string, imageData?: ImageData): Promise<string>;
 
-    // Update the system message/context
-    updateSystemContext(newSystemPrompt: string): void;
-
     // Clear conversation history
     resetConversation(): void;
 
@@ -29,9 +26,6 @@ export interface ILLMService {
 
     // Get configuration information about the LLM service
     getConfig(): LLMServiceConfig;
-
-    // Get event emitter for subscribing to events
-    getEventEmitter(): EventEmitter;
 }
 
 /**

@@ -35,16 +35,8 @@ export class OpenAIService implements ILLMService {
         this.messageManager = messageManager;
     }
 
-    getEventEmitter(): EventEmitter {
-        return this.eventEmitter;
-    }
-
     getAllTools(): Promise<ToolSet> {
         return this.clientManager.getAllTools();
-    }
-
-    updateSystemContext(newSystemPrompt: string): void {
-        this.messageManager.setSystemPrompt(newSystemPrompt);
     }
 
     async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
