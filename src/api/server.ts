@@ -11,6 +11,9 @@ import { randomUUID } from 'crypto';
 import type { AgentCard } from '../config/types.js';
 import { setupA2ARoutes } from './a2a.js';
 import { initializeMcpServerEndpoints } from './mcp_handler.js';
+import { AgentCardOverrideSchema } from '../config/schemas.js';
+import type { AgentCardOverride } from '../config/schemas.js';
+import { ZodError } from 'zod';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(
@@ -146,7 +149,22 @@ export async function initializeApi(
     });
 
     // Apply agentCard overrides (if any)
-    const cardConfig = agentCardOverride ?? {};
+    const rawOverride = agentCardOverride ?? {};
+    let cardConfig: AgentCardOverride;
+    try {
+        cardConfig = AgentCardOverrideSchema.parse(rawOverride);
+    } catch (err: unknown) {
+        if (err instanceof ZodError) {
+            logger.error('Invalid agentCard override:');
+            err.errors.forEach((e) => {
+                const path = e.path.join('.') || '<root>';
+                logger.error(`- ${path}: ${e.message}`);
+            });
+        } else {
+            logger.error('Invalid agentCard override:', err);
+        }
+        process.exit(1);
+    }
 
     // Common agent and MCP server information
     const agentName = cardConfig.name ?? 'saiki';
@@ -181,7 +199,7 @@ export async function initializeApi(
             'text/event-stream',
             'text/plain',
         ],
-        skills: [...(cardConfig.skills ?? [])], // Skills will be populated based on registered MCP tools for the A2A card
+        skills: (cardConfig.skills ?? []) as AgentCard['skills'], // Skills will be populated based on registered MCP tools for the A2A card
     };
 
     // Populate skills for AgentCard from the fixed MCP tool details

@@ -54,3 +54,44 @@ export const llmConfigSchema = z
     });
 
 // You can add more schemas for AgentConfig, etc., as needed.
+
+export const AgentCardOverrideSchema = z
+    .object({
+        name: z.string(),
+        description: z.string(),
+        url: z.string().url(),
+        version: z.string(),
+        documentationUrl: z.string().url().optional(),
+        capabilities: z
+            .object({
+                streaming: z.boolean(),
+                pushNotifications: z.boolean(),
+                stateTransitionHistory: z.boolean(),
+            })
+            .partial(),
+        authentication: z
+            .object({
+                schemes: z.array(z.string()),
+                credentials: z.string(),
+            })
+            .partial(),
+        defaultInputModes: z.array(z.string()),
+        defaultOutputModes: z.array(z.string()),
+        skills: z
+            .array(
+                z.object({
+                    id: z.string(),
+                    name: z.string(),
+                    description: z.string(),
+                    tags: z.array(z.string()),
+                    examples: z.array(z.string()).optional(),
+                    inputModes: z.array(z.string()).optional(),
+                    outputModes: z.array(z.string()).optional(),
+                })
+            )
+            .optional(),
+    })
+    .partial()
+    .strict();
+
+export type AgentCardOverride = z.infer<typeof AgentCardOverrideSchema>;
