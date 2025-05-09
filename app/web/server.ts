@@ -6,18 +6,10 @@ import { resolvePackagePath } from '../../src/utils/path.js';
 import { EventEmitter } from 'events';
 import { initializeApi } from '../../src/api/server.js';
 import os from 'os';
+import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js';
 
-export async function initializeWebUI(
-    clientManager: MCPClientManager,
-    llmService: ILLMService,
-    agentEventBus: EventEmitter,
-    port = 3000
-) {
-    const { app, server, wss, webSubscriber } = await initializeApi(
-        clientManager,
-        llmService,
-        agentEventBus
-    );
+export async function initializeWebUI(agent: SaikiAgent, port = 3000) {
+    const { app, server, wss, webSubscriber } = await initializeApi(agent);
 
     const publicPath = resolvePackagePath('public', true);
     logger.info(`Serving static files from: ${publicPath}`);

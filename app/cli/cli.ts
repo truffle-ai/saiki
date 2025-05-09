@@ -5,6 +5,7 @@ import { logger } from '../../src/utils/logger.js'; // Adjusted path
 import { ILLMService } from '../../src/ai/llm/services/types.js'; // Adjusted path
 import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new location
 import { EventEmitter } from 'events';
+import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js'; // ADD THIS IMPORT
 
 const validLogLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
 const HELP_MESSAGE = `Available commands:
@@ -59,14 +60,10 @@ async function _initCli(
  * @param clientManager Client manager with registered tool providers
  * @param llmService LLM service implementation
  */
-export async function runAiCli(
-    clientManager: MCPClientManager,
-    llmService: ILLMService,
-    agentEventBus: EventEmitter
-) {
+export async function runAiCli(agent: SaikiAgent) {
     try {
         // Common initialization
-        await _initCli(clientManager, llmService, agentEventBus);
+        await _initCli(agent.clientManager, agent.llmService, agent.agentEventBus);
 
         // Create readline interface
         const rl = readline.createInterface({
@@ -105,7 +102,7 @@ export async function runAiCli(
             }
 
             if (lowerInput === 'clear') {
-                llmService.resetConversation();
+                agent.resetConversation();
                 logger.info('Conversation history cleared.');
                 return true;
             }
@@ -142,7 +139,7 @@ export async function runAiCli(
 
                 try {
                     // Simply call completeTask - all updates happen via events
-                    await llmService.completeTask(userInput);
+                    await agent.llmService.completeTask(userInput);
                 } catch (error) {
                     logger.error(`Error in processing input: ${error.message}`);
                 }
@@ -160,15 +157,15 @@ export async function runAiCli(
 /**
  * Run a single headless command via CLI without interactive prompt
  */
-export async function runHeadlessCli(
-    clientManager: MCPClientManager,
-    llmService: ILLMService,
-    agentEventBus: EventEmitter,
-    prompt: string
-): Promise<void> {
-    // Common initialization
-    await _initCli(clientManager, llmService, agentEventBus);
+export async function runHeadlessCli(agent: SaikiAgent, prompt: string): Promise<void> {
+    try {
+        // Reinstate _initCli for consistent logging and setup
+        await _initCli(agent.clientManager, agent.llmService, agent.agentEventBus);
 
-    // Execute the task (subscriber handles output events)
-    await llmService.completeTask(prompt);
+        // Call llmService.completeTask directly for consistent detailed output
+        await agent.llmService.completeTask(prompt);
+    } catch (error) {
+        logger.error(`Error during headless CLI execution: ${error.message}`);
+        process.exit(1); // Exit with error code if headless execution fails
+    }
 }

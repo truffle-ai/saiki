@@ -45,26 +45,22 @@ export class SaikiAgent {
             // 2. Interact with the LLM.
             // 3. Handle tool calls (via ClientManager).
             // 4. Utilize system prompts (via PromptManager).
-            const llmResponse = await this.llmService.completeTask(userInput, imageDataInput);
+            // According to ILLMService, completeTask returns Promise<string>
+            const llmResponse: string = await this.llmService.completeTask(
+                userInput,
+                imageDataInput
+            );
 
-            // Assuming completeTask returns the final string content or an object with content
-            if (typeof llmResponse === 'string') {
+            // If llmResponse is an empty string, treat it as no significant response.
+            if (llmResponse && llmResponse.trim() !== '') {
                 return llmResponse;
-            } else if (
-                llmResponse &&
-                typeof llmResponse === 'object' &&
-                'content' in llmResponse &&
-                typeof llmResponse.content === 'string'
-            ) {
-                return llmResponse.content;
             }
-            // Fallback if the response structure is different or null
-            return llmResponse ? String(llmResponse) : "Sorry, I couldn't process that.";
+            // Return null if the response is empty or just whitespace.
+            return null;
         } catch (error) {
             logger.error('Error during SaikiAgent.processUserTurn:', error);
-            // It might be better for llmService to throw specific error types
-            // that can be handled more gracefully here or by the caller.
-            return 'An error occurred while processing your request.';
+            // Re-throw the error to allow the caller to handle it.
+            throw error;
         }
     }
 
@@ -78,6 +74,8 @@ export class SaikiAgent {
             logger.info('SaikiAgent conversation reset.');
         } catch (error) {
             logger.error('Error during SaikiAgent.resetConversation:', error);
+            // Re-throw the error to allow the caller to handle it.
+            throw error;
         }
     }
 
