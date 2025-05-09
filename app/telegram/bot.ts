@@ -24,6 +24,11 @@ async function downloadFileAsBase64(
     return new Promise((resolve, reject) => {
         https
             .get(fileUrl, (res) => {
+                if (res.statusCode && res.statusCode >= 400) {
+                    return reject(
+                        new Error(`Failed to download file: ${res.statusCode} ${res.statusMessage}`)
+                    );
+                }
                 const chunks: Buffer[] = [];
                 res.on('data', (chunk) => chunks.push(chunk));
                 res.on('end', () => {
