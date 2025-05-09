@@ -1,7 +1,7 @@
 import { ContributorConfig, SystemPromptConfig } from '../../config/types.js';
 import { SystemPromptContributor } from './types.js';
 import { StaticContributor, DynamicContributor } from './contributors.js';
-import { getSourceHandler } from './registry.js';
+import { getPromptGenerator } from './registry.js';
 
 export function loadContributors(
     systemPromptConfig: string | SystemPromptConfig
@@ -37,9 +37,10 @@ export function loadContributors(
             if (!c.content) throw new Error(`Static contributor "${c.id}" missing content`);
             return new StaticContributor(c.id, c.priority, c.content);
         } else if (c.type === 'dynamic' && c.source) {
-            const handler = getSourceHandler(c.source);
-            if (!handler) throw new Error(`No handler for dynamic contributor source: ${c.source}`);
-            return new DynamicContributor(c.id, c.priority, handler);
+            const promptGenerator = getPromptGenerator(c.source);
+            if (!promptGenerator)
+                throw new Error(`No handler for dynamic contributor source: ${c.source}`);
+            return new DynamicContributor(c.id, c.priority, promptGenerator);
         }
         throw new Error(`Invalid contributor config: ${JSON.stringify(c)}`);
     });

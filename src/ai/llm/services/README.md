@@ -136,7 +136,6 @@ export class YourProviderService implements ILLMService {
         return this.clientManager.getAllTools();
     }
 
-
     resetConversation(): void {
         this.messageManager.reset(); // Reset keeps the system prompt by default
         this.eventEmitter.emit('llmservice:conversationReset'); // Use specific event names
