@@ -79,6 +79,7 @@ export class PromptManager {
      * Register a new dynamic prompt generator at runtime.
      * Any already-loaded contributors referencing this source
      * will be instantiated and added immediately.
+     * This enables APIs to be built on top - to dynamically add new prompt generators
      */
     register(id: string, generator: DynamicPromptGenerator) {
         registerPromptGenerator(id, generator);
