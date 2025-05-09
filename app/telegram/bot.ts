@@ -37,11 +37,19 @@ async function downloadFileAsBase64(
     });
 }
 
-export async function startTelegramBot() {
-    // Load agent configuration
-    const configPath = process.env.TELEGRAM_CONFIG_PATH || DEFAULT_CONFIG_PATH;
-    const normalizedConfigPath = resolvePackagePath(configPath, configPath === DEFAULT_CONFIG_PATH);
-    const config: AgentConfig = await loadConfigFile(normalizedConfigPath);
+export async function startTelegramBot(cliConfigPath?: string) {
+    // Determine configuration path: CLI > Environment Variable > Default
+    let configToUse = DEFAULT_CONFIG_PATH;
+    if (cliConfigPath) {
+        configToUse = cliConfigPath;
+    } else if (process.env.TELEGRAM_CONFIG_PATH) {
+        configToUse = process.env.TELEGRAM_CONFIG_PATH;
+    }
+
+    const normalizedConfigPath = resolvePackagePath(
+        configToUse,
+        configToUse === DEFAULT_CONFIG_PATH // Resolve from package root only if it's the default path
+    );
 
     // Initialize core services
     const { clientManager, llmService, agentEventBus, messageManager } = await createAgentServices(

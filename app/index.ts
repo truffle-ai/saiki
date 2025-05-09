@@ -188,10 +188,10 @@ async function startAgent() {
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
-        await startDiscordBot();
+        await startDiscordBot(normalizedConfigPath);
     } else if (runMode === 'telegram') {
         logger.info('Starting Telegram bot...', null, 'cyanBright');
-        await startTelegramBot();
+        await startTelegramBot(normalizedConfigPath);
     }
 }
 
