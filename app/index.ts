@@ -112,9 +112,7 @@ const normalizedConfigPath = resolvePackagePath(configFile, resolveFromPackageRo
 // basic validation of options here
 try {
     // Allow discord and telegram modes to bypass certain CLI-specific validations if necessary
-    if (runMode !== 'discord' && runMode !== 'telegram') {
-        validateCliOptions(options);
-    }
+    validateCliOptions(options);
 } catch (error) {
     handleCliOptionsError(error);
 }
