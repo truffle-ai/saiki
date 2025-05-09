@@ -35,7 +35,7 @@ import { LLMRouter } from '../ai/llm/types.js';
 import { MessageManager } from '../ai/llm/messages/manager.js';
 import { createMessageManager } from '../ai/llm/messages/factory.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
-import { loadContributors } from '../ai/systemPrompt/loader.js';
+import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { loadConfigFile } from '../config/loader.js';
 import { ConfigManager } from '../config/manager.js';
 import type { CLIConfigOverrides } from '../config/types.js';
@@ -117,9 +117,9 @@ export async function createAgentServices(
 
     // 5. Initialize message manager
     const router: LLMRouter = config.llm.router ?? 'vercel';
-    const contributors = loadContributors(config.llm.systemPrompt);
+    const promptManager = new PromptManager(config.llm.systemPrompt);
     const messageManager =
-        overrides?.messageManager ?? createMessageManager(config.llm, router, contributors);
+        overrides?.messageManager ?? createMessageManager(config.llm, router, promptManager);
 
     // 6. Initialize LLM service
     const llmService =

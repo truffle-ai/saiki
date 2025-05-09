@@ -5,6 +5,7 @@ import { registerPromptGenerator } from './registry.js';
 import type { DynamicPromptGenerator } from './registry.js';
 import type { SystemPromptContributor, DynamicContributorContext } from './types.js';
 import { DynamicContributor } from './contributors.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * PromptManager orchestrates registration, loading, and composition
@@ -28,25 +29,26 @@ export class PromptManager {
             { id: 'dateTime', type: 'dynamic', priority: 10, source: 'dateTime', enabled: true },
         ];
 
-        let contributors: ContributorConfig[];
+        let contributorCfgs: ContributorConfig[];
         // basic prompt config - string
         if (typeof config === 'string') {
             // Always include default dynamic contributors (e.g. dateTime)
-            contributors = [
+            contributorCfgs = [
                 ...defaultContributors,
                 { id: 'legacyPrompt', type: 'static', priority: 0, content: config, enabled: true },
             ];
         } else {
             // Start with default dynamic contributors
-            contributors = [...defaultContributors];
+            contributorCfgs = [...defaultContributors];
             for (const userC of config.contributors) {
-                const idx = contributors.findIndex((c) => c.id === userC.id);
-                if (idx !== -1) contributors[idx] = userC;
-                else contributors.push(userC);
+                const idx = contributorCfgs.findIndex((c) => c.id === userC.id);
+                if (idx !== -1) contributorCfgs[idx] = userC;
+                else contributorCfgs.push(userC);
             }
-            contributors = contributors.filter((c) => c.enabled !== false);
+            contributorCfgs = contributorCfgs.filter((c) => c.enabled !== false);
         }
-        const instances = contributors.map((contributor) => {
+
+        const contributors = contributorCfgs.map((contributor) => {
             if (contributor.type === 'static') {
                 if (!contributor.content)
                     throw new Error(`Static contributor "${contributor.id}" missing content`);
@@ -70,7 +72,7 @@ export class PromptManager {
             throw new Error(`Invalid contributor config: ${JSON.stringify(contributor)}`);
         });
         // Lower priority number first (0 = highest priority)
-        this.contributors = instances.sort((a, b) => a.priority - b.priority);
+        this.contributors = contributors.sort((a, b) => a.priority - b.priority);
     }
 
     /**
@@ -96,7 +98,15 @@ export class PromptManager {
      * Build the full system prompt by invoking each contributor and concatenating.
      */
     async build(ctx: DynamicContributorContext): Promise<string> {
-        const parts = await Promise.all(this.contributors.map((c) => c.getContent(ctx)));
+        const parts = await Promise.all(
+            this.contributors.map(async (contributor) => {
+                const content = await contributor.getContent(ctx);
+                logger.debug(
+                    `[SystemPrompt] Contributor "${contributor.id}" provided content: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`
+                );
+                return content;
+            })
+        );
         return parts.join('\n');
     }
 
