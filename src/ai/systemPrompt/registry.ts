@@ -23,6 +23,7 @@ export function getPromptGenerator(
 }
 
 // To register a new prompt generator function
+// Can be useful for plugins build on top of saiki to add new prompt generators
 export function registerPromptGenerator(
     promptGeneratorKey: string,
     promptGenerator: DynamicPromptGenerator
