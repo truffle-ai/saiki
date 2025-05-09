@@ -3,6 +3,7 @@
  */
 
 import { LLMRouter } from '../ai/llm/types.js';
+import type { PromptGeneratorKey } from '../ai/systemPrompt/registry.js';
 
 /**
  * Configuration for stdio-based MCP server connections
@@ -58,7 +59,7 @@ export interface ContributorConfig {
     priority: number;
     enabled?: boolean;
     content?: string; // for static
-    source?: string; // for dynamic
+    source?: PromptGeneratorKey; // for dynamic, must be a valid key in dynamicPromptGenerators
 }
 
 export interface SystemPromptConfig {

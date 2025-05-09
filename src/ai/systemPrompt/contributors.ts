@@ -16,10 +16,10 @@ export class DynamicContributor implements SystemPromptContributor {
     constructor(
         public id: string,
         public priority: number,
-        private handler: (context: DynamicContributorContext) => Promise<string>
+        private promptGenerator: (context: DynamicContributorContext) => Promise<string>
     ) {}
 
     async getContent(context: DynamicContributorContext): Promise<string> {
-        return this.handler(context);
+        return this.promptGenerator(context);
     }
 }
