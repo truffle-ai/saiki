@@ -1,5 +1,6 @@
 import type { Express } from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { ReadResourceCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { ILLMService } from '../ai/llm/services/types.js';
 import type { AgentCard } from '../config/types.js';
@@ -48,33 +49,22 @@ export async function initializeMcpServerEndpoints(
     const agentCardResourceProgrammaticName = 'agentCard';
     const agentCardResourceUri = 'saiki://agent/card';
     try {
-        // @ts-ignore
-        if (typeof mcpServer.resource === 'function') {
-            // @ts-ignore
-            mcpServer.resource(
-                agentCardResourceProgrammaticName,
-                agentCardResourceUri,
-                async (uri: URL) => {
-                    logger.info(`MCP client requesting resource at ${uri.href}`);
-                    return {
-                        contents: [
-                            {
-                                uri: uri.href,
-                                type: 'application/json',
-                                text: JSON.stringify(agentCardData, null, 2),
-                            },
-                        ],
-                    };
-                }
-            );
-            logger.info(
-                `Registered MCP Resource: '${agentCardResourceProgrammaticName}' at URI '${agentCardResourceUri}'`
-            );
-        } else {
-            logger.warn(
-                `mcpServer.resource method not found. MCP resource '${agentCardResourceProgrammaticName}' may not be available. Check SDK.`
-            );
-        }
+        const readCallback: ReadResourceCallback = async (uri, extra) => {
+            logger.info(`MCP client requesting resource at ${uri.href}`);
+            return {
+                contents: [
+                    {
+                        uri: uri.href,
+                        type: 'application/json',
+                        text: JSON.stringify(agentCardData, null, 2),
+                    },
+                ],
+            };
+        };
+        mcpServer.resource(agentCardResourceProgrammaticName, agentCardResourceUri, readCallback);
+        logger.info(
+            `Registered MCP Resource: '${agentCardResourceProgrammaticName}' at URI '${agentCardResourceUri}'`
+        );
     } catch (e: any) {
         logger.warn(
             `Error attempting to register MCP Resource '${agentCardResourceProgrammaticName}': ${e.message}. Check SDK.`
