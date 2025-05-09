@@ -23,6 +23,7 @@ export async function getMemorySummary(_context: DynamicContributorContext): Pro
     return '<memorySummary>Memory summary: [not implemented]</memorySummary>';
 }
 
+// TODO: This needs to be optimized to only fetch resources when needed. Curerntly this runs every time the prompt is generated.
 export async function getResourceData(context: DynamicContributorContext): Promise<string> {
     const uris = await context.clientManager.listAllResources();
     if (!uris || uris.length === 0) {
