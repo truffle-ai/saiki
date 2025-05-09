@@ -15,8 +15,17 @@ export const dynamicPromptGenerators: Record<string, DynamicPromptGenerator> = {
 // This type is mainly for easier understanding of the code - links to ContributorConfig type
 export type PromptGeneratorKey = keyof typeof dynamicPromptGenerators;
 
+// To fetch a prompt generator function from its name
 export function getPromptGenerator(
     promptGeneratorKey: PromptGeneratorKey
 ): DynamicPromptGenerator | undefined {
     return dynamicPromptGenerators[promptGeneratorKey];
+}
+
+// To register a new prompt generator function
+export function registerPromptGenerator(
+    promptGeneratorKey: string,
+    promptGenerator: DynamicPromptGenerator
+) {
+    dynamicPromptGenerators[promptGeneratorKey] = promptGenerator;
 }
