@@ -45,6 +45,7 @@ import type { CLIConfigOverrides } from '../config/types.js';
  */
 export type AgentServices = {
     clientManager: MCPClientManager;
+    promptManager: PromptManager;
     llmService: ILLMService;
     agentEventBus: EventEmitter;
     messageManager: MessageManager;
@@ -115,13 +116,15 @@ export async function createAgentServices(
             : 'Client manager and MCP servers initialized'
     );
 
-    // 5. Initialize message manager
-    const router: LLMRouter = config.llm.router ?? 'vercel';
+    // 5. Initialize prompt manager
     const promptManager = new PromptManager(config.llm.systemPrompt);
+
+    // 6. Initialize message manager
+    const router: LLMRouter = config.llm.router ?? 'vercel';
     const messageManager =
         overrides?.messageManager ?? createMessageManager(config.llm, router, promptManager);
 
-    // 6. Initialize LLM service
+    // 7. Initialize LLM service
     const llmService =
         overrides?.llmService ??
         createLLMService(config.llm, router, clientManager, agentEventBus, messageManager);
@@ -131,6 +134,13 @@ export async function createAgentServices(
             : `LLM service initialized using router: ${router}`
     );
 
-    // 7. Return the full service graph, including the ConfigManager
-    return { clientManager, llmService, agentEventBus, messageManager, configManager };
+    // 8. Return the full service
+    return {
+        clientManager,
+        promptManager,
+        llmService,
+        agentEventBus,
+        messageManager,
+        configManager,
+    };
 }
