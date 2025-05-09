@@ -1,0 +1,168 @@
+#!/usr/bin/env node
+import dotenv from 'dotenv';
+import TelegramBot from 'node-telegram-bot-api';
+import { loadConfigFile } from '../../src/config/loader.js';
+import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../../src/utils/path.js';
+import { createAgentServices } from '../../src/utils/service-initializer.js';
+import { AgentConfig } from '../../src/config/types.js';
+import { EventEmitter } from 'events';
+import https from 'https';
+
+// Load environment variables (including TELEGRAM_BOT_TOKEN)
+dotenv.config();
+
+const token = process.env.TELEGRAM_BOT_TOKEN;
+if (!token) {
+    console.error('Missing TELEGRAM_BOT_TOKEN in environment');
+    process.exit(1);
+}
+
+// Helper to download a file URL and convert it to base64
+async function downloadFileAsBase64(
+    fileUrl: string
+): Promise<{ base64: string; mimeType: string }> {
+    return new Promise((resolve, reject) => {
+        https
+            .get(fileUrl, (res) => {
+                const chunks: Buffer[] = [];
+                res.on('data', (chunk) => chunks.push(chunk));
+                res.on('end', () => {
+                    const buffer = Buffer.concat(chunks);
+                    const contentType =
+                        (res.headers['content-type'] as string) || 'application/octet-stream';
+                    resolve({ base64: buffer.toString('base64'), mimeType: contentType });
+                });
+            })
+            .on('error', reject);
+    });
+}
+
+export async function startTelegramBot() {
+    // Load agent configuration
+    const configPath = process.env.TELEGRAM_CONFIG_PATH || DEFAULT_CONFIG_PATH;
+    const normalizedConfigPath = resolvePackagePath(configPath, configPath === DEFAULT_CONFIG_PATH);
+    const config: AgentConfig = await loadConfigFile(normalizedConfigPath);
+
+    // Initialize core services
+    const { clientManager, llmService, agentEventBus, messageManager } = await createAgentServices(
+        normalizedConfigPath,
+        {},
+        { runMode: 'web' }
+    );
+
+    // Create and start Telegram Bot with polling
+    const bot = new TelegramBot(token, { polling: true });
+    console.log('Telegram bot started');
+
+    // /start command with sample buttons
+    bot.onText(/\/start/, (msg) => {
+        const chatId = msg.chat.id;
+        bot.sendMessage(chatId, 'Welcome to Saiki AI Bot! Choose an option below:', {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🔄 Reset Conversation', callback_data: 'reset' }],
+                    [{ text: '❓ Help', callback_data: 'help' }],
+                ],
+            },
+        });
+    });
+
+    // Handle button callbacks
+    bot.on('callback_query', async (callbackQuery) => {
+        const action = callbackQuery.data;
+        const chatId = callbackQuery.message?.chat.id;
+        if (!chatId) return;
+        if (action === 'reset') {
+            await llmService.resetConversation();
+            await bot.sendMessage(chatId, '🔄 Conversation has been reset.');
+        } else if (action === 'help') {
+            await bot.sendMessage(chatId, 'Send me text or images and I will respond.');
+        }
+        await bot.answerCallbackQuery(callbackQuery.id);
+    });
+
+    // Group chat slash command: /ask <your question>
+    bot.onText(/\/ask\s+(.+)/, async (msg, match) => {
+        const chatId = msg.chat.id;
+        const question = match?.[1];
+        if (!question) {
+            return bot.sendMessage(chatId, 'Please provide a question, e.g. `/ask How do I ...?`', {
+                parse_mode: 'Markdown',
+            });
+        }
+        try {
+            await bot.sendChatAction(chatId, 'typing');
+            const answer = await llmService.completeTask(question);
+            await bot.sendMessage(chatId, answer);
+        } catch (err) {
+            console.error('Error handling /ask command', err);
+            await bot.sendMessage(chatId, `Error: ${err.message}`);
+        }
+    });
+
+    // Inline query handler
+    bot.on('inline_query', async (inlineQuery) => {
+        if (!inlineQuery.query) return;
+        try {
+            const resultText = await llmService.completeTask(inlineQuery.query);
+            const results = [
+                {
+                    type: 'article',
+                    id: inlineQuery.id,
+                    title: 'AI Answer',
+                    input_message_content: { message_text: resultText },
+                    description: resultText.substring(0, 100),
+                },
+            ];
+            await bot.answerInlineQuery(inlineQuery.id, results);
+        } catch (error) {
+            console.error('Error handling inline query', error);
+        }
+    });
+
+    // Message handler with image support and toolCall notifications
+    bot.on('message', async (msg) => {
+        const chatId = msg.chat.id;
+        let userText = msg.text;
+        let imageDataInput;
+
+        // Detect image messages
+        if (msg.photo) {
+            const photo = msg.photo[msg.photo.length - 1];
+            const fileInfo = await bot.getFile(photo.file_id);
+            const fileUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.file_path}`;
+            const { base64, mimeType } = await downloadFileAsBase64(fileUrl);
+            imageDataInput = { image: base64, mimeType };
+            userText = msg.caption || '';
+        }
+
+        if (!userText) return;
+
+        // Subscribe for toolCall events
+        const toolCallHandler = (toolName: string, args: any) => {
+            bot.sendMessage(chatId, `Calling *${toolName}* with args: ${JSON.stringify(args)}`, {
+                parse_mode: 'Markdown',
+            });
+        };
+        agentEventBus.on('llmservice:toolCall', toolCallHandler);
+
+        try {
+            await bot.sendChatAction(chatId, 'typing');
+            const responseText = await llmService.completeTask(userText, imageDataInput);
+            await bot.sendMessage(chatId, responseText);
+        } catch (error) {
+            console.error('Error handling Telegram message', error);
+            await bot.sendMessage(chatId, `Error: ${error.message}`);
+        } finally {
+            agentEventBus.off('llmservice:toolCall', toolCallHandler);
+        }
+    });
+}
+
+// Only run directly if not imported (for when running node app/telegram/bot.ts)
+if (typeof require !== 'undefined' && require.main === module) {
+    startTelegramBot().catch((err) => {
+        console.error('Failed to start Telegram bot', err);
+        process.exit(1);
+    });
+}

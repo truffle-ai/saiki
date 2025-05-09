@@ -7,6 +7,8 @@ import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
 import { createAgentServices } from '../src/utils/service-initializer.js';
 import { runAiCli, runHeadlessCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
+import { startDiscordBot } from './discord/bot.js';
+import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
 import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
 
@@ -54,7 +56,7 @@ program
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
-    .option('--mode <mode>', 'Run mode: cli or web', 'cli')
+    .option('--mode <mode>', 'Run mode: cli, web, discord, or telegram', 'cli')
     .option('--web-port <port>', 'Port for WebUI', '3000')
     // LLM Options
     .option('-m, --model <model>', 'Specify the LLM model to use')
@@ -109,7 +111,10 @@ const normalizedConfigPath = resolvePackagePath(configFile, resolveFromPackageRo
 
 // basic validation of options here
 try {
-    validateCliOptions(options);
+    // Allow discord and telegram modes to bypass certain CLI-specific validations if necessary
+    if (runMode !== 'discord' && runMode !== 'telegram') {
+        validateCliOptions(options);
+    }
 } catch (error) {
     handleCliOptionsError(error);
 }
@@ -139,9 +144,17 @@ async function startAgent() {
     };
     let services;
     try {
+        // Determine the runMode for service initialization to satisfy ToolConfirmationProvider
+        // Currently bots are run on top of web server, so we need to pass web mode to service initializer
+        // TODO: Update with a NoOp runMode for actual bot
+        let serviceInitRunMode = runMode;
+        if (runMode === 'discord' || runMode === 'telegram') {
+            serviceInitRunMode = 'web'; // Use 'web' (NoOp) for service init when actual mode is a bot
+        }
+
         services = await createAgentServices(normalizedConfigPath, cliArgs, {
             connectionMode,
-            runMode,
+            runMode: serviceInitRunMode, // Pass the adjusted runMode here
         });
     } catch (err) {
         if (err instanceof Error) {
@@ -173,6 +186,12 @@ async function startAgent() {
         const agentCard = services.configManager.getConfig().agentCard ?? {};
         initializeWebUI(clientManager, llmService, agentEventBus, webPort, agentCard);
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
+    } else if (runMode === 'discord') {
+        logger.info('Starting Discord bot...', null, 'cyanBright');
+        await startDiscordBot();
+    } else if (runMode === 'telegram') {
+        logger.info('Starting Telegram bot...', null, 'cyanBright');
+        await startTelegramBot();
     }
 }
 
