@@ -39,16 +39,8 @@ export class VercelLLMService implements ILLMService {
         );
     }
 
-    getEventEmitter(): EventEmitter {
-        return this.eventEmitter;
-    }
-
     getAllTools(): Promise<ToolSet> {
         return this.clientManager.getAllTools();
-    }
-
-    updateSystemContext(newSystemPrompt: string): void {
-        this.messageManager.setSystemPrompt(newSystemPrompt);
     }
 
     formatTools(tools: ToolSet): VercelToolSet {

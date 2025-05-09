@@ -131,19 +131,9 @@ export class YourProviderService implements ILLMService {
         logger.info(`Initialized YourProviderService with model ${this.model}`);
     }
 
-    // --- Implement ILLMService Methods ---
-
-    getEventEmitter(): EventEmitter {
-        return this.eventEmitter;
-    }
 
     getAllTools(): Promise<ToolSet> {
         return this.clientManager.getAllTools();
-    }
-
-    updateSystemContext(newSystemPrompt: string): void {
-        this.messageManager.setSystemPrompt(newSystemPrompt);
-        logger.debug('System context updated.');
     }
 
     resetConversation(): void {

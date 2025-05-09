@@ -42,16 +42,7 @@ async function _initCli(
     // Set up event management
     logger.info('Setting up CLI event subscriptions...');
     const cliSubscriber = new CLISubscriber();
-    agentEventBus.on('llmservice:thinking', cliSubscriber.onThinking.bind(cliSubscriber));
-    agentEventBus.on('llmservice:chunk', cliSubscriber.onChunk.bind(cliSubscriber));
-    agentEventBus.on('llmservice:toolCall', cliSubscriber.onToolCall.bind(cliSubscriber));
-    agentEventBus.on('llmservice:toolResult', cliSubscriber.onToolResult.bind(cliSubscriber));
-    agentEventBus.on('llmservice:response', cliSubscriber.onResponse.bind(cliSubscriber));
-    agentEventBus.on('llmservice:error', cliSubscriber.onError.bind(cliSubscriber));
-    agentEventBus.on(
-        'llmservice:conversationReset',
-        cliSubscriber.onConversationReset.bind(cliSubscriber)
-    );
+    cliSubscriber.subscribe(agentEventBus);
 
     // Load available tools
     logger.info('Loading available tools...');

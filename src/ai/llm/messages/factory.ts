@@ -3,9 +3,7 @@ import { createMessageFormatter } from './formatters/factory.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { LLMConfig } from '../../../config/types.js';
 import { LLMRouter } from '../types.js';
-import { IMessageFormatter } from './formatters/types.js';
-import { ITokenizer } from '../tokenizer/types.js';
-import { SystemPromptContributor } from '../../systemPrompt/types.js';
+import { PromptManager } from '../../systemPrompt/manager.js';
 import { logger } from '../../../utils/logger.js';
 import { getMaxTokensForModel } from '../registry.js';
 
@@ -15,14 +13,14 @@ import { getMaxTokensForModel } from '../registry.js';
  *
  * @param config LLMConfig object containing provider, model, systemPrompt, etc.
  * @param router LLMRouter flag
- * @param contributors SystemPromptContributor[]
+ * @param promptManager PromptManager instance
  * @returns MessageManager instance
  * TODO: Make compression strategy also configurable
  */
 export function createMessageManager(
     config: LLMConfig,
     router: LLMRouter = 'vercel',
-    contributors: SystemPromptContributor[]
+    promptManager: PromptManager
 ): MessageManager {
     const provider = config.provider.toLowerCase();
     const model = config.model.toLowerCase();
@@ -39,5 +37,5 @@ export function createMessageManager(
     logger.debug(
         `Creating MessageManager for ${provider}/${model} using ${router} router with maxTokens: ${maxTokens}`
     );
-    return new MessageManager(formatter, contributors, maxTokens, tokenizer);
+    return new MessageManager(formatter, promptManager, maxTokens, tokenizer);
 }

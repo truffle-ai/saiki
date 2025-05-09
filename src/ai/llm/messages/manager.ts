@@ -6,7 +6,8 @@ import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../../utils/logger.js';
 import { getImageData, countMessagesTokens } from './utils.js';
-import { SystemPromptContributor, DynamicContributorContext } from '../../systemPrompt/types.js';
+import { DynamicContributorContext } from '../../systemPrompt/types.js';
+import { PromptManager } from '../../systemPrompt/manager.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -25,9 +26,9 @@ export class MessageManager {
     private history: InternalMessage[] = [];
 
     /**
-     * System prompt contributors used for the conversation
+     * PromptManager used for the conversation
      */
-    private systemPromptContributors: SystemPromptContributor[];
+    private promptManager: PromptManager;
 
     /**
      * Formatter used to convert internal messages to LLM-specific format
@@ -55,14 +56,14 @@ export class MessageManager {
      * Creates a new MessageManager instance
      *
      * @param formatter Formatter implementation for the target LLM provider
-     * @param systemPromptContributors System prompt contributors for the conversation
+     * @param promptManager PromptManager instance for the conversation
      * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
      * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
      * @param compressionStrategies Optional array of compression strategies to apply sequentially when maxTokens is exceeded. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
      */
     constructor(
         formatter: IMessageFormatter,
-        systemPromptContributors: SystemPromptContributor[],
+        promptManager: PromptManager,
         maxTokens: number,
         tokenizer: ITokenizer,
         compressionStrategies: ICompressionStrategy[] = [
@@ -70,12 +71,11 @@ export class MessageManager {
             new OldestRemovalStrategy(),
         ]
     ) {
-        if (!systemPromptContributors || systemPromptContributors.length === 0)
-            throw new Error('systemPromptContributors is required');
+        if (!promptManager) throw new Error('promptManager is required');
         if (maxTokens == null) throw new Error('maxTokens is required');
         if (!tokenizer) throw new Error('tokenizer is required');
         this.formatter = formatter;
-        this.systemPromptContributors = systemPromptContributors;
+        this.promptManager = promptManager;
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
         this.compressionStrategies = compressionStrategies;
@@ -97,21 +97,12 @@ export class MessageManager {
     }
 
     /**
-     * Assembles and returns the current system prompt by running all contributors.
-     * This is a placeholder; actual implementation should run getContent on each contributor with the correct context.
+     * Assembles and returns the current system prompt by invoking the PromptManager.
      */
     async getSystemPrompt(context: DynamicContributorContext): Promise<string> {
-        // Assemble the system prompt from all contributors
-        const parts = await Promise.all(
-            this.systemPromptContributors.map(async (c) => {
-                const content = await c.getContent(context);
-                logger.debug(
-                    `[SystemPrompt] Contributor '${c.id}' (priority: ${c.priority}):\n${content}`
-                );
-                return content;
-            })
-        );
-        return parts.join('\n');
+        const prompt = await this.promptManager.build(context);
+        logger.debug(`[SystemPrompt] Built system prompt:\n${prompt}`);
+        return prompt;
     }
 
     /**
