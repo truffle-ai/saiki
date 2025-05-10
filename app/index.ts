@@ -4,11 +4,12 @@ import { Command } from 'commander';
 import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
 import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
-import { createAgentServices } from '../src/utils/service-initializer.js';
+import { createAgentServices, AgentServices } from '../src/utils/service-initializer.js';
 import { runAiCli, runHeadlessCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
 import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
 import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
+import { SaikiAgent } from '../src/ai/agent/SaikiAgent.js';
 
 // Load environment variables
 dotenv.config();
@@ -129,7 +130,7 @@ if (runMode === 'cli') {
 }
 
 // Main start function
-async function startAgent() {
+async function startApp() {
     // Use createAgentServices to load, validate config and initialize all agent services
     const cliArgs = {
         model: options.model,
@@ -137,7 +138,7 @@ async function startAgent() {
         router: options.router,
         apiKey: options.apiKey,
     };
-    let services;
+    let services: AgentServices;
     try {
         services = await createAgentServices(normalizedConfigPath, cliArgs, {
             connectionMode,
@@ -156,27 +157,27 @@ async function startAgent() {
     logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
     logger.info('===============================================\n');
 
-    // Destructure the agent runtime services
-    const { clientManager, llmService, agentEventBus } = services;
+    // Create the SaikiAgent instance
+    const agent = new SaikiAgent(services);
 
     // Start based on mode
     if (runMode === 'cli') {
         if (headlessInput) {
-            await runHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
+            await runHeadlessCli(agent, headlessInput);
             process.exit(0);
         } else {
             // Run CLI
-            await runAiCli(clientManager, llmService, agentEventBus);
+            await runAiCli(agent);
         }
     } else if (runMode === 'web') {
         // Run WebUI
-        initializeWebUI(clientManager, llmService, agentEventBus, webPort);
+        initializeWebUI(agent, webPort);
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
     }
 }
 
 // Execute the agent
-startAgent().catch((error) => {
+startApp().catch((error) => {
     logger.error('Unhandled error during agent startup:');
     logger.error(error);
     process.exit(1);

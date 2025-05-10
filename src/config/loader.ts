@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { parse as parseYaml } from 'yaml';
-import { AgentConfig } from './types.js';
+import { AgentConfig } from './schemas.js';
 import { logger } from '../utils/logger.js';
 import { resolvePackagePath, DEFAULT_CONFIG_PATH } from '../utils/path.js';
 /**

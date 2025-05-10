@@ -1,7 +1,7 @@
 import { MessageManager } from './manager.js';
 import { createMessageFormatter } from './formatters/factory.js';
 import { createTokenizer } from '../tokenizer/factory.js';
-import { LLMConfig } from '../../../config/types.js';
+import { LLMConfig } from '../../../config/schemas.js';
 import { LLMRouter } from '../types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { logger } from '../../../utils/logger.js';
@@ -19,7 +19,7 @@ import { getMaxTokensForModel } from '../registry.js';
  */
 export function createMessageManager(
     config: LLMConfig,
-    router: LLMRouter = 'vercel',
+    router: LLMRouter,
     promptManager: PromptManager
 ): MessageManager {
     const provider = config.provider.toLowerCase();

@@ -1,4 +1,4 @@
-import { McpServerConfig } from '../config/types.js';
+import { McpServerConfig } from '../config/schemas.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ToolSet } from '../ai/types.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';

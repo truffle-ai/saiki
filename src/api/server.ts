@@ -2,21 +2,15 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { WebSocketEventSubscriber } from './websocket-subscriber.js';
-import { MCPClientManager } from '../client/manager.js';
-import { ILLMService } from '../ai/llm/services/types.js';
 import { logger } from '../utils/logger.js';
-import { EventEmitter } from 'events';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import { SaikiAgent } from '../ai/agent/SaikiAgent.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
-export async function initializeApi(
-    clientManager: MCPClientManager,
-    llmService: ILLMService,
-    agentEventBus: EventEmitter
-) {
+export async function initializeApi(agent: SaikiAgent) {
     const app = express();
     const server = http.createServer(app);
     const wss = new WebSocketServer({ server });
@@ -24,7 +18,7 @@ export async function initializeApi(
     // set up event broadcasting over WebSocket
     const webSubscriber = new WebSocketEventSubscriber(wss);
     logger.info('Setting up API event subscriptions...');
-    webSubscriber.subscribe(agentEventBus);
+    webSubscriber.subscribe(agent.agentEventBus);
 
     // HTTP endpoints
     app.post('/api/message', express.json(), async (req, res) => {
@@ -33,7 +27,7 @@ export async function initializeApi(
             return res.status(400).send({ error: 'Missing message content' });
         }
         try {
-            llmService.completeTask(req.body.message);
+            agent.run(req.body.message);
             res.status(202).send({ status: 'processing' });
         } catch (error) {
             logger.error(`Error handling POST /api/message: ${error.message}`);
@@ -52,7 +46,7 @@ export async function initializeApi(
             ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
             : undefined;
         try {
-            const responseText = await llmService.completeTask(req.body.message, imageDataInput);
+            const responseText = await agent.run(req.body.message, imageDataInput);
             res.status(200).send({ response: responseText });
         } catch (error) {
             logger.error(`Error handling POST /api/message-sync: ${error.message}`);
@@ -63,7 +57,7 @@ export async function initializeApi(
     app.post('/api/reset', express.json(), async (req, res) => {
         logger.info('Received request via POST /api/reset');
         try {
-            llmService.resetConversation();
+            agent.resetConversation();
             res.status(200).send({ status: 'reset initiated' });
         } catch (error) {
             logger.error(`Error handling POST /api/reset: ${error.message}`);
@@ -81,7 +75,7 @@ export async function initializeApi(
             return res.status(400).send({ error: 'Missing or invalid server config object' });
         }
         try {
-            await clientManager.connectClient(name, config);
+            await agent.connectMcpServer(name, config);
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
         } catch (error) {
@@ -112,10 +106,10 @@ export async function initializeApi(
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
                     if (imageDataInput) logger.info('Image data included in message.');
-                    await llmService.completeTask(data.content, imageDataInput);
+                    await agent.run(data.content, imageDataInput);
                 } else if (data.type === 'reset') {
                     logger.info('Processing reset command from WebSocket.');
-                    llmService.resetConversation();
+                    agent.resetConversation();
                 } else {
                     logger.warn(`Received unknown WebSocket message type: ${data.type}`);
                     ws.send(
@@ -156,7 +150,7 @@ export async function initializeApi(
         'Hey! I am Saiki as an MCP server, a remote AI agent that can chat with you or you can use to delegate tasks.',
         { message: z.string() },
         async ({ message }) => {
-            const text = await llmService.completeTask(message);
+            const text = await agent.run(message);
             return { content: [{ type: 'text', text }] };
         }
     );

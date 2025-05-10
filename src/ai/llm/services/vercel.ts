@@ -26,7 +26,7 @@ export class VercelLLMService implements ILLMService {
         model: LanguageModelV1,
         agentEventBus: EventEmitter,
         messageManager: MessageManager,
-        maxIterations: number = 50
+        maxIterations: number
     ) {
         this.maxIterations = maxIterations;
         this.model = model;
