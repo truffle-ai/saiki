@@ -7,6 +7,16 @@ import { ConfigManager } from '../../config/manager.js';
 import { EventEmitter } from 'events';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../utils/logger.js';
+import { McpServerConfig } from '../../config/types.js';
+
+const requiredServices = [
+    'clientManager',
+    'promptManager',
+    'llmService',
+    'agentEventBus',
+    'messageManager',
+    'configManager',
+];
 
 /**
  * The main entry point into Saiki's core.
@@ -28,6 +38,13 @@ export class SaikiAgent {
     public readonly configManager: ConfigManager;
 
     constructor(services: AgentServices) {
+        // Validate all required services are provided
+        for (const service of requiredServices) {
+            if (!services[service]) {
+                throw new Error(`Required service ${service} is missing in SaikiAgent constructor`);
+            }
+        }
+
         this.clientManager = services.clientManager;
         this.promptManager = services.promptManager;
         this.llmService = services.llmService;
@@ -87,7 +104,7 @@ export class SaikiAgent {
      * @param name The name of the server to connect.
      * @param config The configuration object for the server.
      */
-    public async connectMcpServer(name: string, config: any): Promise<void> {
+    public async connectMcpServer(name: string, config: McpServerConfig): Promise<void> {
         try {
             await this.clientManager.connectServer(name, config);
             this.agentEventBus.emit('saiki:mcpServerConnected', { name, success: true });

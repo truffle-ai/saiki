@@ -131,7 +131,9 @@ export async function runAiCli(agent: SaikiAgent) {
                     // Simply call completeTask - all updates happen via events
                     await agent.run(userInput);
                 } catch (error) {
-                    logger.error(`Error in processing input: ${error.message}`);
+                    logger.error(
+                        `Error in processing input: ${error instanceof Error ? error.message : String(error)}`
+                    );
                 }
             }
         } finally {
@@ -155,7 +157,9 @@ export async function runHeadlessCli(agent: SaikiAgent, prompt: string): Promise
         // Execute the task
         await agent.run(prompt);
     } catch (error) {
-        logger.error(`Error during headless CLI execution: ${error.message}`);
+        logger.error(
+            `Error in processing input: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1); // Exit with error code if headless execution fails
     }
 }
