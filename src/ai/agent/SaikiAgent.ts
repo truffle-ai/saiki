@@ -10,7 +10,7 @@ import { logger } from '../../utils/logger.js';
 
 /**
  * The main entry point into Saiki's core.
- * SaikiAgent is anabstraction layer on top of the internal services that saiki has.
+ * SaikiAgent is an abstraction layer on top of the internal services that saiki has.
  * You can use the SaikiAgent class in applications to build AI Agents.
  * By design, most of the methods in this class are thin wrappers around the internal services, exposing functionality that we might want to use in applications.
  */
