@@ -90,13 +90,13 @@ export class SaikiAgent {
     public async connectMcpServer(name: string, config: any): Promise<void> {
         try {
             await this.clientManager.connectServer(name, config);
-            this.agentEventBus.emit('saiki:mcpClientConnected', { name, success: true });
+            this.agentEventBus.emit('saiki:mcpServerConnected', { name, success: true });
             this.agentEventBus.emit('saiki:availableToolsUpdated');
-            logger.info(`SaikiAgent: Successfully connected to MCP client '${name}'.`);
+            logger.info(`SaikiAgent: Successfully connected to MCP server '${name}'.`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error(`SaikiAgent: Failed to connect to MCP client '${name}': ${errorMessage}`);
-            this.agentEventBus.emit('saiki:mcpClientConnected', {
+            logger.error(`SaikiAgent: Failed to connect to MCP server '${name}': ${errorMessage}`);
+            this.agentEventBus.emit('saiki:mcpServerConnected', {
                 name,
                 success: false,
                 error: errorMessage,
