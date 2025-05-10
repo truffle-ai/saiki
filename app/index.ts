@@ -7,8 +7,8 @@ import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
 import { createAgentServices } from '../src/utils/service-initializer.js';
 import { runAiCli, runHeadlessCli } from './cli/cli.js';
 import { initializeWebUI } from './web/server.js';
-import { startDiscordBot } from './discord/bot.js';
-import { startTelegramBot } from './telegram/bot.js';
+import { initDiscordBot } from './discord/bot.js';
+import { initTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
 import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
 
@@ -177,10 +177,10 @@ async function startAgent() {
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
-        await startDiscordBot(normalizedConfigPath);
+        initDiscordBot(services);
     } else if (runMode === 'telegram') {
         logger.info('Starting Telegram bot...', null, 'cyanBright');
-        await startTelegramBot(normalizedConfigPath);
+        initTelegramBot(services);
     }
 }
 

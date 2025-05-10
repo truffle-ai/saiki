@@ -1,11 +1,9 @@
-#!/usr/bin/env node
 import dotenv from 'dotenv';
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import https from 'https';
-import { loadConfigFile } from '../../src/config/loader.js';
-import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../../src/utils/path.js';
-import { createAgentServices } from '../../src/utils/service-initializer.js';
-import { AgentConfig } from '../../src/config/types.js';
+import { MCPClientManager } from '../../src/client/manager.js';
+import { ILLMService } from '../../src/ai/llm/services/types.js';
+import { EventEmitter } from 'events';
 
 // Load environment variables
 dotenv.config();
@@ -40,26 +38,13 @@ async function downloadFileAsBase64(
     });
 }
 
-export async function startDiscordBot(cliConfigPath?: string) {
-    // Determine configuration path: CLI > Environment Variable > Default
-    let configToUse = DEFAULT_CONFIG_PATH;
-    if (cliConfigPath) {
-        configToUse = cliConfigPath;
-    } else if (process.env.DISCORD_CONFIG_PATH) {
-        configToUse = process.env.DISCORD_CONFIG_PATH;
-    }
-
-    const normalizedConfigPath = resolvePackagePath(
-        configToUse,
-        configToUse === DEFAULT_CONFIG_PATH // Resolve from package root only if it's the default path
-    );
-
-    // Initialize core services
-    const { clientManager, llmService, agentEventBus } = await createAgentServices(
-        normalizedConfigPath,
-        {},
-        { runMode: 'web' }
-    );
+// Insert initDiscordBot to wire up a Discord client given pre-initialized services
+export function initDiscordBot(services: {
+    clientManager: MCPClientManager;
+    llmService: ILLMService;
+    agentEventBus: EventEmitter;
+}) {
+    const { clientManager, llmService, agentEventBus } = services;
 
     // Create Discord client
     const client = new Client({
@@ -121,13 +106,6 @@ export async function startDiscordBot(cliConfigPath?: string) {
         }
     });
 
-    await client.login(token);
-}
-
-// Only run directly if not imported (for when running node app/discord/bot.ts)
-if (typeof require !== 'undefined' && require.main === module) {
-    startDiscordBot().catch((err) => {
-        console.error('Failed to start Discord bot', err);
-        process.exit(1);
-    });
+    client.login(token);
+    return client;
 }

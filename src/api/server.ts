@@ -1,6 +1,7 @@
 import express from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
+import type { WebSocket } from 'ws';
 import { WebSocketEventSubscriber } from './websocket-subscriber.js';
 import { MCPClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/services/types.js';
@@ -14,6 +15,7 @@ import { initializeMcpServerEndpoints } from './mcp_handler.js';
 import { AgentCardOverrideSchema } from '../config/schemas.js';
 import type { AgentCardOverride } from '../config/schemas.js';
 import { ZodError } from 'zod';
+import { createAgentCard } from '../config/agentCard.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(
@@ -170,51 +172,19 @@ export async function initializeApi(
     const agentName = cardConfig.name ?? 'saiki';
     const agentVersion = cardConfig.version ?? '1.0.0';
 
-    // Construct Agent Card data (used by both A2A and MCP setup)
+    // Construct the fixed tool details (must match what's used in mcp_handler.ts)
     const baseApiUrl = process.env.SAIKI_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-    // Define the fixed tool details (must match what's used in mcp_handler.ts)
-    const mcpToolName = 'chat';
-    const mcpToolDescription =
-        'Allows you to chat with the an AI agent. Send a message to interact.';
 
-    const agentCardData: AgentCard = {
-        name: agentName,
-        description:
-            cardConfig.description ??
-            'Alfred is an AI assistant capable of chat and task delegation, accessible via multiple protocols.',
-        url: cardConfig.url ?? `${baseApiUrl}/mcp`, // Primary MCP endpoint
-        version: agentVersion,
-        capabilities: {
-            streaming: cardConfig.capabilities?.streaming ?? true,
-            pushNotifications: cardConfig.capabilities?.pushNotifications ?? !!webSubscriber,
-            stateTransitionHistory: cardConfig.capabilities?.stateTransitionHistory ?? false,
+    // Build and merge the agent card in one step
+    const agentCardData = createAgentCard(
+        {
+            defaultName: agentName,
+            defaultVersion: agentVersion,
+            defaultBaseUrl: baseApiUrl,
+            webSubscriber,
         },
-        authentication: {
-            schemes: cardConfig.authentication?.schemes ?? [],
-            credentials: cardConfig.authentication?.credentials,
-        },
-        defaultInputModes: cardConfig.defaultInputModes ?? ['application/json', 'text/plain'],
-        defaultOutputModes: cardConfig.defaultOutputModes ?? [
-            'application/json',
-            'text/event-stream',
-            'text/plain',
-        ],
-        skills: (cardConfig.skills ?? []) as AgentCard['skills'], // Skills will be populated based on registered MCP tools for the A2A card
-    };
-
-    // Populate skills for AgentCard from the fixed MCP tool details
-    agentCardData.skills.push({
-        id: mcpToolName, // Skill ID matches MCP tool name
-        name: mcpToolName, // Human-readable name
-        description: mcpToolDescription,
-        tags: ['chat', 'AI', 'assistant', 'mcp', 'natural language'],
-        examples: [
-            `Send a JSON-RPC request to /mcp with method: "${mcpToolName}" and params: {"message":"Your query..."}`,
-            'Alternatively, use a compatible MCP client library.',
-        ],
-        inputModes: ['text/plain'], // Abstract input mode for the skill
-        outputModes: ['text/plain'], // Abstract output mode for the skill
-    });
+        cardConfig
+    );
 
     // Setup A2A routes
     setupA2ARoutes(app, agentCardData);

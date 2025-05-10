@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
 import TelegramBot from 'node-telegram-bot-api';
-import { loadConfigFile } from '../../src/config/loader.js';
-import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../../src/utils/path.js';
-import { createAgentServices } from '../../src/utils/service-initializer.js';
-import { AgentConfig } from '../../src/config/types.js';
 import { EventEmitter } from 'events';
 import https from 'https';
+import { ILLMService } from '../../src/ai/llm/services/types.js';
+import { MCPClientManager } from '../../src/client/manager.js';
 
 // Load environment variables (including TELEGRAM_BOT_TOKEN)
 dotenv.config();
@@ -42,26 +40,13 @@ async function downloadFileAsBase64(
     });
 }
 
-export async function startTelegramBot(cliConfigPath?: string) {
-    // Determine configuration path: CLI > Environment Variable > Default
-    let configToUse = DEFAULT_CONFIG_PATH;
-    if (cliConfigPath) {
-        configToUse = cliConfigPath;
-    } else if (process.env.TELEGRAM_CONFIG_PATH) {
-        configToUse = process.env.TELEGRAM_CONFIG_PATH;
-    }
-
-    const normalizedConfigPath = resolvePackagePath(
-        configToUse,
-        configToUse === DEFAULT_CONFIG_PATH // Resolve from package root only if it's the default path
-    );
-
-    // Initialize core services
-    const { clientManager, llmService, agentEventBus, messageManager } = await createAgentServices(
-        normalizedConfigPath,
-        {},
-        { runMode: 'web' }
-    );
+// Insert initTelegramBot to wire up a TelegramBot given pre-initialized services
+export function initTelegramBot(services: {
+    clientManager: MCPClientManager;
+    llmService: ILLMService;
+    agentEventBus: EventEmitter;
+}) {
+    const { clientManager, llmService, agentEventBus } = services;
 
     // Create and start Telegram Bot with polling
     const bot = new TelegramBot(token, { polling: true });
@@ -170,12 +155,6 @@ export async function startTelegramBot(cliConfigPath?: string) {
             agentEventBus.off('llmservice:toolCall', toolCallHandler);
         }
     });
-}
 
-// Only run directly if not imported (for when running node app/telegram/bot.ts)
-if (typeof require !== 'undefined' && require.main === module) {
-    startTelegramBot().catch((err) => {
-        console.error('Failed to start Telegram bot', err);
-        process.exit(1);
-    });
+    return bot;
 }

@@ -95,3 +95,46 @@ export const AgentCardOverrideSchema = z
     .strict();
 
 export type AgentCardOverride = z.infer<typeof AgentCardOverrideSchema>;
+
+// Zod schema for full Agent Card (A2A specification)
+export const AgentCardSchema = z
+    .object({
+        name: z.string(),
+        description: z.string(),
+        url: z.string().url(),
+        provider: z
+            .object({
+                organization: z.string(),
+                url: z.string().url(),
+            })
+            .optional(),
+        version: z.string(),
+        documentationUrl: z.string().url().optional(),
+        capabilities: z
+            .object({
+                streaming: z.boolean().optional(),
+                pushNotifications: z.boolean().optional(),
+                stateTransitionHistory: z.boolean().optional(),
+            })
+            .strict(),
+        authentication: z
+            .object({
+                schemes: z.array(z.string()),
+                credentials: z.string().optional(),
+            })
+            .strict(),
+        defaultInputModes: z.array(z.string()),
+        defaultOutputModes: z.array(z.string()),
+        skills: z.array(
+            z.object({
+                id: z.string(),
+                name: z.string(),
+                description: z.string(),
+                tags: z.array(z.string()),
+                examples: z.array(z.string()).optional(),
+                inputModes: z.array(z.string()).optional(),
+                outputModes: z.array(z.string()).optional(),
+            })
+        ),
+    })
+    .strict();

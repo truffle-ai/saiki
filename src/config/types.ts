@@ -4,6 +4,8 @@
 
 import { LLMRouter } from '../ai/llm/types.js';
 import type { PromptGeneratorKey } from '../ai/systemPrompt/registry.js';
+import { z } from 'zod';
+import { AgentCardSchema } from './schemas.js';
 
 /**
  * Configuration for stdio-based MCP server connections
@@ -106,35 +108,4 @@ export type Source = 'file' | 'cli' | 'default';
  */
 export type LLMProvenance = Record<LLMOverrideKey, Source>;
 
-// Agent Card interface (based on A2A specification)
-export interface AgentCard {
-    name: string;
-    description: string;
-    url: string; // URL to the agent's MCP endpoint
-    provider?: {
-        organization: string;
-        url: string;
-    };
-    version: string;
-    documentationUrl?: string;
-    capabilities: {
-        streaming?: boolean;
-        pushNotifications?: boolean;
-        stateTransitionHistory?: boolean;
-    };
-    authentication: {
-        schemes: string[];
-        credentials?: string;
-    };
-    defaultInputModes: string[];
-    defaultOutputModes: string[];
-    skills: {
-        id: string;
-        name: string;
-        description: string;
-        tags: string[];
-        examples?: string[];
-        inputModes?: string[];
-        outputModes?: string[];
-    }[];
-}
+export type AgentCard = z.infer<typeof AgentCardSchema>;
