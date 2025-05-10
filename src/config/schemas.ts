@@ -10,6 +10,8 @@ const baseContributorSchema = z.object({
     id: z.string().describe('Unique identifier for the contributor'),
     priority: z
         .number()
+        .int()
+        .nonnegative()
         .describe('Execution priority of the contributor (lower numbers run first)'),
     enabled: z
         .boolean()
