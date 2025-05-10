@@ -178,10 +178,20 @@ async function startAgent() {
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
-        startDiscordBot(services);
+        try {
+            startDiscordBot(services);
+        } catch (error) {
+            logger.error('Failed to start Discord bot:', error);
+            process.exit(1);
+        }
     } else if (runMode === 'telegram') {
         logger.info('Starting Telegram bot...', null, 'cyanBright');
-        startTelegramBot(services);
+        try {
+            startTelegramBot(services);
+        } catch (error) {
+            logger.error('Failed to start Telegram bot:', error);
+            process.exit(1);
+        }
     }
 }
 
