@@ -63,8 +63,11 @@ export type SystemPromptConfig = z.infer<typeof systemPromptConfigSchema>;
 
 export const llmConfigSchema = z
     .object({
-        provider: z.string().describe("The LLM provider (e.g., 'openai', 'anthropic', 'groq')"),
-        model: z.string().describe('The specific model name for the selected provider'),
+        provider: z
+            .string()
+            .nonempty()
+            .describe("The LLM provider (e.g., 'openai', 'anthropic', 'groq')"),
+        model: z.string().nonempty().describe('The specific model name for the selected provider'),
         systemPrompt: z
             .union([z.string(), systemPromptConfigSchema])
             .describe(
