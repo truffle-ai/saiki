@@ -118,7 +118,7 @@ export class ConfigManager {
         logger.error('Current configuration state before error:');
         logger.error(JSON.stringify(this.resolved, null, 2));
         logger.error('LLM Provenance state:');
-        if (this.provenance && this.provenance.llm) {
+        if (this.provenance?.llm) {
             logger.error(JSON.stringify(this.provenance.llm, null, 2));
         }
     }
