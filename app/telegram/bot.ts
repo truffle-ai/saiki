@@ -41,7 +41,7 @@ async function downloadFileAsBase64(
 }
 
 // Insert initTelegramBot to wire up a TelegramBot given pre-initialized services
-export function initTelegramBot(services: {
+export function startTelegramBot(services: {
     clientManager: MCPClientManager;
     llmService: ILLMService;
     agentEventBus: EventEmitter;

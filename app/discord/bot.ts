@@ -39,7 +39,7 @@ async function downloadFileAsBase64(
 }
 
 // Insert initDiscordBot to wire up a Discord client given pre-initialized services
-export function initDiscordBot(services: {
+export function startDiscordBot(services: {
     clientManager: MCPClientManager;
     llmService: ILLMService;
     agentEventBus: EventEmitter;

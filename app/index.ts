@@ -5,10 +5,10 @@ import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
 import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
 import { createAgentServices } from '../src/utils/service-initializer.js';
-import { runAiCli, runHeadlessCli } from './cli/cli.js';
-import { initializeWebUI } from './web/server.js';
-import { initDiscordBot } from './discord/bot.js';
-import { initTelegramBot } from './telegram/bot.js';
+import { startAiCli, startHeadlessCli } from './cli/cli.js';
+import { startWebUI } from './web/server.js';
+import { startDiscordBot } from './discord/bot.js';
+import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
 import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
 
@@ -164,23 +164,23 @@ async function startAgent() {
     // Start based on mode
     if (runMode === 'cli') {
         if (headlessInput) {
-            await runHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
+            await startHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
             process.exit(0);
         } else {
             // Run CLI
-            await runAiCli(clientManager, llmService, agentEventBus);
+            await startAiCli(clientManager, llmService, agentEventBus);
         }
     } else if (runMode === 'web') {
         // Run WebUI with configured MCP identity (pass agentCard only)
         const agentCard = services.configManager.getConfig().agentCard ?? {};
-        initializeWebUI(clientManager, llmService, agentEventBus, webPort, agentCard);
+        startWebUI(clientManager, llmService, agentEventBus, webPort, agentCard);
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
-        initDiscordBot(services);
+        startDiscordBot(services);
     } else if (runMode === 'telegram') {
         logger.info('Starting Telegram bot...', null, 'cyanBright');
-        initTelegramBot(services);
+        startTelegramBot(services);
     }
 }
 

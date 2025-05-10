@@ -8,7 +8,7 @@ import { initializeApi } from '../../src/api/server.js';
 import os from 'os';
 import type { AgentCard } from '../../src/config/types.js';
 
-export async function initializeWebUI(
+export async function startWebUI(
     clientManager: MCPClientManager,
     llmService: ILLMService,
     agentEventBus: EventEmitter,
