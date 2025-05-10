@@ -6,17 +6,20 @@ import { resolvePackagePath } from '../../src/utils/path.js';
 import { EventEmitter } from 'events';
 import { initializeApi } from '../../src/api/server.js';
 import os from 'os';
+import type { AgentCard } from '../../src/config/types.js';
 
-export async function initializeWebUI(
+export async function startWebUI(
     clientManager: MCPClientManager,
     llmService: ILLMService,
     agentEventBus: EventEmitter,
-    port = 3000
+    port = 3000,
+    agentCardOverride?: Partial<AgentCard>
 ) {
     const { app, server, wss, webSubscriber } = await initializeApi(
         clientManager,
         llmService,
-        agentEventBus
+        agentEventBus,
+        agentCardOverride
     );
 
     const publicPath = resolvePackagePath('public', true);

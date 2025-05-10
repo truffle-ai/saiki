@@ -4,6 +4,8 @@
 
 import { LLMRouter } from '../ai/llm/types.js';
 import type { PromptGeneratorKey } from '../ai/systemPrompt/registry.js';
+import { z } from 'zod';
+import { AgentCardSchema } from './schemas.js';
 
 /**
  * Configuration for stdio-based MCP server connections
@@ -105,3 +107,5 @@ export type Source = 'file' | 'cli' | 'default';
  * Provenance for CLI-overridable LLM fields only
  */
 export type LLMProvenance = Record<LLMOverrideKey, Source>;
+
+export type AgentCard = z.infer<typeof AgentCardSchema>;

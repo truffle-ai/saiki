@@ -9,6 +9,7 @@ export type DynamicPromptGenerator = (context: DynamicContributorContext) => Pro
 export const dynamicPromptGenerators: Record<string, DynamicPromptGenerator> = {
     dateTime: handlers.getCurrentDateTime,
     memorySummary: handlers.getMemorySummary,
+    resources: handlers.getResourceData,
     // Add other functions that generate prompts here
 } as const;
 

@@ -5,8 +5,10 @@ import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
 import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
 import { createAgentServices } from '../src/utils/service-initializer.js';
-import { runAiCli, runHeadlessCli } from './cli/cli.js';
-import { initializeWebUI } from './web/server.js';
+import { startAiCli, startHeadlessCli } from './cli/cli.js';
+import { startWebUI } from './web/server.js';
+import { startDiscordBot } from './discord/bot.js';
+import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
 import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
 
@@ -54,7 +56,7 @@ program
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
-    .option('--mode <mode>', 'Run mode: cli or web', 'cli')
+    .option('--mode <mode>', 'Run mode: cli, web, discord, or telegram', 'cli')
     .option('--web-port <port>', 'Port for WebUI', '3000')
     // LLM Options
     .option('-m, --model <model>', 'Specify the LLM model to use')
@@ -141,7 +143,7 @@ async function startAgent() {
     try {
         services = await createAgentServices(normalizedConfigPath, cliArgs, {
             connectionMode,
-            runMode,
+            runMode: runMode, // Pass the original runMode here
         });
     } catch (err) {
         if (err instanceof Error) {
@@ -160,18 +162,36 @@ async function startAgent() {
     const { clientManager, llmService, agentEventBus } = services;
 
     // Start based on mode
+    // TODO: We ideally should be able to start all services with one or more interfaces at once. Single backend, multiple frontend interfaces.
     if (runMode === 'cli') {
         if (headlessInput) {
-            await runHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
+            await startHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
             process.exit(0);
         } else {
             // Run CLI
-            await runAiCli(clientManager, llmService, agentEventBus);
+            await startAiCli(clientManager, llmService, agentEventBus);
         }
     } else if (runMode === 'web') {
-        // Run WebUI
-        initializeWebUI(clientManager, llmService, agentEventBus, webPort);
+        // Run WebUI with configured MCP identity (pass agentCard only)
+        const agentCard = services.configManager.getConfig().agentCard ?? {};
+        startWebUI(clientManager, llmService, agentEventBus, webPort, agentCard);
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
+    } else if (runMode === 'discord') {
+        logger.info('Starting Discord bot...', null, 'cyanBright');
+        try {
+            startDiscordBot(services);
+        } catch (error) {
+            logger.error('Failed to start Discord bot:', error);
+            process.exit(1);
+        }
+    } else if (runMode === 'telegram') {
+        logger.info('Starting Telegram bot...', null, 'cyanBright');
+        try {
+            startTelegramBot(services);
+        } catch (error) {
+            logger.error('Failed to start Telegram bot:', error);
+            process.exit(1);
+        }
     }
 }
 

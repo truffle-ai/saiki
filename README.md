@@ -69,6 +69,22 @@ npm start -- --mode web --web-port 3000
 
 Open http://localhost:3000 in your browser.
 
+### Bot Modes
+
+Run Saiki as a Discord or Telegram bot.
+
+**Discord Bot:**
+```bash
+saiki --mode discord
+```
+Make sure you have `DISCORD_BOT_TOKEN` set in your environment. See [here](app/discord/README.md) for more details.
+
+**Telegram Bot:**
+```bash
+saiki --mode telegram
+```
+Make sure you have `TELEGRAM_BOT_TOKEN` set in your environment. See [here](app/telegram/README.md) for more details.
+
 ## Overview
 
 Saiki is a flexible, modular AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly.

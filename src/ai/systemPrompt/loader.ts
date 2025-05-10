@@ -8,6 +8,7 @@ export function loadContributors(
 ): SystemPromptContributor[] {
     const defaultContributors: ContributorConfig[] = [
         { id: 'dateTime', type: 'dynamic', priority: 10, source: 'dateTime', enabled: true },
+        { id: 'resources', type: 'dynamic', priority: 20, source: 'resources', enabled: true },
     ];
 
     let contributors: ContributorConfig[] = [];

@@ -59,7 +59,7 @@ async function _initCli(
  * @param clientManager Client manager with registered tool providers
  * @param llmService LLM service implementation
  */
-export async function runAiCli(
+export async function startAiCli(
     clientManager: MCPClientManager,
     llmService: ILLMService,
     agentEventBus: EventEmitter
@@ -160,7 +160,7 @@ export async function runAiCli(
 /**
  * Run a single headless command via CLI without interactive prompt
  */
-export async function runHeadlessCli(
+export async function startHeadlessCli(
     clientManager: MCPClientManager,
     llmService: ILLMService,
     agentEventBus: EventEmitter,
