@@ -111,7 +111,6 @@ const normalizedConfigPath = resolvePackagePath(configFile, resolveFromPackageRo
 
 // basic validation of options here
 try {
-    // Allow discord and telegram modes to bypass certain CLI-specific validations if necessary
     validateCliOptions(options);
 } catch (error) {
     handleCliOptionsError(error);
@@ -142,17 +141,9 @@ async function startAgent() {
     };
     let services;
     try {
-        // Determine the runMode for service initialization to satisfy ToolConfirmationProvider
-        // Currently bots are run on top of web server, so we need to pass web mode to service initializer
-        // TODO: Update with a NoOp runMode for actual bot
-        let serviceInitRunMode = runMode;
-        if (runMode === 'discord' || runMode === 'telegram') {
-            serviceInitRunMode = 'web'; // Use 'web' (NoOp) for service init when actual mode is a bot
-        }
-
         services = await createAgentServices(normalizedConfigPath, cliArgs, {
             connectionMode,
-            runMode: serviceInitRunMode, // Pass the adjusted runMode here
+            runMode: runMode, // Pass the original runMode here
         });
     } catch (err) {
         if (err instanceof Error) {
