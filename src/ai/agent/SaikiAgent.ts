@@ -89,7 +89,7 @@ export class SaikiAgent {
      */
     public async connectMcpClient(name: string, config: any): Promise<void> {
         try {
-            await this.clientManager.connectClient(name, config);
+            await this.clientManager.connectServer(name, config);
             this.agentEventBus.emit('saiki:mcpClientConnected', { name, success: true });
             this.agentEventBus.emit('saiki:availableToolsUpdated');
             logger.info(`SaikiAgent: Successfully connected to MCP client '${name}'.`);

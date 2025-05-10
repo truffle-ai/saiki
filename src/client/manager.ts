@@ -207,7 +207,7 @@ export class MCPClientManager {
         const connectionPromises: Promise<void>[] = [];
 
         for (const [name, config] of Object.entries(serverConfigs)) {
-            const connectPromise = this.connectClient(name, config)
+            const connectPromise = this.connectServer(name, config)
                 .then(() => {
                     successfulConnections.push(name);
                 })
@@ -243,7 +243,7 @@ export class MCPClientManager {
      * @returns Promise resolving when the connection attempt is complete.
      * @throws Error if the connection fails.
      */
-    async connectClient(name: string, config: McpServerConfig): Promise<void> {
+    async connectServer(name: string, config: McpServerConfig): Promise<void> {
         if (this.clients.has(name)) {
             logger.warn(`Client '${name}' is already connected or registered.`);
             return;
