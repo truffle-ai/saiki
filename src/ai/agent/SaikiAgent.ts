@@ -59,6 +59,7 @@ export class SaikiAgent {
      * Processes a single turn of interaction with the user.
      * The core logic for this resides within the llmService.
      * @param userInput The input from the user.
+     * @param imageDataInput Optional image data with MIME type for multimodal processing.
      * @returns The agent's response.
      */
     public async run(
@@ -66,10 +67,7 @@ export class SaikiAgent {
         imageDataInput?: { image: string; mimeType: string }
     ): Promise<string | null> {
         try {
-            const llmResponse: string = await this.llmService.completeTask(
-                userInput,
-                imageDataInput
-            );
+            const llmResponse = await this.llmService.completeTask(userInput, imageDataInput);
 
             // If llmResponse is an empty string, treat it as no significant response.
             if (llmResponse && llmResponse.trim() !== '') {
@@ -89,7 +87,7 @@ export class SaikiAgent {
      */
     public resetConversation(): void {
         try {
-            this.llmService.resetConversation(); // Assuming llmService has this method
+            this.llmService.resetConversation();
             logger.info('SaikiAgent conversation reset.');
             this.agentEventBus.emit('saiki:conversationReset');
         } catch (error) {

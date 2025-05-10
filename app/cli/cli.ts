@@ -15,7 +15,7 @@ ${validLogLevels.join('|')} - Set logging level directly
 
 /**
  * Initializes common CLI setup: logging, event subscriptions, tool loading.
- * @param agent
+ * @param agent The SaikiAgent instance providing access to all required services
  */
 async function _initCli(agent: SaikiAgent): Promise<void> {
     // Log model and connection info
@@ -50,7 +50,7 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
  * Run the AI CLI with the given LLM service
  * @param agent Saiki agent instance
  */
-export async function runAiCli(agent: SaikiAgent) {
+export async function runAiCli(agent: SaikiAgent): Promise<void> {
     try {
         // Common initialization
         await _initCli(agent);
@@ -128,7 +128,7 @@ export async function runAiCli(agent: SaikiAgent) {
                 }
 
                 try {
-                    // Simply call completeTask - all updates happen via events
+                    // Simply call run - all updates happen via events
                     await agent.run(userInput);
                 } catch (error) {
                     logger.error(
@@ -148,6 +148,8 @@ export async function runAiCli(agent: SaikiAgent) {
 
 /**
  * Run a single headless command via CLI without interactive prompt
+ * @param agent The SaikiAgent instance providing access to all required services
+ * @param prompt The user input to process
  */
 export async function runHeadlessCli(agent: SaikiAgent, prompt: string): Promise<void> {
     try {
