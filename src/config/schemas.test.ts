@@ -68,12 +68,28 @@ describe('Config Schemas', () => {
             const validStatic = { id: 's3', type: 'static' as const, priority: 1, content: 'c' };
             expect(() => contributorConfigSchema.parse(validStatic)).not.toThrow();
             const parsedStatic = contributorConfigSchema.parse(validStatic);
-            expect(parsedStatic.source).toBeUndefined();
+            // Type guard for static contributor
+            if (parsedStatic.type === 'static') {
+                expect(parsedStatic.content).toBe('c');
+                // Explicitly check that source is not a property of the static type after parsing
+                expect('source' in parsedStatic).toBe(false);
+            } else {
+                // Should not happen based on input
+                throw new Error('parsedStatic was not of type static');
+            }
 
             const validDynamic = { id: 'd3', type: 'dynamic' as const, priority: 1, source: 's' };
             expect(() => contributorConfigSchema.parse(validDynamic)).not.toThrow();
             const parsedDynamic = contributorConfigSchema.parse(validDynamic);
-            expect(parsedDynamic.content).toBeUndefined();
+            // Type guard for dynamic contributor
+            if (parsedDynamic.type === 'dynamic') {
+                expect(parsedDynamic.source).toBe('s');
+                // Explicitly check that content is not a property of the dynamic type after parsing
+                expect('content' in parsedDynamic).toBe(false);
+            } else {
+                // Should not happen based on input
+                throw new Error('parsedDynamic was not of type dynamic');
+            }
         });
     });
 
