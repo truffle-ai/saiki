@@ -30,7 +30,7 @@ export async function initializeApi(agent: SaikiAgent) {
             return res.status(400).send({ error: 'Missing message content' });
         }
         try {
-            agent.llmService.completeTask(req.body.message);
+            agent.run(req.body.message);
             res.status(202).send({ status: 'processing' });
         } catch (error) {
             logger.error(`Error handling POST /api/message: ${error.message}`);
@@ -49,10 +49,7 @@ export async function initializeApi(agent: SaikiAgent) {
             ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
             : undefined;
         try {
-            const responseText = await agent.llmService.completeTask(
-                req.body.message,
-                imageDataInput
-            );
+            const responseText = await agent.run(req.body.message, imageDataInput);
             res.status(200).send({ response: responseText });
         } catch (error) {
             logger.error(`Error handling POST /api/message-sync: ${error.message}`);
@@ -112,7 +109,7 @@ export async function initializeApi(agent: SaikiAgent) {
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
                     if (imageDataInput) logger.info('Image data included in message.');
-                    await agent.llmService.completeTask(data.content, imageDataInput);
+                    await agent.run(data.content, imageDataInput);
                 } else if (data.type === 'reset') {
                     logger.info('Processing reset command from WebSocket.');
                     agent.llmService.resetConversation();
@@ -156,7 +153,7 @@ export async function initializeApi(agent: SaikiAgent) {
         'Hey! I am Saiki as an MCP server, a remote AI agent that can chat with you or you can use to delegate tasks.',
         { message: z.string() },
         async ({ message }) => {
-            const text = await agent.llmService.completeTask(message);
+            const text = await agent.run(message);
             return { content: [{ type: 'text', text }] };
         }
     );

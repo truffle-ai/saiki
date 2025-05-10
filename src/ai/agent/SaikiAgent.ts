@@ -35,7 +35,7 @@ export class SaikiAgent {
      * @param userInput The input from the user.
      * @returns The agent's response.
      */
-    public async processUserTurn(
+    public async run(
         userInput: string,
         imageDataInput?: { image: string; mimeType: string }
     ): Promise<string | null> {

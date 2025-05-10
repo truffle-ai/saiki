@@ -139,7 +139,7 @@ export async function runAiCli(agent: SaikiAgent) {
 
                 try {
                     // Simply call completeTask - all updates happen via events
-                    await agent.llmService.completeTask(userInput);
+                    await agent.run(userInput);
                 } catch (error) {
                     logger.error(`Error in processing input: ${error.message}`);
                 }
@@ -163,7 +163,7 @@ export async function runHeadlessCli(agent: SaikiAgent, prompt: string): Promise
         await _initCli(agent.clientManager, agent.llmService, agent.agentEventBus);
 
         // Call llmService.completeTask directly for consistent detailed output
-        await agent.llmService.completeTask(prompt);
+        await agent.run(prompt);
     } catch (error) {
         logger.error(`Error during headless CLI execution: ${error.message}`);
         process.exit(1); // Exit with error code if headless execution fails
