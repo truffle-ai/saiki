@@ -118,7 +118,7 @@ function _createVercelLLMService(
  */
 export function createLLMService(
     config: LLMConfig,
-    router: LLMRouter = 'vercel',
+    router: LLMRouter,
     clientManager: MCPClientManager,
     agentEventBus: EventEmitter,
     messageManager: MessageManager

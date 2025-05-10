@@ -58,15 +58,22 @@ export const llmConfigSchema = z
             .int()
             .positive()
             .optional()
-            .describe('Maximum number of iterations for agentic loops or chained LLM calls'),
+            .default(50)
+            .describe(
+                'Maximum number of iterations for agentic loops or chained LLM calls, defaults to 50'
+            ),
         providerOptions: z
             .record(z.any())
             .optional()
-            .describe('Additional, provider-specific options (e.g., temperature, top_p)'),
+            .default({})
+            .describe(
+                'Additional, provider-specific options (e.g., temperature, top_p), defaults to an empty object'
+            ),
         router: z
-            .any()
+            .enum(['vercel', 'in-built'])
             .optional()
-            .describe('Configuration for an LLM router, if applicable (structure TBD)'),
+            .default('vercel')
+            .describe('LLM router to use (vercel or in-built), defaults to vercel'),
     })
     .superRefine((data, ctx) => {
         // 1. Provider must be one of the supported list
@@ -106,39 +113,53 @@ export const stdioServerConfigSchema = z.object({
     env: z
         .record(z.string())
         .optional()
-        .describe('Optional environment variables for the server process'),
+        .default({})
+        .describe(
+            'Optional environment variables for the server process, defaults to an empty object'
+        ),
     timeout: z
         .number()
         .int()
         .positive()
         .optional()
-        .describe('Timeout in milliseconds for the server connection'),
+        .default(30000)
+        .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
 });
 export type StdioServerConfig = z.infer<typeof stdioServerConfigSchema>;
 
 export const sseServerConfigSchema = z.object({
     type: z.literal('sse'),
     url: z.string().url().describe('URL for the SSE server endpoint'),
-    headers: z.record(z.string()).optional().describe('Optional headers for the SSE connection'),
+    headers: z
+        .record(z.string())
+        .optional()
+        .default({})
+        .describe('Optional headers for the SSE connection, defaults to an empty object'),
     timeout: z
         .number()
         .int()
         .positive()
         .optional()
-        .describe('Timeout in milliseconds for the server connection'),
+        .default(30000)
+        .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
 });
 export type SSEServerConfig = z.infer<typeof sseServerConfigSchema>;
 
 export const httpServerConfigSchema = z.object({
     type: z.literal('http'),
     baseUrl: z.string().url().describe('Base URL for the HTTP server'),
-    headers: z.record(z.string()).optional().describe('Optional headers for HTTP requests'),
+    headers: z
+        .record(z.string())
+        .optional()
+        .default({})
+        .describe('Optional headers for HTTP requests, defaults to an empty object'),
     timeout: z
         .number()
         .int()
         .positive()
         .optional()
-        .describe('Timeout in milliseconds for HTTP requests'),
+        .default(30000)
+        .describe('Timeout in milliseconds for HTTP requests, defaults to 30000ms'),
 });
 export type HttpServerConfig = z.infer<typeof httpServerConfigSchema>;
 

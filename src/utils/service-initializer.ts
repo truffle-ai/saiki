@@ -120,7 +120,7 @@ export async function createAgentServices(
     const promptManager = new PromptManager(config.llm.systemPrompt);
 
     // 6. Initialize message manager
-    const router: LLMRouter = config.llm.router ?? 'vercel';
+    const router = config.llm.router;
     const messageManager =
         overrides?.messageManager ?? createMessageManager(config.llm, router, promptManager);
 

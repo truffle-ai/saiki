@@ -16,7 +16,7 @@ import { resolvePackagePath } from '../utils/path.js';
 import { GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
 import { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
-const DEFAULT_TIMEOUT = 60000;
+// const DEFAULT_TIMEOUT = 60000; // Commented out or remove if not used elsewhere
 /**
  * Wrapper on top of Client class provided in model context protocol SDK, to add additional metadata about the server
  */
@@ -31,12 +31,12 @@ export class MCPClient implements IMCPClient {
     private serverSpawned = false;
     private serverPid: number | null = null;
     private serverAlias: string | null = null;
-    private timeout: number | undefined = undefined;
+    private timeout: number; // Changed to number, as Zod default ensures it
 
     constructor() {}
 
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
-        this.timeout = config.timeout ?? DEFAULT_TIMEOUT;
+        this.timeout = config.timeout; // Rely on Zod default for timeout
         if (config.type === 'stdio') {
             const stdioConfig: StdioServerConfig = config;
 
@@ -52,7 +52,7 @@ export class MCPClient implements IMCPClient {
             return this.connectViaSSE(sseConfig.url, sseConfig.headers, serverName);
         } else if (config.type === 'http') {
             const httpConfig: HttpServerConfig = config;
-            return this.connectViaHttp(httpConfig.baseUrl, httpConfig.headers ?? {}, serverName);
+            return this.connectViaHttp(httpConfig.baseUrl, httpConfig.headers, serverName);
         } else {
             throw new Error('Unsupported server type');
         }

@@ -19,7 +19,7 @@ import { getMaxTokensForModel } from '../registry.js';
  */
 export function createMessageManager(
     config: LLMConfig,
-    router: LLMRouter = 'vercel',
+    router: LLMRouter,
     promptManager: PromptManager
 ): MessageManager {
     const provider = config.provider.toLowerCase();
