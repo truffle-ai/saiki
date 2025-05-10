@@ -183,17 +183,34 @@ export function startTelegramBot(services: {
         let userText = msg.text;
         let imageDataInput;
 
-        // Detect image messages
-        if (msg.photo) {
-            const photo = msg.photo[msg.photo.length - 1];
-            const fileInfo = await bot.getFile(photo.file_id);
-            const fileUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.file_path}`;
-            const { base64, mimeType } = await downloadFileAsBase64(fileUrl);
-            imageDataInput = { image: base64, mimeType };
-            userText = msg.caption || '';
+        try {
+            // Detect image messages
+            if (msg.photo) {
+                const photo = msg.photo[msg.photo.length - 1];
+                const fileInfo = await bot.getFile(photo.file_id);
+                const fileUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.file_path}`;
+                const { base64, mimeType } = await downloadFileAsBase64(fileUrl);
+                imageDataInput = { image: base64, mimeType };
+                userText = msg.caption || ''; // Use caption if available
+            }
+        } catch (err) {
+            console.error('Failed to process attached image in Telegram bot', err);
+            try {
+                await bot.sendMessage(
+                    chatId,
+                    `🖼️ Error downloading or processing image: ${err.message}`
+                );
+            } catch (sendError) {
+                console.error('Failed to send image error message to user', sendError);
+            }
+            return; // Stop processing if image handling fails
         }
 
-        if (!userText) return;
+        // If there's no text (even after checking caption for photos) AND no image data, then nothing to process.
+        if (!userText && !imageDataInput) return;
+        // If userText is undefined (e.g. only an image was sent with no caption) and no image was processed (e.g. due to an error caught above, though `return` should prevent this)
+        // or simply no text was ever present and no image.
+        if (userText === undefined && !imageDataInput) return; // Catches case where msg.text was initially undefined and no photo or photo failed
 
         // Subscribe for toolCall events
         const toolCallHandler = (toolName: string, args: any) => {
@@ -205,7 +222,7 @@ export function startTelegramBot(services: {
 
         try {
             await bot.sendChatAction(chatId, 'typing');
-            const responseText = await llmService.completeTask(userText, imageDataInput);
+            const responseText = await llmService.completeTask(userText || '', imageDataInput);
             await bot.sendMessage(chatId, responseText);
         } catch (error) {
             console.error('Error handling Telegram message', error);

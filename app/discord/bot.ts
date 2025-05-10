@@ -15,7 +15,18 @@ if (!token) {
 
 // User-based cooldown system for Discord interactions
 const userCooldowns = new Map<string, number>();
-const COOLDOWN_SECONDS = parseInt(process.env.DISCORD_COOLDOWN_SECONDS || '5', 10);
+const RATE_LIMIT_ENABLED = process.env.DISCORD_RATE_LIMIT_ENABLED?.toLowerCase() !== 'false'; // default-on
+const COOLDOWN_SECONDS = Number(process.env.DISCORD_RATE_LIMIT_SECONDS ?? 5);
+
+if (Number.isNaN(COOLDOWN_SECONDS) || COOLDOWN_SECONDS < 0) {
+    console.error(
+        'DISCORD_RATE_LIMIT_SECONDS must be a non-negative number. Disabling rate limiting.'
+    );
+    // Potentially set RATE_LIMIT_ENABLED to false here or handle error more gracefully
+    // For now, if it's invalid, cooldown will effectively be 0 if not caught by other logic, or NaN issues might persist.
+    // A better approach for a critical config like this would be to throw and prevent startup, or default to a safe value.
+    // throw new Error('DISCORD_RATE_LIMIT_SECONDS must be a positive number'); // Or handle as a non-fatal error with a log
+}
 
 // Helper to download a file URL and convert it to base64
 async function downloadFileAsBase64(
@@ -69,20 +80,22 @@ export function startDiscordBot(services: {
         // Ignore bots
         if (message.author.bot) return;
 
-        // Rate limiting: User-based cooldown
-        const now = Date.now();
-        const cooldownEnd = userCooldowns.get(message.author.id) || 0;
+        if (RATE_LIMIT_ENABLED && COOLDOWN_SECONDS > 0) {
+            // Only apply cooldown if enabled and seconds > 0
+            const now = Date.now();
+            const cooldownEnd = userCooldowns.get(message.author.id) || 0;
 
-        if (now < cooldownEnd) {
-            const timeLeft = (cooldownEnd - now) / 1000;
-            try {
-                await message.reply(
-                    `Please wait ${timeLeft.toFixed(1)} more seconds before using this command again.`
-                );
-            } catch (replyError) {
-                console.error('Error sending cooldown message:', replyError);
+            if (now < cooldownEnd) {
+                const timeLeft = (cooldownEnd - now) / 1000;
+                try {
+                    await message.reply(
+                        `Please wait ${timeLeft.toFixed(1)} more seconds before using this command again.`
+                    );
+                } catch (replyError) {
+                    console.error('Error sending cooldown message:', replyError);
+                }
+                return;
             }
-            return;
         }
 
         let userText: string | undefined = message.content;
@@ -156,7 +169,9 @@ export function startDiscordBot(services: {
             } finally {
                 agentEventBus.off('llmservice:toolCall', toolCallHandler);
                 // Set cooldown for the user after processing
-                userCooldowns.set(message.author.id, Date.now() + COOLDOWN_SECONDS * 1000);
+                if (RATE_LIMIT_ENABLED && COOLDOWN_SECONDS > 0) {
+                    userCooldowns.set(message.author.id, Date.now() + COOLDOWN_SECONDS * 1000);
+                }
             }
         }
     });
