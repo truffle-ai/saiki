@@ -83,11 +83,11 @@ export class SaikiAgent {
     }
 
     /**
-     * Connects a new MCP client dynamically.
-     * @param name The name of the client to connect.
-     * @param config The configuration object for the client.
+     * Connects a new MCP server dynamically.
+     * @param name The name of the server to connect.
+     * @param config The configuration object for the server.
      */
-    public async connectMcpClient(name: string, config: any): Promise<void> {
+    public async connectMcpServer(name: string, config: any): Promise<void> {
         try {
             await this.clientManager.connectServer(name, config);
             this.agentEventBus.emit('saiki:mcpClientConnected', { name, success: true });
