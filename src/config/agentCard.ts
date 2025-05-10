@@ -1,9 +1,9 @@
 import type { AgentCard } from './types.js';
-import type { AgentCardOverride } from './schemas.js';
+import { AgentCardSchema } from './schemas.js';
 
 /**
  * Minimal runtime context needed to establish defaults
- * if not provided in AgentCardOverride.
+ * if not provided in AgentCardOverride or by AgentCardSchema.
  */
 export interface MinimalAgentCardContext {
     defaultName: string; // Ultimate fallback name if not in overrides
@@ -12,96 +12,35 @@ export interface MinimalAgentCardContext {
     webSubscriber?: unknown; // To determine default pushNotification capability
 }
 
-const DEFAULT_CHAT_TOOL_NAME = 'chat';
-const DEFAULT_CHAT_TOOL_DESCRIPTION =
-    'Allows you to chat with the an AI agent. Send a message to interact.';
-
 /**
- * Creates the final AgentCard.
- * It establishes a full default structure based on minimal context and static defaults,
- * then merges the user-provided overrides (AgentCardOverride) on top.
+ * Creates the final AgentCard by merging context-defined values with user-provided overrides,
+ * then uses AgentCardSchema.parse() to apply schema-defined static defaults and perform validation.
  */
 export function createAgentCard(
     context: MinimalAgentCardContext,
-    overrides: AgentCardOverride // This is Partial<AgentCard> via Zod
+    overrides: Partial<AgentCard> // Updated type from AgentCardOverride to Partial<AgentCard>
 ): AgentCard {
     const { defaultName, defaultVersion, defaultBaseUrl, webSubscriber } = context;
 
-    // Start with a fully-formed default structure
-    const defaultAgentCardData: AgentCard = {
-        name: defaultName,
-        description:
-            'Alfred is an AI assistant capable of chat and task delegation, accessible via multiple protocols.',
-        url: `${defaultBaseUrl}/mcp`,
-        version: defaultVersion,
-        provider: undefined,
-        documentationUrl: undefined,
-        capabilities: {
-            streaming: true,
-            pushNotifications: !!webSubscriber,
-            stateTransitionHistory: false,
-        },
-        authentication: {
-            schemes: [],
-            credentials: undefined,
-        },
-        defaultInputModes: ['application/json', 'text/plain'],
-        defaultOutputModes: ['application/json', 'text/event-stream', 'text/plain'],
-        skills: [
-            {
-                id: DEFAULT_CHAT_TOOL_NAME,
-                name: DEFAULT_CHAT_TOOL_NAME,
-                description: DEFAULT_CHAT_TOOL_DESCRIPTION,
-                tags: ['chat', 'AI', 'assistant', 'mcp', 'natural language'],
-                examples: [
-                    `Send a JSON-RPC request to /mcp with method: "${DEFAULT_CHAT_TOOL_NAME}" and params: {"message":"Your query..."}`,
-                    'Alternatively, use a compatible MCP client library.',
-                ],
-                inputModes: ['text/plain'],
-                outputModes: ['text/plain'],
-            },
-        ],
+    // Start with overrides (which are now Partial<AgentCard> or {})
+    const effectiveInput: Record<string, any> = { ...overrides };
+
+    // Layer in context-dependent required fields if not already provided by overrides.
+    effectiveInput.name = overrides.name ?? defaultName;
+    effectiveInput.version = overrides.version ?? defaultVersion;
+    effectiveInput.url = overrides.url ?? `${defaultBaseUrl}/mcp`;
+
+    // Handle context-dependent capabilities.pushNotifications.
+    const capsFromOverrides = overrides.capabilities;
+    effectiveInput.capabilities = {
+        ...(capsFromOverrides ?? {}),
+        pushNotifications: capsFromOverrides?.pushNotifications ?? !!webSubscriber,
     };
 
-    // Merge overrides onto the defaults
-    // If a top-level optional field (like provider, documentationUrl) is in overrides, it's used.
-    // Otherwise, the default (which might be undefined) is used.
-    const finalCard: AgentCard = {
-        name: overrides.name ?? defaultAgentCardData.name,
-        description: overrides.description ?? defaultAgentCardData.description,
-        url: overrides.url ?? defaultAgentCardData.url,
-        version: overrides.version ?? defaultAgentCardData.version,
-        provider: 'provider' in overrides ? overrides.provider : defaultAgentCardData.provider,
-        documentationUrl:
-            'documentationUrl' in overrides
-                ? overrides.documentationUrl
-                : defaultAgentCardData.documentationUrl,
-        capabilities: {
-            ...defaultAgentCardData.capabilities,
-            ...(overrides.capabilities ?? {}),
-        },
-        authentication: {
-            ...defaultAgentCardData.authentication,
-            ...(overrides.authentication ?? {}),
-            credentials:
-                overrides.authentication && 'credentials' in overrides.authentication
-                    ? overrides.authentication.credentials
-                    : defaultAgentCardData.authentication.credentials,
-        },
-        defaultInputModes:
-            overrides.defaultInputModes && overrides.defaultInputModes.length > 0
-                ? overrides.defaultInputModes
-                : defaultAgentCardData.defaultInputModes,
-        defaultOutputModes:
-            overrides.defaultOutputModes && overrides.defaultOutputModes.length > 0
-                ? overrides.defaultOutputModes
-                : defaultAgentCardData.defaultOutputModes,
-        // User-defined skills from overrides replace the default skill(s).
-        skills:
-            overrides.skills && overrides.skills.length > 0
-                ? overrides.skills
-                : defaultAgentCardData.skills,
-    };
+    // If overrides specify an empty skills array, this means "use schema default skills".
+    if (overrides.skills && overrides.skills.length === 0) {
+        effectiveInput.skills = undefined;
+    }
 
-    return finalCard;
+    return AgentCardSchema.parse(effectiveInput);
 }

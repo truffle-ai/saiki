@@ -162,6 +162,7 @@ async function startAgent() {
     const { clientManager, llmService, agentEventBus } = services;
 
     // Start based on mode
+    // TODO: We ideally should be able to start all services with one or more interfaces at once. Single backend, multiple frontend interfaces.
     if (runMode === 'cli') {
         if (headlessInput) {
             await startHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);

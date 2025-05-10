@@ -12,9 +12,6 @@ import { randomUUID } from 'crypto';
 import type { AgentCard } from '../config/types.js';
 import { setupA2ARoutes } from './a2a.js';
 import { initializeMcpServerEndpoints } from './mcp_handler.js';
-import { AgentCardOverrideSchema } from '../config/schemas.js';
-import type { AgentCardOverride } from '../config/schemas.js';
-import { ZodError } from 'zod';
 import { createAgentCard } from '../config/agentCard.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
@@ -151,40 +148,20 @@ export async function initializeApi(
     });
 
     // Apply agentCard overrides (if any)
-    const rawOverride = agentCardOverride ?? {};
-    let cardConfig: AgentCardOverride;
-    try {
-        cardConfig = AgentCardOverrideSchema.parse(rawOverride);
-    } catch (err: unknown) {
-        if (err instanceof ZodError) {
-            logger.error('Invalid agentCard override:');
-            err.errors.forEach((e) => {
-                const path = e.path.join('.') || '<root>';
-                logger.error(`- ${path}: ${e.message}`);
-            });
-        } else {
-            logger.error('Invalid agentCard override:', err);
-        }
-        process.exit(1);
-    }
-
-    // Common agent and MCP server information
-    const agentName = cardConfig.name ?? 'saiki';
-    const agentVersion = cardConfig.version ?? '1.0.0';
-
-    // Construct the fixed tool details (must match what's used in mcp_handler.ts)
+    // TODO: This is a temporary solution to allow for agentCard overrides. Implement a more robust solution in the future.
+    const overrides = agentCardOverride ?? {};
     const baseApiUrl = process.env.SAIKI_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-
-    // Build and merge the agent card in one step
     const agentCardData = createAgentCard(
         {
-            defaultName: agentName,
-            defaultVersion: agentVersion,
+            defaultName: overrides.name ?? 'saiki',
+            defaultVersion: overrides.version ?? '1.0.0',
             defaultBaseUrl: baseApiUrl,
             webSubscriber,
         },
-        cardConfig
+        overrides
     );
+    const agentName = agentCardData.name;
+    const agentVersion = agentCardData.version;
 
     // Setup A2A routes
     setupA2ARoutes(app, agentCardData);
