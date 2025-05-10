@@ -26,14 +26,29 @@ afterEach(async () => {
 });
 
 describe('loadConfigFile', () => {
-    it('loads and expands environment variables in YAML', async () => {
+    it('loads and expands environment variables within LLM providerOptions in YAML', async () => {
         process.env.TEST_VAR = 'value';
-        const yamlContent = 'foo: $TEST_VAR\nnested:\n  bar: ${TEST_VAR}';
+        const yamlContent = `
+llm:
+  provider: 'test-provider'
+  model: 'test-model'
+  systemPrompt: 'base-prompt' # Added a base system prompt for completeness
+  providerOptions:
+    foo: $TEST_VAR
+    nested:
+      bar: \${TEST_VAR}
+mcpServers:
+  testServer: # Added a minimal mcpServers entry for schema validity
+    type: 'stdio'
+    command: 'echo'
+    args: ['hello']
+`;
         await fs.writeFile(tmpFile, yamlContent);
 
         const config = await loadConfigFile(tmpFile);
-        expect(config.foo).toBe('value');
-        expect(config.nested.bar).toBe('value');
+        // Access through the valid path, assuming llm and providerOptions exist
+        expect(config.llm?.providerOptions?.foo).toBe('value');
+        expect(config.llm?.providerOptions?.nested?.bar).toBe('value');
     });
 
     it('throws error when file cannot be read', async () => {

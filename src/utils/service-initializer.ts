@@ -27,7 +27,7 @@
 
 import { MCPClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/services/types.js';
-import { AgentConfig } from '../config/types.js';
+import { AgentConfig } from '../config/schemas.js';
 import { createLLMService } from '../ai/llm/services/factory.js';
 import { logger } from './logger.js';
 import { EventEmitter } from 'events';

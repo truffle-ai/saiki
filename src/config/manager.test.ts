@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ConfigManager } from './manager.js';
-import type { AgentConfig, CLIConfigOverrides } from './types.js';
+import type { AgentConfig } from './schemas.js';
+import { CLIConfigOverrides } from './types.js';
 
 // Helper to deep clone config
 const clone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));

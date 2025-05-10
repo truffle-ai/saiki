@@ -7,7 +7,7 @@ import { ConfigManager } from '../../config/manager.js';
 import { EventEmitter } from 'events';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../utils/logger.js';
-import { McpServerConfig } from '../../config/types.js';
+import { McpServerConfig } from '../../config/schemas.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'clientManager',

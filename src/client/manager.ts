@@ -1,5 +1,5 @@
 import { MCPClient } from './mcp-client.js';
-import { ServerConfigs, McpServerConfig } from '../config/types.js';
+import { ServerConfigs, McpServerConfig } from '../config/schemas.js';
 import { logger } from '../utils/logger.js';
 import { IMCPClient } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';

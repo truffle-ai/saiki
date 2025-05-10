@@ -9,7 +9,7 @@ import type {
     StdioServerConfig,
     SSEServerConfig,
     HttpServerConfig,
-} from '../config/types.js';
+} from '../config/schemas.js';
 import { ToolSet } from '../ai/types.js';
 import { IMCPClient } from './types.js';
 import { resolvePackagePath } from '../utils/path.js';

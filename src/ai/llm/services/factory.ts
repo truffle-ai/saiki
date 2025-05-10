@@ -1,6 +1,6 @@
 import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
-import { LLMConfig } from '../../../config/types.js';
+import { LLMConfig } from '../../../config/schemas.js';
 import { logger } from '../../../utils/logger.js';
 import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
