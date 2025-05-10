@@ -8,6 +8,12 @@ import { EventEmitter } from 'events';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../utils/logger.js';
 
+/**
+ * The main entry point into Saiki's core.
+ * It provides an abstraction layer on top of the internal services that saiki has.
+ * You can use the SaikiAgent class in applications to build AI Agents.
+ * By design, most of the methods in this class are thin wrappers around the internal services.
+ */
 export class SaikiAgent {
     public readonly clientManager: MCPClientManager;
     public readonly promptManager: PromptManager;
@@ -29,9 +35,7 @@ export class SaikiAgent {
 
     /**
      * Processes a single turn of interaction with the user.
-     * This is a simplified example; the actual implementation would be more complex,
-     * handling tool calls, streaming, and more elaborate state.
-     * The core logic for this typically resides within the llmService.
+     * The core logic for this resides within the llmService.
      * @param userInput The input from the user.
      * @returns The agent's response.
      */
@@ -40,12 +44,6 @@ export class SaikiAgent {
         imageDataInput?: { image: string; mimeType: string }
     ): Promise<string | null> {
         try {
-            // The llmService.completeTask (or a similar method) is expected to:
-            // 1. Manage message history (possibly via MessageManager).
-            // 2. Interact with the LLM.
-            // 3. Handle tool calls (via ClientManager).
-            // 4. Utilize system prompts (via PromptManager).
-            // According to ILLMService, completeTask returns Promise<string>
             const llmResponse: string = await this.llmService.completeTask(
                 userInput,
                 imageDataInput
@@ -58,7 +56,7 @@ export class SaikiAgent {
             // Return null if the response is empty or just whitespace.
             return null;
         } catch (error) {
-            logger.error('Error during SaikiAgent.processUserTurn:', error);
+            logger.error('Error during SaikiAgent.run:', error);
             // Re-throw the error to allow the caller to handle it.
             throw error;
         }
@@ -66,7 +64,6 @@ export class SaikiAgent {
 
     /**
      * Resets the conversation history.
-     * This typically involves calling a method on the llmService or messageManager.
      */
     public resetConversation(): void {
         try {
