@@ -170,6 +170,9 @@ export type McpServerConfig = z.infer<typeof mcpServerConfigSchema>;
 
 export const serverConfigsSchema = z
     .record(mcpServerConfigSchema)
+    .refine((obj) => Object.keys(obj).length > 0, {
+        message: 'At least one MCP server configuration is required.',
+    })
     .describe('A dictionary of server configurations, keyed by server name');
 export type ServerConfigs = z.infer<typeof serverConfigsSchema>;
 

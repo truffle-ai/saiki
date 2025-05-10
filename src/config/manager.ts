@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { agentConfigSchema, llmConfigSchema } from './schemas.js';
 import type { AgentConfig } from './schemas.js';
 import type { CLIConfigOverrides, LLMProvenance } from './types.js';
+import { loadConfigFile } from './loader.js';
 
 declare function structuredClone<T>(value: T): T;
 
@@ -18,19 +19,48 @@ export class ConfigManager {
     private resolved: AgentConfig;
     private provenance: { llm: LLMProvenance };
 
-    constructor(fileConfig: any) {
+    constructor(fileConfig: AgentConfig) {
+        this.initFromConfig(fileConfig);
+    }
+
+    /**
+     * Initializes the agent configuration from a configuration object
+     * This will re-validate the entire configuration and apply Zod schema defaults.
+     * Existing CLI overrides are NOT automatically re-applied.
+     * Call overrideCLI separately after loading if CLI overrides should persist.
+     * @param newFileConfig The new configuration object (typically from a config file).
+     */
+    public initFromConfig(newFileConfig: AgentConfig): void {
+        logger.debug('Loading new agent configuration...');
         // Note: structuredClone requires Node.js v17.0.0+. For older versions, use a polyfill or lodash.cloneDeep.
-        this.resolved = structuredClone(fileConfig);
+        this.resolved = structuredClone(newFileConfig);
+
+        // Reset provenance to the initial state, as if loading from a file for the first time.
+        // This assumes CLI overrides will be applied separately by calling overrideCLI if needed.
         this.provenance = {
             llm: { provider: 'file', model: 'file', router: 'default', apiKey: 'file' },
         };
-        // Initial validation can happen here or be deferred, but constructor should ensure a valid state.
-        // Let's parse here to ensure this.resolved is always a valid AgentConfig from the start if possible.
+
+        this.validate(); // Parse, validate, and apply Zod defaults to this.resolved.
+        logger.info('New agent configuration loaded and validated.');
+    }
+
+    /**
+     * Reloads the agent configuration directly from a config file
+     * This effectively hot reloads the configuration.
+     * @param configPath The path to the configuration file.
+     */
+    public async hotReloadFromFile(configPath: string): Promise<void> {
+        logger.debug(`Attempting to hot reload configuration from: ${configPath}`);
         try {
-            this.resolved = agentConfigSchema.parse(this.resolved);
-        } catch (err) {
-            this.printStateForError('Initial config parsing failed');
-            this.handleZodError(err, 'agent'); // Re-throw consistently
+            const newFileConfig: AgentConfig = await loadConfigFile(configPath);
+            this.initFromConfig(newFileConfig); // Use the existing loadConfig to update the instance state
+            logger.info(`Successfully hot reloaded configuration from: ${configPath}`);
+        } catch (error) {
+            logger.error(`Failed to hot reload configuration from ${configPath}: ${error.message}`);
+            // Re-throw or handle as appropriate for your application
+            // For now, re-throwing to make the caller aware of the failure.
+            throw error;
         }
     }
 
@@ -39,8 +69,9 @@ export class ConfigManager {
         logger.debug('Applying CLI overrides to LLM config');
         // Ensure llm object exists before overriding its properties
         if (!this.resolved.llm) {
-            this.resolved.llm = {} as any; // Or minimal valid structure
+            throw new Error('LLM config is not initialized');
         }
+
         if (cliArgs.provider) {
             this.resolved.llm.provider = cliArgs.provider;
             this.provenance.llm.provider = 'cli';
@@ -111,7 +142,7 @@ export class ConfigManager {
      */
     validate(): void {
         try {
-            // Parse the entire resolved config. This will also validate mcpServers and llm internally.
+            // Parse the entire resolved config. This will validate the entire agent config.
             // The parsed result will be strictly typed and will have stripped any unknown keys (by default).
             this.resolved = agentConfigSchema.parse(this.resolved);
             logger.debug('Agent configuration validation successful', 'green');
