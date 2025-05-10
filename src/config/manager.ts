@@ -108,10 +108,8 @@ export class ConfigManager {
         logger.info('Resolved configuration (current state):');
         logger.info(JSON.stringify(this.resolved, null, 2));
         logger.info('Configuration sources (LLM):');
-        if (this.provenance && this.provenance.llm) {
-            for (const [field, src] of Object.entries(this.provenance.llm)) {
-                logger.info(`  • ${field}: ${src}`);
-            }
+        for (const [field, src] of Object.entries(this.provenance?.llm ?? {})) {
+            logger.info(`  • ${field}: ${src}`);
         }
     }
 
