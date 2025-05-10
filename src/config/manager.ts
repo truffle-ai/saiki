@@ -24,7 +24,6 @@ export class ConfigManager {
         this.provenance = {
             llm: { provider: 'file', model: 'file', router: 'default', apiKey: 'file' },
         };
-        this.applyDefaults();
         // Initial validation can happen here or be deferred, but constructor should ensure a valid state.
         // Let's parse here to ensure this.resolved is always a valid AgentConfig from the start if possible.
         try {
@@ -33,21 +32,6 @@ export class ConfigManager {
             this.printStateForError('Initial config parsing failed');
             this.handleZodError(err, 'agent'); // Re-throw consistently
         }
-    }
-
-    private applyDefaults() {
-        // The following block is removed as agentConfigSchema parsing in the constructor
-        // will validate the presence and structure of this.resolved.llm.
-        // If llm were optional in agentConfigSchema and needed a default object,
-        // that would be handled differently, likely by making llmConfigSchema itself optional
-        // and then defaulting it in agentConfigSchema.
-        // if (!this.resolved.llm) {
-        //     this.resolved.llm = {} as any;
-        // }
-        // All default values should ideally be handled by .default() in Zod schemas.
-        // This method is kept for now in case there are complex defaults not easily
-        // expressed in Zod, but the goal is to minimize its use.
-        // Example: If a default depends on another field's value after initial load.
     }
 
     /** Apply CLI overrides and record provenance */
@@ -74,7 +58,6 @@ export class ConfigManager {
             this.provenance.llm.apiKey = 'cli';
         }
         // Re-apply defaults and validate after overrides
-        this.applyDefaults();
         this.validate();
         return this;
     }
@@ -137,16 +120,4 @@ export class ConfigManager {
             this.handleZodError(err, 'agent');
         }
     }
-
-    // The individual validateMcpServers and validateLlm methods are no longer strictly necessary
-    // as agentConfigSchema.parse() handles this. They can be removed if not used elsewhere.
-    /*
-    private validateMcpServers(): void {
-        // ... old implementation ...
-    }
-
-    private validateLlm(): void {
-        // ... old implementation ...
-    }
-    */
 }
