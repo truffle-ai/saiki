@@ -16,16 +16,13 @@ if (!token) {
 // User-based cooldown system for Discord interactions
 const userCooldowns = new Map<string, number>();
 const RATE_LIMIT_ENABLED = process.env.DISCORD_RATE_LIMIT_ENABLED?.toLowerCase() !== 'false'; // default-on
-const COOLDOWN_SECONDS = Number(process.env.DISCORD_RATE_LIMIT_SECONDS ?? 5);
+let COOLDOWN_SECONDS = Number(process.env.DISCORD_RATE_LIMIT_SECONDS ?? 5);
 
 if (Number.isNaN(COOLDOWN_SECONDS) || COOLDOWN_SECONDS < 0) {
     console.error(
-        'DISCORD_RATE_LIMIT_SECONDS must be a non-negative number. Disabling rate limiting.'
+        'DISCORD_RATE_LIMIT_SECONDS must be a non-negative number. Defaulting to 5 seconds.'
     );
-    // Potentially set RATE_LIMIT_ENABLED to false here or handle error more gracefully
-    // For now, if it's invalid, cooldown will effectively be 0 if not caught by other logic, or NaN issues might persist.
-    // A better approach for a critical config like this would be to throw and prevent startup, or default to a safe value.
-    // throw new Error('DISCORD_RATE_LIMIT_SECONDS must be a positive number'); // Or handle as a non-fatal error with a log
+    COOLDOWN_SECONDS = 5; // Default to a safe value
 }
 
 // Helper to download a file URL and convert it to base64
