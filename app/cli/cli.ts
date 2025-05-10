@@ -18,24 +18,18 @@ ${validLogLevels.join('|')} - Set logging level directly
 
 /**
  * Initializes common CLI setup: logging, event subscriptions, tool loading.
- * @param clientManager
- * @param llmService
- * @param agentEventBus
+ * @param agent
  */
-async function _initCli(
-    clientManager: MCPClientManager,
-    llmService: ILLMService,
-    agentEventBus: EventEmitter
-): Promise<void> {
+async function _initCli(agent: SaikiAgent): Promise<void> {
     // Log model and connection info
     logger.info(
-        `Using model config: ${JSON.stringify(llmService.getConfig(), null, 2)}`,
+        `Using model config: ${JSON.stringify(agent.llmService.getConfig(), null, 2)}`,
         null,
         'yellow'
     );
     logger.debug(`Log level: ${logger.getLevel()}`);
-    logger.info(`Connected servers: ${clientManager.getClients().size}`, null, 'green');
-    const failedConnections = clientManager.getFailedConnections();
+    logger.info(`Connected servers: ${agent.clientManager.getClients().size}`, null, 'green');
+    const failedConnections = agent.clientManager.getFailedConnections();
     if (Object.keys(failedConnections).length > 0) {
         logger.error(`Failed connections: ${Object.keys(failedConnections).length}.`, null, 'red');
     }
@@ -43,27 +37,26 @@ async function _initCli(
     // Set up event management
     logger.info('Setting up CLI event subscriptions...');
     const cliSubscriber = new CLISubscriber();
-    cliSubscriber.subscribe(agentEventBus);
+    cliSubscriber.subscribe(agent.agentEventBus);
 
     // Load available tools
     logger.info('Loading available tools...');
-    const tools = await clientManager.getAllTools(); // tools variable is not used currently but kept for potential future use
+    const tools = await agent.clientManager.getAllTools(); // tools variable is not used currently but kept for potential future use
     logger.info(
-        `Loaded ${Object.keys(tools).length} tools from ${clientManager.getClients().size} MCP servers
+        `Loaded ${Object.keys(tools).length} tools from ${agent.clientManager.getClients().size} MCP servers
 `
     );
-    logger.info('Saiki AI agent initialized successfully!', null, 'green');
+    logger.info('AI Agent initialized successfully!', null, 'green');
 }
 
 /**
  * Run the AI CLI with the given LLM service
- * @param clientManager Client manager with registered tool providers
- * @param llmService LLM service implementation
+ * @param agent Saiki agent instance
  */
 export async function runAiCli(agent: SaikiAgent) {
     try {
         // Common initialization
-        await _initCli(agent.clientManager, agent.llmService, agent.agentEventBus);
+        await _initCli(agent);
 
         // Create readline interface
         const rl = readline.createInterface({
@@ -160,7 +153,7 @@ export async function runAiCli(agent: SaikiAgent) {
 export async function runHeadlessCli(agent: SaikiAgent, prompt: string): Promise<void> {
     try {
         // Reinstate _initCli for consistent logging and setup
-        await _initCli(agent.clientManager, agent.llmService, agent.agentEventBus);
+        await _initCli(agent);
 
         // Call llmService.completeTask directly for consistent detailed output
         await agent.run(prompt);
