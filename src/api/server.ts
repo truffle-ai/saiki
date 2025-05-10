@@ -78,7 +78,7 @@ export async function initializeApi(agent: SaikiAgent) {
             return res.status(400).send({ error: 'Missing or invalid server config object' });
         }
         try {
-            await agent.clientManager.connectClient(name, config);
+            await agent.connectMcpClient(name, config);
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
         } catch (error) {

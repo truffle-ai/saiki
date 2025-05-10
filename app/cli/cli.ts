@@ -52,7 +52,7 @@ async function _initCli(
         `Loaded ${Object.keys(tools).length} tools from ${clientManager.getClients().size} MCP servers
 `
     );
-    logger.info('AI Agent initialized successfully!', null, 'green');
+    logger.info('Saiki AI agent initialized successfully!', null, 'green');
 }
 
 /**

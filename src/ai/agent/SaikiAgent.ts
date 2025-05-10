@@ -12,9 +12,12 @@ import { logger } from '../../utils/logger.js';
  * The main entry point into Saiki's core.
  * It provides an abstraction layer on top of the internal services that saiki has.
  * You can use the SaikiAgent class in applications to build AI Agents.
- * By design, most of the methods in this class are thin wrappers around the internal services.
+ * By design, most of the methods in this class are thin wrappers around the internal services, exposing functionality that we might want to use in applications.
  */
 export class SaikiAgent {
+    /**
+     * These services are public for use by the outside world
+     */
     public readonly clientManager: MCPClientManager;
     public readonly promptManager: PromptManager;
     public readonly llmService: ILLMService;
@@ -69,9 +72,34 @@ export class SaikiAgent {
         try {
             this.llmService.resetConversation(); // Assuming llmService has this method
             logger.info('SaikiAgent conversation reset.');
+            this.agentEventBus.emit('saiki:conversationReset');
         } catch (error) {
             logger.error('Error during SaikiAgent.resetConversation:', error);
             // Re-throw the error to allow the caller to handle it.
+            throw error;
+        }
+    }
+
+    /**
+     * Connects a new MCP client dynamically.
+     * @param name The name of the client to connect.
+     * @param config The configuration object for the client.
+     */
+    public async connectMcpClient(name: string, config: any): Promise<void> {
+        try {
+            await this.clientManager.connectClient(name, config);
+            this.agentEventBus.emit('saiki:mcpClientConnected', { name, success: true });
+            this.agentEventBus.emit('saiki:availableToolsUpdated');
+            logger.info(`SaikiAgent: Successfully connected to MCP client '${name}'.`);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error(`SaikiAgent: Failed to connect to MCP client '${name}': ${errorMessage}`);
+            this.agentEventBus.emit('saiki:mcpClientConnected', {
+                name,
+                success: false,
+                error: errorMessage,
+            });
+            // Re-throw to allow the caller (e.g., API endpoint) to handle appropriately
             throw error;
         }
     }
