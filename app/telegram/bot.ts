@@ -15,6 +15,14 @@ if (!token) {
     process.exit(1);
 }
 
+// Insert concurrency cap and debounce cache for inline queries
+const MAX_CONCURRENT_INLINE_QUERIES = process.env.TELEGRAM_INLINE_QUERY_CONCURRENCY
+    ? Number(process.env.TELEGRAM_INLINE_QUERY_CONCURRENCY)
+    : 5;
+let currentInlineQueries = 0;
+const INLINE_QUERY_DEBOUNCE_INTERVAL = 2000; // ms
+const inlineQueryCache: Record<string, { timestamp: number; results: any[] }> = {};
+
 // Helper to download a file URL and convert it to base64
 async function downloadFileAsBase64(
     fileUrl: string
@@ -70,13 +78,23 @@ export function startTelegramBot(services: {
         const action = callbackQuery.data;
         const chatId = callbackQuery.message?.chat.id;
         if (!chatId) return;
-        if (action === 'reset') {
-            await llmService.resetConversation();
-            await bot.sendMessage(chatId, '🔄 Conversation has been reset.');
-        } else if (action === 'help') {
-            await bot.sendMessage(chatId, 'Send me text or images and I will respond.');
+        try {
+            if (action === 'reset') {
+                await llmService.resetConversation();
+                await bot.sendMessage(chatId, '🔄 Conversation has been reset.');
+            } else if (action === 'help') {
+                await bot.sendMessage(chatId, 'Send me text or images and I will respond.');
+            }
+            await bot.answerCallbackQuery(callbackQuery.id);
+        } catch (error) {
+            console.error('Error handling callback query', error);
+            // Attempt to notify user of the error
+            try {
+                await bot.sendMessage(chatId, `Error processing request: ${error.message}`);
+            } catch (e) {
+                console.error('Failed to send error message for callback query', e);
+            }
         }
-        await bot.answerCallbackQuery(callbackQuery.id);
     });
 
     // Group chat slash command: /ask <your question>
@@ -101,8 +119,29 @@ export function startTelegramBot(services: {
     // Inline query handler
     bot.on('inline_query', async (inlineQuery) => {
         if (!inlineQuery.query) return;
+        const userId = inlineQuery.from.id;
+        const queryText = inlineQuery.query.trim();
+        const cacheKey = `${userId}:${queryText}`;
+        const now = Date.now();
+        // Debounce: return cached results if query repeated within interval
+        const cached = inlineQueryCache[cacheKey];
+        if (cached && now - cached.timestamp < INLINE_QUERY_DEBOUNCE_INTERVAL) {
+            return bot.answerInlineQuery(inlineQuery.id, cached.results);
+        }
+        // Concurrency cap
+        if (currentInlineQueries >= MAX_CONCURRENT_INLINE_QUERIES) {
+            // Too many concurrent inline queries; respond with empty list
+            return bot.answerInlineQuery(inlineQuery.id, []);
+        }
+        currentInlineQueries++;
         try {
-            const resultText = await llmService.completeTask(inlineQuery.query);
+            const queryTimeout = 15000; // 15 seconds timeout
+            const resultText = await Promise.race<string>([
+                llmService.completeTask(inlineQuery.query),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Query timed out')), queryTimeout)
+                ),
+            ]);
             const results = [
                 {
                     type: 'article',
@@ -112,9 +151,29 @@ export function startTelegramBot(services: {
                     description: resultText.substring(0, 100),
                 },
             ];
+            // Cache the results
+            inlineQueryCache[cacheKey] = { timestamp: now, results };
             await bot.answerInlineQuery(inlineQuery.id, results);
         } catch (error) {
             console.error('Error handling inline query', error);
+            // Inform user about the error through inline results
+            try {
+                await bot.answerInlineQuery(inlineQuery.id, [
+                    {
+                        type: 'article',
+                        id: inlineQuery.id,
+                        title: 'Error processing query',
+                        input_message_content: {
+                            message_text: `Sorry, I encountered an error: ${error.message}`,
+                        },
+                        description: 'Error occurred while processing your request',
+                    },
+                ]);
+            } catch (e) {
+                console.error('Failed to send inline query error', e);
+            }
+        } finally {
+            currentInlineQueries--;
         }
     });
 

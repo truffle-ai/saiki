@@ -13,6 +13,10 @@ if (!token) {
     process.exit(1);
 }
 
+// User-based cooldown system for Discord interactions
+const userCooldowns = new Map<string, number>();
+const COOLDOWN_SECONDS = parseInt(process.env.DISCORD_COOLDOWN_SECONDS || '5', 10);
+
 // Helper to download a file URL and convert it to base64
 async function downloadFileAsBase64(
     fileUrl: string
@@ -65,6 +69,22 @@ export function startDiscordBot(services: {
         // Ignore bots
         if (message.author.bot) return;
 
+        // Rate limiting: User-based cooldown
+        const now = Date.now();
+        const cooldownEnd = userCooldowns.get(message.author.id) || 0;
+
+        if (now < cooldownEnd) {
+            const timeLeft = (cooldownEnd - now) / 1000;
+            try {
+                await message.reply(
+                    `Please wait ${timeLeft.toFixed(1)} more seconds before using this command again.`
+                );
+            } catch (replyError) {
+                console.error('Error sending cooldown message:', replyError);
+            }
+            return;
+        }
+
         let userText: string | undefined = message.content;
         let imageDataInput: any;
 
@@ -87,21 +107,56 @@ export function startDiscordBot(services: {
 
             // Subscribe to toolCall events
             const toolCallHandler = (toolName: string, args: any) => {
-                message.channel.send(
-                    `⚙️ Calling tool **${toolName}** with args: ${JSON.stringify(args)}`
-                );
+                message.channel
+                    .send(`⚙️ Calling tool **${toolName}** with args: ${JSON.stringify(args)}`)
+                    .catch((error) => {
+                        console.error(
+                            `Failed to send tool call notification for ${toolName} to channel ${message.channel.id}:`,
+                            error
+                        );
+                    });
             };
             agentEventBus.on('llmservice:toolCall', toolCallHandler);
 
             try {
                 await message.channel.sendTyping();
                 const responseText = await llmService.completeTask(userText, imageDataInput);
-                await message.reply(responseText);
+                // Handle Discord's 2000 character limit
+                const MAX_LENGTH = 1900; // Leave some buffer
+                if (responseText.length <= MAX_LENGTH) {
+                    await message.reply(responseText);
+                } else {
+                    // Split into chunks and send multiple messages
+                    let remaining = responseText;
+                    let isFirst = true;
+
+                    while (remaining.length > 0) {
+                        const chunk = remaining.substring(0, MAX_LENGTH);
+                        remaining = remaining.substring(MAX_LENGTH);
+
+                        if (isFirst) {
+                            await message.reply(chunk);
+                            isFirst = false;
+                        } else {
+                            // For subsequent chunks, use message.channel.send to avoid a chain of replies
+                            // and to ensure messages are sent in order.
+                            // Adding a small delay can also help with ordering and rate limits.
+                            await new Promise((resolve) => setTimeout(resolve, 250)); // 250ms delay
+                            await message.channel.send(chunk);
+                        }
+                    }
+                }
             } catch (error) {
                 console.error('Error handling Discord message', error);
-                await message.reply(`Error: ${error.message}`);
+                try {
+                    await message.reply(`Error: ${error.message}`);
+                } catch (replyError) {
+                    console.error('Error sending error reply:', replyError);
+                }
             } finally {
                 agentEventBus.off('llmservice:toolCall', toolCallHandler);
+                // Set cooldown for the user after processing
+                userCooldowns.set(message.author.id, Date.now() + COOLDOWN_SECONDS * 1000);
             }
         }
     });
