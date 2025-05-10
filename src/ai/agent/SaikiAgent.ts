@@ -9,7 +9,7 @@ import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../utils/logger.js';
 import { McpServerConfig } from '../../config/types.js';
 
-const requiredServices = [
+const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
     'promptManager',
     'llmService',
