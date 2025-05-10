@@ -5,13 +5,9 @@ import {
     isValidProviderModel,
 } from '../ai/llm/registry.js';
 
-export const contributorConfigSchema = z.object({
+// Define a base schema for common fields
+const baseContributorSchema = z.object({
     id: z.string().describe('Unique identifier for the contributor'),
-    type: z
-        .union([z.literal('static'), z.literal('dynamic')])
-        .describe(
-            "Type of contributor: 'static' for fixed content, 'dynamic' for content from a source"
-        ),
     priority: z
         .number()
         .describe('Execution priority of the contributor (lower numbers run first)'),
@@ -20,15 +16,40 @@ export const contributorConfigSchema = z.object({
         .optional()
         .default(true)
         .describe('Whether this contributor is currently active'),
-    content: z
-        .string()
-        .optional()
-        .describe("Static content for the contributor (if type is 'static')"),
-    source: z
-        .string()
-        .optional()
-        .describe("Source identifier for dynamic content (if type is 'dynamic')"),
 });
+
+// Schema for 'static' contributors - only includes relevant fields
+const staticContributorSchema = baseContributorSchema.extend({
+    type: z.literal('static'),
+    content: z.string().describe("Static content for the contributor (REQUIRED for 'static')"),
+    // No 'source' field here, as it's not relevant to static contributors
+});
+
+// Schema for 'dynamic' contributors - only includes relevant fields
+const dynamicContributorSchema = baseContributorSchema.extend({
+    type: z.literal('dynamic'),
+    source: z.string().describe("Source identifier for dynamic content (REQUIRED for 'dynamic')"),
+    // No 'content' field here, as it's not relevant to dynamic contributors (source provides the content)
+});
+
+// The new contributorConfigSchema using discriminatedUnion
+export const contributorConfigSchema = z
+    .discriminatedUnion(
+        'type', // The field to discriminate on
+        [staticContributorSchema, dynamicContributorSchema],
+        {
+            // Optional: Custom error message for invalid discriminator
+            errorMap: (issue, ctx) => {
+                if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
+                    return { message: `Invalid contributor type. Expected 'static' or 'dynamic'.` };
+                }
+                return { message: ctx.defaultError };
+            },
+        }
+    )
+    .describe(
+        "Configuration for a system prompt contributor. Type 'static' requires 'content', type 'dynamic' requires 'source'."
+    );
 
 export type ContributorConfig = z.infer<typeof contributorConfigSchema>;
 
