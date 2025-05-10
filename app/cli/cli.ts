@@ -1,11 +1,8 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { MCPClientManager } from '../../src/client/manager.js'; // Adjusted path
-import { logger } from '../../src/utils/logger.js'; // Adjusted path
-import { ILLMService } from '../../src/ai/llm/services/types.js'; // Adjusted path
-import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new location
-import { EventEmitter } from 'events';
-import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js'; // ADD THIS IMPORT
+import { logger } from '../../src/utils/logger.js';
+import { CLISubscriber } from './cli-subscriber.js';
+import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js';
 
 const validLogLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
 const HELP_MESSAGE = `Available commands:
