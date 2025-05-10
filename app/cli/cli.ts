@@ -149,10 +149,10 @@ export async function runAiCli(agent: SaikiAgent) {
  */
 export async function runHeadlessCli(agent: SaikiAgent, prompt: string): Promise<void> {
     try {
-        // Reinstate _initCli for consistent logging and setup
+        // Common initialization
         await _initCli(agent);
 
-        // Call llmService.completeTask directly for consistent detailed output
+        // Execute the task
         await agent.run(prompt);
     } catch (error) {
         logger.error(`Error during headless CLI execution: ${error.message}`);

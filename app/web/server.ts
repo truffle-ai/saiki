@@ -1,9 +1,6 @@
 import express from 'express';
-import { MCPClientManager } from '../../src/client/manager.js';
-import { ILLMService } from '../../src/ai/llm/services/types.js';
 import { logger } from '../../src/utils/logger.js';
 import { resolvePackagePath } from '../../src/utils/path.js';
-import { EventEmitter } from 'events';
 import { initializeApi } from '../../src/api/server.js';
 import os from 'os';
 import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js';
