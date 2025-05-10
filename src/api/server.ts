@@ -101,7 +101,7 @@ export async function initializeApi(
 
     // WebSocket handling
     // handle inbound client messages over WebSocket
-    wss.on('connection', (ws) => {
+    wss.on('connection', (ws: WebSocket) => {
         logger.info('WebSocket client connected.');
 
         ws.on('message', async (messageBuffer) => {
