@@ -10,13 +10,15 @@ import { logger } from '../../utils/logger.js';
 
 /**
  * The main entry point into Saiki's core.
- * It provides an abstraction layer on top of the internal services that saiki has.
+ * SaikiAgent is anabstraction layer on top of the internal services that saiki has.
  * You can use the SaikiAgent class in applications to build AI Agents.
  * By design, most of the methods in this class are thin wrappers around the internal services, exposing functionality that we might want to use in applications.
  */
 export class SaikiAgent {
     /**
      * These services are public for use by the outside world
+     * This gives users the option to use methods of the services directly if they know what they are doing
+     * But the main recommended entry points/functions would still be the wrapper methods we define below
      */
     public readonly clientManager: MCPClientManager;
     public readonly promptManager: PromptManager;
@@ -99,7 +101,6 @@ export class SaikiAgent {
                 success: false,
                 error: errorMessage,
             });
-            // Re-throw to allow the caller (e.g., API endpoint) to handle appropriately
             throw error;
         }
     }
