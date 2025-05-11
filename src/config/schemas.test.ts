@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
-    contributorConfigSchema,
-    systemPromptConfigSchema,
-    llmConfigSchema,
-    stdioServerConfigSchema,
-    sseServerConfigSchema,
-    httpServerConfigSchema,
-    mcpServerConfigSchema,
-    serverConfigsSchema,
-    agentConfigSchema,
+    ContributorConfigSchema,
+    SystemPromptConfigSchema,
+    LLMConfigSchema,
+    StdioServerConfigSchema,
+    SseServerConfigSchema,
+    HttpServerConfigSchema,
+    McpServerConfigSchema,
+    ServerConfigsSchema,
+    AgentConfigSchema,
 } from './schemas.js';
 
 /**
@@ -16,7 +16,7 @@ import {
  * This ensures we have good validations in place to avoid invalid configs from being used.
  */
 describe('Config Schemas', () => {
-    describe('contributorConfigSchema', () => {
+    describe('ContributorConfigSchema', () => {
         it('accepts valid config', () => {
             const valid = {
                 id: 'user1',
@@ -25,26 +25,26 @@ describe('Config Schemas', () => {
                 enabled: true,
                 content: 'hello',
             };
-            expect(() => contributorConfigSchema.parse(valid)).not.toThrow();
+            expect(() => ContributorConfigSchema.parse(valid)).not.toThrow();
         });
 
         it('rejects missing fields', () => {
             const invalid = { type: 'static', priority: 5 };
-            expect(() => contributorConfigSchema.parse(invalid as any)).toThrow();
+            expect(() => ContributorConfigSchema.parse(invalid as any)).toThrow();
         });
 
         it('applies default enabled if not provided', () => {
             const config = { id: 'test', type: 'static' as const, priority: 1, content: 'c' };
-            const parsed = contributorConfigSchema.parse(config);
+            const parsed = ContributorConfigSchema.parse(config);
             expect(parsed.enabled).toBe(true);
         });
 
         it('requires content for static type and source for dynamic type, and handles optional fields', () => {
             const staticMissingContent = { id: 's1', type: 'static' as const, priority: 1 };
-            expect(() => contributorConfigSchema.parse(staticMissingContent)).toThrow();
+            expect(() => ContributorConfigSchema.parse(staticMissingContent)).toThrow();
 
             const dynamicMissingSource = { id: 'd1', type: 'dynamic' as const, priority: 1 };
-            expect(() => contributorConfigSchema.parse(dynamicMissingSource)).toThrow();
+            expect(() => ContributorConfigSchema.parse(dynamicMissingSource)).toThrow();
 
             // Zod allows extra fields by default. If strictness is desired, .strict() should be added to the schema.
             const staticWithOptionalSource = {
@@ -54,7 +54,7 @@ describe('Config Schemas', () => {
                 content: 'c',
                 source: 's',
             };
-            expect(() => contributorConfigSchema.parse(staticWithOptionalSource)).not.toThrow();
+            expect(() => ContributorConfigSchema.parse(staticWithOptionalSource)).not.toThrow();
 
             const dynamicWithOptionalContent = {
                 id: 'd2',
@@ -63,11 +63,11 @@ describe('Config Schemas', () => {
                 source: 's',
                 content: 'c',
             };
-            expect(() => contributorConfigSchema.parse(dynamicWithOptionalContent)).not.toThrow();
+            expect(() => ContributorConfigSchema.parse(dynamicWithOptionalContent)).not.toThrow();
 
             const validStatic = { id: 's3', type: 'static' as const, priority: 1, content: 'c' };
-            expect(() => contributorConfigSchema.parse(validStatic)).not.toThrow();
-            const parsedStatic = contributorConfigSchema.parse(validStatic);
+            expect(() => ContributorConfigSchema.parse(validStatic)).not.toThrow();
+            const parsedStatic = ContributorConfigSchema.parse(validStatic);
             // Type guard for static contributor
             if (parsedStatic.type === 'static') {
                 expect(parsedStatic.content).toBe('c');
@@ -79,8 +79,8 @@ describe('Config Schemas', () => {
             }
 
             const validDynamic = { id: 'd3', type: 'dynamic' as const, priority: 1, source: 's' };
-            expect(() => contributorConfigSchema.parse(validDynamic)).not.toThrow();
-            const parsedDynamic = contributorConfigSchema.parse(validDynamic);
+            expect(() => ContributorConfigSchema.parse(validDynamic)).not.toThrow();
+            const parsedDynamic = ContributorConfigSchema.parse(validDynamic);
             // Type guard for dynamic contributor
             if (parsedDynamic.type === 'dynamic') {
                 expect(parsedDynamic.source).toBe('s');
@@ -93,18 +93,18 @@ describe('Config Schemas', () => {
         });
     });
 
-    describe('systemPromptConfigSchema', () => {
+    describe('SystemPromptConfigSchema', () => {
         it('accepts valid prompts', () => {
             const valid = {
                 contributors: [{ id: 'c1', type: 'dynamic' as const, priority: 1, source: 's' }],
             };
-            expect(() => systemPromptConfigSchema.parse(valid)).not.toThrow();
+            expect(() => SystemPromptConfigSchema.parse(valid)).not.toThrow();
         });
 
         it('accepts an empty contributors array', () => {
             const validEmpty = { contributors: [] };
-            expect(() => systemPromptConfigSchema.parse(validEmpty)).not.toThrow();
-            const parsed = systemPromptConfigSchema.parse(validEmpty);
+            expect(() => SystemPromptConfigSchema.parse(validEmpty)).not.toThrow();
+            const parsed = SystemPromptConfigSchema.parse(validEmpty);
             expect(parsed.contributors).toEqual([]);
         });
 
@@ -115,11 +115,11 @@ describe('Config Schemas', () => {
                     { id: 'c2', type: 'dynamic' as const, priority: 'low' }, // Invalid priority type
                 ],
             };
-            expect(() => systemPromptConfigSchema.parse(invalidContributorArray as any)).toThrow();
+            expect(() => SystemPromptConfigSchema.parse(invalidContributorArray as any)).toThrow();
         });
     });
 
-    describe('llmConfigSchema', () => {
+    describe('LlmConfigSchema', () => {
         it('accepts valid string prompt', () => {
             const good = {
                 provider: 'openai',
@@ -128,7 +128,7 @@ describe('Config Schemas', () => {
                 apiKey: 'key',
                 maxIterations: 2,
             };
-            expect(() => llmConfigSchema.parse(good)).not.toThrow();
+            expect(() => LLMConfigSchema.parse(good)).not.toThrow();
         });
 
         it('accepts valid object prompt', () => {
@@ -136,18 +136,18 @@ describe('Config Schemas', () => {
                 contributors: [{ id: 'c1', type: 'static', priority: 1, content: 'x' }],
             };
             const good = { provider: 'openai', model: 'o4-mini', systemPrompt: objPrompt };
-            expect(() => llmConfigSchema.parse(good)).not.toThrow();
+            expect(() => LLMConfigSchema.parse(good)).not.toThrow();
         });
 
         it('rejects unsupported provider', () => {
             const bad = { provider: 'bad', model: 'x', systemPrompt: 'Hi' };
-            const error = expect(() => llmConfigSchema.parse(bad));
+            const error = expect(() => LLMConfigSchema.parse(bad));
             error.toThrow();
         });
 
         it('rejects unsupported model', () => {
             const badModel = { provider: 'openai', model: 'not-a-model', systemPrompt: 'Hi' };
-            const error = expect(() => llmConfigSchema.parse(badModel));
+            const error = expect(() => LLMConfigSchema.parse(badModel));
             error.toThrow();
         });
 
@@ -158,7 +158,7 @@ describe('Config Schemas', () => {
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
             };
-            const parsed = llmConfigSchema.parse(config);
+            const parsed = LLMConfigSchema.parse(config);
             expect(parsed.maxIterations).toBe(50);
         });
 
@@ -168,7 +168,7 @@ describe('Config Schemas', () => {
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
             };
-            const parsed = llmConfigSchema.parse(config);
+            const parsed = LLMConfigSchema.parse(config);
             expect(parsed.providerOptions).toEqual({});
         });
 
@@ -178,7 +178,7 @@ describe('Config Schemas', () => {
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
             };
-            const parsed = llmConfigSchema.parse(config);
+            const parsed = LLMConfigSchema.parse(config);
             expect(parsed.router).toBe('vercel');
         });
 
@@ -189,8 +189,8 @@ describe('Config Schemas', () => {
                 systemPrompt: 'Test prompt',
                 maxIterations: 10, // ensure other fields are still processed
             };
-            expect(() => llmConfigSchema.parse(config)).not.toThrow();
-            const parsed = llmConfigSchema.parse(config);
+            expect(() => LLMConfigSchema.parse(config)).not.toThrow();
+            const parsed = LLMConfigSchema.parse(config);
             expect(parsed.apiKey).toBeUndefined();
         });
 
@@ -204,8 +204,8 @@ describe('Config Schemas', () => {
                     top_p: 0.9,
                 },
             };
-            expect(() => llmConfigSchema.parse(config)).not.toThrow();
-            const parsed = llmConfigSchema.parse(config);
+            expect(() => LLMConfigSchema.parse(config)).not.toThrow();
+            const parsed = LLMConfigSchema.parse(config);
             expect(parsed.providerOptions).toEqual({
                 temperature: 0.7,
                 top_p: 0.9,
@@ -218,14 +218,14 @@ describe('Config Schemas', () => {
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt for mixed case provider',
             };
-            expect(() => llmConfigSchema.parse(configMixedCase)).not.toThrow();
+            expect(() => LLMConfigSchema.parse(configMixedCase)).not.toThrow();
 
             const configUpperCase = {
                 provider: 'ANTHROPIC', // Upper case
                 model: 'claude-3-opus-20240229', // Valid model for anthropic
                 systemPrompt: 'Test prompt for upper case provider',
             };
-            expect(() => llmConfigSchema.parse(configUpperCase)).not.toThrow();
+            expect(() => LLMConfigSchema.parse(configUpperCase)).not.toThrow();
         });
     });
 
@@ -238,7 +238,7 @@ describe('Config Schemas', () => {
                 env: { PORT: '3000' },
                 timeout: 10000,
             };
-            expect(() => stdioServerConfigSchema.parse(validConfig)).not.toThrow();
+            expect(() => StdioServerConfigSchema.parse(validConfig)).not.toThrow();
         });
 
         it('applies default env if not provided', () => {
@@ -247,7 +247,7 @@ describe('Config Schemas', () => {
                 command: 'node',
                 args: ['server.js'],
             };
-            const parsed = stdioServerConfigSchema.parse(config);
+            const parsed = StdioServerConfigSchema.parse(config);
             expect(parsed.env).toEqual({});
         });
 
@@ -257,7 +257,7 @@ describe('Config Schemas', () => {
                 command: 'node',
                 args: ['server.js'],
             };
-            const parsed = stdioServerConfigSchema.parse(config);
+            const parsed = StdioServerConfigSchema.parse(config);
             expect(parsed.timeout).toBe(30000);
         });
 
@@ -266,13 +266,13 @@ describe('Config Schemas', () => {
                 type: 'stdio',
                 args: ['server.js'],
             };
-            expect(() => stdioServerConfigSchema.parse(missingCommand as any)).toThrow();
+            expect(() => StdioServerConfigSchema.parse(missingCommand as any)).toThrow();
 
             const missingArgs = {
                 type: 'stdio',
                 command: 'node',
             };
-            expect(() => stdioServerConfigSchema.parse(missingArgs as any)).toThrow();
+            expect(() => StdioServerConfigSchema.parse(missingArgs as any)).toThrow();
         });
 
         it('rejects invalid types for fields', () => {
@@ -281,14 +281,14 @@ describe('Config Schemas', () => {
                 command: 123, // Should be string
                 args: ['server.js'],
             };
-            expect(() => stdioServerConfigSchema.parse(invalidCommandType as any)).toThrow();
+            expect(() => StdioServerConfigSchema.parse(invalidCommandType as any)).toThrow();
 
             const invalidArgsType = {
                 type: 'stdio',
                 command: 'node',
                 args: 'server.js', // Should be array of strings
             };
-            expect(() => stdioServerConfigSchema.parse(invalidArgsType as any)).toThrow();
+            expect(() => StdioServerConfigSchema.parse(invalidArgsType as any)).toThrow();
 
             const invalidEnvType = {
                 type: 'stdio',
@@ -296,7 +296,7 @@ describe('Config Schemas', () => {
                 args: ['server.js'],
                 env: ['PORT=3000'], // Should be record
             };
-            expect(() => stdioServerConfigSchema.parse(invalidEnvType as any)).toThrow();
+            expect(() => StdioServerConfigSchema.parse(invalidEnvType as any)).toThrow();
 
             const invalidTimeoutType = {
                 type: 'stdio',
@@ -304,7 +304,7 @@ describe('Config Schemas', () => {
                 args: ['server.js'],
                 timeout: 'fast', // Should be number
             };
-            expect(() => stdioServerConfigSchema.parse(invalidTimeoutType as any)).toThrow();
+            expect(() => StdioServerConfigSchema.parse(invalidTimeoutType as any)).toThrow();
         });
     });
 
@@ -316,7 +316,7 @@ describe('Config Schemas', () => {
                 headers: { Authorization: 'Bearer token' },
                 timeout: 15000,
             };
-            expect(() => sseServerConfigSchema.parse(validConfig)).not.toThrow();
+            expect(() => SseServerConfigSchema.parse(validConfig)).not.toThrow();
         });
 
         it('applies default headers if not provided', () => {
@@ -324,7 +324,7 @@ describe('Config Schemas', () => {
                 type: 'sse',
                 url: 'http://localhost:8080/events',
             };
-            const parsed = sseServerConfigSchema.parse(config);
+            const parsed = SseServerConfigSchema.parse(config);
             expect(parsed.headers).toEqual({});
         });
 
@@ -333,7 +333,7 @@ describe('Config Schemas', () => {
                 type: 'sse',
                 url: 'http://localhost:8080/events',
             };
-            const parsed = sseServerConfigSchema.parse(config);
+            const parsed = SseServerConfigSchema.parse(config);
             expect(parsed.timeout).toBe(30000);
         });
 
@@ -341,7 +341,7 @@ describe('Config Schemas', () => {
             const missingUrl = {
                 type: 'sse',
             };
-            expect(() => sseServerConfigSchema.parse(missingUrl as any)).toThrow();
+            expect(() => SseServerConfigSchema.parse(missingUrl as any)).toThrow();
         });
 
         it('rejects invalid types for fields (url, headers, timeout)', () => {
@@ -349,21 +349,21 @@ describe('Config Schemas', () => {
                 type: 'sse',
                 url: 12345, // Should be string URL
             };
-            expect(() => sseServerConfigSchema.parse(invalidUrlType as any)).toThrow();
+            expect(() => SseServerConfigSchema.parse(invalidUrlType as any)).toThrow();
 
             const invalidHeadersType = {
                 type: 'sse',
                 url: 'http://localhost:8080/events',
                 headers: ['Authorization: Bearer token'], // Should be record
             };
-            expect(() => sseServerConfigSchema.parse(invalidHeadersType as any)).toThrow();
+            expect(() => SseServerConfigSchema.parse(invalidHeadersType as any)).toThrow();
 
             const invalidTimeoutType = {
                 type: 'sse',
                 url: 'http://localhost:8080/events',
                 timeout: 'medium', // Should be number
             };
-            expect(() => sseServerConfigSchema.parse(invalidTimeoutType as any)).toThrow();
+            expect(() => SseServerConfigSchema.parse(invalidTimeoutType as any)).toThrow();
         });
     });
 
@@ -375,58 +375,58 @@ describe('Config Schemas', () => {
                 headers: { 'X-API-Key': 'secretkey' },
                 timeout: 20000,
             };
-            expect(() => httpServerConfigSchema.parse(validConfig)).not.toThrow();
+            expect(() => HttpServerConfigSchema.parse(validConfig)).not.toThrow();
         });
 
         it('applies default headers if not provided', () => {
             const config = { type: 'http' as const, baseUrl: 'http://localhost:9000/api' };
-            const parsed = httpServerConfigSchema.parse(config);
+            const parsed = HttpServerConfigSchema.parse(config);
             expect(parsed.headers).toEqual({});
         });
 
         it('applies default timeout if not provided', () => {
             const config = { type: 'http' as const, baseUrl: 'http://localhost:9000/api' };
-            const parsed = httpServerConfigSchema.parse(config);
+            const parsed = HttpServerConfigSchema.parse(config);
             expect(parsed.timeout).toBe(30000);
         });
 
         it('rejects missing required fields (baseUrl)', () => {
             const missingBaseUrl = { type: 'http' as const };
-            expect(() => httpServerConfigSchema.parse(missingBaseUrl as any)).toThrow();
+            expect(() => HttpServerConfigSchema.parse(missingBaseUrl as any)).toThrow();
         });
 
         it('rejects invalid types for fields (baseUrl, headers, timeout)', () => {
             const invalidBaseUrlType = { type: 'http' as const, baseUrl: 'not-a-url' };
-            expect(() => httpServerConfigSchema.parse(invalidBaseUrlType as any)).toThrow(); // Zod's .url() catches this
+            expect(() => HttpServerConfigSchema.parse(invalidBaseUrlType as any)).toThrow(); // Zod's .url() catches this
 
             const invalidHeadersType = {
                 type: 'http' as const,
                 baseUrl: 'http://localhost:9000/api',
                 headers: 'X-API-Key: secretkey', // Should be record
             };
-            expect(() => httpServerConfigSchema.parse(invalidHeadersType as any)).toThrow();
+            expect(() => HttpServerConfigSchema.parse(invalidHeadersType as any)).toThrow();
 
             const invalidTimeoutType = {
                 type: 'http' as const,
                 baseUrl: 'http://localhost:9000/api',
                 timeout: false, // Should be number
             };
-            expect(() => httpServerConfigSchema.parse(invalidTimeoutType as any)).toThrow();
+            expect(() => HttpServerConfigSchema.parse(invalidTimeoutType as any)).toThrow();
         });
     });
 
-    describe('serverConfigsSchema', () => {
+    describe('ServerConfigsSchema', () => {
         it('accepts a valid record of different server types', () => {
             const validRecord = {
                 server1: { type: 'stdio' as const, command: 'node', args: ['s1.js'] },
                 server2: { type: 'sse' as const, url: 'http://localhost/sse2' },
                 server3: { type: 'http' as const, baseUrl: 'http://localhost/http3' },
             };
-            expect(() => serverConfigsSchema.parse(validRecord)).not.toThrow();
+            expect(() => ServerConfigsSchema.parse(validRecord)).not.toThrow();
         });
 
         it('rejects an empty object (due to refine)', () => {
-            expect(() => serverConfigsSchema.parse({} as any)).toThrow(
+            expect(() => ServerConfigsSchema.parse({} as any)).toThrow(
                 /At least one MCP server configuration is required/
             );
         });
@@ -436,11 +436,11 @@ describe('Config Schemas', () => {
                 server1: { type: 'stdio' as const, command: 'node', args: ['s1.js'] },
                 server2: { type: 'sse' as const, url: 12345 }, // Invalid URL type
             };
-            expect(() => serverConfigsSchema.parse(invalidRecord as any)).toThrow();
+            expect(() => ServerConfigsSchema.parse(invalidRecord as any)).toThrow();
         });
     });
 
-    describe('agentConfigSchema', () => {
+    describe('AgentConfigSchema', () => {
         it('accepts a complete valid config', () => {
             const validAgentConfig = {
                 mcpServers: {
@@ -452,29 +452,29 @@ describe('Config Schemas', () => {
                     systemPrompt: 'You are an agent.',
                 },
             };
-            expect(() => agentConfigSchema.parse(validAgentConfig)).not.toThrow();
+            expect(() => AgentConfigSchema.parse(validAgentConfig)).not.toThrow();
         });
 
         it('rejects if mcpServers is missing', () => {
             const missingMcp = {
                 llm: { provider: 'openai', model: 'o4-mini', systemPrompt: 'Y' },
             };
-            expect(() => agentConfigSchema.parse(missingMcp as any)).toThrow();
+            expect(() => AgentConfigSchema.parse(missingMcp as any)).toThrow();
         });
 
         it('rejects if mcpServers is invalid (e.g., empty object)', () => {
             const invalidMcp = {
-                mcpServers: {}, // serverConfigsSchema rejects this
+                mcpServers: {}, // ServerConfigsSchema rejects this
                 llm: { provider: 'openai', model: 'o4-mini', systemPrompt: 'Y' },
             };
-            expect(() => agentConfigSchema.parse(invalidMcp as any)).toThrow();
+            expect(() => AgentConfigSchema.parse(invalidMcp as any)).toThrow();
         });
 
         it('rejects if llm config is missing', () => {
             const missingLlm = {
                 mcpServers: { main: { type: 'stdio' as const, command: 'n', args: ['a'] } },
             };
-            expect(() => agentConfigSchema.parse(missingLlm as any)).toThrow();
+            expect(() => AgentConfigSchema.parse(missingLlm as any)).toThrow();
         });
 
         it('rejects if llm config is invalid', () => {
@@ -482,34 +482,34 @@ describe('Config Schemas', () => {
                 mcpServers: { main: { type: 'stdio' as const, command: 'n', args: ['a'] } },
                 llm: { provider: 'unknownProvider', model: 'm', systemPrompt: 'Y' }, // invalid provider
             };
-            expect(() => agentConfigSchema.parse(invalidLlm as any)).toThrow();
+            expect(() => AgentConfigSchema.parse(invalidLlm as any)).toThrow();
         });
     });
 
-    describe('mcpServerConfigSchema (Union)', () => {
+    describe('McpServerConfigSchema (Union)', () => {
         it('accepts valid stdio server config', () => {
             const stdioConf = { type: 'stdio' as const, command: 'node', args: ['s.js'] };
-            expect(() => mcpServerConfigSchema.parse(stdioConf)).not.toThrow();
+            expect(() => McpServerConfigSchema.parse(stdioConf)).not.toThrow();
         });
 
         it('accepts valid sse server config', () => {
             const sseConf = { type: 'sse' as const, url: 'http://localhost/sse' };
-            expect(() => mcpServerConfigSchema.parse(sseConf)).not.toThrow();
+            expect(() => McpServerConfigSchema.parse(sseConf)).not.toThrow();
         });
 
         it('accepts valid http server config', () => {
             const httpConf = { type: 'http' as const, baseUrl: 'http://localhost/http' };
-            expect(() => mcpServerConfigSchema.parse(httpConf)).not.toThrow();
+            expect(() => McpServerConfigSchema.parse(httpConf)).not.toThrow();
         });
 
         it('rejects config with an invalid type literal', () => {
             const invalidType = { type: 'ftp' as any, host: 'localhost' }; // 'ftp' is not a valid type
-            expect(() => mcpServerConfigSchema.parse(invalidType)).toThrow();
+            expect(() => McpServerConfigSchema.parse(invalidType)).toThrow();
         });
 
         it('rejects config missing the type field', () => {
             const missingType = { command: 'node', args: ['s.js'] }; // Missing 'type' to discriminate union
-            expect(() => mcpServerConfigSchema.parse(missingType as any)).toThrow();
+            expect(() => McpServerConfigSchema.parse(missingType as any)).toThrow();
         });
         it('rejects config with a valid type but invalid fields for that type', () => {
             const stdioInvalidArgs = {
@@ -517,7 +517,7 @@ describe('Config Schemas', () => {
                 command: 'node',
                 args: 'not-an-array',
             };
-            expect(() => mcpServerConfigSchema.parse(stdioInvalidArgs as any)).toThrow();
+            expect(() => McpServerConfigSchema.parse(stdioInvalidArgs as any)).toThrow();
         });
     });
 });

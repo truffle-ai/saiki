@@ -26,6 +26,7 @@ export class PromptManager {
         this.rawConfig = config;
         const defaultContributors: ContributorConfig[] = [
             { id: 'dateTime', type: 'dynamic', priority: 10, source: 'dateTime', enabled: true },
+            { id: 'resources', type: 'dynamic', priority: 20, source: 'resources', enabled: false },
         ];
 
         let contributorConfigs: ContributorConfig[];

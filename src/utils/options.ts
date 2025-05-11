@@ -17,8 +17,10 @@ export function validateCliOptions(opts: any): void {
         configFile: z.string().nonempty('Config file path must not be empty'),
         strict: z.boolean().optional().default(false),
         verbose: z.boolean().optional().default(true),
-        mode: z.enum(['cli', 'web'], {
-            errorMap: () => ({ message: 'Mode must be either "cli" or "web"' }),
+        mode: z.enum(['cli', 'web', 'discord', 'telegram'], {
+            errorMap: () => ({
+                message: 'Mode must be one of "cli", "web", "discord", or "telegram"',
+            }),
         }),
         webPort: z.string().refine(
             (val) => {
@@ -40,6 +42,34 @@ export function validateCliOptions(opts: any): void {
             {
                 path: ['provider'],
                 message: `Provider must be one of: ${supportedProviders.join(', ')}`,
+            }
+        )
+        // 2) Check for DISCORD_BOT_TOKEN if mode is discord
+        .refine(
+            (data) => {
+                if (data.mode === 'discord') {
+                    return !!process.env.DISCORD_BOT_TOKEN;
+                }
+                return true;
+            },
+            {
+                path: ['mode'],
+                message:
+                    "DISCORD_BOT_TOKEN must be set in environment variables when mode is 'discord'",
+            }
+        )
+        // 3) Check for TELEGRAM_BOT_TOKEN if mode is telegram
+        .refine(
+            (data) => {
+                if (data.mode === 'telegram') {
+                    return !!process.env.TELEGRAM_BOT_TOKEN;
+                }
+                return true;
+            },
+            {
+                path: ['mode'],
+                message:
+                    "TELEGRAM_BOT_TOKEN must be set in environment variables when mode is 'telegram'",
             }
         );
 

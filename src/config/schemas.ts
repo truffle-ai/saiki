@@ -5,8 +5,74 @@ import {
     isValidProviderModel,
 } from '../ai/llm/registry.js';
 
+// (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
+
+export const AgentCardSchema = z
+    .object({
+        name: z.string(), // No default, must be provided by context
+        description: z
+            .string()
+            .default(
+                'Alfred is an AI assistant capable of chat and task delegation, accessible via multiple protocols.'
+            ),
+        url: z.string().url(), // No default, must be provided by context
+        provider: z
+            .object({
+                organization: z.string(),
+                url: z.string().url(),
+            })
+            .optional(), // Remains optional, undefined if not provided
+        version: z.string(), // No default, must be provided by context
+        documentationUrl: z.string().url().optional(), // Remains optional, undefined if not provided
+        capabilities: z
+            .object({
+                streaming: z.boolean().optional().default(true),
+                pushNotifications: z.boolean().optional(), // Default is context-dependent (webSubscriber)
+                stateTransitionHistory: z.boolean().optional().default(false),
+            })
+            .strict()
+            .default({}), // Add default for the capabilities object itself
+        authentication: z
+            .object({
+                schemes: z.array(z.string()).default([]),
+                credentials: z.string().optional(), // Remains optional
+            })
+            .strict()
+            .default({}), // Add default for the authentication object itself
+        defaultInputModes: z.array(z.string()).default(['application/json', 'text/plain']),
+        defaultOutputModes: z
+            .array(z.string())
+            .default(['application/json', 'text/event-stream', 'text/plain']),
+        skills: z
+            .array(
+                z.object({
+                    id: z.string(),
+                    name: z.string(),
+                    description: z.string(),
+                    tags: z.array(z.string()),
+                    examples: z.array(z.string()).optional(),
+                    inputModes: z.array(z.string()).optional().default(['text/plain']),
+                    outputModes: z.array(z.string()).optional().default(['text/plain']),
+                })
+            )
+            .default([
+                {
+                    id: 'chat_with_agent',
+                    name: 'chat_with_agent',
+                    description: 'Allows you to chat with an AI agent. Send a message to interact.',
+                    tags: ['chat', 'AI', 'assistant', 'mcp', 'natural language'],
+                    examples: [
+                        `Send a JSON-RPC request to /mcp with method: "chat_with_agent" and params: {"message":"Your query..."}`,
+                        'Alternatively, use a compatible MCP client library.',
+                    ],
+                    // inputModes and outputModes will use their own defaults if not specified here
+                },
+            ]),
+    })
+    .strict();
+
 // Define a base schema for common fields
-const baseContributorSchema = z.object({
+const BaseContributorSchema = z.object({
     id: z.string().describe('Unique identifier for the contributor'),
     priority: z
         .number()
@@ -21,24 +87,23 @@ const baseContributorSchema = z.object({
 });
 
 // Schema for 'static' contributors - only includes relevant fields
-const staticContributorSchema = baseContributorSchema.extend({
+const StaticContributorSchema = BaseContributorSchema.extend({
     type: z.literal('static'),
     content: z.string().describe("Static content for the contributor (REQUIRED for 'static')"),
     // No 'source' field here, as it's not relevant to static contributors
 });
 
 // Schema for 'dynamic' contributors - only includes relevant fields
-const dynamicContributorSchema = baseContributorSchema.extend({
+const DynamicContributorSchema = BaseContributorSchema.extend({
     type: z.literal('dynamic'),
     source: z.string().describe("Source identifier for dynamic content (REQUIRED for 'dynamic')"),
     // No 'content' field here, as it's not relevant to dynamic contributors (source provides the content)
 });
 
-// The new contributorConfigSchema using discriminatedUnion
-export const contributorConfigSchema = z
+export const ContributorConfigSchema = z
     .discriminatedUnion(
         'type', // The field to discriminate on
-        [staticContributorSchema, dynamicContributorSchema],
+        [StaticContributorSchema, DynamicContributorSchema],
         {
             // Optional: Custom error message for invalid discriminator
             errorMap: (issue, ctx) => {
@@ -53,17 +118,17 @@ export const contributorConfigSchema = z
         "Configuration for a system prompt contributor. Type 'static' requires 'content', type 'dynamic' requires 'source'."
     );
 
-export type ContributorConfig = z.infer<typeof contributorConfigSchema>;
+export type ContributorConfig = z.infer<typeof ContributorConfigSchema>;
 
-export const systemPromptConfigSchema = z.object({
+export const SystemPromptConfigSchema = z.object({
     contributors: z
-        .array(contributorConfigSchema)
+        .array(ContributorConfigSchema)
         .describe('An array of contributor configurations that make up the system prompt'),
 });
 
-export type SystemPromptConfig = z.infer<typeof systemPromptConfigSchema>;
+export type SystemPromptConfig = z.infer<typeof SystemPromptConfigSchema>;
 
-export const llmConfigSchema = z
+export const LLMConfigSchema = z
     .object({
         provider: z
             .string()
@@ -71,7 +136,7 @@ export const llmConfigSchema = z
             .describe("The LLM provider (e.g., 'openai', 'anthropic', 'groq')"),
         model: z.string().nonempty().describe('The specific model name for the selected provider'),
         systemPrompt: z
-            .union([z.string(), systemPromptConfigSchema])
+            .union([z.string(), SystemPromptConfigSchema])
             .describe(
                 'The system prompt content as a string, or a structured system prompt configuration'
             ),
@@ -125,14 +190,14 @@ export const llmConfigSchema = z
         }
     });
 
-export type LLMConfig = z.infer<typeof llmConfigSchema>;
+export type LLMConfig = z.infer<typeof LLMConfigSchema>;
 
 // You can add more schemas for AgentConfig, etc., as needed.
 // For example:
 // export const agentConfigSchema = z.object({ ... });
 // export type AgentConfig = z.infer<typeof agentConfigSchema>;
 
-export const stdioServerConfigSchema = z.object({
+export const StdioServerConfigSchema = z.object({
     type: z.literal('stdio'),
     command: z.string().describe("The shell command to launch the server (e.g., 'node')"),
     args: z.array(z.string()).describe("Array of arguments for the command (e.g., ['script.js'])"),
@@ -151,9 +216,9 @@ export const stdioServerConfigSchema = z.object({
         .default(30000)
         .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
 });
-export type StdioServerConfig = z.infer<typeof stdioServerConfigSchema>;
+export type StdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
 
-export const sseServerConfigSchema = z.object({
+export const SseServerConfigSchema = z.object({
     type: z.literal('sse'),
     url: z.string().url().describe('URL for the SSE server endpoint'),
     headers: z
@@ -169,9 +234,9 @@ export const sseServerConfigSchema = z.object({
         .default(30000)
         .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
 });
-export type SSEServerConfig = z.infer<typeof sseServerConfigSchema>;
+export type SseServerConfig = z.infer<typeof SseServerConfigSchema>;
 
-export const httpServerConfigSchema = z.object({
+export const HttpServerConfigSchema = z.object({
     type: z.literal('http'),
     baseUrl: z.string().url().describe('Base URL for the HTTP server'),
     headers: z
@@ -187,28 +252,29 @@ export const httpServerConfigSchema = z.object({
         .default(30000)
         .describe('Timeout in milliseconds for HTTP requests, defaults to 30000ms'),
 });
-export type HttpServerConfig = z.infer<typeof httpServerConfigSchema>;
+export type HttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
 
-export const mcpServerConfigSchema = z
-    .union([stdioServerConfigSchema, sseServerConfigSchema, httpServerConfigSchema])
+export const McpServerConfigSchema = z
+    .union([StdioServerConfigSchema, SseServerConfigSchema, HttpServerConfigSchema])
     .describe('Configuration for an MCP server connection (can be stdio, sse, or http)');
-export type McpServerConfig = z.infer<typeof mcpServerConfigSchema>;
+export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
-export const serverConfigsSchema = z
-    .record(mcpServerConfigSchema)
+export const ServerConfigsSchema = z
+    .record(McpServerConfigSchema)
     .refine((obj) => Object.keys(obj).length > 0, {
         message: 'At least one MCP server configuration is required.',
     })
     .describe('A dictionary of server configurations, keyed by server name');
-export type ServerConfigs = z.infer<typeof serverConfigsSchema>;
+export type ServerConfigs = z.infer<typeof ServerConfigsSchema>;
 
-export const agentConfigSchema = z
+export const AgentConfigSchema = z
     .object({
-        mcpServers: serverConfigsSchema.describe(
+        agentCard: AgentCardSchema.describe('Configuration for the agent card'),
+        mcpServers: ServerConfigsSchema.describe(
             'Configurations for MCP (Multi-Capability Peer) servers used by the agent'
         ),
-        llm: llmConfigSchema.describe('Core LLM configuration for the agent'),
+        llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
     })
     .describe('Main configuration for an agent, including its LLM and server connections');
 
-export type AgentConfig = z.infer<typeof agentConfigSchema>;
+export type AgentConfig = z.infer<typeof AgentConfigSchema>;

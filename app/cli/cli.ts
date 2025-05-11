@@ -50,7 +50,7 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
  * Run the AI CLI with the given LLM service
  * @param agent Saiki agent instance
  */
-export async function runAiCli(agent: SaikiAgent): Promise<void> {
+export async function startAiCli(agent: SaikiAgent) {
     try {
         // Common initialization
         await _initCli(agent);
@@ -151,11 +151,10 @@ export async function runAiCli(agent: SaikiAgent): Promise<void> {
  * @param agent The SaikiAgent instance providing access to all required services
  * @param prompt The user input to process
  */
-export async function runHeadlessCli(agent: SaikiAgent, prompt: string): Promise<void> {
+export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promise<void> {
+    // Common initialization
+    await _initCli(agent);
     try {
-        // Common initialization
-        await _initCli(agent);
-
         // Execute the task
         await agent.run(prompt);
     } catch (error) {

@@ -1,4 +1,4 @@
-import type { llmConfigSchema } from '../../config/schemas.js';
+import type { LLMConfigSchema } from '../../config/schemas.js';
 import { z } from 'zod';
 
 /**
@@ -6,4 +6,4 @@ import { z } from 'zod';
  * 'vercel' = use Vercel LLM service, 'in-built' = use in-built LLM service
  * This type is derived from the llmConfigSchema to ensure it stays in sync.
  */
-export type LLMRouter = z.infer<typeof llmConfigSchema>['router'];
+export type LLMRouter = z.infer<typeof LLMConfigSchema>['router'];

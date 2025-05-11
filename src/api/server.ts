@@ -1,16 +1,19 @@
 import express from 'express';
 import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocketServer } from 'ws';
+import type { WebSocket } from 'ws';
 import { WebSocketEventSubscriber } from './websocket-subscriber.js';
 import { logger } from '../utils/logger.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import type { AgentCard } from '../config/types.js';
+import { setupA2ARoutes } from './a2a.js';
+import { initializeMcpServerEndpoints } from './mcp_handler.js';
+import { createAgentCard } from '../config/agentCard.js';
 import { SaikiAgent } from '../ai/agent/SaikiAgent.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
-export async function initializeApi(agent: SaikiAgent) {
+export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
     const app = express();
     const server = http.createServer(app);
     const wss = new WebSocketServer({ server });
@@ -137,38 +140,40 @@ export async function initializeApi(agent: SaikiAgent) {
         });
     });
 
-    // --- Expose Saiki via MCP protocol on /mcp (Experimental) ---
+    // Apply agentCard overrides (if any)
+    // TODO: This is a temporary solution to allow for agentCard overrides. Implement a more robust solution in the future.
+    const overrides = agentCardOverride ?? {};
+    const baseApiUrl = process.env.SAIKI_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const agentCardData = createAgentCard(
+        {
+            defaultName: overrides.name ?? 'saiki',
+            defaultVersion: overrides.version ?? '1.0.0',
+            defaultBaseUrl: baseApiUrl,
+            webSubscriber,
+        },
+        overrides
+    );
+    const agentName = agentCardData.name;
+    const agentVersion = agentCardData.version;
+
+    // Setup A2A routes
+    setupA2ARoutes(app, agentCardData);
+
+    // --- Initialize and Setup MCP Server and Endpoints ---
     const mcpTransport = new StreamableHTTPServerTransport({
         sessionIdGenerator: randomUUID,
         enableJsonResponse: true,
     });
-    const mcpServer = new McpServer({ name: 'saiki', version: '1.0.0' });
-    // Register a single 'chat' tool
-    // TODO: Make a more formal way to define this via config file
-    mcpServer.tool(
-        'chat',
-        'Hey! I am Saiki as an MCP server, a remote AI agent that can chat with you or you can use to delegate tasks.',
-        { message: z.string() },
-        async ({ message }) => {
-            const text = await agent.run(message);
-            return { content: [{ type: 'text', text }] };
-        }
+
+    // TODO: Think of a better way to handle the MCP implementation
+    await initializeMcpServerEndpoints(
+        app,
+        agent,
+        agentName,
+        agentVersion,
+        agentCardData, // Pass the agent card data for the MCP resource
+        mcpTransport
     );
-    // Initialize the MCP protocol on this transport before mounting endpoints
-    logger.info(`Initializing MCP protocol server...`);
-    await mcpServer.connect(mcpTransport);
-    logger.info(`✅ MCP server protocol initialized on /mcp`);
-    // Mount /mcp for JSON-RPC and SSE handling (so baseUrl is /mcp)
-    app.post('/mcp', express.json(), (req, res) => {
-        mcpTransport
-            .handleRequest(req, res, req.body)
-            .catch((err) => logger.error(`MCP POST error: ${JSON.stringify(err, null, 2)}`));
-    });
-    app.get('/mcp', (req, res) => {
-        mcpTransport
-            .handleRequest(req, res)
-            .catch((err) => logger.error(`MCP GET error: ${JSON.stringify(err, null, 2)}`));
-    });
 
     return { app, server, wss, webSubscriber };
 }

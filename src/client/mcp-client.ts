@@ -7,7 +7,7 @@ import { logger } from '../utils/logger.js';
 import type {
     McpServerConfig,
     StdioServerConfig,
-    SSEServerConfig,
+    SseServerConfig,
     HttpServerConfig,
 } from '../config/schemas.js';
 import { ToolSet } from '../ai/types.js';
@@ -48,7 +48,7 @@ export class MCPClient implements IMCPClient {
 
             return this.connectViaStdio(command, stdioConfig.args, stdioConfig.env, serverName);
         } else if (config.type === 'sse') {
-            const sseConfig: SSEServerConfig = config;
+            const sseConfig: SseServerConfig = config;
             return this.connectViaSSE(sseConfig.url, sseConfig.headers, serverName);
         } else if (config.type === 'http') {
             const httpConfig: HttpServerConfig = config;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
-import { agentConfigSchema, llmConfigSchema } from './schemas.js';
+import { AgentConfigSchema, LLMConfigSchema } from './schemas.js';
 import type { AgentConfig } from './schemas.js';
 import type { CLIConfigOverrides, LLMProvenance } from './types.js';
 import { loadConfigFile } from './loader.js';
@@ -142,7 +142,7 @@ export class ConfigManager {
         try {
             // Parse the entire resolved config. This will validate the entire agent config.
             // The parsed result will be strictly typed and will have stripped any unknown keys (by default).
-            this.resolved = agentConfigSchema.parse(this.resolved);
+            this.resolved = AgentConfigSchema.parse(this.resolved);
             logger.debug('Agent configuration validation successful', 'green');
         } catch (err) {
             this.printStateForError('Validation failed for agent configuration');

@@ -3,10 +3,15 @@ import { logger } from '../../src/utils/logger.js';
 import { resolvePackagePath } from '../../src/utils/path.js';
 import { initializeApi } from '../../src/api/server.js';
 import os from 'os';
+import type { AgentCard } from '../../src/config/types.js';
 import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js';
 
-export async function initializeWebUI(agent: SaikiAgent, port = 3000) {
-    const { app, server, wss, webSubscriber } = await initializeApi(agent);
+export async function startWebUI(
+    agent: SaikiAgent,
+    port = 3000,
+    agentCardOverride?: Partial<AgentCard>
+) {
+    const { app, server, wss, webSubscriber } = await initializeApi(agent, agentCardOverride);
 
     const publicPath = resolvePackagePath('public', true);
     logger.info(`Serving static files from: ${publicPath}`);

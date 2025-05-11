@@ -2,9 +2,9 @@
  * Type definitions for application configuration
  */
 
-import { LLMRouter } from '../ai/llm/types.js';
-import type { PromptGeneratorKey } from '../ai/systemPrompt/registry.js';
-import type { LLMConfig } from './schemas.js'; // Direct import for LLMConfig for internal use
+import type { LLMConfig } from './schemas.js';
+import { AgentCardSchema } from './schemas.js';
+import { z } from 'zod';
 
 /**
  * Keys in LLMConfig that can be overridden via CLI
@@ -25,3 +25,5 @@ export type Source = 'file' | 'cli' | 'default';
  * Provenance for CLI-overridable LLM fields only
  */
 export type LLMProvenance = Record<LLMOverrideKey, Source>;
+
+export type AgentCard = z.infer<typeof AgentCardSchema>;
