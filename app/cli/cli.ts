@@ -1,10 +1,8 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { MCPClientManager } from '../../src/client/manager.js'; // Adjusted path
-import { logger } from '../../src/utils/logger.js'; // Adjusted path
-import { ILLMService } from '../../src/ai/llm/services/types.js'; // Adjusted path
-import { CLISubscriber } from './cli-subscriber.js'; // Now points to the new location
-import { EventEmitter } from 'events';
+import { logger } from '../../src/utils/logger.js';
+import { CLISubscriber } from './cli-subscriber.js';
+import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js';
 
 const validLogLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
 const HELP_MESSAGE = `Available commands:
@@ -17,24 +15,18 @@ ${validLogLevels.join('|')} - Set logging level directly
 
 /**
  * Initializes common CLI setup: logging, event subscriptions, tool loading.
- * @param clientManager
- * @param llmService
- * @param agentEventBus
+ * @param agent The SaikiAgent instance providing access to all required services
  */
-async function _initCli(
-    clientManager: MCPClientManager,
-    llmService: ILLMService,
-    agentEventBus: EventEmitter
-): Promise<void> {
+async function _initCli(agent: SaikiAgent): Promise<void> {
     // Log model and connection info
     logger.info(
-        `Using model config: ${JSON.stringify(llmService.getConfig(), null, 2)}`,
+        `Using model config: ${JSON.stringify(agent.llmService.getConfig(), null, 2)}`,
         null,
         'yellow'
     );
     logger.debug(`Log level: ${logger.getLevel()}`);
-    logger.info(`Connected servers: ${clientManager.getClients().size}`, null, 'green');
-    const failedConnections = clientManager.getFailedConnections();
+    logger.info(`Connected servers: ${agent.clientManager.getClients().size}`, null, 'green');
+    const failedConnections = agent.clientManager.getFailedConnections();
     if (Object.keys(failedConnections).length > 0) {
         logger.error(`Failed connections: ${Object.keys(failedConnections).length}.`, null, 'red');
     }
@@ -42,31 +34,34 @@ async function _initCli(
     // Set up event management
     logger.info('Setting up CLI event subscriptions...');
     const cliSubscriber = new CLISubscriber();
-    cliSubscriber.subscribe(agentEventBus);
+    cliSubscriber.subscribe(agent.agentEventBus);
 
     // Load available tools
     logger.info('Loading available tools...');
-    const tools = await clientManager.getAllTools(); // tools variable is not used currently but kept for potential future use
-    logger.info(
-        `Loaded ${Object.keys(tools).length} tools from ${clientManager.getClients().size} MCP servers
-`
-    );
-    logger.info('AI Agent initialized successfully!', null, 'green');
+    try {
+        const tools = await agent.clientManager.getAllTools(); // tools variable is not used currently but kept for potential future use
+        logger.info(
+            `Loaded ${Object.keys(tools).length} tools from ${
+                agent.clientManager.getClients().size
+            } MCP servers`
+        );
+    } catch (error) {
+        logger.error(
+            `Failed to load tools: ${error instanceof Error ? error.message : String(error)}`
+        );
+    }
+
+    logger.info('CLI initialized successfully. Ready for input.', null, 'green');
 }
 
 /**
  * Run the AI CLI with the given LLM service
- * @param clientManager Client manager with registered tool providers
- * @param llmService LLM service implementation
+ * @param agent Saiki agent instance
  */
-export async function startAiCli(
-    clientManager: MCPClientManager,
-    llmService: ILLMService,
-    agentEventBus: EventEmitter
-) {
+export async function startAiCli(agent: SaikiAgent) {
     try {
         // Common initialization
-        await _initCli(clientManager, llmService, agentEventBus);
+        await _initCli(agent);
 
         // Create readline interface
         const rl = readline.createInterface({
@@ -105,7 +100,7 @@ export async function startAiCli(
             }
 
             if (lowerInput === 'clear') {
-                llmService.resetConversation();
+                agent.resetConversation();
                 logger.info('Conversation history cleared.');
                 return true;
             }
@@ -141,10 +136,12 @@ export async function startAiCli(
                 }
 
                 try {
-                    // Simply call completeTask - all updates happen via events
-                    await llmService.completeTask(userInput);
+                    // Simply call run - all updates happen via events
+                    await agent.run(userInput);
                 } catch (error) {
-                    logger.error(`Error in processing input: ${error.message}`);
+                    logger.error(
+                        `Error in processing input: ${error instanceof Error ? error.message : String(error)}`
+                    );
                 }
             }
         } finally {
@@ -159,16 +156,19 @@ export async function startAiCli(
 
 /**
  * Run a single headless command via CLI without interactive prompt
+ * @param agent The SaikiAgent instance providing access to all required services
+ * @param prompt The user input to process
  */
-export async function startHeadlessCli(
-    clientManager: MCPClientManager,
-    llmService: ILLMService,
-    agentEventBus: EventEmitter,
-    prompt: string
-): Promise<void> {
+export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promise<void> {
     // Common initialization
-    await _initCli(clientManager, llmService, agentEventBus);
-
-    // Execute the task (subscriber handles output events)
-    await llmService.completeTask(prompt);
+    await _initCli(agent);
+    try {
+        // Execute the task
+        await agent.run(prompt);
+    } catch (error) {
+        logger.error(
+            `Error in processing input: ${error instanceof Error ? error.message : String(error)}`
+        );
+        process.exit(1); // Exit with error code if headless execution fails
+    }
 }

@@ -26,7 +26,7 @@ export class MessageManager {
     private history: InternalMessage[] = [];
 
     /**
-     * PromptManager used for the conversation
+     * PromptManager used to generate/manage the system prompt
      */
     private promptManager: PromptManager;
 

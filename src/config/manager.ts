@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
-import { llmConfigSchema } from './schemas.js';
-import type { AgentConfig, CLIConfigOverrides, LLMProvenance } from './types.js';
+import { AgentConfigSchema, LLMConfigSchema } from './schemas.js';
+import type { AgentConfig } from './schemas.js';
+import type { CLIConfigOverrides, LLMProvenance } from './types.js';
+import { loadConfigFile } from './loader.js';
 
 declare function structuredClone<T>(value: T): T;
 
@@ -18,25 +20,62 @@ export class ConfigManager {
     private provenance: { llm: LLMProvenance };
 
     constructor(fileConfig: AgentConfig) {
-        // Note: structuredClone requires Node.js v17.0.0+. For older versions, use a polyfill or lodash.cloneDeep.
-        this.resolved = structuredClone(fileConfig);
+        this.initFromConfig(fileConfig);
+    }
+
+    /**
+     * Initializes the agent configuration from a configuration object
+     * This will re-validate the entire configuration and apply Zod schema defaults.
+     * Existing CLI overrides are NOT automatically re-applied.
+     * Call overrideCLI separately after loading if CLI overrides should persist.
+     * @param newFileConfig The new configuration object (typically from a config file).
+     */
+    public initFromConfig(newFileConfig: AgentConfig): void {
+        logger.debug('Loading new agent configuration...');
+        // Use native structuredClone when available, else fall back to JSON parse/stringify for deep cloning.
+        // This fallback is generally fine for config objects but has limitations (e.g., Date objects, functions, undefined values).
+        this.resolved =
+            typeof globalThis.structuredClone === 'function'
+                ? structuredClone(newFileConfig)
+                : JSON.parse(JSON.stringify(newFileConfig));
+
+        // Reset provenance to the initial state, as if loading from a file for the first time.
+        // This assumes CLI overrides will be applied separately by calling overrideCLI if needed.
         this.provenance = {
             llm: { provider: 'file', model: 'file', router: 'default', apiKey: 'file' },
         };
-        this.applyDefaults();
-        this.validate(); // Fail fast on invalid fileConfig
+
+        this.validate(); // Parse, validate, and apply Zod defaults to this.resolved.
+        logger.info('New agent configuration loaded and validated.');
     }
 
-    private applyDefaults() {
-        if (!this.resolved.llm.router) {
-            this.resolved.llm.router = 'vercel';
-            this.provenance.llm.router = 'default';
+    /**
+     * Reloads the agent configuration directly from a config file
+     * This effectively hot reloads the configuration.
+     * @param configPath The path to the configuration file.
+     */
+    public async hotReloadFromFile(configPath: string): Promise<void> {
+        logger.debug(`Attempting to hot reload configuration from: ${configPath}`);
+        try {
+            const newFileConfig: AgentConfig = await loadConfigFile(configPath);
+            this.initFromConfig(newFileConfig); // Use the existing loadConfig to update the instance state
+            logger.info(`Successfully hot reloaded configuration from: ${configPath}`);
+        } catch (error) {
+            logger.error(`Failed to hot reload configuration from ${configPath}: ${error.message}`);
+            // Re-throw or handle as appropriate for your application
+            // For now, re-throwing to make the caller aware of the failure.
+            throw error;
         }
     }
 
     /** Apply CLI overrides and record provenance */
     overrideCLI(cliArgs: CLIConfigOverrides) {
         logger.debug('Applying CLI overrides to LLM config');
+        // Ensure llm object exists before overriding its properties
+        if (!this.resolved.llm) {
+            throw new Error('LLM config is not initialized');
+        }
+
         if (cliArgs.provider) {
             this.resolved.llm.provider = cliArgs.provider;
             this.provenance.llm.provider = 'cli';
@@ -52,11 +91,9 @@ export class ConfigManager {
         if (cliArgs.apiKey) {
             this.resolved.llm.apiKey = cliArgs.apiKey;
             this.provenance.llm.apiKey = 'cli';
-            // Optionally track provenance for apiKey if desired
         }
-        // Re-apply defaults in case some overrides were incorrect
-        this.applyDefaults();
-        this.validate(); // Fail fast on invalid overrides
+        // Re-apply defaults and validate after overrides
+        this.validate();
         return this;
     }
 
@@ -72,58 +109,48 @@ export class ConfigManager {
 
     /** Pretty-print the resolved config and provenance */
     print(): void {
-        logger.info('Resolved configuration:');
+        logger.info('Resolved configuration (current state):');
         logger.info(JSON.stringify(this.resolved, null, 2));
-        logger.info('Configuration sources:');
-        for (const [field, src] of Object.entries(this.provenance.llm)) {
+        logger.info('Configuration sources (LLM):');
+        for (const [field, src] of Object.entries(this.provenance?.llm ?? {})) {
             logger.info(`  • ${field}: ${src}`);
         }
     }
 
+    private printStateForError(contextMessage: string): void {
+        logger.error(contextMessage);
+        logger.error('Current configuration state before error:');
+        logger.error(JSON.stringify(this.resolved, null, 2));
+        logger.error('LLM Provenance state:');
+        if (this.provenance?.llm) {
+            logger.error(JSON.stringify(this.provenance.llm, null, 2));
+        }
+    }
+
+    private handleZodError(err: any, configSectionName: string): never {
+        if (err instanceof z.ZodError) {
+            const issues = err.errors.map((e) => {
+                const p = e.path.join('.') || configSectionName;
+                return `  • ${p}: ${e.message}`;
+            });
+            throw new Error(`Invalid ${configSectionName} configuration:\n${issues.join('\n')}`);
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`Unexpected error during ${configSectionName} config validation: ${msg}`);
+    }
+
     /**
      * Validate the current resolved config. Throws Error with both schema issues and provenance.
-     * Delegates to helper methods for each section of the config.
      */
     validate(): void {
         try {
-            this.validateMcpServers();
-            this.validateLlm();
-            logger.debug('LLM config validation successful', 'green');
+            // Parse the entire resolved config. This will validate the entire agent config.
+            // The parsed result will be strictly typed and will have stripped any unknown keys (by default).
+            this.resolved = AgentConfigSchema.parse(this.resolved);
+            logger.debug('Agent configuration validation successful', 'green');
         } catch (err) {
-            // On validation failure, dump resolved config and provenance for debugging
-            this.print();
-            throw err;
-        }
-    }
-
-    /**
-     * Validates the MCP servers configuration
-     */
-    private validateMcpServers(): void {
-        if (!this.resolved.mcpServers || Object.keys(this.resolved.mcpServers).length === 0) {
-            throw new Error('No MCP server configurations provided in the resolved config.');
-        }
-    }
-
-    /**
-     * Validates the LLM configuration
-     */
-    private validateLlm(): void {
-        if (!this.resolved.llm) {
-            throw new Error('LLM configuration is missing in the resolved config.');
-        }
-        try {
-            llmConfigSchema.parse(this.resolved.llm);
-        } catch (err) {
-            if (err instanceof z.ZodError) {
-                const issues = err.errors.map((e) => {
-                    const p = e.path.join('.') || 'config';
-                    return `  • ${p}: ${e.message}`;
-                });
-                throw new Error(`Invalid LLM configuration:\n${issues.join('\n')}`);
-            }
-            const msg = err instanceof Error ? err.message : String(err);
-            throw new Error(`Unexpected error during LLM config validation: ${msg}`);
+            this.printStateForError('Validation failed for agent configuration');
+            this.handleZodError(err, 'agent');
         }
     }
 }

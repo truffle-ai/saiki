@@ -1,4 +1,4 @@
-import type { ContributorConfig, SystemPromptConfig } from '../../config/types.js';
+import type { ContributorConfig, SystemPromptConfig } from '../../config/schemas.js';
 import { StaticContributor } from './contributors.js';
 import { getPromptGenerator } from './registry.js';
 import { registerPromptGenerator } from './registry.js';
@@ -24,56 +24,56 @@ export class PromptManager {
      */
     load(config: string | SystemPromptConfig) {
         this.rawConfig = config;
-        // Inline loader logic from loader.ts:
         const defaultContributors: ContributorConfig[] = [
             { id: 'dateTime', type: 'dynamic', priority: 10, source: 'dateTime', enabled: true },
             { id: 'resources', type: 'dynamic', priority: 20, source: 'resources', enabled: false },
         ];
 
-        let contributorCfgs: ContributorConfig[];
-        // basic prompt config - string
+        let contributorConfigs: ContributorConfig[];
+
         if (typeof config === 'string') {
-            // Always include default dynamic contributors (e.g. dateTime)
-            contributorCfgs = [
-                ...defaultContributors,
-                { id: 'legacyPrompt', type: 'static', priority: 0, content: config, enabled: true },
+            contributorConfigs = [
+                ...defaultContributors, // Ensure defaults are always included
+                {
+                    id: 'legacyPrompt',
+                    type: 'static',
+                    priority: 0,
+                    content: config,
+                    enabled: true,
+                },
             ];
         } else {
-            // Start with default dynamic contributors
-            contributorCfgs = [...defaultContributors];
+            contributorConfigs = [...defaultContributors];
             for (const userC of config.contributors) {
-                const idx = contributorCfgs.findIndex((c) => c.id === userC.id);
-                if (idx !== -1) contributorCfgs[idx] = userC;
-                else contributorCfgs.push(userC);
+                const idx = contributorConfigs.findIndex((c) => c.id === userC.id);
+                if (idx !== -1) {
+                    // Merge, allowing user to override defaults including 'enabled'
+                    contributorConfigs[idx] = { ...contributorConfigs[idx], ...userC };
+                } else {
+                    contributorConfigs.push(userC);
+                }
             }
-            contributorCfgs = contributorCfgs.filter((c) => c.enabled !== false);
+            // Filter out disabled contributors *after* merging defaults and user configs
+            contributorConfigs = contributorConfigs.filter((c) => c.enabled !== false);
         }
 
-        const contributors = contributorCfgs.map((contributor) => {
-            if (contributor.type === 'static') {
-                if (!contributor.content)
-                    throw new Error(`Static contributor "${contributor.id}" missing content`);
-                return new StaticContributor(
-                    contributor.id,
-                    contributor.priority,
-                    contributor.content
-                );
-            } else if (contributor.type === 'dynamic' && contributor.source) {
-                const promptGenerator = getPromptGenerator(contributor.source);
+        const loadedContributors: SystemPromptContributor[] = contributorConfigs.map((config) => {
+            if (config.type === 'static') {
+                if (config.content === undefined)
+                    throw new Error(`Static contributor "${config.id}" missing content`);
+                return new StaticContributor(config.id, config.priority, config.content);
+            } else if (config.type === 'dynamic' && config.source) {
+                const promptGenerator = getPromptGenerator(config.source);
                 if (!promptGenerator)
                     throw new Error(
-                        `No generator registered for dynamic contributor source: ${contributor.source}`
-                    );
-                return new DynamicContributor(
-                    contributor.id,
-                    contributor.priority,
-                    promptGenerator
-                );
+                        `No generator registered for dynamic contributor source: ${config.source}`
+                    ); // Changed error message to match manager.ts previous one
+                return new DynamicContributor(config.id, config.priority, promptGenerator);
             }
-            throw new Error(`Invalid contributor config: ${JSON.stringify(contributor)}`);
+            throw new Error(`Invalid contributor config: ${JSON.stringify(config)}`);
         });
         // Lower priority number first (0 = highest priority)
-        this.contributors = contributors.sort((a, b) => a.priority - b.priority);
+        this.contributors = loadedContributors.sort((a, b) => a.priority - b.priority);
     }
 
     /**

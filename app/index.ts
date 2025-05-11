@@ -4,13 +4,14 @@ import { Command } from 'commander';
 import dotenv from 'dotenv';
 import { logger } from '../src/utils/logger.js';
 import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
-import { createAgentServices } from '../src/utils/service-initializer.js';
+import { createAgentServices, AgentServices } from '../src/utils/service-initializer.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startWebUI } from './web/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
 import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
+import { SaikiAgent } from '../src/ai/agent/SaikiAgent.js';
 
 // Load environment variables
 dotenv.config();
@@ -131,7 +132,7 @@ if (runMode === 'cli') {
 }
 
 // Main start function
-async function startAgent() {
+async function startApp() {
     // Use createAgentServices to load, validate config and initialize all agent services
     const cliArgs = {
         model: options.model,
@@ -139,7 +140,7 @@ async function startAgent() {
         router: options.router,
         apiKey: options.apiKey,
     };
-    let services;
+    let services: AgentServices;
     try {
         services = await createAgentServices(normalizedConfigPath, cliArgs, {
             connectionMode,
@@ -158,23 +159,23 @@ async function startAgent() {
     logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
     logger.info('===============================================\n');
 
-    // Destructure the agent runtime services
-    const { clientManager, llmService, agentEventBus } = services;
+    // Create the SaikiAgent instance
+    const agent = new SaikiAgent(services);
 
     // Start based on mode
     // TODO: We ideally should be able to start all services with one or more interfaces at once. Single backend, multiple frontend interfaces.
     if (runMode === 'cli') {
         if (headlessInput) {
-            await startHeadlessCli(clientManager, llmService, agentEventBus, headlessInput);
+            await startHeadlessCli(agent, headlessInput);
             process.exit(0);
         } else {
             // Run CLI
-            await startAiCli(clientManager, llmService, agentEventBus);
+            await startAiCli(agent);
         }
     } else if (runMode === 'web') {
         // Run WebUI with configured MCP identity (pass agentCard only)
         const agentCard = services.configManager.getConfig().agentCard ?? {};
-        startWebUI(clientManager, llmService, agentEventBus, webPort, agentCard);
+        startWebUI(agent, webPort, agentCard);
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
@@ -196,7 +197,7 @@ async function startAgent() {
 }
 
 // Execute the agent
-startAgent().catch((error) => {
+startApp().catch((error) => {
     logger.error('Unhandled error during agent startup:');
     logger.error(error);
     process.exit(1);

@@ -1,17 +1,16 @@
 import dotenv from 'dotenv';
-import { Client, GatewayIntentBits, Partials } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Attachment } from 'discord.js';
 import https from 'https';
+import http from 'http'; // ADDED for http support
 import { MCPClientManager } from '../../src/client/manager.js';
 import { ILLMService } from '../../src/ai/llm/services/types.js';
 import { EventEmitter } from 'events';
+import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js';
+import { logger } from '../../src/utils/logger.js';
 
 // Load environment variables
 dotenv.config();
 const token = process.env.DISCORD_BOT_TOKEN;
-if (!token) {
-    console.error('Missing DISCORD_BOT_TOKEN in environment');
-    process.exit(1);
-}
 
 // User-based cooldown system for Discord interactions
 const userCooldowns = new Map<string, number>();
@@ -30,23 +29,59 @@ async function downloadFileAsBase64(
     fileUrl: string
 ): Promise<{ base64: string; mimeType: string }> {
     return new Promise((resolve, reject) => {
-        https
-            .get(fileUrl, (res) => {
-                if (res.statusCode && res.statusCode >= 400) {
-                    return reject(
-                        new Error(`Failed to download file: ${res.statusCode} ${res.statusMessage}`)
-                    );
+        const protocol = fileUrl.startsWith('https:') ? https : http; // Determine protocol
+        const MAX_BYTES = 5 * 1024 * 1024; // 5 MB hard cap
+        let downloadedBytes = 0;
+
+        const req = protocol.get(fileUrl, (res) => {
+            // Store the request object
+            if (res.statusCode && res.statusCode >= 400) {
+                // Clean up response stream
+                res.resume();
+                return reject(
+                    new Error(`Failed to download file: ${res.statusCode} ${res.statusMessage}`)
+                );
+            }
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => {
+                downloadedBytes += chunk.length;
+                if (downloadedBytes > MAX_BYTES) {
+                    // Clean up response stream before destroying request
+                    res.resume();
+                    req.destroy(new Error('Attachment exceeds 5 MB limit')); // Destroy the request
+                    // No explicit reject here, as 'error' on req should handle it or timeout will occur
+                    return;
                 }
-                const chunks: Buffer[] = [];
-                res.on('data', (chunk) => chunks.push(chunk));
-                res.on('end', () => {
-                    const buffer = Buffer.concat(chunks);
-                    const contentType =
-                        (res.headers['content-type'] as string) || 'application/octet-stream';
-                    resolve({ base64: buffer.toString('base64'), mimeType: contentType });
-                });
-            })
-            .on('error', reject);
+                chunks.push(chunk);
+            });
+            res.on('end', () => {
+                if (req.destroyed) return; // If request was destroyed due to size limit, do nothing
+                const buffer = Buffer.concat(chunks);
+                const contentType =
+                    (res.headers['content-type'] as string) || 'application/octet-stream';
+                resolve({ base64: buffer.toString('base64'), mimeType: contentType });
+            });
+            // Handle errors on the response stream itself (e.g., premature close)
+            res.on('error', (err) => {
+                if (!req.destroyed) {
+                    // Avoid double-rejection if req.destroy() already called this
+                    reject(err);
+                }
+            });
+        });
+
+        // Handle errors on the request object (e.g., socket hang up, DNS resolution error, or from req.destroy())
+        req.on('error', (err) => {
+            reject(err);
+        });
+
+        // Optional: Add a timeout for the request
+        req.setTimeout(30000, () => {
+            // 30 seconds timeout
+            if (!req.destroyed) {
+                req.destroy(new Error('File download timed out'));
+            }
+        });
     });
 }
 

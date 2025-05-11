@@ -10,10 +10,6 @@ import { MCPClientManager } from '../../src/client/manager.js';
 dotenv.config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-if (!token) {
-    console.error('Missing TELEGRAM_BOT_TOKEN in environment');
-    process.exit(1);
-}
 
 // Insert concurrency cap and debounce cache for inline queries
 const MAX_CONCURRENT_INLINE_QUERIES = process.env.TELEGRAM_INLINE_QUERY_CONCURRENCY

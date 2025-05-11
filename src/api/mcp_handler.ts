@@ -2,18 +2,18 @@ import type { Express } from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ReadResourceCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { ILLMService } from '../ai/llm/services/types.js';
 import type { AgentCard } from '../config/types.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 import express from 'express';
+import { SaikiAgent } from '../ai/agent/SaikiAgent.js';
 
 /**
  * Initializes and sets up the MCP server, its tools, resources, and HTTP endpoints.
  */
 export async function initializeMcpServerEndpoints(
     app: Express,
-    llmService: ILLMService,
+    agent: SaikiAgent,
     agentName: string,
     agentVersion: string,
     agentCardData: AgentCard, // Used for the MCP resource
@@ -37,7 +37,7 @@ export async function initializeMcpServerEndpoints(
         toolDescription,
         { message: z.string() }, // Input schema for the tool
         async ({ message }: { message: string }) => {
-            const text = await llmService.completeTask(message);
+            const text = await agent.run(message);
             return { content: [{ type: 'text', text }] }; // Output structure
         }
     );
