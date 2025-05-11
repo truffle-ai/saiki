@@ -269,7 +269,7 @@ export type ServerConfigs = z.infer<typeof ServerConfigsSchema>;
 
 export const AgentConfigSchema = z
     .object({
-        agentCard: AgentCardSchema.describe('Configuration for the agent card'),
+        agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
         mcpServers: ServerConfigsSchema.describe(
             'Configurations for MCP (Multi-Capability Peer) servers used by the agent'
         ),
