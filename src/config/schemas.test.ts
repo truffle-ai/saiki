@@ -46,24 +46,28 @@ describe('Config Schemas', () => {
             const dynamicMissingSource = { id: 'd1', type: 'dynamic' as const, priority: 1 };
             expect(() => ContributorConfigSchema.parse(dynamicMissingSource)).toThrow();
 
-            // Zod allows extra fields by default. If strictness is desired, .strict() should be added to the schema.
-            const staticWithOptionalSource = {
+            // With .strict(), extra fields are not allowed.
+            const staticWithExtraneousSource = {
                 id: 's2',
                 type: 'static' as const,
                 priority: 1,
                 content: 'c',
-                source: 's',
+                source: 's', // Extraneous field for static type
             };
-            expect(() => ContributorConfigSchema.parse(staticWithOptionalSource)).not.toThrow();
+            expect(() => ContributorConfigSchema.parse(staticWithExtraneousSource)).toThrow(
+                /Unrecognized key\(s\) in object: 'source'/i
+            );
 
-            const dynamicWithOptionalContent = {
+            const dynamicWithExtraneousContent = {
                 id: 'd2',
                 type: 'dynamic' as const,
                 priority: 1,
                 source: 's',
-                content: 'c',
+                content: 'c', // Extraneous field for dynamic type
             };
-            expect(() => ContributorConfigSchema.parse(dynamicWithOptionalContent)).not.toThrow();
+            expect(() => ContributorConfigSchema.parse(dynamicWithExtraneousContent)).toThrow(
+                /Unrecognized key\(s\) in object: 'content'/i
+            );
 
             const validStatic = { id: 's3', type: 'static' as const, priority: 1, content: 'c' };
             expect(() => ContributorConfigSchema.parse(validStatic)).not.toThrow();
@@ -101,11 +105,9 @@ describe('Config Schemas', () => {
             expect(() => SystemPromptConfigSchema.parse(valid)).not.toThrow();
         });
 
-        it('accepts an empty contributors array', () => {
-            const validEmpty = { contributors: [] };
-            expect(() => SystemPromptConfigSchema.parse(validEmpty)).not.toThrow();
-            const parsed = SystemPromptConfigSchema.parse(validEmpty);
-            expect(parsed.contributors).toEqual([]);
+        it('rejects an empty contributors array', () => {
+            const invalidEmpty = { contributors: [] };
+            expect(() => SystemPromptConfigSchema.parse(invalidEmpty)).toThrow();
         });
 
         it('rejects if a contributor object in the array is invalid', () => {

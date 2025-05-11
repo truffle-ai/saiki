@@ -32,8 +32,12 @@ export class ConfigManager {
      */
     public initFromConfig(newFileConfig: AgentConfig): void {
         logger.debug('Loading new agent configuration...');
-        // Note: structuredClone requires Node.js v17.0.0+. For older versions, use a polyfill or lodash.cloneDeep.
-        this.resolved = structuredClone(newFileConfig);
+        // Use native structuredClone when available, else fall back to JSON parse/stringify for deep cloning.
+        // This fallback is generally fine for config objects but has limitations (e.g., Date objects, functions, undefined values).
+        this.resolved =
+            typeof globalThis.structuredClone === 'function'
+                ? structuredClone(newFileConfig)
+                : JSON.parse(JSON.stringify(newFileConfig));
 
         // Reset provenance to the initial state, as if loading from a file for the first time.
         // This assumes CLI overrides will be applied separately by calling overrideCLI if needed.

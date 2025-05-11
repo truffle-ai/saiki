@@ -38,12 +38,20 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
 
     // Load available tools
     logger.info('Loading available tools...');
-    const tools = await agent.clientManager.getAllTools(); // tools variable is not used currently but kept for potential future use
-    logger.info(
-        `Loaded ${Object.keys(tools).length} tools from ${agent.clientManager.getClients().size} MCP servers
-`
-    );
-    logger.info('AI Agent initialized successfully!', null, 'green');
+    try {
+        const tools = await agent.clientManager.getAllTools(); // tools variable is not used currently but kept for potential future use
+        logger.info(
+            `Loaded ${Object.keys(tools).length} tools from ${
+                agent.clientManager.getClients().size
+            } MCP servers`
+        );
+    } catch (error) {
+        logger.error(
+            `Failed to load tools: ${error instanceof Error ? error.message : String(error)}`
+        );
+    }
+
+    logger.info('CLI initialized successfully. Ready for input.', null, 'green');
 }
 
 /**

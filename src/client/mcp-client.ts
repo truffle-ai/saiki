@@ -33,8 +33,6 @@ export class MCPClient implements IMCPClient {
     private serverAlias: string | null = null;
     private timeout: number; // Changed to number, as Zod default ensures it
 
-    constructor() {}
-
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
         this.timeout = config.timeout; // Rely on Zod default for timeout
         if (config.type === 'stdio') {

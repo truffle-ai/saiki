@@ -72,33 +72,35 @@ export const AgentCardSchema = z
     .strict();
 
 // Define a base schema for common fields
-const BaseContributorSchema = z.object({
-    id: z.string().describe('Unique identifier for the contributor'),
-    priority: z
-        .number()
-        .int()
-        .nonnegative()
-        .describe('Execution priority of the contributor (lower numbers run first)'),
-    enabled: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe('Whether this contributor is currently active'),
-});
+const BaseContributorSchema = z
+    .object({
+        id: z.string().describe('Unique identifier for the contributor'),
+        priority: z
+            .number()
+            .int()
+            .nonnegative()
+            .describe('Execution priority of the contributor (lower numbers run first)'),
+        enabled: z
+            .boolean()
+            .optional()
+            .default(true)
+            .describe('Whether this contributor is currently active'),
+    })
+    .strict();
 
 // Schema for 'static' contributors - only includes relevant fields
 const StaticContributorSchema = BaseContributorSchema.extend({
     type: z.literal('static'),
     content: z.string().describe("Static content for the contributor (REQUIRED for 'static')"),
     // No 'source' field here, as it's not relevant to static contributors
-});
+}).strict();
 
 // Schema for 'dynamic' contributors - only includes relevant fields
 const DynamicContributorSchema = BaseContributorSchema.extend({
     type: z.literal('dynamic'),
     source: z.string().describe("Source identifier for dynamic content (REQUIRED for 'dynamic')"),
     // No 'content' field here, as it's not relevant to dynamic contributors (source provides the content)
-});
+}).strict();
 
 export const ContributorConfigSchema = z
     .discriminatedUnion(
@@ -123,6 +125,7 @@ export type ContributorConfig = z.infer<typeof ContributorConfigSchema>;
 export const SystemPromptConfigSchema = z.object({
     contributors: z
         .array(ContributorConfigSchema)
+        .min(1)
         .describe('An array of contributor configurations that make up the system prompt'),
 });
 
