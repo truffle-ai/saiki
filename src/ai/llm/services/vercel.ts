@@ -9,7 +9,7 @@ import { MessageManager } from '../messages/manager.js';
 import { getProviderFromModel } from '../registry.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
-import { ModelNotFoundError } from '../registry.js';
+import { ModelNotFoundError } from '../errors.js';
 
 /**
  * Vercel implementation of LLMService

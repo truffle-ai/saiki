@@ -7,9 +7,9 @@ import {
     isValidProviderModel,
     getProviderFromModel,
     getAllSupportedModels,
-    ProviderNotFoundError,
-    ModelNotFoundError,
 } from './registry.js';
+import { ModelNotFoundError } from './errors.js';
+import { ProviderNotFoundError } from './errors.js';
 
 describe('LLM Registry', () => {
     it('should return all provider keys', () => {

@@ -190,7 +190,7 @@ export const LLMConfigSchema = z
         const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
         const maxTokensIsSet = data.maxTokens != null;
 
-        // 1. Provider must be one of the supported list
+        // Provider must be one of the supported list
         const supportedProvidersList = getSupportedProviders();
         if (!supportedProvidersList.includes(providerLower)) {
             ctx.addIssue({
@@ -271,11 +271,6 @@ export const LLMConfigSchema = z
     });
 
 export type LLMConfig = z.infer<typeof LLMConfigSchema>;
-
-// You can add more schemas for AgentConfig, etc., as needed.
-// For example:
-// export const agentConfigSchema = z.object({ ... });
-// export type AgentConfig = z.infer<typeof agentConfigSchema>;
 
 export const StdioServerConfigSchema = z.object({
     type: z.literal('stdio'),

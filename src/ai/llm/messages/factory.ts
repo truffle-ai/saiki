@@ -5,7 +5,7 @@ import { LLMConfig } from '../../../config/schemas.js';
 import { LLMRouter } from '../types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { logger } from '../../../utils/logger.js';
-import { getMaxTokensForModel } from '../registry.js';
+import { getEffectiveMaxTokens } from '../registry.js';
 
 /**
  * Factory function to create a MessageManager instance with the correct formatter, tokenizer, and maxTokens
@@ -25,8 +25,8 @@ export function createMessageManager(
     const provider = config.provider.toLowerCase();
     const model = config.model.toLowerCase();
 
-    // if maxTokens is not provided, use the model's max tokens
-    const maxTokens = config.maxTokens ?? Math.floor(getMaxTokensForModel(provider, model) * 0.95);
+    // Use the new helper function to determine maxTokens
+    const effectiveMaxTokens = getEffectiveMaxTokens(config);
 
     const tokenizer = createTokenizer(provider, model);
     logger.debug(`Tokenizer created for ${provider}/${model}`);
@@ -35,7 +35,7 @@ export function createMessageManager(
     logger.debug(`Message formatter created for ${provider}/${model}`);
 
     logger.debug(
-        `Creating MessageManager for ${provider}/${model} using ${router} router with maxTokens: ${maxTokens}`
+        `Creating MessageManager for ${provider}/${model} using ${router} router with maxTokens: ${effectiveMaxTokens}`
     );
-    return new MessageManager(formatter, promptManager, maxTokens, tokenizer);
+    return new MessageManager(formatter, promptManager, effectiveMaxTokens, tokenizer);
 }

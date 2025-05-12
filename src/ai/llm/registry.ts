@@ -1,4 +1,12 @@
 import { logger } from '../../utils/logger.js';
+import { LLMConfig } from '../../config/schemas.js';
+import {
+    CantInferProviderError,
+    EffectiveMaxTokensError,
+    ModelNotFoundError,
+    ProviderNotFoundError,
+} from './errors.js';
+
 export interface ModelInfo {
     name: string;
     maxTokens: number;
@@ -144,24 +152,56 @@ export function getAllSupportedModels(): string[] {
     return Object.values(LLM_REGISTRY).flatMap((info) => info.models.map((m) => m.name));
 }
 
-// Custom errors for LLM registry
-export class ProviderNotFoundError extends Error {
-    constructor(provider: string) {
-        super(`Provider '${provider}' not found in LLM registry.`);
-        this.name = 'ProviderNotFoundError';
+/**
+ * Determines the effective maximum token limit based on configuration.
+ * Priority:
+ * 1. Explicit `maxTokens` in config (handles `baseURL` case implicitly via Zod validation).
+ * 2. Registry lookup for known provider/model.
+ *
+ * @param config The validated LLM configuration.
+ * @returns The effective maximum token count.
+ * @throws {Error}
+ * If `baseURL` is set but `maxTokens` is missing (indicating a Zod validation inconsistency).
+ * Or if baseURL is not set but model isn't found in registry.
+ */
+export function getEffectiveMaxTokens(config: LLMConfig): number {
+    // Priority 1: Explicit config override or required value with baseURL
+    if (config.maxTokens != null) {
+        const reason = config.baseURL ? '(with baseURL)' : '(override)';
+        logger.debug(`Using maxTokens from configuration ${reason}: ${config.maxTokens}`);
+        // Zod ensures this is a positive integer and within registry limits if baseURL is not set.
+        return config.maxTokens;
     }
-}
 
-export class ModelNotFoundError extends Error {
-    constructor(provider: string, model: string) {
-        super(`Model '${model}' not found for provider '${provider}' in LLM registry.`);
-        this.name = 'ModelNotFoundError';
+    // Priority 2: baseURL is set but maxTokens is missing - indicates validation inconsistency
+    if (config.baseURL) {
+        const errMsg =
+            "Internal Error: Configuration validation inconsistency - 'baseURL' is set but 'maxTokens' is missing. 'maxTokens' is required when 'baseURL' is specified.";
+        logger.error(errMsg);
+        // This state should ideally be prevented by Zod. Throw indicates a validation setup error.
+        throw new Error(errMsg);
     }
-}
 
-export class CantInferProviderError extends Error {
-    constructor(model: string) {
-        super(`Unrecognized model '${model}'. Could not infer provider.`);
-        this.name = 'CantInferProviderError';
+    // Priority 3: No override, no baseURL - use registry.
+    try {
+        const registryMaxTokens = getMaxTokensForModel(config.provider, config.model);
+        logger.debug(
+            `Using maxTokens from registry for ${config.provider}/${config.model}: ${registryMaxTokens}`
+        );
+        return registryMaxTokens;
+    } catch (error: any) {
+        // Handle registry lookup failures gracefully (e.g., typo in validated config)
+        if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
+            // Log as error and throw a specific fatal error
+            logger.error(
+                `Registry lookup failed for ${config.provider}/${config.model}: ${error.message}. ` +
+                    `Effective maxTokens cannot be determined.`
+            );
+            throw new EffectiveMaxTokensError(config.provider, config.model);
+        } else {
+            // Re-throw unexpected errors during registry lookup
+            logger.error(`Unexpected error during registry lookup for maxTokens: ${error}`);
+            throw error;
+        }
     }
 }

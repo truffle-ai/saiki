@@ -7,7 +7,7 @@ import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
-import { ModelNotFoundError } from '../registry.js';
+import { ModelNotFoundError } from '../errors.js';
 
 /**
  * OpenAI implementation of LLMService
