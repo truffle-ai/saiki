@@ -7,6 +7,8 @@ import {
     isValidProviderModel,
     getProviderFromModel,
     getAllSupportedModels,
+    ProviderNotFoundError,
+    ModelNotFoundError,
 } from './registry.js';
 
 describe('LLM Registry', () => {
@@ -36,12 +38,12 @@ describe('LLM Registry', () => {
         expect(getMaxTokensForModel('OpenAI', 'O4-MINI')).toBe(200000);
     });
 
-    it('should throw for unknown provider in getMaxTokensForModel', () => {
-        expect(() => getMaxTokensForModel('foo', 'o4-mini')).toThrow();
+    it('should throw ProviderNotFoundError for unknown provider in getMaxTokensForModel', () => {
+        expect(() => getMaxTokensForModel('foo', 'o4-mini')).toThrow(ProviderNotFoundError);
     });
 
-    it('should throw for unknown model in getMaxTokensForModel', () => {
-        expect(() => getMaxTokensForModel('openai', 'foo')).toThrow();
+    it('should throw ModelNotFoundError for unknown model in getMaxTokensForModel', () => {
+        expect(() => getMaxTokensForModel('openai', 'foo')).toThrow(ModelNotFoundError);
     });
 
     it('should return true if provider or model is missing in isValidProviderModel', () => {

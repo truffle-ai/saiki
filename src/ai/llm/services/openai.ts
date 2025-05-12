@@ -7,6 +7,7 @@ import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
+import { ModelNotFoundError } from '../registry.js';
 
 /**
  * OpenAI implementation of LLMService
@@ -154,13 +155,31 @@ export class OpenAIService implements ILLMService {
      */
     getConfig(): LLMServiceConfig {
         const configuredMaxTokens = this.messageManager.getMaxTokens();
+        let modelMaxTokens: number;
+
+        // Fetching max tokens from LLM registry - default to configured max tokens if not found
+        // Max tokens may not be found if the model is supplied by user
+        try {
+            modelMaxTokens = getMaxTokensForModel('openai', this.model);
+        } catch (error) {
+            // if the model is not found in the LLM registry, log and default to configured max tokens
+            if (error instanceof ModelNotFoundError) {
+                modelMaxTokens = configuredMaxTokens;
+                logger.debug(
+                    `Could not find model ${this.model} in LLM registry to get max tokens. Using configured max tokens: ${configuredMaxTokens}.`
+                );
+                // for any other error, throw
+            } else {
+                throw error;
+            }
+        }
 
         return {
             router: 'in-built',
             provider: 'openai',
             model: this.model,
-            configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens: getMaxTokensForModel('openai', this.model),
+            configuredMaxTokens,
+            modelMaxTokens,
         };
     }
 

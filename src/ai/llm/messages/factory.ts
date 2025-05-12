@@ -25,8 +25,8 @@ export function createMessageManager(
     const provider = config.provider.toLowerCase();
     const model = config.model.toLowerCase();
 
-    const registryMaxTokens = getMaxTokensForModel(provider, model);
-    const maxTokens = Math.floor(registryMaxTokens! * 0.9);
+    // if maxTokens is not provided, use the model's max tokens
+    const maxTokens = config.maxTokens ?? Math.floor(getMaxTokensForModel(provider, model) * 0.95);
 
     const tokenizer = createTokenizer(provider, model);
     logger.debug(`Tokenizer created for ${provider}/${model}`);

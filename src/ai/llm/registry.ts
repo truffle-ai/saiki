@@ -1,5 +1,4 @@
 import { logger } from '../../utils/logger.js';
-
 export interface ModelInfo {
     name: string;
     maxTokens: number;
@@ -83,9 +82,7 @@ export function getMaxTokensForModel(provider: string, model: string): number {
         logger.error(
             `Provider '${provider}' not found in LLM registry. Supported: ${supportedProviders}`
         );
-        throw new Error(
-            `Provider '${provider}' not found in LLM registry. Supported providers are: ${supportedProviders}`
-        );
+        throw new ProviderNotFoundError(provider);
     }
 
     const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === lowerModel);
@@ -94,9 +91,7 @@ export function getMaxTokensForModel(provider: string, model: string): number {
         logger.error(
             `Model '${model}' not found for provider '${provider}' in LLM registry. Supported models: ${supportedModels}`
         );
-        throw new Error(
-            `Model '${model}' not found for provider '${provider}' in LLM registry. Supported models for '${provider}' are: ${supportedModels}`
-        );
+        throw new ModelNotFoundError(provider, model);
     }
 
     logger.debug(`Found max tokens for ${provider}/${model}: ${modelInfo.maxTokens}`);
@@ -139,7 +134,7 @@ export function getProviderFromModel(model: string): string {
             return provider;
         }
     }
-    throw new Error(`Unrecognized model '${model}'. Could not infer provider.`);
+    throw new CantInferProviderError(model);
 }
 
 /**
@@ -147,4 +142,26 @@ export function getProviderFromModel(model: string): string {
  */
 export function getAllSupportedModels(): string[] {
     return Object.values(LLM_REGISTRY).flatMap((info) => info.models.map((m) => m.name));
+}
+
+// Custom errors for LLM registry
+export class ProviderNotFoundError extends Error {
+    constructor(provider: string) {
+        super(`Provider '${provider}' not found in LLM registry.`);
+        this.name = 'ProviderNotFoundError';
+    }
+}
+
+export class ModelNotFoundError extends Error {
+    constructor(provider: string, model: string) {
+        super(`Model '${model}' not found for provider '${provider}' in LLM registry.`);
+        this.name = 'ModelNotFoundError';
+    }
+}
+
+export class CantInferProviderError extends Error {
+    constructor(model: string) {
+        super(`Unrecognized model '${model}'. Could not infer provider.`);
+        this.name = 'CantInferProviderError';
+    }
 }

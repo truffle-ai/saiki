@@ -2,7 +2,7 @@ import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
 import { LLMConfig } from '../../../config/schemas.js';
 import { logger } from '../../../utils/logger.js';
-import { openai } from '@ai-sdk/openai';
+import { openai, createOpenAI } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
 import { anthropic } from '@ai-sdk/anthropic';
 import { VercelLLMService } from './vercel.js';
@@ -58,7 +58,13 @@ function _createInBuiltLLMService(
 
     switch (config.provider.toLowerCase()) {
         case 'openai': {
-            const openai = new OpenAI({ apiKey });
+            const baseURL = getOpenAICompatibleBaseURL(config);
+            let openai: OpenAI;
+            if (baseURL) {
+                openai = new OpenAI({ apiKey, baseURL });
+            } else {
+                openai = new OpenAI({ apiKey });
+            }
             return new OpenAIService(
                 clientManager,
                 openai,
@@ -84,9 +90,15 @@ function _createInBuiltLLMService(
     }
 }
 
-function _createVercelModel(provider: string, model: string): LanguageModelV1 {
+function _createVercelModel(llmConfig: LLMConfig): LanguageModelV1 {
+    const provider = llmConfig.provider;
+    const model = llmConfig.model;
     switch (provider.toLowerCase()) {
         case 'openai':
+            const baseURL = getOpenAICompatibleBaseURL(llmConfig);
+            if (baseURL) {
+                return createOpenAI({ baseURL })(model);
+            }
             return openai(model);
         case 'anthropic':
             return anthropic(model);
@@ -97,13 +109,30 @@ function _createVercelModel(provider: string, model: string): LanguageModelV1 {
     }
 }
 
+/**
+ * Overrides a default base URL for OpenAI compatible models - this allows adding openai compatibles
+ * Hierarchy: we first check the config file, then the environment variable
+ * @param llmConfig LLM configuration from the config file
+ * @returns Base URL or empty string if not found
+ */
+function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
+    if (llmConfig.baseURL) {
+        return llmConfig.baseURL;
+    }
+    // Check for environment variable as fallback
+    if (process.env.OPENAI_BASE_URL) {
+        return process.env.OPENAI_BASE_URL;
+    }
+    return '';
+}
+
 function _createVercelLLMService(
     config: LLMConfig,
     clientManager: MCPClientManager,
     agentEventBus: EventEmitter,
     messageManager: MessageManager
 ): VercelLLMService {
-    const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
+    const model: LanguageModelV1 = _createVercelModel(config);
     return new VercelLLMService(
         clientManager,
         model,

@@ -27,11 +27,9 @@
 
 import { MCPClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/services/types.js';
-import { AgentConfig } from '../config/schemas.js';
 import { createLLMService } from '../ai/llm/services/factory.js';
 import { logger } from './logger.js';
 import { EventEmitter } from 'events';
-import { LLMRouter } from '../ai/llm/types.js';
 import { MessageManager } from '../ai/llm/messages/manager.js';
 import { createMessageManager } from '../ai/llm/messages/factory.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
