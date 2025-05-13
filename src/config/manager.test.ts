@@ -15,6 +15,7 @@ const baseConfig: AgentConfig = {
         provider: 'openai',
         model: 'o4-mini',
         systemPrompt: 'hi',
+        apiKey: '123',
     },
 };
 

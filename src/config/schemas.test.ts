@@ -137,7 +137,12 @@ describe('Config Schemas', () => {
             const objPrompt = {
                 contributors: [{ id: 'c1', type: 'static', priority: 1, content: 'x' }],
             };
-            const good = { provider: 'openai', model: 'o4-mini', systemPrompt: objPrompt };
+            const good = {
+                provider: 'openai',
+                model: 'o4-mini',
+                apiKey: 'key',
+                systemPrompt: objPrompt,
+            };
             expect(() => LLMConfigSchema.parse(good)).not.toThrow();
         });
 
@@ -159,6 +164,7 @@ describe('Config Schemas', () => {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
+                apiKey: '123',
             };
             const parsed = LLMConfigSchema.parse(config);
             expect(parsed.maxIterations).toBe(50);
@@ -169,6 +175,7 @@ describe('Config Schemas', () => {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
+                apiKey: '123',
             };
             const parsed = LLMConfigSchema.parse(config);
             expect(parsed.providerOptions).toEqual({});
@@ -179,21 +186,19 @@ describe('Config Schemas', () => {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
+                apiKey: '123',
             };
             const parsed = LLMConfigSchema.parse(config);
             expect(parsed.router).toBe('vercel');
         });
 
-        it('accepts config without apiKey', () => {
+        it('rejects config without apiKey', () => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
-                maxIterations: 10, // ensure other fields are still processed
             };
-            expect(() => LLMConfigSchema.parse(config)).not.toThrow();
-            const parsed = LLMConfigSchema.parse(config);
-            expect(parsed.apiKey).toBeUndefined();
+            expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
         it('accepts valid provider-specific options', () => {
@@ -201,6 +206,7 @@ describe('Config Schemas', () => {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
+                apiKey: '123',
                 providerOptions: {
                     temperature: 0.7,
                     top_p: 0.9,
@@ -219,6 +225,7 @@ describe('Config Schemas', () => {
                 provider: 'OpenAI', // Mixed case
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt for mixed case provider',
+                apiKey: '123',
             };
             expect(() => LLMConfigSchema.parse(configMixedCase)).not.toThrow();
 
@@ -226,6 +233,7 @@ describe('Config Schemas', () => {
                 provider: 'ANTHROPIC', // Upper case
                 model: 'claude-3-opus-20240229', // Valid model for anthropic
                 systemPrompt: 'Test prompt for upper case provider',
+                apiKey: '123',
             };
             expect(() => LLMConfigSchema.parse(configUpperCase)).not.toThrow();
         });
@@ -234,6 +242,7 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'anthropic',
                 model: 'claude-3-opus-20240229',
+                apiKey: '123',
                 systemPrompt: 'Test',
                 baseURL: 'https://api.custom.com/v1', // baseURL is set but provider is not openai
             };
@@ -245,6 +254,7 @@ describe('Config Schemas', () => {
                 provider: 'openai',
                 model: 'my-custom-model',
                 systemPrompt: 'Test',
+                apiKey: '123',
                 baseURL: 'https://api.custom.com/v1', // baseURL is set
                 // maxTokens is missing
             };
@@ -256,6 +266,7 @@ describe('Config Schemas', () => {
                 provider: 'anthropic',
                 model: 'claude-3-opus-20240229',
                 systemPrompt: 'Test',
+                apiKey: '123',
                 baseURL: 'https://api.custom.com/v1', // baseURL is set
             };
             expect(() => LLMConfigSchema.parse(config)).toThrow();
@@ -266,6 +277,7 @@ describe('Config Schemas', () => {
                 provider: 'openai',
                 model: 'my-company-finetune-v3',
                 systemPrompt: 'Test',
+                apiKey: '123',
                 baseURL: 'https://api.custom.com/v1',
                 maxTokens: 8192,
             };
@@ -277,6 +289,7 @@ describe('Config Schemas', () => {
                 provider: 'openai',
                 model: 'gpt-4o-mini',
                 systemPrompt: 'Test',
+                apiKey: '123',
                 maxTokens: 200000, // Exceeds the limit
             };
             expect(() => LLMConfigSchema.parse(config)).toThrow();
@@ -287,6 +300,7 @@ describe('Config Schemas', () => {
                 provider: 'openai',
                 model: 'gpt-4o-mini', // Known model
                 systemPrompt: 'Test',
+                apiKey: '123',
                 maxTokens: 4096, // Within limit
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
@@ -297,6 +311,7 @@ describe('Config Schemas', () => {
                 provider: 'anthropic',
                 model: 'claude-3-haiku-20240307', // Known model
                 systemPrompt: 'Test',
+                apiKey: '123',
                 // maxTokens is not provided, should be fine
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
@@ -524,6 +539,7 @@ describe('Config Schemas', () => {
                     provider: 'openai',
                     model: 'o4-mini',
                     systemPrompt: 'You are an agent.',
+                    apiKey: '123',
                 },
             };
             expect(() => AgentConfigSchema.parse(validAgentConfig)).not.toThrow();

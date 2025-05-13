@@ -146,8 +146,10 @@ export const LLMConfigSchema = z
             ),
         apiKey: z
             .string()
-            .optional()
-            .describe('API key for the LLM provider (can also be set via environment variables)'),
+            .min(1)
+            .describe(
+                'API key for the LLM provider (can also be set via environment variables using $VAR syntax)'
+            ),
         maxIterations: z
             .number()
             .int()
