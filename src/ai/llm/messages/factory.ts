@@ -25,7 +25,6 @@ export function createMessageManager(
     const provider = config.provider.toLowerCase();
     const model = config.model.toLowerCase();
 
-    // Use the new helper function to determine maxTokens
     const effectiveMaxTokens = getEffectiveMaxTokens(config);
 
     const tokenizer = createTokenizer(provider, model);

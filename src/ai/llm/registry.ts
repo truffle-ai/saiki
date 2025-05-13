@@ -162,7 +162,7 @@ export function getAllSupportedModels(): string[] {
  * @returns The effective maximum token count.
  * @throws {Error}
  * If `baseURL` is set but `maxTokens` is missing (indicating a Zod validation inconsistency).
- * Or if baseURL is not set but model isn't found in registry.
+ * Or if `baseURL` is not set, but model isn't found in registry.
  */
 export function getEffectiveMaxTokens(config: LLMConfig): number {
     // Priority 1: Explicit config override or required value with baseURL

@@ -1,12 +1,7 @@
 import { ITokenizer, TokenizationError } from './types.js';
 import { encoding_for_model, get_encoding, Tiktoken, TiktokenModel } from 'tiktoken';
 
-// No longer needed:
-// const UNSUPPORTED_PREFIXES: string[] = ['gpt-4.1'];
-// const DEFAULT_MODEL: TiktokenModel = 'gpt-4o';
-// function fetchTiktokenModel(model: string): TiktokenModel { ... }
-
-// Define the fallback encoding name
+// Fallback encoding name if model is not supported by tiktoken
 const FALLBACK_ENCODING = 'cl100k_base'; // Encoding used by GPT-4, GPT-3.5 Turbo, GPT-4o etc.
 
 /**
@@ -62,7 +57,6 @@ export class OpenAITokenizer implements ITokenizer {
             const tokens = this.encoding.encode(text);
             return tokens.length;
         } catch (error) {
-            // Add modelName and encoding name for better context on error
             console.error(
                 `Tiktoken encoding failed for model ${this.modelName} (using encoding: ${this.encoding.name}):`,
                 error

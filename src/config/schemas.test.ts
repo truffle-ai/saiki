@@ -230,6 +230,16 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(configUpperCase)).not.toThrow();
         });
 
+        it('rejects if baseURL is set but provider is not openai', () => {
+            const config = {
+                provider: 'anthropic',
+                model: 'claude-3-opus-20240229',
+                systemPrompt: 'Test',
+                baseURL: 'https://api.custom.com/v1', // baseURL is set but provider is not openai
+            };
+            expect(() => LLMConfigSchema.parse(config)).toThrow();
+        });
+
         it('rejects if baseURL is set but maxTokens is missing', () => {
             const config = {
                 provider: 'openai',
@@ -253,11 +263,11 @@ describe('Config Schemas', () => {
 
         it('accepts valid config with baseURL and maxTokens for openai', () => {
             const config = {
-                provider: 'openai', // Is openai
-                model: 'my-company-finetune-v3', // Custom model name
+                provider: 'openai',
+                model: 'my-company-finetune-v3',
                 systemPrompt: 'Test',
-                baseURL: 'https://api.custom.com/v1', // baseURL is set
-                maxTokens: 8192, // maxTokens is set
+                baseURL: 'https://api.custom.com/v1',
+                maxTokens: 8192,
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
@@ -265,11 +275,10 @@ describe('Config Schemas', () => {
         it('rejects if maxTokens exceeds limit for a known model (no baseURL)', () => {
             const config = {
                 provider: 'openai',
-                model: 'gpt-4o-mini', // Known model with a limit (e.g., 128000)
+                model: 'gpt-4o-mini',
                 systemPrompt: 'Test',
                 maxTokens: 200000, // Exceeds the limit
             };
-            // Adjust the expected maxTokens limit based on your registry data if needed
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
