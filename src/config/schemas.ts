@@ -3,6 +3,7 @@ import {
     getSupportedProviders,
     getSupportedModels,
     isValidProviderModel,
+    getMaxTokensForModel,
 } from '../ai/llm/registry.js';
 
 // (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
@@ -145,8 +146,10 @@ export const LLMConfigSchema = z
             ),
         apiKey: z
             .string()
-            .optional()
-            .describe('API key for the LLM provider (can also be set via environment variables)'),
+            .min(1)
+            .describe(
+                'API key for the LLM provider (can also be set via environment variables using $VAR syntax)'
+            ),
         maxIterations: z
             .number()
             .int()
@@ -168,37 +171,100 @@ export const LLMConfigSchema = z
             .optional()
             .default('vercel')
             .describe('LLM router to use (vercel or in-built), defaults to vercel'),
+        baseURL: z
+            .string()
+            .url()
+            .optional()
+            .describe(
+                'Base URL for the LLM provider (e.g., https://api.openai.com/v1, https://api.anthropic.com/v1). \nCurrently only supported for OpenAI.'
+            ),
+        maxTokens: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+                'Maximum number of tokens to use for the LLM, required for unknown models, calculated internally for known models'
+            ),
     })
     .superRefine((data, ctx) => {
-        // 1. Provider must be one of the supported list
+        const providerLower = data.provider?.toLowerCase();
+        const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
+        const maxTokensIsSet = data.maxTokens != null;
+
+        // Provider must be one of the supported list
         const supportedProvidersList = getSupportedProviders();
-        if (!supportedProvidersList.includes(data.provider.toLowerCase())) {
+        if (!supportedProvidersList.includes(providerLower)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['provider'],
                 message: `Provider '${data.provider}' is not supported. Supported: ${supportedProvidersList.join(', ')}`,
             });
         }
-        // 2. Model must be valid for that provider
-        // Ensure provider is valid before checking models to avoid errors with getSupportedModels
-        if (supportedProvidersList.includes(data.provider.toLowerCase())) {
-            const supportedModelsList = getSupportedModels(data.provider);
-            if (!isValidProviderModel(data.provider, data.model)) {
+
+        // When user provides a custom baseURL
+        if (baseURLIsSet) {
+            // 1. Provider must be set to 'openai'
+            if (providerLower !== 'openai') {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    path: ['model'],
-                    message: `Model '${data.model}' is not supported for provider '${data.provider}'. Supported: ${supportedModelsList.join(', ')}`,
+                    path: ['provider'],
+                    message: "If 'baseURL' is provided, provider must be set to 'openai'",
                 });
+            }
+        }
+        // If no base URL
+        else {
+            // 1. Model must be valid for the provider
+            if (supportedProvidersList.includes(providerLower)) {
+                const supportedModelsList = getSupportedModels(providerLower);
+                if (!isValidProviderModel(providerLower, data.model)) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['model'],
+                        message: `Model '${data.model}' is not supported for provider '${data.provider}'. Supported: ${supportedModelsList.join(', ')}`,
+                    });
+                }
+            }
+            // 2. maxTokens must be within the model's limit
+            if (maxTokensIsSet) {
+                try {
+                    const registryMaxTokens = getMaxTokensForModel(providerLower, data.model);
+                    if (data.maxTokens > registryMaxTokens) {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            path: ['maxTokens'],
+                            message: `Max tokens for model '${data.model}' is ${registryMaxTokens}. You provided ${data.maxTokens}`,
+                        });
+                    }
+                } catch (error: any) {
+                    // Handle ProviderNotFoundError and ModelNotFoundError specifically
+                    if (
+                        error.name === 'ProviderNotFoundError' ||
+                        error.name === 'ModelNotFoundError'
+                    ) {
+                        // This scenario should ideally be caught by the earlier provider/model validation checks.
+                        // However, if it still occurs, add an issue.
+                        // We might not have supportedModelsList here if provider was invalid.
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            path: ['model'], // Or ['provider', 'model']
+                            message: error.message, // The message from our custom error
+                        });
+                    } else {
+                        // For any other unexpected error, rethrow or handle as a generic validation issue
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            path: [], // General error
+                            message: `An unexpected error occurred while validating maxTokens: ${error.message}`,
+                        });
+                    }
+                }
             }
         }
     });
 
 export type LLMConfig = z.infer<typeof LLMConfigSchema>;
-
-// You can add more schemas for AgentConfig, etc., as needed.
-// For example:
-// export const agentConfigSchema = z.object({ ... });
-// export type AgentConfig = z.infer<typeof agentConfigSchema>;
 
 export const StdioServerConfigSchema = z.object({
     type: z.literal('stdio'),

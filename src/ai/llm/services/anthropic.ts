@@ -192,13 +192,14 @@ export class AnthropicService implements ILLMService {
      */
     getConfig(): LLMServiceConfig {
         const configuredMaxTokens = this.messageManager.getMaxTokens();
+        const modelMaxTokens = getMaxTokensForModel('anthropic', this.model);
 
         return {
             router: 'in-built',
             provider: 'anthropic',
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens: getMaxTokensForModel('anthropic', this.model),
+            modelMaxTokens,
         };
     }
 

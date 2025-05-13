@@ -1,4 +1,11 @@
 import { logger } from '../../utils/logger.js';
+import { LLMConfig } from '../../config/schemas.js';
+import {
+    CantInferProviderError,
+    EffectiveMaxTokensError,
+    ModelNotFoundError,
+    ProviderNotFoundError,
+} from './errors.js';
 
 export interface ModelInfo {
     name: string;
@@ -10,6 +17,8 @@ export interface ProviderInfo {
     models: ModelInfo[];
     // Add other provider-specific metadata if needed
 }
+
+export const DEFAULT_MAX_TOKENS = 128000;
 
 // Central registry of supported LLM providers and their models
 export const LLM_REGISTRY: Record<string, ProviderInfo> = {
@@ -83,9 +92,7 @@ export function getMaxTokensForModel(provider: string, model: string): number {
         logger.error(
             `Provider '${provider}' not found in LLM registry. Supported: ${supportedProviders}`
         );
-        throw new Error(
-            `Provider '${provider}' not found in LLM registry. Supported providers are: ${supportedProviders}`
-        );
+        throw new ProviderNotFoundError(provider);
     }
 
     const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === lowerModel);
@@ -94,9 +101,7 @@ export function getMaxTokensForModel(provider: string, model: string): number {
         logger.error(
             `Model '${model}' not found for provider '${provider}' in LLM registry. Supported models: ${supportedModels}`
         );
-        throw new Error(
-            `Model '${model}' not found for provider '${provider}' in LLM registry. Supported models for '${provider}' are: ${supportedModels}`
-        );
+        throw new ModelNotFoundError(provider, model);
     }
 
     logger.debug(`Found max tokens for ${provider}/${model}: ${modelInfo.maxTokens}`);
@@ -139,7 +144,7 @@ export function getProviderFromModel(model: string): string {
             return provider;
         }
     }
-    throw new Error(`Unrecognized model '${model}'. Could not infer provider.`);
+    throw new CantInferProviderError(model);
 }
 
 /**
@@ -147,4 +152,93 @@ export function getProviderFromModel(model: string): string {
  */
 export function getAllSupportedModels(): string[] {
     return Object.values(LLM_REGISTRY).flatMap((info) => info.models.map((m) => m.name));
+}
+
+/**
+ * Determines the effective maximum token limit based on configuration.
+ * Priority:
+ * 1. Explicit `maxTokens` in config (handles `baseURL` case implicitly via Zod validation).
+ * 2. Registry lookup for known provider/model.
+ *
+ * @param config The validated LLM configuration.
+ * @returns The effective maximum token count.
+ * @throws {Error}
+ * If `baseURL` is set but `maxTokens` is missing (indicating a Zod validation inconsistency).
+ * Or if `baseURL` is not set, but model isn't found in registry.
+ * TODO: make more readable
+ */
+export function getEffectiveMaxTokens(config: LLMConfig): number {
+    // Priority 1: Explicit config override or required value with baseURL
+    if (config.maxTokens != null) {
+        // Case 1a: baseURL is set. maxTokens is required and validated by Zod. Trust it.
+        if (config.baseURL) {
+            logger.debug(`Using maxTokens from configuration (with baseURL): ${config.maxTokens}`);
+            return config.maxTokens;
+        }
+
+        // Case 1b: baseURL is NOT set, but maxTokens is provided (override).
+        // Sanity-check against registry limits.
+        try {
+            const registryMaxTokens = getMaxTokensForModel(config.provider, config.model);
+            if (config.maxTokens > registryMaxTokens) {
+                logger.warn(
+                    `Provided maxTokens (${config.maxTokens}) for ${config.provider}/${config.model} exceeds the registry limit (${registryMaxTokens}). Capping to registry limit.`
+                );
+                return registryMaxTokens;
+            } else {
+                logger.debug(
+                    `Using valid maxTokens override from configuration: ${config.maxTokens} (Registry limit: ${registryMaxTokens})`
+                );
+                return config.maxTokens;
+            }
+        } catch (error: any) {
+            // Handle registry lookup failures during override check
+            if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
+                logger.warn(
+                    `Registry lookup failed during maxTokens override check for ${config.provider}/${config.model}: ${error.message}. ` +
+                        `Proceeding with the provided maxTokens value (${config.maxTokens}), but it might be invalid.`
+                );
+                // Return the user's value, assuming Zod validation passed for provider/model existence initially.
+                return config.maxTokens;
+            } else {
+                // Re-throw unexpected errors
+                logger.error(
+                    `Unexpected error during registry lookup for maxTokens override check: ${error}`
+                );
+                throw error; // Or potentially throw EffectiveMaxTokensError if stricter handling is needed.
+            }
+        }
+    }
+
+    // Priority 2: baseURL is set but maxTokens is missing - default to 128k tokens
+    if (config.baseURL) {
+        logger.warn(
+            `baseURL is set but maxTokens is missing. Defaulting to ${DEFAULT_MAX_TOKENS}. ` +
+                `Provide 'maxTokens' in configuration to avoid default fallback.`
+        );
+        return DEFAULT_MAX_TOKENS;
+    }
+
+    // Priority 3: No override, no baseURL - use registry.
+    try {
+        const registryMaxTokens = getMaxTokensForModel(config.provider, config.model);
+        logger.debug(
+            `Using maxTokens from registry for ${config.provider}/${config.model}: ${registryMaxTokens}`
+        );
+        return registryMaxTokens;
+    } catch (error: any) {
+        // Handle registry lookup failures gracefully (e.g., typo in validated config)
+        if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
+            // Log as error and throw a specific fatal error
+            logger.error(
+                `Registry lookup failed for ${config.provider}/${config.model}: ${error.message}. ` +
+                    `Effective maxTokens cannot be determined.`
+            );
+            throw new EffectiveMaxTokensError(config.provider, config.model);
+        } else {
+            // Re-throw unexpected errors during registry lookup
+            logger.error(`Unexpected error during registry lookup for maxTokens: ${error}`);
+            throw error;
+        }
+    }
 }

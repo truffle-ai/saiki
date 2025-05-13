@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { logger } from '../utils/logger.js';
-import { AgentConfigSchema, LLMConfigSchema } from './schemas.js';
+import { AgentConfigSchema } from './schemas.js';
 import type { AgentConfig } from './schemas.js';
 import type { CLIConfigOverrides, LLMProvenance } from './types.js';
 import { loadConfigFile } from './loader.js';

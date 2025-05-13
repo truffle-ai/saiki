@@ -2,9 +2,9 @@ import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
 import { LLMConfig } from '../../../config/schemas.js';
 import { logger } from '../../../utils/logger.js';
-import { openai } from '@ai-sdk/openai';
-import { google } from '@ai-sdk/google';
-import { anthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { VercelLLMService } from './vercel.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
@@ -58,7 +58,11 @@ function _createInBuiltLLMService(
 
     switch (config.provider.toLowerCase()) {
         case 'openai': {
-            const openai = new OpenAI({ apiKey });
+            const baseURL = getOpenAICompatibleBaseURL(config);
+            // This will correctly handle both cases:
+            // 1. When baseURL is set, it will be included in the options
+            // 2. When baseURL is undefined/null/empty, the spread operator won't add the baseURL property
+            const openai = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
             return new OpenAIService(
                 clientManager,
                 openai,
@@ -84,17 +88,45 @@ function _createInBuiltLLMService(
     }
 }
 
-function _createVercelModel(provider: string, model: string): LanguageModelV1 {
+function _createVercelModel(llmConfig: LLMConfig): LanguageModelV1 {
+    const provider = llmConfig.provider;
+    const model = llmConfig.model;
+    const apiKey = extractApiKey(llmConfig);
+
     switch (provider.toLowerCase()) {
-        case 'openai':
-            return openai(model);
+        case 'openai': {
+            const baseURL = getOpenAICompatibleBaseURL(llmConfig);
+            const options: { apiKey: string; baseURL?: string } = { apiKey };
+            if (baseURL) {
+                options.baseURL = baseURL;
+            }
+            return createOpenAI(options)(model);
+        }
         case 'anthropic':
-            return anthropic(model);
+            return createAnthropic({ apiKey })(model);
         case 'google':
-            return google(model);
+            return createGoogleGenerativeAI({ apiKey })(model);
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);
     }
+}
+
+/**
+ * Overrides a default base URL for OpenAI compatible models - this allows adding openai compatibles
+ * Hierarchy: we first check the config file, then the environment variable
+ * Regex checks for trailing slashes and removes them
+ * @param llmConfig LLM configuration from the config file
+ * @returns Base URL or empty string if not found
+ */
+function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
+    if (llmConfig.baseURL) {
+        return llmConfig.baseURL.replace(/\/$/, '');
+    }
+    // Check for environment variable as fallback
+    if (process.env.OPENAI_BASE_URL) {
+        return process.env.OPENAI_BASE_URL.replace(/\/$/, '');
+    }
+    return '';
 }
 
 function _createVercelLLMService(
@@ -103,10 +135,11 @@ function _createVercelLLMService(
     agentEventBus: EventEmitter,
     messageManager: MessageManager
 ): VercelLLMService {
-    const model: LanguageModelV1 = _createVercelModel(config.provider, config.model);
+    const model: LanguageModelV1 = _createVercelModel(config);
     return new VercelLLMService(
         clientManager,
         model,
+        config.provider,
         agentEventBus,
         messageManager,
         config.maxIterations

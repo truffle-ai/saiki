@@ -6,9 +6,9 @@ import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { getProviderFromModel } from '../registry.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
+import { ModelNotFoundError } from '../errors.js';
 
 /**
  * Vercel implementation of LLMService
@@ -24,6 +24,7 @@ export class VercelLLMService implements ILLMService {
     constructor(
         clientManager: MCPClientManager,
         model: LanguageModelV1,
+        provider: string,
         agentEventBus: EventEmitter,
         messageManager: MessageManager,
         maxIterations: number
@@ -32,7 +33,7 @@ export class VercelLLMService implements ILLMService {
         this.model = model;
         this.clientManager = clientManager;
         this.eventEmitter = agentEventBus;
-        this.provider = getProviderFromModel(this.model.modelId);
+        this.provider = provider;
         this.messageManager = messageManager;
         logger.debug(
             `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, messageManager: ${this.messageManager}`
@@ -114,6 +115,10 @@ export class VercelLLMService implements ILLMService {
             // Handle API errors
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in Vercel LLM service execution: ${errorMessage}`, { error });
+            // Hint for token overflow
+            logger.warn(
+                `Possible token overflow encountered. If due to exceeding model's token limit, configure 'maxTokens' in your LLMConfig.`
+            );
             this.eventEmitter.emit(
                 'llmservice:error',
                 error instanceof Error ? error : new Error(errorMessage)
@@ -296,13 +301,30 @@ export class VercelLLMService implements ILLMService {
      */
     getConfig(): LLMServiceConfig {
         const configuredMaxTokens = this.messageManager.getMaxTokens();
+        let modelMaxTokens: number;
 
+        // Fetching max tokens from LLM registry - default to configured max tokens if not found
+        // Max tokens may not be found if the model is supplied by user
+        try {
+            modelMaxTokens = getMaxTokensForModel(this.provider, this.model.modelId);
+        } catch (error) {
+            // if the model is not found in the LLM registry, log and default to configured max tokens
+            if (error instanceof ModelNotFoundError) {
+                modelMaxTokens = configuredMaxTokens;
+                logger.debug(
+                    `Could not find model ${this.model.modelId} in LLM registry to get max tokens. Using configured max tokens: ${configuredMaxTokens}.`
+                );
+                // for any other error, throw
+            } else {
+                throw error;
+            }
+        }
         return {
             router: 'vercel',
             provider: `${this.provider}`,
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens: getMaxTokensForModel(this.provider, this.model.modelId),
+            modelMaxTokens,
         };
     }
 }
