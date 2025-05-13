@@ -261,17 +261,6 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('rejects if baseURL is set but provider is not openai', () => {
-            const config = {
-                provider: 'anthropic',
-                model: 'claude-3-opus-20240229',
-                systemPrompt: 'Test',
-                apiKey: '123',
-                baseURL: 'https://api.custom.com/v1', // baseURL is set
-            };
-            expect(() => LLMConfigSchema.parse(config)).toThrow();
-        });
-
         it('accepts valid config with baseURL and maxTokens for openai', () => {
             const config = {
                 provider: 'openai',

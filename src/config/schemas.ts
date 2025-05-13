@@ -223,7 +223,7 @@ export const LLMConfigSchema = z
         }
         // If no base URL
         else {
-            // 1. Model must be valid for that provider
+            // 1. Model must be valid for the provider
             if (supportedProvidersList.includes(providerLower)) {
                 const supportedModelsList = getSupportedModels(providerLower);
                 if (!isValidProviderModel(providerLower, data.model)) {

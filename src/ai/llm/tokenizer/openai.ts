@@ -1,5 +1,6 @@
 import { ITokenizer, TokenizationError } from './types.js';
 import { encoding_for_model, get_encoding, Tiktoken, TiktokenModel } from 'tiktoken';
+import { logger } from '../../../utils/logger.js';
 
 // Fallback encoding name if model is not supported by tiktoken
 const FALLBACK_ENCODING = 'cl100k_base'; // Encoding used by GPT-4, GPT-3.5 Turbo, GPT-4o etc.
@@ -23,18 +24,18 @@ export class OpenAITokenizer implements ITokenizer {
         try {
             // 1. Try to get encoding for the specific model name
             this.encoding = encoding_for_model(model as TiktokenModel);
-            console.debug(`Initialized tiktoken with specific encoding for model: ${model}`);
+            logger.debug(`Initialized tiktoken with specific encoding for model: ${model}`);
         } catch (error) {
             // 2. If specific model encoding fails, fall back to cl100k_base
-            console.warn(
+            logger.warn(
                 `Could not get specific encoding for model '${this.modelName}'. Falling back to '${FALLBACK_ENCODING}'. Error: ${error instanceof Error ? error.message : String(error)}`
             );
             try {
                 this.encoding = get_encoding(FALLBACK_ENCODING);
-                console.debug(`Initialized tiktoken with fallback encoding: ${FALLBACK_ENCODING}`);
+                logger.debug(`Initialized tiktoken with fallback encoding: ${FALLBACK_ENCODING}`);
             } catch (fallbackError) {
                 // 3. If fallback also fails (very unlikely), then throw
-                console.error(
+                logger.error(
                     `Failed to initialize tiktoken with specific model '${this.modelName}' or fallback '${FALLBACK_ENCODING}'.`,
                     fallbackError
                 );
@@ -57,7 +58,7 @@ export class OpenAITokenizer implements ITokenizer {
             const tokens = this.encoding.encode(text);
             return tokens.length;
         } catch (error) {
-            console.error(
+            logger.error(
                 `Tiktoken encoding failed for model ${this.modelName} (using encoding: ${this.encoding.name}):`,
                 error
             );

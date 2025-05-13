@@ -59,12 +59,10 @@ function _createInBuiltLLMService(
     switch (config.provider.toLowerCase()) {
         case 'openai': {
             const baseURL = getOpenAICompatibleBaseURL(config);
-            let openai: OpenAI;
-            if (baseURL) {
-                openai = new OpenAI({ apiKey, baseURL });
-            } else {
-                openai = new OpenAI({ apiKey });
-            }
+            // This will correctly handle both cases:
+            // 1. When baseURL is set, it will be included in the options
+            // 2. When baseURL is undefined/null/empty, the spread operator won't add the baseURL property
+            const openai = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
             return new OpenAIService(
                 clientManager,
                 openai,
@@ -116,16 +114,17 @@ function _createVercelModel(llmConfig: LLMConfig): LanguageModelV1 {
 /**
  * Overrides a default base URL for OpenAI compatible models - this allows adding openai compatibles
  * Hierarchy: we first check the config file, then the environment variable
+ * Regex checks for trailing slashes and removes them
  * @param llmConfig LLM configuration from the config file
  * @returns Base URL or empty string if not found
  */
 function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
     if (llmConfig.baseURL) {
-        return llmConfig.baseURL;
+        return llmConfig.baseURL.replace(/\/$/, '');
     }
     // Check for environment variable as fallback
     if (process.env.OPENAI_BASE_URL) {
-        return process.env.OPENAI_BASE_URL;
+        return process.env.OPENAI_BASE_URL.replace(/\/$/, '');
     }
     return '';
 }
