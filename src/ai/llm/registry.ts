@@ -163,14 +163,49 @@ export function getAllSupportedModels(): string[] {
  * @throws {Error}
  * If `baseURL` is set but `maxTokens` is missing (indicating a Zod validation inconsistency).
  * Or if `baseURL` is not set, but model isn't found in registry.
+ * TODO: make more readable
  */
 export function getEffectiveMaxTokens(config: LLMConfig): number {
     // Priority 1: Explicit config override or required value with baseURL
     if (config.maxTokens != null) {
-        const reason = config.baseURL ? '(with baseURL)' : '(override)';
-        logger.debug(`Using maxTokens from configuration ${reason}: ${config.maxTokens}`);
-        // Zod ensures this is a positive integer and within registry limits if baseURL is not set.
-        return config.maxTokens;
+        // Case 1a: baseURL is set. maxTokens is required and validated by Zod. Trust it.
+        if (config.baseURL) {
+            logger.debug(`Using maxTokens from configuration (with baseURL): ${config.maxTokens}`);
+            return config.maxTokens;
+        }
+
+        // Case 1b: baseURL is NOT set, but maxTokens is provided (override).
+        // Sanity-check against registry limits.
+        try {
+            const registryMaxTokens = getMaxTokensForModel(config.provider, config.model);
+            if (config.maxTokens > registryMaxTokens) {
+                logger.warn(
+                    `Provided maxTokens (${config.maxTokens}) for ${config.provider}/${config.model} exceeds the registry limit (${registryMaxTokens}). Capping to registry limit.`
+                );
+                return registryMaxTokens;
+            } else {
+                logger.debug(
+                    `Using valid maxTokens override from configuration: ${config.maxTokens} (Registry limit: ${registryMaxTokens})`
+                );
+                return config.maxTokens;
+            }
+        } catch (error: any) {
+            // Handle registry lookup failures during override check
+            if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
+                logger.warn(
+                    `Registry lookup failed during maxTokens override check for ${config.provider}/${config.model}: ${error.message}. ` +
+                        `Proceeding with the provided maxTokens value (${config.maxTokens}), but it might be invalid.`
+                );
+                // Return the user's value, assuming Zod validation passed for provider/model existence initially.
+                return config.maxTokens;
+            } else {
+                // Re-throw unexpected errors
+                logger.error(
+                    `Unexpected error during registry lookup for maxTokens override check: ${error}`
+                );
+                throw error; // Or potentially throw EffectiveMaxTokensError if stricter handling is needed.
+            }
+        }
     }
 
     // Priority 2: baseURL is set but maxTokens is missing - indicates validation inconsistency
