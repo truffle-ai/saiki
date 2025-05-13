@@ -134,7 +134,10 @@ export class OpenAIService implements ILLMService {
             // Handle API errors
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in OpenAI service API call: ${errorMessage}`, { error });
-
+            // Hint for token overflow
+            logger.warn(
+                `If this error is due to token overflow, consider configuring 'maxTokens' in your LLMConfig.`
+            );
             this.eventEmitter.emit(
                 'llmservice:error',
                 error instanceof Error ? error : new Error(errorMessage)

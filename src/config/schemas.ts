@@ -212,14 +212,6 @@ export const LLMConfigSchema = z
                     message: "If 'baseURL' is provided, provider must be set to 'openai'",
                 });
             }
-            // 2. maxTokens must be set
-            if (!maxTokensIsSet) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    path: ['maxTokens'],
-                    message: "If 'baseURL' is provided, 'maxTokens' must be provided",
-                });
-            }
         }
         // If no base URL
         else {

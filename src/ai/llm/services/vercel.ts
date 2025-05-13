@@ -115,6 +115,10 @@ export class VercelLLMService implements ILLMService {
             // Handle API errors
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in Vercel LLM service execution: ${errorMessage}`, { error });
+            // Hint for token overflow
+            logger.warn(
+                `Possible token overflow encountered. If due to exceeding model's token limit, configure 'maxTokens' in your LLMConfig.`
+            );
             this.eventEmitter.emit(
                 'llmservice:error',
                 error instanceof Error ? error : new Error(errorMessage)

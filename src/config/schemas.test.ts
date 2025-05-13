@@ -249,7 +249,7 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('rejects if baseURL is set but maxTokens is missing', () => {
+        it('accepts if baseURL is set but maxTokens is missing', () => {
             const config = {
                 provider: 'openai',
                 model: 'my-custom-model',
@@ -258,7 +258,7 @@ describe('Config Schemas', () => {
                 baseURL: 'https://api.custom.com/v1', // baseURL is set
                 // maxTokens is missing
             };
-            expect(() => LLMConfigSchema.parse(config)).toThrow();
+            expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
 
         it('accepts valid config with baseURL and maxTokens for openai', () => {

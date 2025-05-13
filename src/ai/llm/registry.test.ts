@@ -7,8 +7,10 @@ import {
     isValidProviderModel,
     getProviderFromModel,
     getAllSupportedModels,
+    getEffectiveMaxTokens,
 } from './registry.js';
 import { ModelNotFoundError } from './errors.js';
+import { EffectiveMaxTokensError } from './errors.js';
 import { ProviderNotFoundError } from './errors.js';
 
 describe('LLM Registry', () => {
@@ -85,5 +87,57 @@ describe('LLM Registry', () => {
             info.models.map((m) => m.name)
         );
         expect(allModels).toEqual(expected);
+    });
+
+    describe('getEffectiveMaxTokens()', () => {
+        it('returns explicit override when provided and within registry limit', () => {
+            const config = { provider: 'openai', model: 'o4-mini', maxTokens: 1000 } as any;
+            expect(getEffectiveMaxTokens(config)).toBe(1000);
+        });
+
+        it('caps override exceeding registry limit to registry value', () => {
+            const registryLimit = getMaxTokensForModel('openai', 'o4-mini');
+            const config = {
+                provider: 'openai',
+                model: 'o4-mini',
+                maxTokens: registryLimit + 1,
+            } as any;
+            expect(getEffectiveMaxTokens(config)).toBe(registryLimit);
+        });
+
+        it('returns override for unknown model when provided', () => {
+            const config = { provider: 'openai', model: 'unknown-model', maxTokens: 50000 } as any;
+            expect(getEffectiveMaxTokens(config)).toBe(50000);
+        });
+
+        it('defaults to 128000 when baseURL is set and maxTokens is missing', () => {
+            const config = {
+                provider: 'openai',
+                model: 'o4-mini',
+                baseURL: 'https://example.com',
+            } as any;
+            expect(getEffectiveMaxTokens(config)).toBe(128000);
+        });
+
+        it('returns provided maxTokens when baseURL is set and maxTokens provided', () => {
+            const config = {
+                provider: 'openai',
+                model: 'o4-mini',
+                baseURL: 'https://example.com',
+                maxTokens: 12345,
+            } as any;
+            expect(getEffectiveMaxTokens(config)).toBe(12345);
+        });
+
+        it('uses registry when no override or baseURL is present', () => {
+            const registryLimit = getMaxTokensForModel('openai', 'o4-mini');
+            const config = { provider: 'openai', model: 'o4-mini' } as any;
+            expect(getEffectiveMaxTokens(config)).toBe(registryLimit);
+        });
+
+        it('throws EffectiveMaxTokensError when lookup fails without override or baseURL', () => {
+            const config = { provider: 'openai', model: 'non-existent-model' } as any;
+            expect(() => getEffectiveMaxTokens(config)).toThrow(EffectiveMaxTokensError);
+        });
     });
 });

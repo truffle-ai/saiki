@@ -18,6 +18,8 @@ export interface ProviderInfo {
     // Add other provider-specific metadata if needed
 }
 
+export const DEFAULT_MAX_TOKENS = 128000;
+
 // Central registry of supported LLM providers and their models
 export const LLM_REGISTRY: Record<string, ProviderInfo> = {
     openai: {
@@ -208,13 +210,13 @@ export function getEffectiveMaxTokens(config: LLMConfig): number {
         }
     }
 
-    // Priority 2: baseURL is set but maxTokens is missing - indicates validation inconsistency
+    // Priority 2: baseURL is set but maxTokens is missing - default to 128k tokens
     if (config.baseURL) {
-        const errMsg =
-            "Internal Error: Configuration validation inconsistency - 'baseURL' is set but 'maxTokens' is missing. 'maxTokens' is required when 'baseURL' is specified.";
-        logger.error(errMsg);
-        // This state should ideally be prevented by Zod. Throw indicates a validation setup error.
-        throw new Error(errMsg);
+        logger.warn(
+            `baseURL is set but maxTokens is missing. Defaulting to ${DEFAULT_MAX_TOKENS}. ` +
+                `Provide 'maxTokens' in configuration to avoid default fallback.`
+        );
+        return DEFAULT_MAX_TOKENS;
     }
 
     // Priority 3: No override, no baseURL - use registry.
