@@ -6,7 +6,6 @@ import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { getProviderFromModel } from '../registry.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
@@ -25,6 +24,7 @@ export class VercelLLMService implements ILLMService {
     constructor(
         clientManager: MCPClientManager,
         model: LanguageModelV1,
+        provider: string,
         agentEventBus: EventEmitter,
         messageManager: MessageManager,
         maxIterations: number
@@ -33,7 +33,7 @@ export class VercelLLMService implements ILLMService {
         this.model = model;
         this.clientManager = clientManager;
         this.eventEmitter = agentEventBus;
-        this.provider = getProviderFromModel(this.model.modelId);
+        this.provider = provider;
         this.messageManager = messageManager;
         logger.debug(
             `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, messageManager: ${this.messageManager}`

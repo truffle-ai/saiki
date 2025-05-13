@@ -2,9 +2,9 @@ import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
 import { LLMConfig } from '../../../config/schemas.js';
 import { logger } from '../../../utils/logger.js';
-import { openai, createOpenAI } from '@ai-sdk/openai';
-import { google } from '@ai-sdk/google';
-import { anthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { VercelLLMService } from './vercel.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
@@ -93,17 +93,20 @@ function _createInBuiltLLMService(
 function _createVercelModel(llmConfig: LLMConfig): LanguageModelV1 {
     const provider = llmConfig.provider;
     const model = llmConfig.model;
+    const apiKey = extractApiKey(llmConfig);
+
     switch (provider.toLowerCase()) {
         case 'openai':
             const baseURL = getOpenAICompatibleBaseURL(llmConfig);
+            const options: { apiKey: string; baseURL?: string } = { apiKey };
             if (baseURL) {
-                return createOpenAI({ baseURL })(model);
+                options.baseURL = baseURL;
             }
-            return openai(model);
+            return createOpenAI(options)(model);
         case 'anthropic':
-            return anthropic(model);
+            return createAnthropic({ apiKey })(model);
         case 'google':
-            return google(model);
+            return createGoogleGenerativeAI({ apiKey })(model);
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);
     }
@@ -136,6 +139,7 @@ function _createVercelLLMService(
     return new VercelLLMService(
         clientManager,
         model,
+        config.provider,
         agentEventBus,
         messageManager,
         config.maxIterations
