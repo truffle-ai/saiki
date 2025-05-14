@@ -2,16 +2,16 @@
 import { existsSync } from 'fs';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
-import { logger } from '../src/utils/logger.js';
-import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../src/utils/path.js';
-import { createAgentServices, AgentServices } from '../src/utils/service-initializer.js';
+import { logger } from '../core/utils/logger.js';
+import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../core/utils/path.js';
+import { createAgentServices, AgentServices } from '../core/utils/service-initializer.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startWebUI } from './web/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
-import { validateCliOptions, handleCliOptionsError } from '../src/utils/options.js';
-import { getProviderFromModel, getAllSupportedModels } from '../src/ai/llm/registry.js';
-import { SaikiAgent } from '../src/ai/agent/SaikiAgent.js';
+import { validateCliOptions, handleCliOptionsError } from '../core/utils/options.js';
+import { getProviderFromModel, getAllSupportedModels } from '../core/ai/llm/registry.js';
+import { SaikiAgent } from '../core/ai/agent/SaikiAgent.js';
 
 // Load environment variables
 dotenv.config();
@@ -180,7 +180,7 @@ async function startApp() {
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
         try {
-            startDiscordBot(services);
+            startDiscordBot(agent);
         } catch (error) {
             logger.error('Failed to start Discord bot:', error);
             process.exit(1);
@@ -188,7 +188,7 @@ async function startApp() {
     } else if (runMode === 'telegram') {
         logger.info('Starting Telegram bot...', null, 'cyanBright');
         try {
-            startTelegramBot(services);
+            startTelegramBot(agent);
         } catch (error) {
             logger.error('Failed to start Telegram bot:', error);
             process.exit(1);

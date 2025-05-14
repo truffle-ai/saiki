@@ -4,7 +4,7 @@ import path from 'path';
 import { loadConfigFile } from './loader.js';
 
 // Use a temp file next to the loader file
-const tmpFile = path.resolve(process.cwd(), 'src/config/temp-config.yml');
+const tmpFile = path.resolve(process.cwd(), 'src/core/config/temp-config.yml');
 
 beforeEach(async () => {
     delete process.env.TEST_VAR;

@@ -1,10 +1,10 @@
 import express from 'express';
-import { logger } from '../../src/utils/logger.js';
-import { resolvePackagePath } from '../../src/utils/path.js';
-import { initializeApi } from '../../src/api/server.js';
+import { logger } from '../../core/utils/logger.js';
+import { resolvePackagePath } from '../../core/utils/path.js';
+import { initializeApi } from '../api/server.js';
 import os from 'os';
-import type { AgentCard } from '../../src/config/types.js';
-import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js';
+import type { AgentCard } from '../../core/config/types.js';
+import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
 
 export async function startWebUI(
     agent: SaikiAgent,
