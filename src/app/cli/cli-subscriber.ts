@@ -1,7 +1,7 @@
-import { logger } from '../../src/utils/logger.js';
+import { logger } from '../../core/utils/logger.js';
 import boxen from 'boxen';
 import chalk from 'chalk';
-import { EventSubscriber } from '../../src/api/types.js';
+import { EventSubscriber } from '../api/types.js';
 import { EventEmitter } from 'events';
 
 /**

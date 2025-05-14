@@ -3,8 +3,8 @@ import dotenv from 'dotenv';
 import TelegramBot from 'node-telegram-bot-api';
 import { EventEmitter } from 'events';
 import https from 'https';
-import { ILLMService } from '../../src/ai/llm/services/types.js';
-import { MCPClientManager } from '../../src/client/manager.js';
+import { ILLMService } from '../../core/ai/llm/services/types.js';
+import { MCPClientManager } from '../../core/client/manager.js';
 
 // Load environment variables (including TELEGRAM_BOT_TOKEN)
 dotenv.config();

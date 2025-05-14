@@ -2,11 +2,9 @@ import dotenv from 'dotenv';
 import { Client, GatewayIntentBits, Partials, Attachment } from 'discord.js';
 import https from 'https';
 import http from 'http'; // ADDED for http support
-import { MCPClientManager } from '../../src/client/manager.js';
-import { ILLMService } from '../../src/ai/llm/services/types.js';
+import { MCPClientManager } from '../../core/client/manager.js';
+import { ILLMService } from '../../core/ai/llm/services/types.js';
 import { EventEmitter } from 'events';
-import { SaikiAgent } from '../../src/ai/agent/SaikiAgent.js';
-import { logger } from '../../src/utils/logger.js';
 
 // Load environment variables
 dotenv.config();

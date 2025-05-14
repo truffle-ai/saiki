@@ -3,17 +3,17 @@
     "version": "0.2.1",
     "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
-    "main": "dist/app/index.js",
+    "main": "dist/src/app/index.js",
     "bin": {
-        "saiki": "./dist/app/index.js"
+        "saiki": "./dist/src/app/index.js"
     },
     "scripts": {
         "clean": "npx rimraf dist",
         "prebuild": "",
         "build": "npm run clean && npx tsc && npm run copy-client",
         "prepare": "husky install",
-        "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"app/web/client/*\" public",
-        "start": "node dist/app/index.js",
+        "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"src/app/web/client/*\" public",
+        "start": "node dist/src/app/index.js",
         "dev": "tsc --watch",
         "lint": "eslint . --ext .ts",
         "lint:fix": "eslint . --ext .ts --fix",
