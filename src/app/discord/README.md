@@ -33,7 +33,7 @@ npm start -- --mode discord
 # npm start -- --mode discord --config-file ./configuration/discord_bot_config.yml
 ```
 
-Refer to the main project [README.md](../../README.md) for more details on general Saiki setup and configuration.
+Refer to the main project [README.md](../../../README.md) for more details on general Saiki setup and configuration.
 
 ## Technical Details
 

@@ -2,9 +2,7 @@ import dotenv from 'dotenv';
 import { Client, GatewayIntentBits, Partials, Attachment } from 'discord.js';
 import https from 'https';
 import http from 'http'; // ADDED for http support
-import { MCPClientManager } from '../../core/client/manager.js';
-import { ILLMService } from '../../core/ai/llm/services/types.js';
-import { EventEmitter } from 'events';
+import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
 
 // Load environment variables
 dotenv.config();
@@ -84,12 +82,8 @@ async function downloadFileAsBase64(
 }
 
 // Insert initDiscordBot to wire up a Discord client given pre-initialized services
-export function startDiscordBot(services: {
-    clientManager: MCPClientManager;
-    llmService: ILLMService;
-    agentEventBus: EventEmitter;
-}) {
-    const { clientManager, llmService, agentEventBus } = services;
+export function startDiscordBot(agent: SaikiAgent) {
+    const agentEventBus = agent.agentEventBus;
 
     // Create Discord client
     const client = new Client({
@@ -163,7 +157,7 @@ export function startDiscordBot(services: {
 
             try {
                 await message.channel.sendTyping();
-                const responseText = await llmService.completeTask(userText, imageDataInput);
+                const responseText = await agent.run(userText, imageDataInput);
                 // Handle Discord's 2000 character limit
                 const MAX_LENGTH = 1900; // Leave some buffer
                 if (responseText.length <= MAX_LENGTH) {

@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
 import TelegramBot from 'node-telegram-bot-api';
-import { EventEmitter } from 'events';
 import https from 'https';
-import { ILLMService } from '../../core/ai/llm/services/types.js';
-import { MCPClientManager } from '../../core/client/manager.js';
+import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
 
 // Load environment variables (including TELEGRAM_BOT_TOKEN)
 dotenv.config();
@@ -45,12 +43,8 @@ async function downloadFileAsBase64(
 }
 
 // Insert initTelegramBot to wire up a TelegramBot given pre-initialized services
-export function startTelegramBot(services: {
-    clientManager: MCPClientManager;
-    llmService: ILLMService;
-    agentEventBus: EventEmitter;
-}) {
-    const { clientManager, llmService, agentEventBus } = services;
+export function startTelegramBot(agent: SaikiAgent) {
+    const agentEventBus = agent.agentEventBus;
 
     // Create and start Telegram Bot with polling
     const bot = new TelegramBot(token, { polling: true });
@@ -76,7 +70,7 @@ export function startTelegramBot(services: {
         if (!chatId) return;
         try {
             if (action === 'reset') {
-                await llmService.resetConversation();
+                await agent.resetConversation();
                 await bot.sendMessage(chatId, '🔄 Conversation has been reset.');
             } else if (action === 'help') {
                 await bot.sendMessage(chatId, 'Send me text or images and I will respond.');
@@ -104,7 +98,7 @@ export function startTelegramBot(services: {
         }
         try {
             await bot.sendChatAction(chatId, 'typing');
-            const answer = await llmService.completeTask(question);
+            const answer = await agent.run(question);
             await bot.sendMessage(chatId, answer);
         } catch (err) {
             console.error('Error handling /ask command', err);
@@ -133,7 +127,7 @@ export function startTelegramBot(services: {
         try {
             const queryTimeout = 15000; // 15 seconds timeout
             const resultText = await Promise.race<string>([
-                llmService.completeTask(inlineQuery.query),
+                agent.run(inlineQuery.query),
                 new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Query timed out')), queryTimeout)
                 ),
@@ -218,7 +212,7 @@ export function startTelegramBot(services: {
 
         try {
             await bot.sendChatAction(chatId, 'typing');
-            const responseText = await llmService.completeTask(userText || '', imageDataInput);
+            const responseText = await agent.run(userText || '', imageDataInput);
             await bot.sendMessage(chatId, responseText);
         } catch (error) {
             console.error('Error handling Telegram message', error);

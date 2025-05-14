@@ -180,7 +180,7 @@ async function startApp() {
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
         try {
-            startDiscordBot(services);
+            startDiscordBot(agent);
         } catch (error) {
             logger.error('Failed to start Discord bot:', error);
             process.exit(1);
@@ -188,7 +188,7 @@ async function startApp() {
     } else if (runMode === 'telegram') {
         logger.info('Starting Telegram bot...', null, 'cyanBright');
         try {
-            startTelegramBot(services);
+            startTelegramBot(agent);
         } catch (error) {
             logger.error('Failed to start Telegram bot:', error);
             process.exit(1);
