@@ -70,7 +70,7 @@ export function startTelegramBot(agent: SaikiAgent) {
         if (!chatId) return;
         try {
             if (action === 'reset') {
-                await agent.resetConversation();
+                agent.resetConversation();
                 await bot.sendMessage(chatId, '🔄 Conversation has been reset.');
             } else if (action === 'help') {
                 await bot.sendMessage(chatId, 'Send me text or images and I will respond.');
