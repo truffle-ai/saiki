@@ -44,6 +44,10 @@ async function downloadFileAsBase64(
 
 // Insert initTelegramBot to wire up a TelegramBot given pre-initialized services
 export function startTelegramBot(agent: SaikiAgent) {
+    if (!token) {
+        throw new Error('TELEGRAM_BOT_TOKEN is not set');
+    }
+
     const agentEventBus = agent.agentEventBus;
 
     // Create and start Telegram Bot with polling
@@ -99,7 +103,11 @@ export function startTelegramBot(agent: SaikiAgent) {
         try {
             await bot.sendChatAction(chatId, 'typing');
             const answer = await agent.run(question);
-            await bot.sendMessage(chatId, answer);
+            if (answer) {
+                await bot.sendMessage(chatId, answer);
+            } else {
+                await bot.sendMessage(chatId, '🤖 …agent failed to respond');
+            }
         } catch (err) {
             console.error('Error handling /ask command', err);
             await bot.sendMessage(chatId, `Error: ${err.message}`);

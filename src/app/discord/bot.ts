@@ -83,6 +83,10 @@ async function downloadFileAsBase64(
 
 // Insert initDiscordBot to wire up a Discord client given pre-initialized services
 export function startDiscordBot(agent: SaikiAgent) {
+    if (!token) {
+        throw new Error('DISCORD_BOT_TOKEN is not set');
+    }
+
     const agentEventBus = agent.agentEventBus;
 
     // Create Discord client
