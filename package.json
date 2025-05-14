@@ -11,7 +11,7 @@
         "clean": "npx rimraf dist",
         "prebuild": "",
         "build": "npm run clean && npx tsc && npm run copy-client",
-        "prepare": "husky install",
+        "prepare": "husky",
         "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"src/app/web/client/*\" public",
         "start": "node dist/src/app/index.js",
         "dev": "tsc --watch",
