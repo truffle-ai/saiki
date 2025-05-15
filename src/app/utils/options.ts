@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { logger } from './logger.js';
-import { getSupportedProviders } from '../ai/llm/registry.js';
+import { logger } from '../../core/utils/logger.js';
+import { getSupportedProviders } from '../../core/ai/llm/registry.js';
 
 /**
  * Validates the command-line options.

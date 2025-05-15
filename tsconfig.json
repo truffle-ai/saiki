@@ -10,7 +10,9 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "types": ["node", "vitest/globals"],
-        "lib": ["ES2022", "DOM"]
+        "lib": ["ES2022", "DOM"],
+        "declaration": true,
+        "declarationMap": true
     },
     "include": ["src/**/*", "**/*.test.ts", "**/*.spec.ts", "vitest.config.ts"],
     "exclude": ["node_modules"]

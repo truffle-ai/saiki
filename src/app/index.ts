@@ -9,7 +9,7 @@ import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startWebUI } from './web/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
-import { validateCliOptions, handleCliOptionsError } from '../core/utils/options.js';
+import { validateCliOptions, handleCliOptionsError } from './utils/options.js';
 import { getProviderFromModel, getAllSupportedModels } from '../core/ai/llm/registry.js';
 import { SaikiAgent } from '../core/ai/agent/SaikiAgent.js';
 
