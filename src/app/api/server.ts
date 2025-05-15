@@ -91,6 +91,47 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Add MCP servers listing endpoint
+    app.get('/api/mcp/servers', async (req, res) => {
+        try {
+            const clientsMap = agent.clientManager.getClients();
+            const failedConnections = agent.clientManager.getFailedConnections();
+            const servers = [];
+            for (const name of clientsMap.keys()) {
+                servers.push({ id: name, name, status: 'connected' });
+            }
+            for (const name of Object.keys(failedConnections)) {
+                servers.push({ id: name, name, status: 'error' });
+            }
+            res.status(200).json({ servers });
+        } catch (error: any) {
+            logger.error(`Error listing MCP servers: ${error.message}`);
+            res.status(500).json({ error: 'Failed to list servers' });
+        }
+    });
+
+    // Add MCP server tools listing endpoint
+    app.get('/api/mcp/servers/:serverId/tools', async (req, res) => {
+        const serverId = req.params.serverId;
+        const client = agent.clientManager.getClients().get(serverId);
+        if (!client) {
+            return res.status(404).json({ error: `Server '${serverId}' not found` });
+        }
+        try {
+            const toolsMap = await client.getTools();
+            const tools = Object.entries(toolsMap).map(([toolName, toolDef]) => ({
+                id: toolName,
+                name: toolName,
+                description: toolDef.description,
+                inputSchema: toolDef.parameters,
+            }));
+            res.status(200).json({ tools });
+        } catch (error: any) {
+            logger.error(`Error fetching tools for server '${serverId}': ${error.message}`);
+            res.status(500).json({ error: 'Failed to fetch tools for server' });
+        }
+    });
+
     // WebSocket handling
     // handle inbound client messages over WebSocket
     wss.on('connection', (ws: WebSocket) => {
