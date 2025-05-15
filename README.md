@@ -160,9 +160,10 @@ mcpServers:
       - .
   puppeteer:
     type: stdio
-    command: node
+    command: npx
     args:
-      - dist/src/servers/puppeteerServer.js
+      - -y
+      - "@truffle-ai/puppeteer-server"
 
 llm:
   provider: openai
