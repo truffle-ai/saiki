@@ -1,6 +1,6 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { logger } from '../../core/utils/logger.js';
+import { logger } from '../../core/logger/logger.js';
 import { CLISubscriber } from './cli-subscriber.js';
 import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
 

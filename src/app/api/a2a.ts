@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import type { AgentCard } from '../../core/config/types.js';
-import { logger } from '../../core/utils/logger.js';
+import { logger } from '../../core/logger/logger.js';
 
 /**
  * Sets up the A2A Agent Card endpoint.

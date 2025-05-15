@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Logger, logger } from './logger.js';
+import { Logger, logger } from '../logger/logger.js';
 
 // Ensure console.log is mocked and environment is reset between tests
 beforeEach(() => {

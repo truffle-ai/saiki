@@ -1,5 +1,5 @@
 import express from 'express';
-import { logger } from '../../core/utils/logger.js';
+import { logger } from '../../core/logger/logger.js';
 import { resolvePackagePath } from '../../core/utils/path.js';
 import { initializeApi } from '../api/server.js';
 import os from 'os';

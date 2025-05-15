@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ReadResourceCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { AgentCard } from '../../core/config/types.js';
-import { logger } from '../../core/utils/logger.js';
+import { logger } from '../../core/logger/logger.js';
 import { z } from 'zod';
 import express from 'express';
 import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';

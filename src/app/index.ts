@@ -2,7 +2,7 @@
 import { existsSync } from 'fs';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
-import { logger } from '../core/utils/logger.js';
+import { logger } from '../core/logger/logger.js';
 import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../core/utils/path.js';
 import { createAgentServices, AgentServices } from '../core/utils/service-initializer.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';

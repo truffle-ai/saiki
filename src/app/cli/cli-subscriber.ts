@@ -1,4 +1,4 @@
-import { logger } from '../../core/utils/logger.js';
+import { logger } from '../../core/logger/logger.js';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import { EventSubscriber } from '../api/types.js';

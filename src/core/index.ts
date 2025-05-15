@@ -1,4 +1,4 @@
-export { logger } from './utils/logger.js';
+export { logger } from './logger/logger.js';
 export { DEFAULT_CONFIG_PATH, resolvePackagePath } from './utils/path.js';
 export { createAgentServices } from './utils/service-initializer.js';
 export type { AgentServices } from './utils/service-initializer.js';
