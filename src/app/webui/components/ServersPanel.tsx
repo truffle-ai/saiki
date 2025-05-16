@@ -62,7 +62,7 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
     if (area === 'tools') setToolsError(message);
   };
 
-  const fetchServers = useCallback(async () => {
+  const fetchServers = useCallback(async (signal?: AbortSignal) => {
     setIsLoadingServers(true);
     setServerError(null);
     setServers([]); // Clear existing servers
@@ -70,7 +70,7 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
     setTools([]); // Clear tools
     setToolsError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/mcp/servers`);
+      const response = await fetch(`${API_BASE_URL}/mcp/servers`, signal ? { signal } : {});
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to fetch servers' }));
         throw new Error(errorData.message || errorData.error || `Server List: ${response.statusText}`);
@@ -90,19 +90,26 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
         console.log("No MCP servers found or returned from API.");
       }
     } catch (err: any) {
-      handleError(err.message, 'servers');
+      if (err.name !== 'AbortError') {
+        handleError(err.message, 'servers');
+      }
     } finally {
-      setIsLoadingServers(false);
+      if (!signal?.aborted) {
+        setIsLoadingServers(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    if (isOpen) { // Fetch servers when panel becomes visible
-      fetchServers();
-    }
+    if (!isOpen) return;
+    const controller = new AbortController();
+    fetchServers(controller.signal);
+    return () => {
+      controller.abort();
+    };
   }, [isOpen, fetchServers]);
 
-  const handleServerSelect = useCallback(async (serverId: string, isNewSelection: boolean) => {
+  const handleServerSelect = useCallback(async (serverId: string, isNewSelection: boolean, signal?: AbortSignal) => {
     setSelectedServerId(serverId);
     if (isNewSelection) { // Only expand if it's a genuinely new server selection
       setIsToolsExpanded(true);
@@ -119,30 +126,37 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
 
     setIsLoadingTools(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/mcp/servers/${serverId}/tools`);
+      const response = await fetch(`${API_BASE_URL}/mcp/servers/${serverId}/tools`, signal ? { signal } : {});
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: `Failed to fetch tools for ${server.name}` }));
         throw new Error(errorData.message || errorData.error || `Tool List (${server.name}): ${response.statusText}`);
       }
       const data = await response.json();
-      setTools(data.tools || []);
+      if (!signal?.aborted) {
+        setTools(data.tools || []);
+      }
       if (!data.tools || data.tools.length === 0) {
         console.log(`No tools found for server "${server.name}".`);
       }
     } catch (err: any) {
-      handleError(err.message, 'tools');
+      if (err.name !== 'AbortError') {
+        handleError(err.message, 'tools');
+      }
     } finally {
-      setIsLoadingTools(false);
+      if (!signal?.aborted) {
+        setIsLoadingTools(false);
+      }
     }
   }, [servers]);
   
-  // Effect to fetch tools when selectedServerId changes and is valid
   useEffect(() => {
-    if (selectedServerId) {
-      handleServerSelect(selectedServerId, true); 
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [selectedServerId]); 
+    if (!selectedServerId) return;
+    const controller = new AbortController();
+    handleServerSelect(selectedServerId, true, controller.signal);
+    return () => {
+      controller.abort();
+    };
+  }, [selectedServerId, handleServerSelect]);
 
   const selectedServer = servers.find(s => s.id === selectedServerId);
 
@@ -165,7 +179,7 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
       <div className="flex items-center justify-between p-3 border-b border-border flex-shrink-0">
         <h2 className="text-lg font-semibold text-card-foreground">Servers & Tools</h2>
         <div className="flex items-center space-x-1">
-            <Button variant="ghost" size="icon" onClick={fetchServers} disabled={isLoadingServers} aria-label="Refresh servers">
+            <Button variant="ghost" size="icon" onClick={() => fetchServers()} disabled={isLoadingServers} aria-label="Refresh servers">
                 <RefreshCw className={cn("h-4 w-4 text-muted-foreground", isLoadingServers && "animate-spin")} />
             </Button>
             <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close panel">

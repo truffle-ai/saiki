@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, ChangeEvent } from 'react';
+import React, { useState, useEffect, useCallback, ChangeEvent, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import ConnectServerModal from '../ConnectServerModal';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -69,6 +71,9 @@ export default function PlaygroundView() {
 
   const API_BASE_URL = '/api'; // Assuming Next.js API routes are under /api
 
+  // Ref to manage aborting in-flight tool fetch requests
+  const toolsAbortControllerRef = useRef<AbortController | null>(null);
+
   const handleError = (message: string, area?: 'servers' | 'tools' | 'execution' | 'input') => {
     console.error(`Playground Error (${area || 'general'}):`, message);
     if (area !== 'input') {
@@ -105,6 +110,10 @@ export default function PlaygroundView() {
   }, [fetchServers]);
 
   const handleServerSelect = useCallback(async (server: McpServer) => {
+    // Abort any previous tool fetch
+    toolsAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    toolsAbortControllerRef.current = controller;
     setSelectedServer(server);
     setSelectedTool(null);
     setToolResult(null);
@@ -120,21 +129,32 @@ export default function PlaygroundView() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/mcp/servers/${server.id}/tools`);
+      const response = await fetch(
+        `${API_BASE_URL}/mcp/servers/${server.id}/tools`,
+        { signal: controller.signal }
+      );
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: `Failed to fetch tools for ${server.name}` }));
         throw new Error(errorData.error || `Tool List (${server.name}): ${response.statusText}`);
       }
       const data = await response.json();
+      // Ignore stale responses after abort
+      if (controller.signal.aborted) {
+        return;
+      }
       setTools(data.tools || []);
       if (!data.tools || data.tools.length === 0) {
         console.log(`No tools found for server "${server.name}".`);
       }
     } catch (err: any) {
-      handleError(err.message, 'tools');
-      setTools([]);
+      if (err.name !== 'AbortError') {
+        handleError(err.message, 'tools');
+        setTools([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -240,7 +260,11 @@ export default function PlaygroundView() {
           if (prop.type === 'number' || prop.type === 'integer') {
             value = (value === '') ? undefined : Number(value);
           } else if (prop.type === 'boolean') {
-            value = Boolean(value);
+            if (typeof value === 'string') {
+              value = value === 'true';
+            } else {
+              value = Boolean(value);
+            }
           } else if ((prop.type === 'object' || prop.type === 'array') && typeof value === 'string' && value.trim() !== '') {
             try {
               value = JSON.parse(value);
@@ -294,10 +318,20 @@ export default function PlaygroundView() {
       const baseInputClassName = `w-full ${errorMsg ? 'border-destructive focus-visible:ring-destructive' : 'border-input'}`;
 
       if (prop.enum && Array.isArray(prop.enum)) {
+        const isEnumBoolean = prop.enum.every((v) => typeof v === 'boolean');
+        const isEnumNumeric = prop.enum.every((v) => typeof v === 'number');
         inputElement = (
           <Select 
             value={toolInputs[key] === undefined && prop.default !== undefined ? String(prop.default) : String(toolInputs[key] || '')}
-            onValueChange={(value) => handleInputChange(key, value, prop.type)}
+            onValueChange={(value) => {
+              let parsedValue: string | number | boolean = value;
+              if (isEnumBoolean) {
+                parsedValue = value === 'true';
+              } else if (isEnumNumeric) {
+                parsedValue = Number(value);
+              }
+              handleInputChange(key, parsedValue, prop.type);
+            }}
             disabled={isLoading}
           >
             <SelectTrigger id={key} className={baseInputClassName}>
@@ -547,7 +581,11 @@ export default function PlaygroundView() {
                         }
                       })()
                     ) : toolResult.metadata?.type === 'markdown' && toolResult.data ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none p-3 bg-background rounded border border-input leading-relaxed" dangerouslySetInnerHTML={{ __html: typeof toolResult.data === 'string' ? toolResult.data.replace(/\n/g, '<br/>') : JSON.stringify(toolResult.data, null, 2) }} />
+                        <div className="prose prose-sm dark:prose-invert max-w-none p-3 bg-background rounded border border-input leading-relaxed">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}> 
+                            {typeof toolResult.data === 'string' ? toolResult.data : JSON.stringify(toolResult.data, null, 2)}
+                          </ReactMarkdown>
+                        </div>
                     ) : toolResult.metadata?.type === 'json' && toolResult.data ? (
                         <pre className="whitespace-pre-wrap text-sm bg-background p-3 rounded-md border border-input font-mono">{typeof toolResult.data === 'string' ? toolResult.data : JSON.stringify(toolResult.data, null, 2)}</pre>
                     ) : (

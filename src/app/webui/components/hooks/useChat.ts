@@ -43,7 +43,13 @@ export function useChat(wsUrl: string) {
         ws.onopen = () => setStatus('open');
         ws.onclose = () => setStatus('closed');
         ws.onmessage = (event: MessageEvent) => {
-            const msg = JSON.parse(event.data);
+            let msg: any;
+            try {
+                msg = JSON.parse(event.data);
+            } catch (err: any) {
+                console.error('WebSocket message parse error:', event.data, err);
+                return; // Skip malformed message
+            }
             const payload = msg.data || {};
             switch (msg.event) {
                 case 'thinking':
@@ -66,9 +72,12 @@ export function useChat(wsUrl: string) {
                         );
                         const last = cleaned[cleaned.length - 1];
                         if (last && last.role === 'assistant') {
+                            // Only concatenate if existing content is a string
+                            const newContent =
+                                typeof last.content === 'string' ? last.content + text : text;
                             const updated = {
                                 ...last,
-                                content: String(last.content) + text,
+                                content: newContent,
                                 createdAt: Date.now(),
                             };
                             return [...cleaned.slice(0, -1), updated];
