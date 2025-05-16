@@ -14,7 +14,19 @@ import { Label } from './ui/label';
 import { Input } from './ui/input';
 
 export default function ChatApp() {
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000';
+  // Determine WebSocket URL; replace localhost with actual host for network access
+  let wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
+  if (typeof window !== 'undefined') {
+    try {
+      const urlObj = new URL(wsUrl);
+      if (urlObj.hostname === 'localhost') {
+        urlObj.hostname = window.location.hostname;
+        wsUrl = urlObj.toString();
+      }
+    } catch (e) {
+      console.warn('Invalid WS URL:', wsUrl);
+    }
+  }
   const { messages, sendMessage } = useChat(wsUrl);
 
   const [isModalOpen, setModalOpen] = useState(false);

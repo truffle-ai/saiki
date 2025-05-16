@@ -6,7 +6,7 @@ import { logger } from '../core/utils/logger.js';
 import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../core/utils/path.js';
 import { createAgentServices, AgentServices } from '../core/utils/service-initializer.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
-import { startWebUI } from './web/server.js';
+import { startServer } from './api/webui.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from '../core/utils/options.js';
@@ -177,23 +177,28 @@ async function startApp() {
     } else if (runMode === 'web') {
         // Run WebUI with configured MCP identity (pass agentCard only)
         const agentCard = services.configManager.getConfig().agentCard ?? {};
-        // Start Next.js front-end in parallel
-        const nextPort = webPort + 1;
-        const nextCwd = path.resolve(process.cwd(), 'src', 'app', 'web-nextjs');
+        const frontPort = webPort;
+        const apiPort = webPort + 1;
+        const nextCwd = path.resolve(process.cwd(), 'src', 'app', 'webui');
         logger.info(
-            `Starting Next.js dev server on http://localhost:${webPort}`,
+            `Starting Next.js dev server on http://localhost:${frontPort}`,
             null,
             'cyanBright'
         );
-        spawn('npm', ['run', 'dev', '--', '--port', String(webPort)], {
+        spawn('npm', ['run', 'dev', '--', '--port', String(frontPort)], {
             cwd: nextCwd,
             shell: true,
             stdio: 'inherit',
-            env: { ...process.env },
+            env: {
+                ...process.env,
+                NODE_ENV: 'development',
+                NEXT_PUBLIC_WS_URL: `ws://localhost:${apiPort}`,
+            },
         });
-        startWebUI(agent, nextPort, agentCard);
-        logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
-        logger.info(`Agent endpoints available at http://localhost:${nextPort}`, null, 'magenta');
+        // Start Express API server (for WebSocket and HTTP endpoints)
+        startServer(agent, apiPort, agentCard);
+        logger.info(`API endpoints available at http://localhost:${apiPort}`, null, 'magenta');
+        logger.info(`Frontend available at http://localhost:${frontPort}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
         try {
