@@ -3,9 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from "@/lib/utils";
 import { Message, TextPart, ImagePart } from './hooks/useChat';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { User, Bot, Terminal, ChevronsRight, ChevronDown, ChevronUp, Loader2, CheckCircle, ChevronRight, Settings, Settings2, LucideSettings, Wrench } from 'lucide-react';
-import { Button } from './ui/button';
+import { User, Bot, ChevronsRight, ChevronUp, Loader2, CheckCircle, ChevronRight, Wrench } from 'lucide-react';
 
 interface MessageListProps {
   messages: Message[];

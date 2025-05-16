@@ -12,6 +12,8 @@ import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from '../core/utils/options.js';
 import { getProviderFromModel, getAllSupportedModels } from '../core/ai/llm/registry.js';
 import { SaikiAgent } from '../core/ai/agent/SaikiAgent.js';
+import { spawn } from 'child_process';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -175,8 +177,23 @@ async function startApp() {
     } else if (runMode === 'web') {
         // Run WebUI with configured MCP identity (pass agentCard only)
         const agentCard = services.configManager.getConfig().agentCard ?? {};
-        startWebUI(agent, webPort, agentCard);
+        // Start Next.js front-end in parallel
+        const nextPort = webPort + 1;
+        const nextCwd = path.resolve(process.cwd(), 'src', 'app', 'web-nextjs');
+        logger.info(
+            `Starting Next.js dev server on http://localhost:${webPort}`,
+            null,
+            'cyanBright'
+        );
+        spawn('npm', ['run', 'dev', '--', '--port', String(webPort)], {
+            cwd: nextCwd,
+            shell: true,
+            stdio: 'inherit',
+            env: { ...process.env },
+        });
+        startWebUI(agent, nextPort, agentCard);
         logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
+        logger.info(`Agent endpoints available at http://localhost:${nextPort}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
         try {
