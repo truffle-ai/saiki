@@ -1,0 +1,9 @@
+{
+  "label": "Getting Started with Saiki",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "title": "Getting Started",
+    "description": "Quickly set up Saiki and start automating with natural language."
+  }
+} 
