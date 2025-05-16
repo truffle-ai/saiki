@@ -2,7 +2,7 @@
 import dotenv from 'dotenv';
 import TelegramBot from 'node-telegram-bot-api';
 import https from 'https';
-import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
+import { SaikiAgent } from '../../core/index.js';
 
 // Load environment variables (including TELEGRAM_BOT_TOKEN)
 dotenv.config();

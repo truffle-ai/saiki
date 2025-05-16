@@ -3,14 +3,14 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 import { WebSocketEventSubscriber } from './websocket-subscriber.js';
-import { logger } from '../../core/logger/logger.js';
+import { logger } from '../../core/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
-import type { AgentCard } from '../../core/config/types.js';
+import type { AgentCard } from '../../core/index.js';
 import { setupA2ARoutes } from './a2a.js';
 import { initializeMcpServerEndpoints } from './mcp_handler.js';
-import { createAgentCard } from '../../core/config/agentCard.js';
-import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
+import { createAgentCard } from '../../core/index.js';
+import { SaikiAgent } from '../../core/index.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {

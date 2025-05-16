@@ -1,5 +1,5 @@
 import type { Express } from 'express';
-import type { AgentCard } from '../../core/config/types.js';
+import type { AgentCard } from '../../core/index.js';
 import { logger } from '../../core/logger/logger.js';
 
 /**
