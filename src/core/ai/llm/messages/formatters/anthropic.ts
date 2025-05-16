@@ -1,6 +1,6 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
-import { logger } from '../../../../logger/logger.js';
+import { logger } from '../../../../logger/index.js';
 import { getImageData } from '../utils.js';
 
 /**

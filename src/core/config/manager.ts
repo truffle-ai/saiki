@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { logger } from '../logger/logger.js';
+import { logger } from '../logger/index.js';
 import { AgentConfigSchema } from './schemas.js';
 import type { AgentConfig } from './schemas.js';
 import type { CLIConfigOverrides, LLMProvenance } from './types.js';

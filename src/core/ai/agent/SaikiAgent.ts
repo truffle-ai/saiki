@@ -6,7 +6,7 @@ import { MessageManager } from '../llm/messages/manager.js';
 import { ConfigManager } from '../../config/manager.js';
 import { EventEmitter } from 'events';
 import { AgentServices } from '../../utils/service-initializer.js';
-import { logger } from '../../logger/logger.js';
+import { logger } from '../../logger/index.js';
 import { McpServerConfig } from '../../config/schemas.js';
 
 const requiredServices: (keyof AgentServices)[] = [

@@ -1,5 +1,5 @@
 import { ToolConfirmationProvider, ToolExecutionDetails } from './types.js';
-import { logger } from '../../logger/logger.js';
+import { logger } from '../../logger/index.js';
 import * as readline from 'readline';
 import chalk from 'chalk';
 import { InMemorySettingsProvider } from '../../settings/in-memory-provider.js';
