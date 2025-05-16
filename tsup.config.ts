@@ -9,6 +9,7 @@ export default defineConfig([
         dts: true,
         shims: true,
         bundle: true,
+        noExternal: ['chalk', 'boxen'],
     },
     // App entry: only ESM, no bundling needed
     {
