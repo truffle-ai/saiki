@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { parse as parseYaml } from 'yaml';
 import { AgentConfig } from './schemas.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../logger/index.js';
 import { resolvePackagePath, DEFAULT_CONFIG_PATH } from '../utils/path.js';
 /**
  * Load the complete agent configuration

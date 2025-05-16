@@ -28,7 +28,7 @@
 import { MCPClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/services/types.js';
 import { createLLMService } from '../ai/llm/services/factory.js';
-import { logger } from './logger.js';
+import { logger } from '../logger/index.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../ai/llm/messages/manager.js';
 import { createMessageManager } from '../ai/llm/messages/factory.js';
@@ -81,20 +81,23 @@ export type InitializeServicesOptions = {
 /**
  * Loads and validates configuration and initializes all agent services as a single unit.
  * @param configPath Path to the agent config file
- * @param cliArgs Overrides from the CLI
+ * @param cliArgs Optional overrides from the CLI
  * @param overrides Optional service overrides for testing or advanced scenarios
  * @returns All the initialized services and the config manager
  */
 export async function createAgentServices(
     configPath: string,
-    cliArgs: CLIConfigOverrides,
+    cliArgs?: CLIConfigOverrides,
     overrides?: InitializeServicesOptions
 ): Promise<AgentServices> {
     // 1. Load raw configuration from file
     const rawConfig = await loadConfigFile(configPath);
 
-    // 2. Initialize config manager, apply CLI config level overrides and validate
-    const configManager = new ConfigManager(rawConfig).overrideCLI(cliArgs);
+    // 2. Initialize config manager and apply CLI overrides (if provided), then validate
+    const configManager = new ConfigManager(rawConfig);
+    if (cliArgs) {
+        configManager.overrideCLI(cliArgs);
+    }
     configManager.validate();
     const config = configManager.getConfig();
 

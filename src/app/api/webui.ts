@@ -1,9 +1,10 @@
 import express from 'express';
-import { logger } from '../../core/utils/logger.js';
-import { initializeApi } from './server.js';
+import { logger } from '@core/index.js';
+import { resolvePackagePath } from '@core/index.js';
+import { initializeApi } from '../api/server.js';
 import os from 'os';
-import type { AgentCard } from '../../core/config/types.js';
-import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
+import type { AgentCard } from '@core/index.js';
+import { SaikiAgent } from '@core/index.js';
 
 export async function startServer(
     agent: SaikiAgent,

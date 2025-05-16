@@ -1,7 +1,7 @@
 import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
 import { LLMConfig } from '../../../config/schemas.js';
-import { logger } from '../../../utils/logger.js';
+import { logger } from '../../../logger/index.js';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createAnthropic } from '@ai-sdk/anthropic';
