@@ -37,7 +37,7 @@ export function useChat(wsUrl: string) {
     const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
 
     useEffect(() => {
-        const ws = new WebSocket(wsUrl);
+        const ws = new globalThis.WebSocket(wsUrl);
 
         wsRef.current = ws;
         ws.onopen = () => setStatus('open');
@@ -219,7 +219,7 @@ export function useChat(wsUrl: string) {
 
     const sendMessage = useCallback(
         (content: string, imageData?: { base64: string; mimeType: string }) => {
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
+            if (wsRef.current?.readyState === globalThis.WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify({ type: 'message', content, imageData }));
                 setMessages((msgs) => [
                     ...msgs,
@@ -239,7 +239,7 @@ export function useChat(wsUrl: string) {
     );
 
     const reset = useCallback(() => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
+        if (wsRef.current?.readyState === globalThis.WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: 'reset' }));
         }
         setMessages([]);
