@@ -15,6 +15,12 @@ const formatTimestamp = (timestamp: number) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+// Helper to validate data URI for images to prevent XSS
+function isValidDataUri(src: string): boolean {
+  const dataUriRegex = /^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/i;
+  return dataUriRegex.test(src);
+}
+
 export default function MessageList({ messages }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const [manuallyExpanded, setManuallyExpanded] = useState<Record<string, boolean>>({});
@@ -124,6 +130,9 @@ export default function MessageList({ messages }: MessageListProps) {
                                     const src = part.data && part.mimeType
                                       ? `data:${part.mimeType};base64,${part.data}`
                                       : part.image || part.url;
+                                    if (src.startsWith('data:') && !isValidDataUri(src)) {
+                                      return null;
+                                    }
                                     return (
                                       <img key={index} src={src} alt="Tool result image" className="my-1 max-h-48 w-auto rounded border border-border" />
                                     );
@@ -135,7 +144,9 @@ export default function MessageList({ messages }: MessageListProps) {
                                   );
                                 })
                               ) : typeof msg.toolResult === 'string' && msg.toolResult.startsWith('data:image') ? (
-                                <img src={msg.toolResult} alt="Tool result image" className="my-1 max-h-48 w-auto rounded border border-border" />
+                                isValidDataUri(msg.toolResult) ? (
+                                  <img src={msg.toolResult} alt="Tool result image" className="my-1 max-h-48 w-auto rounded border border-border" />
+                                ) : null
                               ) : (
                                 <pre className="whitespace-pre-wrap overflow-auto bg-background/50 p-2 rounded text-xs text-muted-foreground">
                                   {typeof msg.toolResult === 'object' ? JSON.stringify(msg.toolResult, null, 2) : String(msg.toolResult)}
@@ -157,10 +168,15 @@ export default function MessageList({ messages }: MessageListProps) {
                           return <p key={partKey} className="whitespace-pre-wrap">{(part as TextPart).text}</p>;
                         }
                         if (part.type === 'image' && 'base64' in part && 'mimeType' in part) {
+                          const imagePart = part as ImagePart;
+                          const src = `data:${imagePart.mimeType};base64,${imagePart.base64}`;
+                          if (!isValidDataUri(src)) {
+                            return null;
+                          }
                           return (
                             <img
                               key={partKey}
-                              src={`data:${(part as ImagePart).mimeType};base64,${(part as ImagePart).base64}`}
+                              src={src}
                               alt="attachment"
                               className="my-2 max-h-60 w-full rounded-lg border border-border object-contain"
                             />
@@ -174,11 +190,19 @@ export default function MessageList({ messages }: MessageListProps) {
                     </>
                   )}
                   {msg.imageData && !Array.isArray(msg.content) && (
-                    <img
-                      src={`data:${msg.imageData.mimeType};base64,${msg.imageData.base64}`}
-                      alt="attachment"
-                      className="mt-2 max-h-60 w-full rounded-lg border border-border object-contain"
-                    />
+                    (() => {
+                      const src = `data:${msg.imageData.mimeType};base64,${msg.imageData.base64}`;
+                      if (!isValidDataUri(src)) {
+                        return null;
+                      }
+                      return (
+                        <img
+                          src={src}
+                          alt="attachment"
+                          className="mt-2 max-h-60 w-full rounded-lg border border-border object-contain"
+                        />
+                      );
+                    })()
                   )}
                 </div>
               </div>

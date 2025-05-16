@@ -27,8 +27,10 @@ export interface Message {
     toolResult?: any;
 }
 
+const generateUniqueId = () => `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
 export function useChat(wsUrl: string) {
-    const wsRef = useRef<WebSocket | null>(null);
+    const wsRef = useRef<globalThis.WebSocket | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     // Store the last toolResult image URI to attach to the next AI response
     const lastImageUriRef = useRef<string | null>(null);
@@ -36,13 +38,11 @@ export function useChat(wsUrl: string) {
 
     useEffect(() => {
         const ws = new WebSocket(wsUrl);
-        const generateUniqueId = () =>
-            `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
         wsRef.current = ws;
         ws.onopen = () => setStatus('open');
         ws.onclose = () => setStatus('closed');
-        ws.onmessage = (event: MessageEvent) => {
+        ws.onmessage = (event: globalThis.MessageEvent) => {
             let msg: any;
             try {
                 msg = JSON.parse(event.data);
@@ -189,6 +189,7 @@ export function useChat(wsUrl: string) {
                             const updatedMsg = { ...ms[idx], toolResult: result };
                             return [...ms.slice(0, idx), updatedMsg, ...ms.slice(idx + 1)];
                         }
+                        console.warn(`No matching tool call found for result of ${name}`);
                         // No matching toolCall found; do not append a new message
                         return ms;
                     });
@@ -218,8 +219,6 @@ export function useChat(wsUrl: string) {
 
     const sendMessage = useCallback(
         (content: string, imageData?: { base64: string; mimeType: string }) => {
-            const generateUniqueId = () =>
-                `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
             if (wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify({ type: 'message', content, imageData }));
                 setMessages((msgs) => [

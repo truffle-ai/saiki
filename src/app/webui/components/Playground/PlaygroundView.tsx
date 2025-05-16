@@ -74,6 +74,12 @@ export default function PlaygroundView() {
   // Ref to manage aborting in-flight tool fetch requests
   const toolsAbortControllerRef = useRef<AbortController | null>(null);
 
+  useEffect(() => {
+    return () => {
+      toolsAbortControllerRef.current?.abort();
+    };
+  }, []);
+
   const handleError = (message: string, area?: 'servers' | 'tools' | 'execution' | 'input') => {
     console.error(`Playground Error (${area || 'general'}):`, message);
     if (area !== 'input') {
@@ -257,8 +263,23 @@ export default function PlaygroundView() {
         for (const key in selectedTool.inputSchema.properties) {
           const prop = selectedTool.inputSchema.properties[key];
           let value = toolInputs[key];
-          if (prop.type === 'number' || prop.type === 'integer') {
+          if (prop.type === 'number') {
+            // For floats, allow decimal numbers
             value = (value === '') ? undefined : Number(value);
+          } else if (prop.type === 'integer') {
+            // For integers, ensure a whole number
+            if (value === '') {
+              value = undefined;
+            } else {
+              const num = Number(value);
+              if (!Number.isInteger(num)) {
+                // Surface validation error for integer fields
+                setInputErrors(prev => ({ ...prev, [key]: 'Must be a valid integer.' }));
+                setIsLoading(false);
+                return;
+              }
+              value = num;
+            }
           } else if (prop.type === 'boolean') {
             if (typeof value === 'string') {
               value = value === 'true';
