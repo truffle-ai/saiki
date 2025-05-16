@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
-import { logger } from '../../../utils/logger.js';
+import { logger } from '../../../logger/index.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';

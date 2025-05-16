@@ -1,6 +1,6 @@
 import { MCPClient } from './mcp-client.js';
 import { ServerConfigs, McpServerConfig } from '../config/schemas.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../logger/index.js';
 import { IMCPClient } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';
 import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';

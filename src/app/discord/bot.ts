@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { Client, GatewayIntentBits, Partials, Attachment } from 'discord.js';
 import https from 'https';
 import http from 'http'; // ADDED for http support
-import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
+import { SaikiAgent } from '@core/index.js';
 
 // Load environment variables
 dotenv.config();

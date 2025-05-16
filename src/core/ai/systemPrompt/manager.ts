@@ -5,7 +5,7 @@ import { registerPromptGenerator } from './registry.js';
 import type { DynamicPromptGenerator } from './registry.js';
 import type { SystemPromptContributor, DynamicContributorContext } from './types.js';
 import { DynamicContributor } from './contributors.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../logger/index.js';
 
 /**
  * PromptManager orchestrates registration, loading, and composition
