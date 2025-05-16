@@ -13,6 +13,7 @@ import { validateCliOptions, handleCliOptionsError } from '../core/utils/options
 import { getProviderFromModel, getAllSupportedModels } from '../core/ai/llm/registry.js';
 import { SaikiAgent } from '../core/ai/agent/SaikiAgent.js';
 import { spawn } from 'child_process';
+import os from 'os';
 import path from 'path';
 
 // Load environment variables
@@ -185,7 +186,7 @@ async function startApp() {
             null,
             'cyanBright'
         );
-        spawn('npm', ['run', 'dev', '--', '--port', String(frontPort)], {
+        const nextProc = spawn('npm', ['run', 'dev', '--', '--port', String(frontPort)], {
             cwd: nextCwd,
             shell: true,
             stdio: 'inherit',
@@ -193,8 +194,26 @@ async function startApp() {
                 ...process.env,
                 NODE_ENV: 'development',
                 API_PORT: String(apiPort),
-                NEXT_PUBLIC_WS_URL: `ws://localhost:${apiPort}`,
+                NEXT_PUBLIC_WS_URL:
+                    process.env.NEXT_PUBLIC_WS_URL ??
+                    (() => {
+                        const interfaces = os.networkInterfaces();
+                        for (const list of Object.values(interfaces)) {
+                            for (const iface of list ?? []) {
+                                if (iface.family === 'IPv4' && !iface.internal) {
+                                    return `ws://${iface.address}:${apiPort}`;
+                                }
+                            }
+                        }
+                        return `ws://localhost:${apiPort}`;
+                    })(),
             },
+        });
+        nextProc.on('error', (err) => {
+            logger.error('Failed to start Next.js process:', err);
+        });
+        nextProc.on('exit', (code, signal) => {
+            logger.info(`Next.js process exited with code ${code} and signal ${signal}`);
         });
         // Start Express API server (for WebSocket and HTTP endpoints)
         startServer(agent, apiPort, agentCard);

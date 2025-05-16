@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { McpServerConfig } from '../../../core/config/schemas.js';
 import {
     Dialog,
     DialogContent,
@@ -62,15 +63,20 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
       return;
     }
 
-    let config: Record<string, any> = { type: serverType };
+    let config: McpServerConfig;
     if (serverType === 'stdio') {
       if (!command.trim()) {
         setError('Command is required for stdio servers.');
         setIsSubmitting(false);
         return;
       }
-      config.command = command.trim();
-      config.args = args.split(',').map(s => s.trim()).filter(Boolean);
+      config = {
+        type: 'stdio',
+        command: command.trim(),
+        args: args.split(',').map(s => s.trim()).filter(Boolean),
+        env: {},
+        timeout: 30000,
+      };
     } else {
       if (!url.trim()) {
         setError('URL is required for SSE servers.');
@@ -80,11 +86,16 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
       try {
         new URL(url.trim());
       } catch (_) {
-          setError('Invalid URL format for SSE server.');
-          setIsSubmitting(false);
-          return;
+        setError('Invalid URL format for SSE server.');
+        setIsSubmitting(false);
+        return;
       }
-      config.url = url.trim();
+      config = {
+        type: 'sse',
+        url: url.trim(),
+        headers: {},
+        timeout: 30000,
+      };
     }
 
     try {

@@ -9,15 +9,9 @@ interface MessageListProps {
   messages: Message[];
 }
 
-// Helper to format timestamp (assuming msg.id is a timestamp or can be parsed as one)
-const formatTimestamp = (id: string) => {
-  const date = new Date(parseInt(id));
-  if (isNaN(date.getTime())) { // If id is not a parsable number for a timestamp
-    // Fallback for non-timestamp IDs or if parsing fails.
-    // You might want a more robust way to handle various ID formats if they aren't all timestamps.
-    const now = new Date();
-    return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
+// Helper to format timestamp from createdAt
+const formatTimestamp = (timestamp: number) => {
+  const date = new Date(timestamp);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
@@ -44,7 +38,7 @@ export default function MessageList({ messages }: MessageListProps) {
       {messages.map((msg, idx) => {
         const msgKey = msg.id ?? `msg-${idx}`;
         const isUser = msg.role === 'user';
-        const isAi = msg.role === 'ai';
+        const isAi = msg.role === 'assistant';
         const isSystem = msg.role === 'system';
 
         const isLastMessage = idx === messages.length - 1;
@@ -86,7 +80,7 @@ export default function MessageList({ messages }: MessageListProps) {
         );
 
         const contentWrapperClass = "flex flex-col gap-2";
-        const timestampStr = formatTimestamp(msg.id);
+        const timestampStr = formatTimestamp(msg.createdAt);
 
         return (
           <div key={msgKey} className={messageContainerClass}>

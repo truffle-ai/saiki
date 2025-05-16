@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 export default function ChatApp() {
   // Determine WebSocket URL; replace localhost with actual host for network access
@@ -33,6 +34,7 @@ export default function ChatApp() {
   const [isServersPanelOpen, setServersPanelOpen] = useState(false);
   const [isExportOpen, setExportOpen] = useState(false);
   const [exportName, setExportName] = useState('saiki-config');
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const handleDownload = useCallback(async () => {
     try {
@@ -49,8 +51,10 @@ export default function ChatApp() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       setExportOpen(false);
+      setExportError(null);
     } catch (err) {
       console.error('Export failed:', err);
+      setExportError(err instanceof Error ? err.message : 'Export failed');
     }
   }, [exportName]);
 
@@ -80,6 +84,12 @@ export default function ChatApp() {
                 <DialogTitle>Export Configuration</DialogTitle>
                 <DialogDescription>Download the current config and servers as YAML.</DialogDescription>
               </DialogHeader>
+              {exportError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{exportError}</AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="exportName">Filename</Label>
                 <Input id="exportName" value={exportName} onChange={(e) => setExportName(e.target.value)} />

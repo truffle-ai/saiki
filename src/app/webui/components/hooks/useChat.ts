@@ -15,7 +15,8 @@ export interface ImagePart {
 
 export interface Message {
     id: string;
-    role: 'user' | 'ai' | 'system' | 'assistant' | 'tool';
+    role: 'user' | 'system' | 'assistant' | 'tool';
+    createdAt: number;
     // Content for text-based messages
     content: string | null | Array<TextPart | ImagePart>;
     // Optional image data sent directly in user messages
@@ -48,7 +49,12 @@ export function useChat(wsUrl: string) {
                 case 'thinking':
                     setMessages((ms) => [
                         ...ms,
-                        { id: generateUniqueId(), role: 'system', content: 'Saiki is thinking...' },
+                        {
+                            id: generateUniqueId(),
+                            role: 'system',
+                            content: 'Saiki is thinking...',
+                            createdAt: Date.now(),
+                        },
                     ]);
                     break;
                 case 'chunk': {
@@ -59,11 +65,23 @@ export function useChat(wsUrl: string) {
                             (m) => !(m.role === 'system' && m.content === 'Saiki is thinking...')
                         );
                         const last = cleaned[cleaned.length - 1];
-                        if (last && last.role === 'ai') {
-                            const updated = { ...last, content: String(last.content) + text };
+                        if (last && last.role === 'assistant') {
+                            const updated = {
+                                ...last,
+                                content: String(last.content) + text,
+                                createdAt: Date.now(),
+                            };
                             return [...cleaned.slice(0, -1), updated];
                         }
-                        return [...cleaned, { id: generateUniqueId(), role: 'ai', content: text }];
+                        return [
+                            ...cleaned,
+                            {
+                                id: generateUniqueId(),
+                                role: 'assistant',
+                                content: text,
+                                createdAt: Date.now(),
+                            },
+                        ];
                     });
                     break;
                 }
@@ -89,8 +107,9 @@ export function useChat(wsUrl: string) {
                         // Prepare new AI message
                         const newMsg: Message = {
                             id: generateUniqueId(),
-                            role: 'ai',
+                            role: 'assistant',
                             content,
+                            createdAt: Date.now(),
                         };
                         // Clear ref for next response
                         lastImageUriRef.current = null;
@@ -112,6 +131,7 @@ export function useChat(wsUrl: string) {
                             content: null,
                             toolName: name,
                             toolArgs: args,
+                            createdAt: Date.now(),
                         },
                     ]);
                     break;
@@ -169,7 +189,12 @@ export function useChat(wsUrl: string) {
                     const errMsg = payload.message || 'Unknown error';
                     setMessages((ms) => [
                         ...ms,
-                        { id: generateUniqueId(), role: 'system', content: errMsg },
+                        {
+                            id: generateUniqueId(),
+                            role: 'system',
+                            content: errMsg,
+                            createdAt: Date.now(),
+                        },
                     ]);
                     break;
                 }
@@ -190,7 +215,13 @@ export function useChat(wsUrl: string) {
                 wsRef.current.send(JSON.stringify({ type: 'message', content, imageData }));
                 setMessages((msgs) => [
                     ...msgs,
-                    { id: generateUniqueId(), role: 'user', content, imageData },
+                    {
+                        id: generateUniqueId(),
+                        role: 'user',
+                        content,
+                        imageData,
+                        createdAt: Date.now(),
+                    },
                 ]);
             } else {
                 console.error('WebSocket is not open');
