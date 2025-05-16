@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { logger } from '../../core/index.js';
-import { getSupportedProviders } from '../../core/index.js';
+import { logger } from '@core/index.js';
+import { getSupportedProviders } from '@core/index.js';
 
 /**
  * Validates the command-line options.

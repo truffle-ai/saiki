@@ -1,8 +1,8 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { logger } from '../../core/index.js';
+import { logger } from '@core/index.js';
 import { CLISubscriber } from './cli-subscriber.js';
-import { SaikiAgent } from '../../core/index.js';
+import { SaikiAgent } from '@core/index.js';
 
 const validLogLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
 const HELP_MESSAGE = `Available commands:

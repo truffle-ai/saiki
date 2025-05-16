@@ -2,11 +2,11 @@ import type { Express } from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ReadResourceCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { AgentCard } from '../../core/index.js';
-import { logger } from '../../core/index.js';
+import type { AgentCard } from '@core/index.js';
+import { logger } from '@core/index.js';
 import { z } from 'zod';
 import express from 'express';
-import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
+import { SaikiAgent } from '@core/index.js';
 
 /**
  * Initializes and sets up the MCP server, its tools, resources, and HTTP endpoints.

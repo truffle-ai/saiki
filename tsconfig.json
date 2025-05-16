@@ -4,6 +4,11 @@
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "esModuleInterop": true,
+        "baseUrl": ".",
+        "paths": {
+            "@app/*": ["src/app/*"],
+            "@core/*": ["src/core/*"]
+        },
         "outDir": "./dist",
         "rootDir": ".",
         "strict": false,

@@ -11,7 +11,7 @@ import {
     getProviderFromModel,
     getAllSupportedModels,
     SaikiAgent,
-} from '../core/index.js';
+} from '@core/index.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startWebUI } from './web/server.js';
 import { startDiscordBot } from './discord/bot.js';
