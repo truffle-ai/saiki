@@ -3,16 +3,25 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 import { WebSocketEventSubscriber } from './websocket-subscriber.js';
-import { logger } from '@core/index.js';
+import { logger } from '../../core/utils/logger.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
-import type { AgentCard } from '@core/index.js';
+import type { AgentCard } from '../../core/config/types.js';
 import { setupA2ARoutes } from './a2a.js';
 import { initializeMcpServerEndpoints } from './mcp_handler.js';
-import { createAgentCard } from '@core/index.js';
-import { SaikiAgent } from '@core/index.js';
+import { createAgentCard } from '../../core/config/agentCard.js';
+import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
+import { stringify as yamlStringify } from 'yaml';
 
-// TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
+/**
+ * Initializes and configures an Express-based HTTP and WebSocket API server for interacting with a {@link SaikiAgent}.
+ *
+ * Sets up endpoints for sending messages to the agent, resetting conversation state, connecting to MCP servers, listing MCP servers and their tools, and exporting the agent configuration as YAML. Also establishes WebSocket support for real-time event broadcasting and inbound message handling.
+ *
+ * @param agent - The {@link SaikiAgent} instance to expose via the API.
+ * @param agentCardOverride - Optional partial overrides for the agent card configuration.
+ * @returns An object containing the Express app, HTTP server, WebSocket server, and the WebSocket event subscriber.
+ */
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
     const app = express();
     const server = http.createServer(app);
@@ -79,6 +88,14 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
         try {
             await agent.connectMcpServer(name, config);
+            // Add dynamic server config to in-memory AgentConfig
+            try {
+                const cfg = agent.configManager.getConfig();
+                if (!cfg.mcpServers) cfg.mcpServers = {} as any;
+                cfg.mcpServers[name] = config;
+            } catch {
+                // If configManager is not accessible or mcpServers undefined, skip
+            }
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
         } catch (error) {
@@ -88,6 +105,47 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             res.status(500).send({
                 error: `Failed to connect to server '${name}': ${errorMessage}`,
             });
+        }
+    });
+
+    // Add MCP servers listing endpoint
+    app.get('/api/mcp/servers', async (req, res) => {
+        try {
+            const clientsMap = agent.clientManager.getClients();
+            const failedConnections = agent.clientManager.getFailedConnections();
+            const servers: Array<{ id: string; name: string; status: string }> = [];
+            for (const name of clientsMap.keys()) {
+                servers.push({ id: name, name, status: 'connected' });
+            }
+            for (const name of Object.keys(failedConnections)) {
+                servers.push({ id: name, name, status: 'error' });
+            }
+            res.status(200).json({ servers });
+        } catch (error: any) {
+            logger.error(`Error listing MCP servers: ${error.message}`);
+            res.status(500).json({ error: 'Failed to list servers' });
+        }
+    });
+
+    // Add MCP server tools listing endpoint
+    app.get('/api/mcp/servers/:serverId/tools', async (req, res) => {
+        const serverId = req.params.serverId;
+        const client = agent.clientManager.getClients().get(serverId);
+        if (!client) {
+            return res.status(404).json({ error: `Server '${serverId}' not found` });
+        }
+        try {
+            const toolsMap = await client.getTools();
+            const tools = Object.entries(toolsMap).map(([toolName, toolDef]) => ({
+                id: toolName,
+                name: toolName,
+                description: toolDef.description,
+                inputSchema: toolDef.parameters,
+            }));
+            res.status(200).json({ tools });
+        } catch (error: any) {
+            logger.error(`Error fetching tools for server '${serverId}': ${error.message}`);
+            res.status(500).json({ error: 'Failed to fetch tools for server' });
         }
     });
 
@@ -174,6 +232,28 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         agentCardData, // Pass the agent card data for the MCP resource
         mcpTransport
     );
+
+    // Export current AgentConfig as YAML, omitting sensitive fields
+    app.get('/api/config.yaml', async (req, res) => {
+        try {
+            // Deep clone and sanitize
+            const rawConfig = agent.configManager.getConfig();
+            const exportConfig = JSON.parse(JSON.stringify(rawConfig));
+            // Remove sensitive API key
+            if (exportConfig.llm && 'apiKey' in exportConfig.llm) {
+                exportConfig.llm.apiKey = 'SET_YOUR_API_KEY_HERE';
+            }
+            // Serialize YAML
+            const yamlText = yamlStringify(exportConfig);
+            res.setHeader('Content-Type', 'application/x-yaml');
+            res.send(yamlText);
+        } catch (err) {
+            logger.error(
+                `Error exporting config YAML: ${err instanceof Error ? err.message : err}`
+            );
+            res.status(500).send('Failed to export configuration');
+        }
+    });
 
     return { app, server, wss, webSubscriber };
 }

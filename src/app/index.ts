@@ -2,21 +2,18 @@
 import { existsSync } from 'fs';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
-import {
-    logger,
-    DEFAULT_CONFIG_PATH,
-    resolvePackagePath,
-    createAgentServices,
-    type AgentServices,
-    getProviderFromModel,
-    getAllSupportedModels,
-    SaikiAgent,
-} from '@core/index.js';
+import { logger } from '../core/utils/logger.js';
+import { DEFAULT_CONFIG_PATH, resolvePackagePath } from '../core/utils/path.js';
+import { createAgentServices, AgentServices } from '../core/utils/service-initializer.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
-import { startWebUI } from './web/server.js';
+import { startServer } from './api/webui.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
-import { validateCliOptions, handleCliOptionsError } from './utils/options.js';
+import { validateCliOptions, handleCliOptionsError } from '../core/utils/options.js';
+import { getProviderFromModel, getAllSupportedModels } from '../core/ai/llm/registry.js';
+import { SaikiAgent } from '../core/ai/agent/SaikiAgent.js';
+import { spawn } from 'child_process';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -136,7 +133,13 @@ if (runMode === 'cli') {
     logger.info('');
 }
 
-// Main start function
+/**
+ * Initializes and starts the Saiki application in the selected run mode.
+ *
+ * Depending on the configured mode, this function sets up and launches the appropriate interface: interactive CLI, headless CLI, WebUI (Next.js frontend and Express API server), Discord bot, or Telegram bot. It validates configuration, initializes agent services, and handles startup errors.
+ *
+ * @throws {Error} If configuration loading or service initialization fails, or if bot startup encounters an error.
+ */
 async function startApp() {
     // Use createAgentServices to load, validate config and initialize all agent services
     const cliArgs = {
@@ -180,8 +183,29 @@ async function startApp() {
     } else if (runMode === 'web') {
         // Run WebUI with configured MCP identity (pass agentCard only)
         const agentCard = services.configManager.getConfig().agentCard ?? {};
-        startWebUI(agent, webPort, agentCard);
-        logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
+        const frontPort = webPort;
+        const apiPort = webPort + 1;
+        const nextCwd = path.resolve(process.cwd(), 'src', 'app', 'webui');
+        logger.info(
+            `Starting Next.js dev server on http://localhost:${frontPort}`,
+            null,
+            'cyanBright'
+        );
+        spawn('npm', ['run', 'dev', '--', '--port', String(frontPort)], {
+            cwd: nextCwd,
+            shell: true,
+            stdio: 'inherit',
+            env: {
+                ...process.env,
+                NODE_ENV: 'development',
+                API_PORT: String(apiPort),
+                NEXT_PUBLIC_WS_URL: `ws://localhost:${apiPort}`,
+            },
+        });
+        // Start Express API server (for WebSocket and HTTP endpoints)
+        startServer(agent, apiPort, agentCard);
+        logger.info(`API endpoints available at http://localhost:${apiPort}`, null, 'magenta');
+        logger.info(`Frontend available at http://localhost:${frontPort}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
         try {
