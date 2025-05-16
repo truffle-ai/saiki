@@ -20,7 +20,7 @@
     "scripts": {
         "clean": "npx rimraf dist",
         "prebuild": "",
-        "build": "npm run clean && tsup src/core/index.ts --format esm,cjs --shims --dts --out-dir dist/src/core && tsup src/app/index.ts --format esm --shims --out-dir dist/src/app && npm run copy-client",
+        "build": "npm run clean && tsup && npm run copy-client",
         "prepare": "husky",
         "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"src/app/web/client/*\" public",
         "start": "node dist/src/app/index.js",
