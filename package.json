@@ -1,6 +1,10 @@
 {
     "name": "@truffle-ai/saiki",
     "version": "0.2.1",
+    "engines": {
+        "node": ">=20.0.0",
+        "npm": ">=8.3.0"
+    },
     "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
     "main": "dist/src/core/index.cjs",
