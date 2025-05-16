@@ -99,5 +99,9 @@
         "*.ts": [
             "prettier --write"
         ]
+    },
+    "overrides": {
+        "tough-cookie": "^4.1.3",
+        "undici": "^6.21.2"
     }
 }
