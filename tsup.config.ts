@@ -9,12 +9,6 @@ export default defineConfig([
         dts: true,
         shims: true,
         bundle: true,
-        esbuildOptions(options, ctx) {
-            // Disable bundling for ESM output
-            if (ctx.format === 'esm') {
-                options.bundle = false;
-            }
-        },
     },
     // App entry: only ESM, no bundling needed
     {
