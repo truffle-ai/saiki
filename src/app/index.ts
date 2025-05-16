@@ -192,6 +192,7 @@ async function startApp() {
             env: {
                 ...process.env,
                 NODE_ENV: 'development',
+                API_PORT: String(apiPort),
                 NEXT_PUBLIC_WS_URL: `ws://localhost:${apiPort}`,
             },
         });

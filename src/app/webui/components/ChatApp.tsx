@@ -67,6 +67,31 @@ export default function ChatApp() {
             <span>Servers</span>
             {isServersPanelOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
+          {/* Export Config Dialog */}
+          <Dialog open={isExportOpen} onOpenChange={setExportOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="flex items-center space-x-2 ml-2">
+                <Download className="h-4 w-4" />
+                <span>Export</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Export Configuration</DialogTitle>
+                <DialogDescription>Download the current config and servers as YAML.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="exportName">Filename</Label>
+                <Input id="exportName" value={exportName} onChange={(e) => setExportName(e.target.value)} />
+              </div>
+              <DialogFooter>
+                <Button onClick={handleDownload}>Download YAML</Button>
+                <DialogClose asChild>
+                  <Button variant="ghost">Cancel</Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </header>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <MessageList messages={messages} />

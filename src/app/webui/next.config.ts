@@ -16,10 +16,11 @@ const nextConfig: NextConfig = {
     // Allow static asset requests from these origins in dev mode
     allowedDevOrigins: allowedOrigins,
     async rewrites() {
+        const apiPort = process.env.API_PORT ?? '3001';
         return [
             {
                 source: '/api/:path*',
-                destination: 'http://localhost:3001/api/:path*', // Proxy to backend
+                destination: `http://localhost:${apiPort}/api/:path*`, // Proxy to backend
             },
         ];
     },

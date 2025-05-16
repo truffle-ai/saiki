@@ -11,6 +11,7 @@ import { setupA2ARoutes } from './a2a.js';
 import { initializeMcpServerEndpoints } from './mcp_handler.js';
 import { createAgentCard } from '../../core/config/agentCard.js';
 import { SaikiAgent } from '../../core/ai/agent/SaikiAgent.js';
+import { stringify as yamlStringify } from 'yaml';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -79,6 +80,14 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
         try {
             await agent.connectMcpServer(name, config);
+            // Add dynamic server config to in-memory AgentConfig
+            try {
+                const cfg = agent.configManager.getConfig();
+                if (!cfg.mcpServers) cfg.mcpServers = {} as any;
+                cfg.mcpServers[name] = config;
+            } catch {
+                // If configManager is not accessible or mcpServers undefined, skip
+            }
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
         } catch (error) {
@@ -96,7 +105,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             const clientsMap = agent.clientManager.getClients();
             const failedConnections = agent.clientManager.getFailedConnections();
-            const servers = [];
+            const servers: Array<{ id: string; name: string; status: string }> = [];
             for (const name of clientsMap.keys()) {
                 servers.push({ id: name, name, status: 'connected' });
             }
@@ -215,6 +224,28 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         agentCardData, // Pass the agent card data for the MCP resource
         mcpTransport
     );
+
+    // Export current AgentConfig as YAML, omitting sensitive fields
+    app.get('/api/config.yaml', async (req, res) => {
+        try {
+            // Deep clone and sanitize
+            const rawConfig = agent.configManager.getConfig();
+            const exportConfig = JSON.parse(JSON.stringify(rawConfig));
+            // Remove sensitive API key
+            if (exportConfig.llm && 'apiKey' in exportConfig.llm) {
+                exportConfig.llm.apiKey = 'SET_YOUR_API_KEY_HERE';
+            }
+            // Serialize YAML
+            const yamlText = yamlStringify(exportConfig);
+            res.setHeader('Content-Type', 'application/x-yaml');
+            res.send(yamlText);
+        } catch (err) {
+            logger.error(
+                `Error exporting config YAML: ${err instanceof Error ? err.message : err}`
+            );
+            res.status(500).send('Failed to export configuration');
+        }
+    });
 
     return { app, server, wss, webSubscriber };
 }
