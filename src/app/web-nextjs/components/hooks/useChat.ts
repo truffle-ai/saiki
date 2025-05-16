@@ -148,17 +148,21 @@ export function useChat(wsUrl: string) {
                         }
                     }
                     lastImageUriRef.current = uri;
-                    // Optionally, still record the toolResult as a separate message
-                    setMessages((ms) => [
-                        ...ms,
-                        {
-                            id: generateUniqueId(),
-                            role: 'tool',
-                            content: null,
-                            toolName: name,
-                            toolResult: result,
-                        },
-                    ]);
+                    // Merge toolResult into the existing toolCall message
+                    setMessages((ms) => {
+                        const idx = ms.findIndex(
+                            (m) =>
+                                m.role === 'tool' &&
+                                m.toolName === name &&
+                                m.toolResult === undefined
+                        );
+                        if (idx !== -1) {
+                            const updatedMsg = { ...ms[idx], toolResult: result };
+                            return [...ms.slice(0, idx), updatedMsg, ...ms.slice(idx + 1)];
+                        }
+                        // No matching toolCall found; do not append a new message
+                        return ms;
+                    });
                     break;
                 }
                 case 'error': {

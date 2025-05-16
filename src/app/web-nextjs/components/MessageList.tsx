@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { cn } from "@/lib/utils";
 import { Message, TextPart, ImagePart } from './hooks/useChat';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { User, Bot, Terminal, ChevronsRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, Bot, ChevronsRight, ChevronDown, ChevronUp, Loader2, CheckCircle, ChevronRight } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface MessageListProps {
@@ -92,89 +92,63 @@ export default function MessageList({ messages }: MessageListProps) {
             <div className={cn("flex flex-col", isUser ? "items-end" : "items-start", isSystem && "w-full items-center")}>
               <div className={bubbleSpecificClass}>
                 <div className={contentWrapperClass}>
-                  {isToolCall && (
-                    isExpanded ? (
-                      <Card className="bg-muted/50 border-border w-full">
-                        <CardHeader className="p-2 flex flex-row items-center justify-between">
-                          <CardTitle className="text-xs font-medium flex items-center">
-                            <Terminal className="h-4 w-4 mr-2 text-primary" />
-                            Tool Called: {msg.toolName}
-                          </CardTitle>
-                          <Button variant="ghost" size="icon" onClick={toggleManualExpansion} className="h-6 w-6">
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                        </CardHeader>
-                        <CardContent className="p-2">
-                          <pre className="whitespace-pre-wrap overflow-auto bg-background/50 p-2 rounded text-xs text-muted-foreground">
-                            {JSON.stringify(msg.toolArgs, null, 2)}
-                          </pre>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <div className="p-2 rounded border border-border bg-muted/30 hover:bg-muted/60 cursor-pointer w-full" onClick={toggleManualExpansion}>
-                        <div className="flex items-center justify-between text-xs font-medium">
-                          <span className="flex items-center">
-                            <Terminal className="h-4 w-4 mr-2 text-primary" />
-                            Tool Called: {msg.toolName} (collapsed)
-                          </span>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                    )
-                  )}
-
-                  {isToolResult && (
-                    isExpanded ? (
-                      <Card className="bg-muted/50 border-border w-full">
-                        <CardHeader className="p-2 flex flex-row items-center justify-between">
-                          <CardTitle className="text-xs font-medium flex items-center">
-                            <ChevronsRight className="h-4 w-4 mr-2 text-green-500" />
-                            Result: {msg.toolName}
-                          </CardTitle>
-                          <Button variant="ghost" size="icon" onClick={toggleManualExpansion} className="h-6 w-6">
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                        </CardHeader>
-                        <CardContent className="p-2">
-                          {Array.isArray((msg.toolResult as any).content) ? (
-                            (msg.toolResult as any).content.map((part: any, index: number) => {
-                              if (part.type === 'image') {
-                                const src = part.data && part.mimeType
-                                  ? `data:${part.mimeType};base64,${part.data}`
-                                  : part.image || part.url;
-                                return (
-                                  <img key={index} src={src} alt="Tool result image" className="my-1 max-h-48 w-auto rounded border border-border" />
-                                );
-                              }
-                              return (
-                                <pre key={index} className="whitespace-pre-wrap overflow-auto bg-background/50 p-2 rounded text-xs text-muted-foreground my-1">
-                                  {typeof part === 'object' ? JSON.stringify(part, null, 2) : String(part)}
-                                </pre>
-                              );
-                            })
-                          ) : typeof msg.toolResult === 'string' && msg.toolResult.startsWith('data:image') ? (
-                            <img src={msg.toolResult} alt="Tool result image" className="my-1 max-h-48 w-auto rounded border border-border" />
+                  {msg.toolName ? (
+                    <div className="p-2 rounded border border-border bg-muted/30 hover:bg-muted/60 cursor-pointer w-full" onClick={toggleManualExpansion}>
+                      <div className="flex items-center justify-between text-xs font-medium">
+                        <span className="flex items-center">
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4 mr-2 text-primary" />
                           ) : (
-                            <pre className="whitespace-pre-wrap overflow-auto bg-background/50 p-2 rounded text-xs text-muted-foreground">
-                              {typeof msg.toolResult === 'object' ? JSON.stringify(msg.toolResult, null, 2) : String(msg.toolResult)}
-                            </pre>
+                            <ChevronRight className="h-4 w-4 mr-2 text-primary" />
                           )}
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <div className="p-2 rounded border border-border bg-muted/30 hover:bg-muted/60 cursor-pointer w-full" onClick={toggleManualExpansion}>
-                        <div className="flex items-center justify-between text-xs font-medium">
-                          <span className="flex items-center">
-                            <ChevronsRight className="h-4 w-4 mr-2 text-green-500" />
-                            Result for {msg.toolName} (collapsed)
-                          </span>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        </div>
+                          Tool: {msg.toolName}
+                        </span>
+                        {msg.toolResult ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
                       </div>
-                    )
-                  )}
-
-                  {!isToolRelated && (
+                      {isExpanded && (
+                        <div className="mt-2 space-y-2">
+                          <div>
+                            <p className="text-xs font-medium">Arguments:</p>
+                            <pre className="whitespace-pre-wrap overflow-auto bg-background/50 p-2 rounded text-xs text-muted-foreground">
+                              {JSON.stringify(msg.toolArgs, null, 2)}
+                            </pre>
+                          </div>
+                          {msg.toolResult && (
+                            <div>
+                              <p className="text-xs font-medium">Result:</p>
+                              {Array.isArray((msg.toolResult as any).content) ? (
+                                (msg.toolResult as any).content.map((part: any, index: number) => {
+                                  if (part.type === 'image') {
+                                    const src = part.data && part.mimeType
+                                      ? `data:${part.mimeType};base64,${part.data}`
+                                      : part.image || part.url;
+                                    return (
+                                      <img key={index} src={src} alt="Tool result image" className="my-1 max-h-48 w-auto rounded border border-border" />
+                                    );
+                                  }
+                                  return (
+                                    <pre key={index} className="whitespace-pre-wrap overflow-auto bg-background/50 p-2 rounded text-xs text-muted-foreground my-1">
+                                      {typeof part === 'object' ? JSON.stringify(part, null, 2) : String(part)}
+                                    </pre>
+                                  );
+                                })
+                              ) : typeof msg.toolResult === 'string' && msg.toolResult.startsWith('data:image') ? (
+                                <img src={msg.toolResult} alt="Tool result image" className="my-1 max-h-48 w-auto rounded border border-border" />
+                              ) : (
+                                <pre className="whitespace-pre-wrap overflow-auto bg-background/50 p-2 rounded text-xs text-muted-foreground">
+                                  {typeof msg.toolResult === 'object' ? JSON.stringify(msg.toolResult, null, 2) : String(msg.toolResult)}
+                                </pre>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
                     <>
                       {typeof msg.content === 'string' && msg.content.trim() !== '' && (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
