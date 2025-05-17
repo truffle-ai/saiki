@@ -12,6 +12,7 @@ import { initializeMcpServerEndpoints } from './mcp_handler.js';
 import { createAgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
+import os from 'os';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -248,4 +249,34 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     });
 
     return { app, server, wss, webSubscriber };
+}
+
+export async function startApiServer(
+    agent: SaikiAgent,
+    port = 3000,
+    agentCardOverride?: Partial<AgentCard>
+) {
+    const { app, server, wss, webSubscriber } = await initializeApi(agent, agentCardOverride);
+
+    // Next.js front-end handles static assets; only mount API and WebSocket routes here.
+
+    server.listen(port, '0.0.0.0', () => {
+        const networkInterfaces = os.networkInterfaces();
+        let localIp = 'localhost';
+        Object.values(networkInterfaces).forEach((ifaceList) => {
+            ifaceList?.forEach((iface) => {
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    localIp = iface.address;
+                }
+            });
+        });
+
+        logger.info(
+            `API server started. Accessible at: http://localhost:${port} and http://${localIp}:${port}`,
+            null,
+            'green'
+        );
+    });
+
+    return { server, wss, webSubscriber };
 }
