@@ -2,6 +2,7 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
+import nextjs from 'eslint-plugin-next';
 
 export default [
     // Base config for all files
@@ -51,6 +52,12 @@ export default [
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
         },
+    },
+
+    // Next.js specific config for WebUI
+    {
+        files: ['src/app/webui/**/*.{js,jsx,ts,tsx}'],
+        ...nextjs.configs['recommended-type-checked'],
     },
 
     // JavaScript Client-side specific config
