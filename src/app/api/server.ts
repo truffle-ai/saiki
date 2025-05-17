@@ -86,8 +86,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 const cfg = agent.configManager.getConfig();
                 if (!cfg.mcpServers) cfg.mcpServers = {} as any;
                 cfg.mcpServers[name] = config;
-            } catch {
-                // If configManager is not accessible or mcpServers undefined, skip
+            } catch (error) {
+                // Log the error but don't fail the connection since it succeeded
+                logger.warn(
+                    `Failed to update in-memory config for server '${name}': ${error instanceof Error ? error.message : String(error)}`
+                );
             }
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
