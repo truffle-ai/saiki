@@ -13,6 +13,7 @@ import {
     SaikiAgent,
 } from '@core/index.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
+import { getPort } from './port-utils.js';
 import { startApiServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
@@ -183,13 +184,10 @@ async function startApp() {
     } else if (runMode === 'web') {
         // Run WebUI with configured MCP identity (pass agentCard only)
         const agentCard = services.configManager.getConfig().agentCard ?? {};
-        const frontPort = process.env.FRONTEND_PORT
-            ? parseInt(process.env.FRONTEND_PORT, 10)
-            : webPort;
-        const apiPort = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : webPort + 1;
+        const frontPort = getPort(process.env.FRONTEND_PORT, webPort, 'FRONTEND_PORT');
+        const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
         const nextCwd = path.resolve(process.cwd(), 'src', 'app', 'webui');
         // Derive standardized URLs from env or defaults
-        // TODO: Consolidate all env variables and logic for getting them
         const frontUrl = process.env.FRONTEND_URL ?? `http://localhost:${frontPort}`;
         const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 
@@ -228,7 +226,7 @@ async function startApp() {
             logger.info(`Next.js process exited with code ${code} and signal ${signal}`);
         });
         // Start Express API server (for WebSocket and HTTP endpoints)
-        startApiServer(agent, apiPort, agentCard);
+        await startApiServer(agent, apiPort, agentCard);
         logger.info(`API endpoints available at ${apiUrl}`, null, 'magenta');
         logger.info(`Frontend available at ${frontUrl}`, null, 'magenta');
     } else if (runMode === 'discord') {

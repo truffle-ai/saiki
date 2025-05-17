@@ -31,6 +31,8 @@ export default function PlaygroundView() {
 
   // Ref to manage aborting in-flight tool fetch requests
   const toolsAbortControllerRef = useRef<AbortController | null>(null);
+  // Ref to manage aborting in-flight tool execution requests
+  const executionAbortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     return () => {
@@ -206,6 +208,10 @@ export default function PlaygroundView() {
       handleError("No server or tool selected for execution.", 'execution');
       return;
     }
+    // Abort any previous execution
+    executionAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    executionAbortControllerRef.current = controller;
     setCurrentError(null);
     setToolResult(null);
 
@@ -262,11 +268,15 @@ export default function PlaygroundView() {
         }
       }
       
-      const response = await fetch(`${API_BASE_URL}/mcp/servers/${selectedServer.id}/tools/${selectedTool.id}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(processedInputs),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/mcp/servers/${selectedServer.id}/tools/${selectedTool.id}/execute`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(processedInputs),
+          signal: controller.signal,
+        }
+      );
       
       const resultData = await response.json(); 
       if (!response.ok) {
@@ -274,13 +284,18 @@ export default function PlaygroundView() {
       }
       setToolResult(resultData);
     } catch (err: any) {
-      handleError(err.message, 'execution');
-      // Ensure toolResult reflects the error for display, even if backend structure was unexpected
-      if (err.message && (!toolResult || toolResult.success || toolResult.error !== err.message)) {
-        setToolResult({ success: false, error: err.message });
+      if (err.name !== 'AbortError') {
+        handleError(err.message, 'execution');
+        // Ensure toolResult reflects the error for display, even if backend structure was unexpected
+        if (err.message && (!toolResult || toolResult.success || toolResult.error !== err.message)) {
+          setToolResult({ success: false, error: err.message });
+        }
       }
     } finally {
-      setIsLoading(false);
+      // Only clear loading if this request wasn't aborted
+      if (!controller.signal.aborted) {
+        setIsLoading(false);
+      }
     }
   }, [selectedServer, selectedTool, toolInputs, validateInputs]);
 
@@ -515,23 +530,36 @@ export default function PlaygroundView() {
                 <h4 className="font-semibold mb-3 text-base">Result:</h4>
                 {toolResult.success ? (
                   <div className="space-y-3 text-sm">
-                    {toolResult.metadata?.type === 'image' && toolResult.data ? (
+                    {(
+                      (toolResult.metadata?.mimeType?.startsWith('image/') || toolResult.metadata?.type?.startsWith('image'))
+                      || (toolResult.data && typeof toolResult.data === 'object' && Array.isArray((toolResult.data as any).content))
+                    ) && toolResult.data ? (
                       (() => {
                         // console.log('PlaygroundView Image toolResult:', JSON.stringify(toolResult, null, 2)); // Keep for debugging if needed
                         
                         let imgSrc = '';
                         let imagePart: { data?: string; mimeType?: string; type?: string } | null = null;
+                        const metadataMime = toolResult.metadata?.mimeType;
 
                         if (Array.isArray(toolResult.data)) {
                           imagePart = toolResult.data.find(part => part && part.type === 'image');
                           if (imagePart && typeof imagePart.data === 'string' && imagePart.mimeType) {
                             imgSrc = `data:${imagePart.mimeType};base64,${imagePart.data}`;
                           }
+                        } else if (toolResult.data && typeof toolResult.data === 'object' && Array.isArray((toolResult.data as any).content)) {
+                          const partsArray = (toolResult.data as any).content as any[];
+                          imagePart = partsArray.find(part => part && part.type === 'image');
+                          if (imagePart && typeof imagePart.data === 'string') {
+                            const mime = (imagePart.mimeType as string) || metadataMime;
+                            if (mime) {
+                              imgSrc = `data:${mime};base64,${imagePart.data}`;
+                            }
+                          }
                         } else if (typeof toolResult.data === 'string') {
                           if (toolResult.data.startsWith('data:image')) {
                             imgSrc = toolResult.data;
-                          } else if (toolResult.metadata.mimeType) { 
-                            imgSrc = `data:${toolResult.metadata.mimeType};base64,${toolResult.data}`;
+                          } else if (metadataMime) {
+                            imgSrc = `data:${metadataMime};base64,${toolResult.data}`;
                           } else if (toolResult.data.startsWith('http://') || toolResult.data.startsWith('https://')) {
                             imgSrc = toolResult.data; 
                           }
@@ -545,14 +573,19 @@ export default function PlaygroundView() {
                                    src={imgSrc}
                                    alt="Tool generated image" 
                                    className="max-w-full md:max-w-md lg:max-w-lg h-auto border border-input rounded-md shadow-sm bg-background object-contain"/>
-                              {Array.isArray(toolResult.data) && toolResult.data.length > 1 && (
-                                toolResult.data.filter(part => part !== imagePart).map((otherPart, index) => (
-                                  <div key={`other-part-${index}`} className="mt-2 pt-2 border-t border-border/50">
-                                    <p className="text-xs text-muted-foreground">Additional data part ({otherPart.type || 'unknown'}):</p>
-                                    <pre className="whitespace-pre-wrap text-xs bg-muted/50 p-2 rounded-sm font-mono">{typeof otherPart === 'object' ? JSON.stringify(otherPart, null, 2) : String(otherPart)}</pre>
-                                  </div>
-                                ))
-                              )}
+                              {/* Optionally render additional non-image parts from array or content */}
+                              {(
+                                Array.isArray(toolResult.data)
+                                  ? (toolResult.data as any[]).filter(part => part !== imagePart)
+                                  : (toolResult.data && typeof toolResult.data === 'object' && Array.isArray((toolResult.data as any).content)
+                                      ? (toolResult.data as any).content.filter((part: any) => part !== imagePart)
+                                      : [])
+                              ).map((otherPart: any, index: number) => (
+                                <div key={`other-part-${index}`} className="mt-2 pt-2 border-t border-border/50">
+                                  <p className="text-xs text-muted-foreground">Additional data part ({otherPart.type || 'unknown'}):</p>
+                                  <pre className="whitespace-pre-wrap text-xs bg-muted/50 p-2 rounded-sm font-mono">{typeof otherPart === 'object' ? JSON.stringify(otherPart, null, 2) : String(otherPart)}</pre>
+                                </div>
+                              ))}
                             </div>
                           );
                         } else {

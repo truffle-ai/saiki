@@ -79,11 +79,7 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
     };
   }, [isOpen, fetchServers]);
 
-  const handleServerSelect = useCallback(async (serverId: string, isNewSelection: boolean, signal?: AbortSignal) => {
-    setSelectedServerId(serverId);
-    if (isNewSelection) { // Only expand if it's a genuinely new server selection
-      setIsToolsExpanded(true);
-    }
+  const handleServerSelect = useCallback(async (serverId: string, signal?: AbortSignal) => {
     const server = servers.find(s => s.id === serverId);
     setTools([]);
     setToolsError(null);
@@ -118,11 +114,11 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
       }
     }
   }, [servers]);
-  
+
   useEffect(() => {
     if (!selectedServerId) return;
     const controller = new AbortController();
-    handleServerSelect(selectedServerId, true, controller.signal);
+    handleServerSelect(selectedServerId, controller.signal);
     return () => {
       controller.abort();
     };
@@ -195,12 +191,6 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
             variant={selectedServerId === server.id ? 'secondary' : 'ghost'}
             className="w-full justify-start items-center h-10 px-3 text-left"
             onClick={() => {
-              const isNewSelection = selectedServerId !== server.id;
-              // No need to call handleServerSelect directly here, the useEffect for selectedServerId will trigger it.
-              // setSelectedServerId will trigger the useEffect, which calls handleServerSelect.
-              // We just need to ensure the isNewSelection logic is robust there or handle expansion here.
-              // For simplicity and direct user action: expand here, and effect handles data.
-              if (isNewSelection) setIsToolsExpanded(true);
               setSelectedServerId(server.id); 
             }}
           >

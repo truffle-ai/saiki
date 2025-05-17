@@ -34,14 +34,6 @@ const nextConfig: NextConfig = {
             },
         ];
     },
-    // Add webpack alias for @core path mapping
-    webpack(config) {
-        config.resolve.alias = {
-            ...(config.resolve.alias || {}),
-            '@core': path.resolve(__dirname, '../../core'),
-        };
-        return config;
-    },
 };
 
 export default nextConfig;

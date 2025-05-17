@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { useChat, Message } from './hooks/useChat';
+import { useChatContext } from './hooks/ChatContext';
 import MessageList from './MessageList';
 import InputArea from './InputArea';
 import ConnectServerModal from './ConnectServerModal';
@@ -16,20 +16,7 @@ import { Textarea } from './ui/textarea';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 export default function ChatApp() {
-  // Determine WebSocket URL; replace localhost with actual host for network access
-  let wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
-  if (typeof window !== 'undefined') {
-    try {
-      const urlObj = new URL(wsUrl);
-      if (urlObj.hostname === 'localhost') {
-        urlObj.hostname = window.location.hostname;
-        wsUrl = urlObj.toString();
-      }
-    } catch (e) {
-      console.warn('Invalid WS URL:', wsUrl);
-    }
-  }
-  const { messages, sendMessage } = useChat(wsUrl);
+  const { messages, sendMessage } = useChatContext();
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [isServersPanelOpen, setServersPanelOpen] = useState(false);

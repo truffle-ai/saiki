@@ -142,6 +142,33 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Execute an MCP tool via REST wrapper
+    app.post(
+        '/api/mcp/servers/:serverId/tools/:toolName/execute',
+        express.json(),
+        async (req, res) => {
+            const { serverId, toolName } = req.params;
+            // Verify server exists
+            const client = agent.clientManager.getClients().get(serverId);
+            if (!client) {
+                return res
+                    .status(404)
+                    .json({ success: false, error: `Server '${serverId}' not found` });
+            }
+            try {
+                // Execute tool through the agent's client manager
+                const rawResult = await agent.clientManager.executeTool(toolName, req.body);
+                // Return standardized result shape
+                res.json({ success: true, data: rawResult });
+            } catch (error: any) {
+                logger.error(
+                    `Error executing tool '${toolName}' on server '${serverId}': ${error.message}`
+                );
+                res.status(500).json({ success: false, error: error.message });
+            }
+        }
+    );
+
     // WebSocket handling
     // handle inbound client messages over WebSocket
     wss.on('connection', (ws: WebSocket) => {

@@ -1,3 +1,5 @@
+// Add the client directive
+'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { TextPart as CoreTextPart, InternalMessage } from '@core/ai/llm/messages/types';
 
