@@ -183,10 +183,13 @@ async function startApp() {
     } else if (runMode === 'web') {
         // Run WebUI with configured MCP identity (pass agentCard only)
         const agentCard = services.configManager.getConfig().agentCard ?? {};
-        const frontPort = webPort;
-        const apiPort = webPort + 1;
+        const frontPort = process.env.FRONTEND_PORT
+            ? parseInt(process.env.FRONTEND_PORT, 10)
+            : webPort;
+        const apiPort = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : webPort + 1;
         const nextCwd = path.resolve(process.cwd(), 'src', 'app', 'webui');
         // Derive standardized URLs from env or defaults
+        // TODO: Consolidate all env variables and logic for getting them
         const frontUrl = process.env.FRONTEND_URL ?? `http://localhost:${frontPort}`;
         const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 
