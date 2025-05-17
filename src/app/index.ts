@@ -186,11 +186,11 @@ async function startApp() {
         const frontPort = webPort;
         const apiPort = webPort + 1;
         const nextCwd = path.resolve(process.cwd(), 'src', 'app', 'webui');
-        logger.info(
-            `Starting Next.js dev server on http://localhost:${frontPort}`,
-            null,
-            'cyanBright'
-        );
+        // Derive standardized URLs from env or defaults
+        const frontUrl = process.env.FRONTEND_URL ?? `http://localhost:${frontPort}`;
+        const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+
+        logger.info(`Starting Next.js dev server on ${frontUrl}`, null, 'cyanBright');
         const nextProc = spawn('npm', ['run', 'dev', '--', '--port', String(frontPort)], {
             cwd: nextCwd,
             shell: true,
@@ -199,6 +199,9 @@ async function startApp() {
                 ...process.env,
                 NODE_ENV: 'development',
                 API_PORT: String(apiPort),
+                API_URL: apiUrl,
+                FRONTEND_URL: frontUrl,
+                NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? apiUrl,
                 NEXT_PUBLIC_WS_URL:
                     process.env.NEXT_PUBLIC_WS_URL ??
                     (() => {
@@ -212,6 +215,7 @@ async function startApp() {
                         }
                         return `ws://localhost:${apiPort}`;
                     })(),
+                NEXT_PUBLIC_FRONTEND_URL: process.env.NEXT_PUBLIC_FRONTEND_URL ?? frontUrl,
             },
         });
         nextProc.on('error', (err) => {
@@ -222,8 +226,8 @@ async function startApp() {
         });
         // Start Express API server (for WebSocket and HTTP endpoints)
         startApiServer(agent, apiPort, agentCard);
-        logger.info(`API endpoints available at http://localhost:${apiPort}`, null, 'magenta');
-        logger.info(`Frontend available at http://localhost:${frontPort}`, null, 'magenta');
+        logger.info(`API endpoints available at ${apiUrl}`, null, 'magenta');
+        logger.info(`Frontend available at ${frontUrl}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
         try {

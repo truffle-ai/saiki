@@ -5,37 +5,7 @@ import { Button } from './ui/button';
 import { X, PlusCircle, Server, ListChecks, ChevronRight, RefreshCw, AlertTriangle, ChevronDown, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-
-// --- Interfaces copied/adapted from PlaygroundView.tsx ---
-interface JsonSchemaProperty {
-  type: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
-  description?: string;
-  default?: any;
-  enum?: Array<string | number | boolean>;
-  format?: string;
-}
-
-interface JsonSchema {
-  type?: 'object';
-  properties?: Record<string, JsonSchemaProperty>;
-  required?: string[];
-}
-
-interface McpServer {
-  id: string;
-  name: string;
-  status: 'connected' | 'disconnected' | 'error' | 'unknown';
-  // other relevant details
-}
-
-interface McpTool {
-  id: string;
-  name: string;
-  description?: string;
-  inputSchema?: JsonSchema | null;
-  // other relevant details
-}
-// --- End of Interfaces ---
+import type { McpServer, McpTool } from '@/types';
 
 interface ServersPanelProps {
   isOpen: boolean;

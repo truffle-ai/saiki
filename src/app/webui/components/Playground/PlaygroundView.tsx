@@ -13,49 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-
-// Interface for JSON Schema properties (simplified)
-interface JsonSchemaProperty {
-  type: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
-  description?: string;
-  default?: any;
-  enum?: Array<string | number | boolean>;
-  format?: string; // e.g., 'date-time', 'email', 'uri'
-  // For object/array, could have 'properties', 'items', 'required' etc.
-}
-
-// Interface for a JSON Schema (simplified for what we'll parse directly)
-interface JsonSchema {
-  type?: 'object'; // Typically the root is an object
-  properties?: Record<string, JsonSchemaProperty>;
-  required?: string[];
-  // We can add more JSON Schema features here as needed
-}
-
-interface McpServer {
-  id: string;
-  name: string;
-  status: 'connected' | 'disconnected' | 'error' | 'unknown';
-  // other relevant details
-}
-
-interface McpTool {
-  id: string;
-  name: string;
-  description?: string;
-  inputSchema?: JsonSchema | null; // Updated to use JsonSchema type
-  // other relevant details
-}
-
-interface ToolResult {
-  success: boolean;
-  data?: any;
-  error?: string;
-  metadata?: { // For rich output rendering
-    type: string; // Allow any string, e.g. 'text', 'image/png', 'application/json', 'markdown'
-    mimeType?: string; 
-  };
-}
+import type { JsonSchemaProperty, McpServer, McpTool, ToolResult } from '@/types';
 
 export default function PlaygroundView() {
   const [servers, setServers] = useState<McpServer[]>([]);
