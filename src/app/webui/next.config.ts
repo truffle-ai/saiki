@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import path from 'path';
 import os from 'os';
 
 // Determine allowed development origins (local network IPs on port 3000)
@@ -32,6 +33,14 @@ const nextConfig: NextConfig = {
                 headers: [{ key: 'Access-Control-Allow-Origin', value: '*' }],
             },
         ];
+    },
+    // Add webpack alias for @core path mapping
+    webpack(config) {
+        config.resolve.alias = {
+            ...(config.resolve.alias || {}),
+            '@core': path.resolve(__dirname, '../../core'),
+        };
+        return config;
     },
 };
 

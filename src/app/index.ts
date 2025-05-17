@@ -13,7 +13,7 @@ import {
     SaikiAgent,
 } from '@core/index.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
-import { startServer } from './api/webui.js';
+import { startApiServer } from './api/webui.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './utils/options.js';
@@ -221,7 +221,7 @@ async function startApp() {
             logger.info(`Next.js process exited with code ${code} and signal ${signal}`);
         });
         // Start Express API server (for WebSocket and HTTP endpoints)
-        startServer(agent, apiPort, agentCard);
+        startApiServer(agent, apiPort, agentCard);
         logger.info(`API endpoints available at http://localhost:${apiPort}`, null, 'magenta');
         logger.info(`Frontend available at http://localhost:${frontPort}`, null, 'magenta');
     } else if (runMode === 'discord') {

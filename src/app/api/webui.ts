@@ -6,7 +6,7 @@ import os from 'os';
 import type { AgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
 
-export async function startServer(
+export async function startApiServer(
     agent: SaikiAgent,
     port = 3000,
     agentCardOverride?: Partial<AgentCard>

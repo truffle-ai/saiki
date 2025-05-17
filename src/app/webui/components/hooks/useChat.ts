@@ -1,27 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { TextPart as CoreTextPart, InternalMessage } from '@core/ai/llm/messages/types';
 
-// Define the structure for message content parts
-export interface TextPart {
-    type: 'text';
-    text: string;
-}
+// Reuse the identical TextPart from core
+export type TextPart = CoreTextPart;
 
+// Define a WebUI-specific image part
 export interface ImagePart {
     type: 'image';
-    // Include relevant properties from backend ImageData if needed for display
     base64: string;
     mimeType: string;
 }
 
-export interface Message {
+// Extend core InternalMessage for WebUI
+export interface Message extends Omit<InternalMessage, 'content'> {
     id: string;
-    role: 'user' | 'system' | 'assistant' | 'tool';
     createdAt: number;
-    // Content for text-based messages
     content: string | null | Array<TextPart | ImagePart>;
-    // Optional image data sent directly in user messages
     imageData?: { base64: string; mimeType: string };
-    // Tool call and result metadata
     toolName?: string;
     toolArgs?: any;
     toolResult?: any;

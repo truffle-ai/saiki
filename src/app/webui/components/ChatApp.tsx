@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useChat, Message } from './hooks/useChat';
 import MessageList from './MessageList';
 import InputArea from './InputArea';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 export default function ChatApp() {
@@ -35,6 +36,30 @@ export default function ChatApp() {
   const [isExportOpen, setExportOpen] = useState(false);
   const [exportName, setExportName] = useState('saiki-config');
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportContent, setExportContent] = useState<string>('');
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  useEffect(() => {
+    if (isExportOpen) {
+      fetch('/api/config.yaml')
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to fetch configuration');
+          return res.text();
+        })
+        .then((text) => {
+          setExportContent(text);
+          setExportError(null);
+        })
+        .catch((err) => {
+          console.error('Preview fetch failed:', err);
+          setExportError(err instanceof Error ? err.message : 'Preview fetch failed');
+        });
+    } else {
+      setExportContent('');
+      setExportError(null);
+      setCopySuccess(false);
+    }
+  }, [isExportOpen]);
 
   const handleDownload = useCallback(async () => {
     try {
@@ -57,6 +82,21 @@ export default function ChatApp() {
       setExportError(err instanceof Error ? err.message : 'Export failed');
     }
   }, [exportName]);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      const res = await fetch('/api/config.yaml');
+      if (!res.ok) throw new Error('Failed to fetch configuration');
+      const yamlText = await res.text();
+      await navigator.clipboard.writeText(yamlText);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+      setExportError(null);
+    } catch (err) {
+      console.error('Copy failed:', err);
+      setExportError(err instanceof Error ? err.message : 'Copy failed');
+    }
+  }, [setCopySuccess, setExportError]);
 
   const handleSend = useCallback((content: string, imageData?: { base64: string; mimeType: string }) => {
     sendMessage(content, imageData);
@@ -90,12 +130,24 @@ export default function ChatApp() {
                   <AlertDescription>{exportError}</AlertDescription>
                 </Alert>
               )}
+              {copySuccess && (
+                <Alert className="mb-4">
+                  <AlertTitle>Copied to clipboard</AlertTitle>
+                </Alert>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="exportName">Filename</Label>
                 <Input id="exportName" value={exportName} onChange={(e) => setExportName(e.target.value)} />
               </div>
+              {exportContent && (
+                <div className="mt-4">
+                  <Label className='mb-2'>Preview</Label>
+                  <Textarea readOnly value={exportContent} className="font-mono text-xs" rows={10} />
+                </div>
+              )}
               <DialogFooter>
                 <Button onClick={handleDownload}>Download YAML</Button>
+                <Button variant="outline" onClick={handleCopy}>Copy YAML</Button>
                 <DialogClose asChild>
                   <Button variant="ghost">Cancel</Button>
                 </DialogClose>
