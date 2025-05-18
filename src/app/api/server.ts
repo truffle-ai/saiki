@@ -13,6 +13,7 @@ import { createAgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
+import { resolvePackagePath } from '@core/index.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -288,8 +289,12 @@ export async function startApiServer(
 ) {
     const { app, server, wss, webSubscriber } = await initializeApi(agent, agentCardOverride);
 
-    // Next.js front-end handles static assets; only mount API and WebSocket routes here.
+    // Serve legacy static UI from public/, for backward compatibility
+    const publicPath = resolvePackagePath('public', true);
+    logger.info(`Serving static files from: ${publicPath}`);
+    app.use(express.static(publicPath));
 
+    // Next.js front-end handles static assets; only mount API and WebSocket routes here.
     server.listen(port, '0.0.0.0', () => {
         const networkInterfaces = os.networkInterfaces();
         let localIp = 'localhost';
@@ -302,7 +307,7 @@ export async function startApiServer(
         });
 
         logger.info(
-            `API server started. Accessible at: http://localhost:${port} and http://${localIp}:${port}`,
+            `API server & WebUI(legacy) started successfully. Accessible at: http://localhost:${port} and http://${localIp}:${port} on your local network.\nLegacy WebUI will be deprecated in a future release. Use the new Next.js WebUI for a better experience.`,
             null,
             'green'
         );

@@ -13,7 +13,7 @@ import {
     SaikiAgent,
 } from '@core/index.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
-import { getPort } from './port-utils.js';
+import { getPort } from '@core/utils/port-utils.js';
 import { startApiServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
