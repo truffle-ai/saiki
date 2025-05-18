@@ -30,10 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const imagePreview = document.getElementById('image-preview');
     const removeImageBtn = document.getElementById('remove-image-btn');
     const voiceBtn = document.getElementById('voice-button');
+    
    
 
     // --- Check if critical elements exist ---
-    if (!chatLog || !messageInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv || !imageUpload || !imagePreviewContainer || !imagePreview || !removeImageBtn) {
+    if (!chatLog || !messageInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv || !imageUpload || !imagePreviewContainer || !imagePreview || !removeImageBtn || !voiceBtn) {
         console.error("Initialization failed: One or more required DOM elements not found.");
         // Display error to user if possible
         if (chatLog) {
@@ -400,6 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!SpeechRecognition) {
       voiceBtn.disabled = true;
       voiceBtn.title = "Speech Recognition not supported in this browser";
+      displaySystemMessage('Speech recognition is not supported in this browser. Try Chrome or Edge.', 'error');
     } else {
       const recognition = new SpeechRecognition();
       recognition.lang = 'en-US';
@@ -411,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
       voiceBtn.addEventListener('mousedown', () => {
         recognition.start();
         voiceBtn.textContent = "🎙️ Listening...";
+        voiceBtn.classList.add('recording');
        
       });
   
@@ -431,8 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
         }
-  
-        messageInput.value = transcript;
       };
   
       recognition.onerror = (event) => {
