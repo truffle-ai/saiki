@@ -11,6 +11,9 @@ import { setupA2ARoutes } from './a2a.js';
 import { initializeMcpServerEndpoints } from './mcp_handler.js';
 import { createAgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
+import { stringify as yamlStringify } from 'yaml';
+import os from 'os';
+import { resolvePackagePath } from '@core/index.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -79,6 +82,17 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
         try {
             await agent.connectMcpServer(name, config);
+            // Add dynamic server config to in-memory AgentConfig
+            try {
+                const cfg = agent.configManager.getConfig();
+                if (!cfg.mcpServers) cfg.mcpServers = {} as any;
+                cfg.mcpServers[name] = config;
+            } catch (error) {
+                // Log the error but don't fail the connection since it succeeded
+                logger.warn(
+                    `Failed to update in-memory config for server '${name}': ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
         } catch (error) {
@@ -90,6 +104,74 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             });
         }
     });
+
+    // Add MCP servers listing endpoint
+    app.get('/api/mcp/servers', async (req, res) => {
+        try {
+            const clientsMap = agent.clientManager.getClients();
+            const failedConnections = agent.clientManager.getFailedConnections();
+            const servers: Array<{ id: string; name: string; status: string }> = [];
+            for (const name of clientsMap.keys()) {
+                servers.push({ id: name, name, status: 'connected' });
+            }
+            for (const name of Object.keys(failedConnections)) {
+                servers.push({ id: name, name, status: 'error' });
+            }
+            res.status(200).json({ servers });
+        } catch (error: any) {
+            logger.error(`Error listing MCP servers: ${error.message}`);
+            res.status(500).json({ error: 'Failed to list servers' });
+        }
+    });
+
+    // Add MCP server tools listing endpoint
+    app.get('/api/mcp/servers/:serverId/tools', async (req, res) => {
+        const serverId = req.params.serverId;
+        const client = agent.clientManager.getClients().get(serverId);
+        if (!client) {
+            return res.status(404).json({ error: `Server '${serverId}' not found` });
+        }
+        try {
+            const toolsMap = await client.getTools();
+            const tools = Object.entries(toolsMap).map(([toolName, toolDef]) => ({
+                id: toolName,
+                name: toolName,
+                description: toolDef.description,
+                inputSchema: toolDef.parameters,
+            }));
+            res.status(200).json({ tools });
+        } catch (error: any) {
+            logger.error(`Error fetching tools for server '${serverId}': ${error.message}`);
+            res.status(500).json({ error: 'Failed to fetch tools for server' });
+        }
+    });
+
+    // Execute an MCP tool via REST wrapper
+    app.post(
+        '/api/mcp/servers/:serverId/tools/:toolName/execute',
+        express.json(),
+        async (req, res) => {
+            const { serverId, toolName } = req.params;
+            // Verify server exists
+            const client = agent.clientManager.getClients().get(serverId);
+            if (!client) {
+                return res
+                    .status(404)
+                    .json({ success: false, error: `Server '${serverId}' not found` });
+            }
+            try {
+                // Execute tool through the agent's client manager
+                const rawResult = await agent.clientManager.executeTool(toolName, req.body);
+                // Return standardized result shape
+                res.json({ success: true, data: rawResult });
+            } catch (error: any) {
+                logger.error(
+                    `Error executing tool '${toolName}' on server '${serverId}': ${error.message}`
+                );
+                res.status(500).json({ success: false, error: error.message });
+            }
+        }
+    );
 
     // WebSocket handling
     // handle inbound client messages over WebSocket
@@ -175,5 +257,61 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         mcpTransport
     );
 
+    // Export current AgentConfig as YAML, omitting sensitive fields
+    app.get('/api/config.yaml', async (req, res) => {
+        try {
+            // Deep clone and sanitize
+            const rawConfig = agent.configManager.getConfig();
+            const exportConfig = JSON.parse(JSON.stringify(rawConfig));
+            // Remove sensitive API key
+            if (exportConfig.llm && 'apiKey' in exportConfig.llm) {
+                exportConfig.llm.apiKey = 'SET_YOUR_API_KEY_HERE';
+            }
+            // Serialize YAML
+            const yamlText = yamlStringify(exportConfig);
+            res.setHeader('Content-Type', 'application/x-yaml');
+            res.send(yamlText);
+        } catch (err) {
+            logger.error(
+                `Error exporting config YAML: ${err instanceof Error ? err.message : err}`
+            );
+            res.status(500).send('Failed to export configuration');
+        }
+    });
+
     return { app, server, wss, webSubscriber };
+}
+
+export async function startApiServer(
+    agent: SaikiAgent,
+    port = 3000,
+    agentCardOverride?: Partial<AgentCard>
+) {
+    const { app, server, wss, webSubscriber } = await initializeApi(agent, agentCardOverride);
+
+    // Serve legacy static UI from public/, for backward compatibility
+    const publicPath = resolvePackagePath('public', true);
+    logger.info(`Serving static files from: ${publicPath}`);
+    app.use(express.static(publicPath));
+
+    // Next.js front-end handles static assets; only mount API and WebSocket routes here.
+    server.listen(port, '0.0.0.0', () => {
+        const networkInterfaces = os.networkInterfaces();
+        let localIp = 'localhost';
+        Object.values(networkInterfaces).forEach((ifaceList) => {
+            ifaceList?.forEach((iface) => {
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    localIp = iface.address;
+                }
+            });
+        });
+
+        logger.info(
+            `API server & WebUI(legacy) started successfully. Accessible at: http://localhost:${port} and http://${localIp}:${port} on your local network.\nLegacy WebUI will be deprecated in a future release. Use the new Next.js WebUI for a better experience.`,
+            null,
+            'green'
+        );
+    });
+
+    return { server, wss, webSubscriber };
 }

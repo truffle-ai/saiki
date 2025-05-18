@@ -13,10 +13,14 @@ import {
     SaikiAgent,
 } from '@core/index.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
-import { startWebUI } from './web/server.js';
+import { getPort } from '@core/utils/port-utils.js';
+import { startApiServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './utils/options.js';
+import { spawn } from 'child_process';
+import os from 'os';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -180,8 +184,51 @@ async function startApp() {
     } else if (runMode === 'web') {
         // Run WebUI with configured MCP identity (pass agentCard only)
         const agentCard = services.configManager.getConfig().agentCard ?? {};
-        startWebUI(agent, webPort, agentCard);
-        logger.info(`WebUI available at http://localhost:${webPort}`, null, 'magenta');
+        const frontPort = getPort(process.env.FRONTEND_PORT, webPort, 'FRONTEND_PORT');
+        const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
+        const nextCwd = path.resolve(process.cwd(), 'src', 'app', 'webui');
+        // Derive standardized URLs from env or defaults
+        const frontUrl = process.env.FRONTEND_URL ?? `http://localhost:${frontPort}`;
+        const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+
+        logger.info(`Starting Next.js dev server on ${frontUrl}`, null, 'cyanBright');
+        const nextProc = spawn('npm', ['run', 'dev', '--', '--port', String(frontPort)], {
+            cwd: nextCwd,
+            shell: true,
+            stdio: 'inherit',
+            env: {
+                ...process.env,
+                NODE_ENV: 'development',
+                API_PORT: String(apiPort),
+                API_URL: apiUrl,
+                FRONTEND_URL: frontUrl,
+                NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? apiUrl,
+                NEXT_PUBLIC_WS_URL:
+                    process.env.NEXT_PUBLIC_WS_URL ??
+                    (() => {
+                        const interfaces = os.networkInterfaces();
+                        for (const list of Object.values(interfaces)) {
+                            for (const iface of list ?? []) {
+                                if (iface.family === 'IPv4' && !iface.internal) {
+                                    return `ws://${iface.address}:${apiPort}`;
+                                }
+                            }
+                        }
+                        return `ws://localhost:${apiPort}`;
+                    })(),
+                NEXT_PUBLIC_FRONTEND_URL: process.env.NEXT_PUBLIC_FRONTEND_URL ?? frontUrl,
+            },
+        });
+        nextProc.on('error', (err) => {
+            logger.error('Failed to start Next.js process:', err);
+        });
+        nextProc.on('exit', (code, signal) => {
+            logger.info(`Next.js process exited with code ${code} and signal ${signal}`);
+        });
+        // Start Express API server (for WebSocket and HTTP endpoints)
+        await startApiServer(agent, apiPort, agentCard);
+        logger.info(`API endpoints available at ${apiUrl}`, null, 'magenta');
+        logger.info(`Frontend available at ${frontUrl}`, null, 'magenta');
     } else if (runMode === 'discord') {
         logger.info('Starting Discord bot...', null, 'cyanBright');
         try {
