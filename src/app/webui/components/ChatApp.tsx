@@ -92,55 +92,60 @@ export default function ChatApp() {
   return (
     <div className="flex h-screen bg-background">
       <main className="flex-1 flex flex-col relative">
-        <header className="flex justify-end items-center p-4 border-b border-border bg-background z-10">
-          <Button variant="outline" onClick={() => setServersPanelOpen(open => !open)} className="flex items-center space-x-2">
-            <Server className="h-4 w-4" />
-            <span>Servers</span>
-            {isServersPanelOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
-          {/* Export Config Dialog */}
-          <Dialog open={isExportOpen} onOpenChange={setExportOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex items-center space-x-2 ml-2">
-                <Download className="h-4 w-4" />
-                <span>Export</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Export Configuration</DialogTitle>
-                <DialogDescription>Download the current config and servers as YAML.</DialogDescription>
-              </DialogHeader>
-              {exportError && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>{exportError}</AlertDescription>
-                </Alert>
-              )}
-              {copySuccess && (
-                <Alert className="mb-4">
-                  <AlertTitle>Copied to clipboard</AlertTitle>
-                </Alert>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="exportName">Filename</Label>
-                <Input id="exportName" value={exportName} onChange={(e) => setExportName(e.target.value)} />
-              </div>
-              {exportContent && (
-                <div className="mt-4">
-                  <Label className='mb-2'>Preview</Label>
-                  <Textarea readOnly value={exportContent} className="font-mono text-xs" rows={10} />
+        <header className="flex justify-between items-center p-4 border-b border-border bg-background z-10">
+          <div className="flex items-center space-x-1">
+            <img src="/logo.png" alt="Saiki Logo" className="mt-1 h-7 w-7" />
+            <span className="font-semibold text-xl">Saiki</span>
+          </div>
+          <div className="flex items-center">
+            <Button variant="outline" onClick={() => setServersPanelOpen(open => !open)} className="flex items-center space-x-2">
+              <Server className="h-4 w-4" />
+              <span>Servers</span>
+              {isServersPanelOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
+            <Dialog open={isExportOpen} onOpenChange={setExportOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="flex items-center space-x-2 ml-2">
+                  <Download className="h-4 w-4" />
+                  <span>Export</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Export Configuration</DialogTitle>
+                  <DialogDescription>Download the current config and servers as YAML.</DialogDescription>
+                </DialogHeader>
+                {exportError && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{exportError}</AlertDescription>
+                  </Alert>
+                )}
+                {copySuccess && (
+                  <Alert className="mb-4">
+                    <AlertTitle>Copied to clipboard</AlertTitle>
+                  </Alert>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="exportName">Filename</Label>
+                  <Input id="exportName" value={exportName} onChange={(e) => setExportName(e.target.value)} />
                 </div>
-              )}
-              <DialogFooter>
-                <Button onClick={handleDownload}>Download YAML</Button>
-                <Button variant="outline" onClick={handleCopy}>Copy YAML</Button>
-                <DialogClose asChild>
-                  <Button variant="ghost">Cancel</Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                {exportContent && (
+                  <div className="mt-4">
+                    <Label className='mb-2'>Preview</Label>
+                    <Textarea readOnly value={exportContent} className="font-mono text-xs" rows={10} />
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button onClick={handleDownload}>Download YAML</Button>
+                  <Button variant="outline" onClick={handleCopy}>Copy YAML</Button>
+                  <DialogClose asChild>
+                    <Button variant="ghost">Cancel</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <MessageList messages={messages} />
