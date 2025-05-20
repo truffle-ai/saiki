@@ -25,6 +25,7 @@ export default function ChatApp() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportContent, setExportContent] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   useEffect(() => {
     if (isExportOpen) {
@@ -85,8 +86,15 @@ export default function ChatApp() {
     }
   }, [setCopySuccess, setExportError]);
 
-  const handleSend = useCallback((content: string, imageData?: { base64: string; mimeType: string }) => {
-    sendMessage(content, imageData);
+  const handleSend = useCallback(async (content: string, imageData?: { base64: string; mimeType: string }) => {
+    setIsSendingMessage(true);
+    try {
+      await sendMessage(content, imageData);
+    } catch (error) {
+      console.error("Error sending message:", error);
+    } finally {
+      setIsSendingMessage(false);
+    }
   }, [sendMessage]);
 
   return (
@@ -112,8 +120,11 @@ export default function ChatApp() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Export Configuration</DialogTitle>
-                  <DialogDescription>Download the current config and servers as YAML.</DialogDescription>
+                  <DialogTitle>Export Agent Configuration</DialogTitle>
+                  <DialogDescription>
+                    Download your current Saiki agent configuration, including connected servers and model settings, to a YAML file.
+                    This file can be used to run the same agent setup via the CLI or share it with others.
+                  </DialogDescription>
                 </DialogHeader>
                 {exportError && (
                   <Alert variant="destructive" className="mb-4">
@@ -151,7 +162,7 @@ export default function ChatApp() {
           <MessageList messages={messages} />
         </div>
         <div className="p-4 border-t border-border">
-          <InputArea onSend={handleSend} />
+          <InputArea onSend={handleSend} isSending={isSendingMessage} />
         </div>
         <ConnectServerModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} />
       </main>

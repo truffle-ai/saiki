@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
-import { X, PlusCircle, Server, ListChecks, ChevronRight, RefreshCw, AlertTriangle, ChevronDown, Terminal } from 'lucide-react';
+import { X, PlusCircle, Server, ListChecks, ChevronRight, RefreshCw, AlertTriangle, ChevronDown, Terminal, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import type { McpServer, McpTool } from '@/types';
@@ -25,11 +25,13 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
   const [serverError, setServerError] = useState<string | null>(null);
   const [toolsError, setToolsError] = useState<string | null>(null);
   const [isToolsExpanded, setIsToolsExpanded] = useState(false); // State for tools section collapse
+  const [isDeletingServer, setIsDeletingServer] = useState<string | null>(null); // Tracks which server is being deleted
 
-  const handleError = (message: string, area: 'servers' | 'tools') => {
+  const handleError = (message: string, area: 'servers' | 'tools' | 'delete') => {
     console.error(`ServersPanel Error (${area}):`, message);
     if (area === 'servers') setServerError(message);
     if (area === 'tools') setToolsError(message);
+    // Potentially a specific error state for delete if needed
   };
 
   const fetchServers = useCallback(async (signal?: AbortSignal) => {
@@ -74,6 +76,8 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
     if (!isOpen) return;
     const controller = new AbortController();
     fetchServers(controller.signal);
+    // When panel opens, ensure no server is stuck in deleting state from a previous quick close
+    setIsDeletingServer(null); 
     return () => {
       controller.abort();
     };
@@ -183,27 +187,73 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
           </div>
         )}
         {!isLoadingServers && !serverError && servers.length === 0 && (
-          <p className="text-sm text-muted-foreground px-1 py-2">No servers available.</p>
+          <div className="text-center py-4 px-1">
+            <p className="text-sm text-muted-foreground mb-3">No servers connected yet.</p>
+            <Button onClick={() => { onClose(); onOpenConnectModal();}} className="w-full">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Connect Your First Server
+            </Button>
+          </div>
         )}
         {servers.map((server) => (
-          <Button
-            key={server.id}
-            variant={selectedServerId === server.id ? 'secondary' : 'ghost'}
-            className="w-full justify-start items-center h-10 px-3 text-left"
-            onClick={() => {
-              setSelectedServerId(server.id); 
-            }}
-          >
-            <Server className={cn(
-                "h-4 w-4 mr-2.5 flex-shrink-0",
-                server.status === 'connected' ? 'text-green-500' :
-                server.status === 'disconnected' ? 'text-slate-500' :
-                'text-yellow-500'
-            )} />
-            <span className="flex-1 truncate text-sm font-normal group-hover:font-medium">{server.name}</span>
-            {server.status !== 'connected' && <span className='ml-auto text-xs text-muted-foreground/70 normal-case'>({server.status})</span>}
-            {selectedServerId === server.id && server.status === 'connected' && <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />}
-          </Button>
+          <div key={server.id} className="flex items-center space-x-1 group">
+            <Button
+              variant={selectedServerId === server.id ? 'secondary' : 'ghost'}
+              className="flex-1 w-full justify-start items-center h-10 px-3 text-left truncate"
+              onClick={() => {
+                setSelectedServerId(server.id); 
+              }}
+              disabled={isDeletingServer === server.id}
+            >
+              <Server className={cn(
+                  "h-4 w-4 mr-2.5 flex-shrink-0",
+                  server.status === 'connected' ? 'text-green-500' :
+                  server.status === 'disconnected' ? 'text-slate-500' :
+                  'text-yellow-500'
+              )} />
+              <span className="flex-1 truncate text-sm font-normal group-hover:font-medium">
+                {isDeletingServer === server.id ? `Deleting ${server.name}...` : server.name}
+              </span>
+              {server.status !== 'connected' && <span className='ml-auto text-xs text-muted-foreground/70 normal-case'>({server.status})</span>}
+              {selectedServerId === server.id && server.status === 'connected' && <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />}
+            </Button>
+            <Button 
+              variant="ghost"
+              size="icon"
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-destructive disabled:opacity-50"
+              onClick={async () => {
+                if (window.confirm(`Are you sure you want to remove server "${server.name}"?`)) {
+                  setIsDeletingServer(server.id);
+                  setServerError(null);
+                  try {
+                    const response = await fetch(`${API_BASE_URL}/mcp/servers/${server.id}`, { method: 'DELETE' });
+                    if (!response.ok) {
+                      const errorData = await response.json().catch(() => ({ error: 'Failed to remove server' }));
+                      throw new Error(errorData.message || errorData.error || `Server Removal: ${response.statusText}`);
+                    }
+                    // If this was the selected server, deselect it
+                    if (selectedServerId === server.id) {
+                        setSelectedServerId(null);
+                        setTools([]);
+                    }
+                    await fetchServers(); // Refresh server list
+                  } catch (err: any) {
+                    handleError(err.message, 'delete');
+                    setServerError(`Failed to remove ${server.name}: ${err.message}`); // Show error in general server error area
+                  } finally {
+                    setIsDeletingServer(null);
+                  }
+                }
+              }}
+              disabled={isDeletingServer === server.id}
+              aria-label={`Remove server ${server.name}`}
+            >
+              {isDeletingServer === server.id ? 
+                <RefreshCw className="h-4 w-4 animate-spin" /> : 
+                <Trash2 className="h-4 w-4" />
+              }
+            </Button>
+          </div>
         ))}
       </div>
 

@@ -3,14 +3,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
-import { Paperclip, SendHorizontal, X } from 'lucide-react';
+import { Paperclip, SendHorizontal, X, Loader2 } from 'lucide-react';
 import { Card } from './ui/card';
 
 interface InputAreaProps {
   onSend: (content: string, imageData?: { base64: string; mimeType: string }) => void;
+  isSending?: boolean;
 }
 
-export default function InputArea({ onSend }: InputAreaProps) {
+export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [imageData, setImageData] = useState<{ base64: string; mimeType: string } | null>(null);
@@ -91,6 +92,8 @@ export default function InputArea({ onSend }: InputAreaProps) {
 
   const triggerFileInput = () => fileInputRef.current?.click();
 
+  const showClearButton = text.length > 0 || !!imageData;
+
   return (
     <div
       id="input-area"
@@ -154,6 +157,31 @@ export default function InputArea({ onSend }: InputAreaProps) {
       >
         <SendHorizontal className="h-5 w-5" />
       </Button>
+
+      {showClearButton && !isSending && (
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => { 
+            setText(''); 
+            setImageData(null); 
+            if (textareaRef.current) {
+              textareaRef.current.style.height = 'auto';
+              textareaRef.current.style.overflowY = 'hidden';
+            }
+          }}
+          className="flex-shrink-0 text-muted-foreground hover:text-destructive rounded-full p-2 ml-1"
+          aria-label="Clear input"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      )}
+
+      {isSending && (
+         <div className="flex-shrink-0 p-2 ml-1">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+         </div>
+      )}
     </div>
   );
 } 

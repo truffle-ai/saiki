@@ -525,82 +525,39 @@ export default function PlaygroundView() {
               )}
             </form>
 
+            {/* Tool Result Display */}
             {toolResult && (
-              <div className="mt-6 p-4 border-t border-border bg-card rounded-lg shadow-sm">
-                <h4 className="font-semibold mb-3 text-base">Result:</h4>
+              <div className="mt-6 p-4 border border-border rounded-lg bg-muted/30">
+                <h3 className="text-lg font-semibold mb-3 text-foreground">
+                  Tool Result for <span className="font-bold text-primary">{selectedTool?.name}</span>
+                </h3>
                 {toolResult.success ? (
-                  <div className="space-y-3 text-sm">
-                    {(
-                      (toolResult.metadata?.mimeType?.startsWith('image/') || toolResult.metadata?.type?.startsWith('image'))
-                      || (toolResult.data && typeof toolResult.data === 'object' && Array.isArray((toolResult.data as any).content))
-                    ) && toolResult.data ? (
-                      (() => {
-                        // console.log('PlaygroundView Image toolResult:', JSON.stringify(toolResult, null, 2)); // Keep for debugging if needed
-                        
-                        let imgSrc = '';
-                        let imagePart: { data?: string; mimeType?: string; type?: string } | null = null;
-                        const metadataMime = toolResult.metadata?.mimeType;
-                        let nonImageParts: any[] = [];
+                  <div className="p-3 bg-green-500/10 rounded-md text-sm text-green-700 dark:text-green-300">
+                    {(() => {
+                      const data = toolResult.data;
+                      const mimeType = toolResult.metadata?.mimeType;
+                      const type = toolResult.metadata?.type;
 
-                        if (Array.isArray(toolResult.data)) {
-                          imagePart = toolResult.data.find(part => part && part.type === 'image');
-                          if (imagePart && typeof imagePart.data === 'string' && imagePart.mimeType) {
-                            imgSrc = `data:${imagePart.mimeType};base64,${imagePart.data}`;
-                          }
-                        } else if (toolResult.data && typeof toolResult.data === 'object' && Array.isArray((toolResult.data as any).content)) {
-                          const partsArray = (toolResult.data as any).content as any[];
-                          imagePart = partsArray.find(part => part && part.type === 'image');
-                          if (imagePart && typeof imagePart.data === 'string') {
-                            const mime = (imagePart.mimeType as string) || metadataMime;
-                            if (mime) {
-                              imgSrc = `data:${mime};base64,${imagePart.data}`;
-                            }
-                          }
-                          // Collect all non-image parts
-                          nonImageParts = partsArray.filter(part => part && part.type !== 'image');
-                        } else if (typeof toolResult.data === 'string') {
-                          if (toolResult.data.startsWith('data:image')) {
-                            imgSrc = toolResult.data;
-                          } else if (metadataMime) {
-                            imgSrc = `data:${metadataMime};base64,${toolResult.data}`;
-                          } else if (toolResult.data.startsWith('http://') || toolResult.data.startsWith('https://')) {
-                            imgSrc = toolResult.data; 
-                          }
-                        }
-
-                        if (imgSrc) {
-                          return <img src={imgSrc} alt="Tool result image" className="my-2 max-h-96 w-auto rounded border border-input shadow-sm" />;
-                        } else if (nonImageParts.length > 0) {
-                          // Render each non-image part as a pretty JSON/code block
-                          return (
-                            <div className="space-y-3">
-                              {nonImageParts.map((part, idx) => (
-                                <pre key={idx} className="whitespace-pre-wrap text-sm bg-background p-3 rounded-md border border-input font-mono overflow-x-auto max-h-64">
-                                  {typeof part === 'object' ? JSON.stringify(part, null, 2) : String(part)}
-                                </pre>
-                              ))}
-                            </div>
-                          );
-                        } else {
-                          return <p className="text-xs text-destructive">Image data is not in a recognized format. Data: {JSON.stringify(toolResult.data)}</p>;
-                        }
-                      })()
-                    ) : toolResult.metadata?.type === 'markdown' && toolResult.data ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none p-3 bg-background rounded border border-input leading-relaxed">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}> 
-                            {typeof toolResult.data === 'string' ? toolResult.data : JSON.stringify(toolResult.data, null, 2)}
-                          </ReactMarkdown>
-                        </div>
-                    ) : toolResult.metadata?.type === 'json' && toolResult.data ? (
-                        <pre className="whitespace-pre-wrap text-sm bg-background p-3 rounded-md border border-input font-mono">{typeof toolResult.data === 'string' ? toolResult.data : JSON.stringify(toolResult.data, null, 2)}</pre>
-                    ) : (
-                      <pre className="whitespace-pre-wrap text-sm bg-background p-3 rounded-md border border-input">{typeof toolResult.data === 'object' ? JSON.stringify(toolResult.data, null, 2) : String(toolResult.data)}</pre>
-                    )}
+                      if (mimeType?.startsWith('image/') && typeof data === 'string') {
+                        // Assuming base64 encoded image data if string and image MIME type
+                        return <img src={`data:${mimeType};base64,${data}`} alt="Tool result" className="max-w-full h-auto rounded border" />;
+                      } else if (type === 'markdown' && typeof data === 'string') {
+                        return <div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]}>{data}</ReactMarkdown></div>;
+                      } else if (type === 'json' || (typeof data === 'object' && data !== null)) {
+                        return <pre className="whitespace-pre-wrap break-all font-mono">{JSON.stringify(data, null, 2)}</pre>;
+                      } else if (typeof data === 'string') {
+                        return <pre className="whitespace-pre-wrap break-all">{data}</pre>;
+                      } else {
+                        return <pre className="whitespace-pre-wrap break-all">{String(data)}</pre>;
+                      }
+                    })()}
                   </div>
                 ) : (
-                  <div className="text-destructive bg-destructive/10 p-3 rounded-md text-sm">
-                    <p className="font-medium mb-1">Execution Failed:</p>
-                    <p>{toolResult.error || 'An unknown error occurred.'}</p>
+                  <div className="p-3 bg-destructive/10 rounded-md">
+                    <p className="text-sm text-destructive font-semibold">Error executing tool:</p>
+                    <pre className="mt-1 text-xs text-destructive whitespace-pre-wrap break-all">
+                      {toolResult.error || 'Unknown error'}
+                    </pre>
                   </div>
                 )}
               </div>

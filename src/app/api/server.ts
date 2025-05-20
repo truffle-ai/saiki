@@ -146,6 +146,48 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Endpoint to remove/disconnect an MCP server
+    app.delete('/api/mcp/servers/:serverId', async (req, res) => {
+        const { serverId } = req.params;
+        logger.info(`Received request to DELETE /api/mcp/servers/${serverId}`);
+
+        try {
+            // Check if server exists before attempting to disconnect
+            const clientExists =
+                agent.clientManager.getClients().has(serverId) ||
+                agent.clientManager.getFailedConnections()[serverId];
+            if (!clientExists) {
+                logger.warn(`Attempted to delete non-existent server: ${serverId}`);
+                return res.status(404).json({ error: `Server '${serverId}' not found.` });
+            }
+
+            // Use the new removeClient method in MCPClientManager
+            await agent.clientManager.removeClient(serverId);
+            logger.info(
+                `Successfully processed removal for client: ${serverId} via MCPClientManager.`
+            );
+
+            // Remove from in-memory config - this is still important for the agent's own configuration
+            const cfg = agent.configManager.getConfig();
+            if (cfg.mcpServers && cfg.mcpServers[serverId]) {
+                delete cfg.mcpServers[serverId];
+                logger.info(`Removed server '${serverId}' from in-memory AgentConfig.`);
+            } else {
+                // This case might occur if removeClient cleaned up a failed connection not yet in mcpServers fully
+                logger.warn(
+                    `Server '${serverId}' was not found in AgentConfig mcpServers, though removal from ClientManager was processed.`
+                );
+            }
+
+            res.status(200).json({ status: 'disconnected', id: serverId });
+        } catch (error: any) {
+            logger.error(`Error deleting server '${serverId}': ${error.message}`);
+            res.status(500).json({
+                error: `Failed to delete server '${serverId}': ${error.message}`,
+            });
+        }
+    });
+
     // Execute an MCP tool via REST wrapper
     app.post(
         '/api/mcp/servers/:serverId/tools/:toolName/execute',
@@ -273,7 +315,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             res.send(yamlText);
         } catch (err) {
             logger.error(
-                `Error exporting config YAML: ${err instanceof Error ? err.message : err}`
+                `Error exporting config YAML: ${err instanceof Error ? err.message : String(err)}`
             );
             res.status(500).send('Failed to export configuration');
         }
@@ -307,7 +349,7 @@ export async function startApiServer(
         });
 
         logger.info(
-            `API server & WebUI(legacy) started successfully. Accessible at: http://localhost:${port} and http://${localIp}:${port} on your local network.\nLegacy WebUI will be deprecated in a future release. Use the new Next.js WebUI for a better experience.`,
+            `API server & WebUI(legacy) started successfully. Accessible at: http://localhost:${port} and http://${localIp}:${port} on your local network.\\nLegacy WebUI will be deprecated in a future release. Use the new Next.js WebUI for a better experience.`,
             null,
             'green'
         );
