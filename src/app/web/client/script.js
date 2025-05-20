@@ -421,12 +421,15 @@ function voiceConv(){
       voiceBtn.addEventListener('mouseup', () => {
         recognition.stop();
         voiceBtn.textContent = "🎤";
+        voiceBtn.classList.remove('recording');
       });
   
       // Optional: also stop if user drags away from button
       voiceBtn.addEventListener('mouseleave', () => {
         recognition.stop();
         voiceBtn.textContent = "🎤";
+        voiceBtn.classList.remove('recording');
+        
       });
   
       recognition.onresult = (event) => {
@@ -440,6 +443,9 @@ function voiceConv(){
   
       recognition.onerror = (event) => {
         console.error('Speech recognition error', event.error);
+        voiceBtn.textContent = "🎤";
++   voiceBtn.classList.remove('recording');
++   displaySystemMessage(`Speech recognition error: ${event.error}`, 'error');
       };
     }
 }
