@@ -72,6 +72,6 @@ export class ChatSession {
         // Reset history via MessageManager
         this.messageManager.reset();
         // Notify listeners of conversation reset
-        this.eventBus.emit('llmservice:conversationReset');
+        this.eventBus.emit('messageManager:conversationReset');
     }
 }
