@@ -540,6 +540,7 @@ export default function PlaygroundView() {
                         let imgSrc = '';
                         let imagePart: { data?: string; mimeType?: string; type?: string } | null = null;
                         const metadataMime = toolResult.metadata?.mimeType;
+                        let nonImageParts: any[] = [];
 
                         if (Array.isArray(toolResult.data)) {
                           imagePart = toolResult.data.find(part => part && part.type === 'image');
@@ -555,6 +556,8 @@ export default function PlaygroundView() {
                               imgSrc = `data:${mime};base64,${imagePart.data}`;
                             }
                           }
+                          // Collect all non-image parts
+                          nonImageParts = partsArray.filter(part => part && part.type !== 'image');
                         } else if (typeof toolResult.data === 'string') {
                           if (toolResult.data.startsWith('data:image')) {
                             imgSrc = toolResult.data;
@@ -566,25 +569,15 @@ export default function PlaygroundView() {
                         }
 
                         if (imgSrc) {
+                          return <img src={imgSrc} alt="Tool result image" className="my-2 max-h-96 w-auto rounded border border-input shadow-sm" />;
+                        } else if (nonImageParts.length > 0) {
+                          // Render each non-image part as a pretty JSON/code block
                           return (
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Generated Image:</p>
-                              <img 
-                                   src={imgSrc}
-                                   alt="Tool generated image" 
-                                   className="max-w-full md:max-w-md lg:max-w-lg h-auto border border-input rounded-md shadow-sm bg-background object-contain"/>
-                              {/* Optionally render additional non-image parts from array or content */}
-                              {(
-                                Array.isArray(toolResult.data)
-                                  ? (toolResult.data as any[]).filter(part => part !== imagePart)
-                                  : (toolResult.data && typeof toolResult.data === 'object' && Array.isArray((toolResult.data as any).content)
-                                      ? (toolResult.data as any).content.filter((part: any) => part !== imagePart)
-                                      : [])
-                              ).map((otherPart: any, index: number) => (
-                                <div key={`other-part-${index}`} className="mt-2 pt-2 border-t border-border/50">
-                                  <p className="text-xs text-muted-foreground">Additional data part ({otherPart.type || 'unknown'}):</p>
-                                  <pre className="whitespace-pre-wrap text-xs bg-muted/50 p-2 rounded-sm font-mono">{typeof otherPart === 'object' ? JSON.stringify(otherPart, null, 2) : String(otherPart)}</pre>
-                                </div>
+                            <div className="space-y-3">
+                              {nonImageParts.map((part, idx) => (
+                                <pre key={idx} className="whitespace-pre-wrap text-sm bg-background p-3 rounded-md border border-input font-mono overflow-x-auto max-h-64">
+                                  {typeof part === 'object' ? JSON.stringify(part, null, 2) : String(part)}
+                                </pre>
                               ))}
                             </div>
                           );
