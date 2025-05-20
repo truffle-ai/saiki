@@ -11,7 +11,7 @@
 **Use natural language to control your tools, apps, and services — connect once, command everything.**
 
 <div align="center">
-  <img src="assets/webui.png" alt="Saiki Demo" width="800" />
+  <img src="https://private-user-images.githubusercontent.com/44321453/445381033-bf3595e2-1def-4108-a5e7-062034281d16.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDc3MDcxMjcsIm5iZiI6MTc0NzcwNjgyNywicGF0aCI6Ii80NDMyMTQ1My80NDUzODEwMzMtYmYzNTk1ZTItMWRlZi00MTA4LWE1ZTctMDYyMDM0MjgxZDE2LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA1MjAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNTIwVDAyMDcwN1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTk4Yzg4MTNhZGU4YzU1NmE5NjQzY2Y0MWJhZjNhMTdjYjhmMWFjNDU5OTQxODAwOTI3NGY1NjQzNTQwMjhmYzYmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.aNidIV0pQH0EcXZ6Qe1A0_hxVZytrWicV_IlEXrJaSw" alt="Saiki Demo" width="800" />
 </div>
 
 ## Installation
@@ -119,7 +119,7 @@ saiki
 
 Spin up new agents out-of-the-box and use them to power AI NPCs in your game environment. You can configure these agents to go beyond simple LLMs responses to take real actions in-game.
 
-<img src="assets/npc_example.gif" alt="AI NPC Example" width="800">
+<img src="https://private-user-images.githubusercontent.com/44321453/445381023-c1fc6b60-d85c-4920-84f9-918949ef1ddb.gif?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDc3MDcxMjcsIm5iZiI6MTc0NzcwNjgyNywicGF0aCI6Ii80NDMyMTQ1My80NDUzODEwMjMtYzFmYzZiNjAtZDg1Yy00OTIwLTg0ZjktOTE4OTQ5ZWYxZGRiLmdpZj9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA1MjAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNTIwVDAyMDcwN1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTgwZjlmNGE3YmFiZWRkYzNhZTE2Yzk3MzUwYjA1NDM3NmNjZDJlZjViNjE3MmYyNmI4YzI2YTQ2N2I2NTk1ZjgmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.rZuhhfcRdZ7ZuaySVakRLakeehjZcttjDNlk3QRCZOY" alt="AI NPC Example" width="800">
 
 
 ### 📧 Send Email Summaries to Slack
