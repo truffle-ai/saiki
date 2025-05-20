@@ -140,7 +140,6 @@ if (runMode === 'cli') {
 
 // Main start function
 async function startApp() {
-    // Use createAgentServices to load, validate config and initialize all agent services
     const cliArgs = {
         model: options.model,
         provider: options.provider,
@@ -152,7 +151,7 @@ async function startApp() {
         const config = await loadConfigFile(normalizedConfigPath);
         agent = await SaikiAgent.create(config, cliArgs, {
             connectionMode,
-            runMode: runMode, // Pass the original runMode here
+            runMode: runMode,
         });
     } catch (err) {
         if (err instanceof Error) {
