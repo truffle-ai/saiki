@@ -9,7 +9,6 @@ import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
-import type { EventMap } from '../../../events/EventMap.js';
 
 /**
  * Vercel implementation of LLMService

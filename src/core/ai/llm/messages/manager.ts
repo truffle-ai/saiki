@@ -10,7 +10,6 @@ import { DynamicContributorContext } from '../../systemPrompt/types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { ConversationHistoryProvider } from './history/types.js';
 import { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
-import type { EventMap } from '../../../events/EventMap.js';
 /**
  * Manages conversation history and provides message formatting capabilities.
  * The MessageManager is responsible for:
@@ -32,6 +31,9 @@ export class MessageManager {
      */
     private promptManager: PromptManager;
 
+    /**
+     * Event bus for agent events
+     */
     private agentEventBus: TypedEventEmitter;
 
     /**
