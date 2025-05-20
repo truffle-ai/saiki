@@ -146,12 +146,6 @@ export class OpenAIService implements ILLMService {
         }
     }
 
-    resetConversation(): void {
-        // Reset message manager (keeps the system prompt)
-        this.messageManager.reset();
-        this.eventEmitter.emit('llmservice:conversationReset');
-    }
-
     /**
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information

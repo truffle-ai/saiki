@@ -35,7 +35,12 @@ export class FileHistoryProvider implements ConversationHistoryProvider {
         await fs.mkdir(path.dirname(fp), { recursive: true });
         // Write atomically to avoid partial or corrupt JSON and ensure a trailing newline
         const tmpPath = `${fp}.tmp`;
-        const data = JSON.stringify(history, null, 2) + '\n';
+        let data: string;
+        try {
+            data = JSON.stringify(history, null, 2) + '\n';
+        } catch (e) {
+            throw new Error(`Failed to serialize history: ${e}`);
+        }
         await fs.writeFile(tmpPath, data, 'utf-8');
         await fs.rename(tmpPath, fp);
     }

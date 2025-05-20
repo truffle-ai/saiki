@@ -12,6 +12,8 @@ import { createAgentServices } from '../../utils/service-initializer.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
+import { randomUUID } from 'crypto';
+import { ChatSession } from './ChatSession.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
@@ -40,6 +42,8 @@ export class SaikiAgent {
     public readonly agentEventBus: EventEmitter;
     public readonly messageManager: MessageManager;
     public readonly configManager: ConfigManager;
+    public readonly services: AgentServices;
+    private sessions: Record<string, ChatSession> = {};
 
     constructor(services: AgentServices) {
         // Validate all required services are provided
@@ -55,6 +59,7 @@ export class SaikiAgent {
         this.agentEventBus = services.agentEventBus;
         this.messageManager = services.messageManager;
         this.configManager = services.configManager;
+        this.services = services;
 
         logger.info('SaikiAgent initialized.');
     }
@@ -91,7 +96,7 @@ export class SaikiAgent {
      */
     public resetConversation(): void {
         try {
-            this.llmService.resetConversation();
+            this.messageManager.reset();
             logger.info('SaikiAgent conversation reset.');
             this.agentEventBus.emit('saiki:conversationReset');
         } catch (error) {
@@ -121,6 +126,28 @@ export class SaikiAgent {
                 error: errorMessage,
             });
             throw error;
+        }
+    }
+
+    public startSession(sessionId?: string): ChatSession {
+        const id = sessionId ?? randomUUID();
+        if (this.sessions[id]) {
+            return this.sessions[id];
+        }
+        const session = new ChatSession(this, id);
+        this.sessions[id] = session;
+        return session;
+    }
+
+    public listSessions(): string[] {
+        return Object.keys(this.sessions);
+    }
+
+    public async endSession(sessionId: string): Promise<void> {
+        const session = this.sessions[sessionId];
+        if (session) {
+            await session.reset();
+            delete this.sessions[sessionId];
         }
     }
 

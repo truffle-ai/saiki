@@ -290,11 +290,6 @@ export class VercelLLMService implements ILLMService {
         return response.textStream;
     }
 
-    resetConversation(): void {
-        this.messageManager.reset();
-        this.eventEmitter.emit('llmservice:conversationReset');
-    }
-
     /**
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information

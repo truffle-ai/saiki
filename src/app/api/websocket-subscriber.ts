@@ -29,7 +29,7 @@ export class WebSocketEventSubscriber implements EventSubscriber {
         eventBus.on('llmservice:error', (error: Error) =>
             this.broadcast('error', { message: error.message })
         );
-        eventBus.on('llmservice:conversationReset', () =>
+        eventBus.on('messageManager:conversationReset', () =>
             this.broadcast('conversationReset', null)
         );
     }

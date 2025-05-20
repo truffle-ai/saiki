@@ -27,7 +27,7 @@ export class CLISubscriber implements EventSubscriber {
         eventBus.on('llmservice:toolResult', this.onToolResult.bind(this));
         eventBus.on('llmservice:response', this.onResponse.bind(this));
         eventBus.on('llmservice:error', this.onError.bind(this));
-        eventBus.on('llmservice:conversationReset', this.onConversationReset.bind(this));
+        eventBus.on('messageManager:conversationReset', this.onConversationReset.bind(this));
     }
 
     onThinking(): void {

@@ -7,7 +7,7 @@ import { PromptManager } from '../../systemPrompt/manager.js';
 import { logger } from '../../../logger/index.js';
 import { getEffectiveMaxTokens } from '../registry.js';
 import { ConversationHistoryProvider } from './history/types.js';
-
+import { EventEmitter } from 'events';
 /**
  * Factory function to create a MessageManager instance with the correct formatter, tokenizer, and maxTokens
  * based on the LLM config and router
@@ -24,6 +24,7 @@ export function createMessageManager(
     config: LLMConfig,
     router: LLMRouter,
     promptManager: PromptManager,
+    agentEventBus: EventEmitter,
     historyProvider: ConversationHistoryProvider,
     sessionId: string
 ): MessageManager {
@@ -44,6 +45,7 @@ export function createMessageManager(
     return new MessageManager(
         formatter,
         promptManager,
+        agentEventBus,
         effectiveMaxTokens,
         tokenizer,
         historyProvider,

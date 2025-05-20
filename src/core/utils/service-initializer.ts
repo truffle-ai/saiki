@@ -131,7 +131,14 @@ export async function createAgentServices(
     const sessionId = 'default';
     const messageManager =
         overrides?.messageManager ??
-        createMessageManager(config.llm, router, promptManager, historyProvider, sessionId);
+        createMessageManager(
+            config.llm,
+            router,
+            promptManager,
+            agentEventBus,
+            historyProvider,
+            sessionId
+        );
 
     // 6. Initialize LLM service
     const llmService =

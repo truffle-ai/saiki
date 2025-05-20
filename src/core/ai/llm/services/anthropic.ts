@@ -180,12 +180,6 @@ export class AnthropicService implements ILLMService {
         }
     }
 
-    resetConversation(): void {
-        // Reset the message manager
-        this.messageManager.reset();
-        this.eventEmitter.emit('llmservice:conversationReset');
-    }
-
     /**
      * Get configuration information about the LLM service
      * @returns Configuration object with provider and model information

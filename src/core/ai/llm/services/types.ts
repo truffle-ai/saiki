@@ -18,9 +18,6 @@ export interface ILLMService {
      */
     completeTask(userInput: string, imageData?: ImageData): Promise<string>;
 
-    // Clear conversation history
-    resetConversation(): void;
-
     // Get all available tools
     getAllTools(): Promise<ToolSet>;
 

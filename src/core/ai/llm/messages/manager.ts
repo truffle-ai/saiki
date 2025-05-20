@@ -9,7 +9,7 @@ import { getImageData, countMessagesTokens } from './utils.js';
 import { DynamicContributorContext } from '../../systemPrompt/types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { ConversationHistoryProvider } from './history/types.js';
-
+import { EventEmitter } from 'events';
 /**
  * Manages conversation history and provides message formatting capabilities.
  * The MessageManager is responsible for:
@@ -30,6 +30,8 @@ export class MessageManager {
      * PromptManager used to generate/manage the system prompt
      */
     private promptManager: PromptManager;
+
+    private agentEventBus: EventEmitter;
 
     /**
      * Formatter used to convert internal messages to LLM-specific format
@@ -70,6 +72,7 @@ export class MessageManager {
     constructor(
         formatter: IMessageFormatter,
         promptManager: PromptManager,
+        agentEventBus: EventEmitter,
         maxTokens: number,
         tokenizer: ITokenizer,
         historyProvider: ConversationHistoryProvider,
@@ -84,17 +87,24 @@ export class MessageManager {
         if (!tokenizer) throw new Error('tokenizer is required');
         this.formatter = formatter;
         this.promptManager = promptManager;
+        this.agentEventBus = agentEventBus;
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
         this.historyProvider = historyProvider;
         this.sessionId = sessionId;
         // preload persisted history
+        const timeout = setTimeout(() => {
+            logger.warn(`MessageManager: History preload timed out after 5000ms`);
+        }, 5000);
+
         this.historyProvider
             .getHistory(this.sessionId)
             .then((msgs) => {
+                clearTimeout(timeout);
                 this.history = msgs;
             })
             .catch((e) => {
+                clearTimeout(timeout);
                 logger.warn(`MessageManager: Failed to preload history: ${e}`);
             });
         this.compressionStrategies = compressionStrategies;
@@ -359,6 +369,7 @@ export class MessageManager {
         this.historyProvider.clearHistory(this.sessionId).catch((e) => {
             logger.error('MessageManager: Failed to clear history in provider', e);
         });
+        this.eventBus.emit('messageManager:conversationReset');
         // Note: We don't reset the system prompt as it's usually fixed for a service
     }
 
