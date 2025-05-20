@@ -11,7 +11,7 @@
 **Use natural language to control your tools, apps, and services — connect once, command everything.**
 
 <div align="center">
-  <img src="assets/notion_webui_example.gif" alt="Saiki Demo" width="800" />
+  <img src="assets/webui.png" alt="Saiki Demo" width="800" />
 </div>
 
 ## Installation
@@ -94,7 +94,7 @@ Saiki is an open, modular and extensible AI agent that lets you perform tasks ac
 Why developers choose Saiki:
 
 1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP).
-2. **Config-Driven**: Define your agent with a prompt, tools (via MCP), and model in YAML, no glue code required.
+2. **Config-Driven Agents**: Define & save your agent prompts, tools (via MCP), and model in YAML.
 3. **Multi-Interface Support**: Use via CLI, wrap it in a web UI, or integrate into other systems.
 4. **Runs Anywhere**: Local-first runtime with logging, retries, and support for any LLM provider.
 5. **Interoperable**: Expose as an API or connect to other agents via MCP/A2A(soon).
@@ -122,12 +122,11 @@ saiki --config-file ./configuration/examples/email_slack.yml
 ```
 <img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="800">
 
-### 🎨 AI Website Designer
-**Task:** `Design a landing page based on README.md`
+### 📝 Use Notion as a second brain
 ```bash
-saiki --config-file ./configuration/examples/website_designer.yml
+saiki --config-file ./configuration/examples/notion.yml #Requires setup
 ```
-<img src="assets/website_demo.gif" alt="Website Designer Demo" width="800">
+<img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="800">
 
 _For more examples, see the [Examples](docs/README.md#examples--demos) section in the docs._
 
