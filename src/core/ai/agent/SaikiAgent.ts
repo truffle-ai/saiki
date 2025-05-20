@@ -8,6 +8,10 @@ import { EventEmitter } from 'events';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { McpServerConfig } from '../../config/schemas.js';
+import { createAgentServices } from '../../utils/service-initializer.js';
+import type { AgentConfig } from '../../config/schemas.js';
+import type { CLIConfigOverrides } from '../../config/types.js';
+import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
@@ -118,6 +122,22 @@ export class SaikiAgent {
             });
             throw error;
         }
+    }
+
+    /**
+     * Static factory method to create a SaikiAgent with all services initialized.
+     * @param agentConfig The agent configuration object
+     * @param cliArgs Optional CLI config overrides
+     * @param overrides Optional service overrides
+     * @returns Promise<SaikiAgent>
+     */
+    static async create(
+        agentConfig: AgentConfig,
+        cliArgs?: CLIConfigOverrides,
+        overrides?: InitializeServicesOptions
+    ): Promise<SaikiAgent> {
+        const services = await createAgentServices(agentConfig, cliArgs, overrides);
+        return new SaikiAgent(services);
     }
 
     // Future methods could encapsulate more complex agent behaviors:

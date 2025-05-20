@@ -6,8 +6,6 @@ import {
     logger,
     DEFAULT_CONFIG_PATH,
     resolvePackagePath,
-    createAgentServices,
-    type AgentServices,
     getProviderFromModel,
     getAllSupportedModels,
     SaikiAgent,
@@ -21,7 +19,7 @@ import { validateCliOptions, handleCliOptionsError } from './utils/options.js';
 import { spawn } from 'child_process';
 import os from 'os';
 import path from 'path';
-
+import { loadConfigFile } from '@core/index.js';
 // Load environment variables
 dotenv.config();
 
@@ -149,9 +147,10 @@ async function startApp() {
         router: options.router,
         apiKey: options.apiKey,
     };
-    let services: AgentServices;
+    let agent: SaikiAgent;
     try {
-        services = await createAgentServices(normalizedConfigPath, cliArgs, {
+        const config = await loadConfigFile(normalizedConfigPath);
+        agent = await SaikiAgent.create(config, cliArgs, {
             connectionMode,
             runMode: runMode, // Pass the original runMode here
         });
@@ -168,9 +167,6 @@ async function startApp() {
     logger.info(`Initializing Saiki in '${runMode}' mode...`, null, 'cyanBright');
     logger.info('===============================================\n');
 
-    // Create the SaikiAgent instance
-    const agent = new SaikiAgent(services);
-
     // Start based on mode
     // TODO: We ideally should be able to start all services with one or more interfaces at once. Single backend, multiple frontend interfaces.
     if (runMode === 'cli') {
@@ -183,7 +179,7 @@ async function startApp() {
         }
     } else if (runMode === 'web') {
         // Run WebUI with configured MCP identity (pass agentCard only)
-        const agentCard = services.configManager.getConfig().agentCard ?? {};
+        const agentCard = agent.configManager.getConfig().agentCard ?? {};
         const frontPort = getPort(process.env.FRONTEND_PORT, webPort, 'FRONTEND_PORT');
         const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
         const nextCwd = path.resolve(process.cwd(), 'src', 'app', 'webui');

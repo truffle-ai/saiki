@@ -37,7 +37,7 @@ import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { loadConfigFile } from '../config/loader.js';
 import { ConfigManager } from '../config/manager.js';
 import type { CLIConfigOverrides } from '../config/types.js';
-
+import type { AgentConfig } from '../config/schemas.js';
 /**
  * Type for the core agent services returned by initializeServices
  */
@@ -86,26 +86,23 @@ export type InitializeServicesOptions = {
  * @returns All the initialized services and the config manager
  */
 export async function createAgentServices(
-    configPath: string,
+    agentConfig: AgentConfig,
     cliArgs?: CLIConfigOverrides,
     overrides?: InitializeServicesOptions
 ): Promise<AgentServices> {
-    // 1. Load raw configuration from file
-    const rawConfig = await loadConfigFile(configPath);
-
-    // 2. Initialize config manager and apply CLI overrides (if provided), then validate
-    const configManager = new ConfigManager(rawConfig);
+    // 1. Initialize config manager and apply CLI overrides (if provided), then validate
+    const configManager = new ConfigManager(agentConfig);
     if (cliArgs) {
         configManager.overrideCLI(cliArgs);
     }
     configManager.validate();
     const config = configManager.getConfig();
 
-    // 3. Initialize shared event bus
+    // 2. Initialize shared event bus
     const agentEventBus = overrides?.agentEventBus ?? new EventEmitter();
     logger.debug('Agent event bus initialized');
 
-    // 4. Initialize client manager
+    // 3. Initialize client manager
     const connectionMode = overrides?.connectionMode ?? 'lenient';
     const runMode = overrides?.runMode ?? 'cli';
     const confirmationProvider = createToolConfirmationProvider(runMode);
@@ -117,15 +114,15 @@ export async function createAgentServices(
             : 'Client manager and MCP servers initialized'
     );
 
-    // 5. Initialize prompt manager
+    // 4. Initialize prompt manager
     const promptManager = new PromptManager(config.llm.systemPrompt);
 
-    // 6. Initialize message manager
+    // 5. Initialize message manager
     const router = config.llm.router;
     const messageManager =
         overrides?.messageManager ?? createMessageManager(config.llm, router, promptManager);
 
-    // 7. Initialize LLM service
+    // 6. Initialize LLM service
     const llmService =
         overrides?.llmService ??
         createLLMService(config.llm, router, clientManager, agentEventBus, messageManager);
@@ -135,7 +132,7 @@ export async function createAgentServices(
             : `LLM service initialized using router: ${router}`
     );
 
-    // 8. Return the full service
+    // 7. Return the full service
     return {
         clientManager,
         promptManager,
