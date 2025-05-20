@@ -7,6 +7,8 @@ import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
+import type { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
+import type { EventMap } from '../../../events/EventMap.js';
 
 /**
  * Anthropic implementation of LLMService
@@ -16,13 +18,13 @@ export class AnthropicService implements ILLMService {
     private model: string;
     private clientManager: MCPClientManager;
     private messageManager: MessageManager;
-    private eventEmitter: EventEmitter;
+    private eventEmitter: TypedEventEmitter;
     private maxIterations: number;
 
     constructor(
         clientManager: MCPClientManager,
         anthropic: Anthropic,
-        agentEventBus: EventEmitter,
+        agentEventBus: TypedEventEmitter,
         messageManager: MessageManager,
         model: string,
         maxIterations: number = 10
@@ -129,7 +131,7 @@ export class AnthropicService implements ILLMService {
                     const toolUseId = toolUse.id;
 
                     // Notify tool call
-                    this.eventEmitter.emit('llmservice:toolCall', toolName, args);
+                    this.eventEmitter.emit('llmservice:toolCall', { toolName, args });
 
                     // Execute tool
                     try {
@@ -139,7 +141,7 @@ export class AnthropicService implements ILLMService {
                         this.messageManager.addToolResult(toolUseId, toolName, result);
 
                         // Notify tool result
-                        this.eventEmitter.emit('llmservice:toolResult', toolName, result);
+                        this.eventEmitter.emit('llmservice:toolResult', { toolName, result });
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -150,8 +152,9 @@ export class AnthropicService implements ILLMService {
                             error: errorMessage,
                         });
 
-                        this.eventEmitter.emit('llmservice:toolResult', toolName, {
-                            error: errorMessage,
+                        this.eventEmitter.emit('llmservice:toolResult', {
+                            toolName,
+                            result: { error: errorMessage },
                         });
                     }
                 }

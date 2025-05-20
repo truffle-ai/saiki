@@ -4,11 +4,12 @@ import { logger } from '../../../logger/index.js';
 import { streamText, generateText, CoreMessage, LanguageModelV1 } from 'ai';
 import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
-import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
+import type { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
+import type { EventMap } from '../../../events/EventMap.js';
 
 /**
  * Vercel implementation of LLMService
@@ -18,14 +19,14 @@ export class VercelLLMService implements ILLMService {
     private provider: string;
     private clientManager: MCPClientManager;
     private messageManager: MessageManager;
-    private eventEmitter: EventEmitter;
+    private eventEmitter: TypedEventEmitter;
     private maxIterations: number;
 
     constructor(
         clientManager: MCPClientManager,
         model: LanguageModelV1,
         provider: string,
-        agentEventBus: EventEmitter,
+        agentEventBus: TypedEventEmitter,
         messageManager: MessageManager,
         maxIterations: number
     ) {
@@ -156,20 +157,18 @@ export class VercelLLMService implements ILLMService {
                 // Emit events based on step content (kept from original)
                 if (step.toolCalls && step.toolCalls.length > 0) {
                     for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit(
-                            'llmservice:toolCall',
-                            toolCall.toolName,
-                            toolCall.args
-                        );
+                        this.eventEmitter.emit('llmservice:toolCall', {
+                            toolName: toolCall.toolName,
+                            args: toolCall.args,
+                        });
                     }
                 }
                 if (step.toolResults && step.toolResults.length > 0) {
                     for (const toolResult of step.toolResults as any) {
-                        this.eventEmitter.emit(
-                            'llmservice:toolResult',
-                            toolResult.toolName,
-                            toolResult.result
-                        );
+                        this.eventEmitter.emit('llmservice:toolResult', {
+                            toolName: toolResult.toolName,
+                            result: toolResult.result,
+                        });
                     }
                 }
                 // NOTE: Message manager additions are now handled after generateText completes
@@ -244,11 +243,10 @@ export class VercelLLMService implements ILLMService {
                     // Don't add assistant message with tool calls to history
                     // Just emit the events
                     for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit(
-                            'llmservice:toolCall',
-                            toolCall.toolName,
-                            toolCall.args
-                        );
+                        this.eventEmitter.emit('llmservice:toolCall', {
+                            toolName: toolCall.toolName,
+                            args: toolCall.args,
+                        });
                     }
                 }
 
@@ -257,11 +255,10 @@ export class VercelLLMService implements ILLMService {
                     for (const toolResult of step.toolResults as any) {
                         // Don't add tool results to message manager
                         // Just emit the events
-                        this.eventEmitter.emit(
-                            'llmservice:toolResult',
-                            toolResult.toolName,
-                            toolResult.result
-                        );
+                        this.eventEmitter.emit('llmservice:toolResult', {
+                            toolName: toolResult.toolName,
+                            result: toolResult.result,
+                        });
                     }
                 }
             },

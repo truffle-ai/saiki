@@ -2,7 +2,8 @@ import { logger } from '@core/index.js';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import { EventSubscriber } from '../api/types.js';
-import { EventEmitter } from 'events';
+import { TypedEventEmitter } from '@core/events/TypedEventEmitter.js';
+import type { EventMap } from '@core/events/EventMap.js';
 
 /**
  * Wrapper class to store methods describing how the CLI should handle agent events
@@ -20,11 +21,13 @@ export class CLISubscriber implements EventSubscriber {
     private accumulatedResponse: string = '';
     private currentLines: number = 0;
 
-    subscribe(eventBus: EventEmitter): void {
+    subscribe(eventBus: TypedEventEmitter): void {
         eventBus.on('llmservice:thinking', this.onThinking.bind(this));
         eventBus.on('llmservice:chunk', this.onChunk.bind(this));
-        eventBus.on('llmservice:toolCall', this.onToolCall.bind(this));
-        eventBus.on('llmservice:toolResult', this.onToolResult.bind(this));
+        eventBus.on('llmservice:toolCall', ({ toolName, args }) => this.onToolCall(toolName, args));
+        eventBus.on('llmservice:toolResult', ({ toolName, result }) =>
+            this.onToolResult(toolName, result)
+        );
         eventBus.on('llmservice:response', this.onResponse.bind(this));
         eventBus.on('llmservice:error', this.onError.bind(this));
         eventBus.on('messageManager:conversationReset', this.onConversationReset.bind(this));

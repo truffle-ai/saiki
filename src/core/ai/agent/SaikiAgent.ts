@@ -4,7 +4,6 @@ import { ILLMService } from '../llm/services/types.js';
 import { PromptManager } from '../systemPrompt/manager.js';
 import { MessageManager } from '../llm/messages/manager.js';
 import { ConfigManager } from '../../config/manager.js';
-import { EventEmitter } from 'events';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { McpServerConfig } from '../../config/schemas.js';
@@ -14,6 +13,8 @@ import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 import { randomUUID } from 'crypto';
 import { ChatSession } from './ChatSession.js';
+import { TypedEventEmitter } from '../../events/TypedEventEmitter.js';
+import type { EventMap } from '../../events/EventMap.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
@@ -39,7 +40,7 @@ export class SaikiAgent {
     public readonly clientManager: MCPClientManager;
     public readonly promptManager: PromptManager;
     public readonly llmService: ILLMService;
-    public readonly agentEventBus: EventEmitter;
+    public readonly agentEventBus: TypedEventEmitter;
     public readonly messageManager: MessageManager;
     public readonly configManager: ConfigManager;
     public readonly services: AgentServices;

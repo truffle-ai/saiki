@@ -1,5 +1,4 @@
 import { LanguageModelV1 } from 'ai';
-import { EventEmitter } from 'events';
 import { ToolSet } from '../../types.js';
 import { ImageData } from '../messages/types.js';
 

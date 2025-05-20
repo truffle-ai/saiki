@@ -13,7 +13,7 @@ export class MCPClientManager {
     private toolToClientMap: Map<string, IMCPClient> = new Map();
     private promptToClientMap: Map<string, IMCPClient> = new Map();
     private resourceToClientMap: Map<string, IMCPClient> = new Map();
-    private confirmationProvider?: ToolConfirmationProvider;
+    private confirmationProvider: ToolConfirmationProvider;
 
     constructor(confirmationProvider?: ToolConfirmationProvider) {
         // If a confirmation provider is passed, use it, otherwise use the default implementation

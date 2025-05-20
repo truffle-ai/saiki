@@ -16,8 +16,8 @@ declare function structuredClone<T>(value: T): T;
  * came from the configuration file, a CLI override, or a default.
  */
 export class ConfigManager {
-    private resolved: AgentConfig;
-    private provenance: { llm: LLMProvenance };
+    private resolved!: AgentConfig;
+    private provenance!: { llm: LLMProvenance };
 
     constructor(fileConfig: AgentConfig) {
         this.initFromConfig(fileConfig);
@@ -60,10 +60,9 @@ export class ConfigManager {
             const newFileConfig: AgentConfig = await loadConfigFile(configPath);
             this.initFromConfig(newFileConfig); // Use the existing loadConfig to update the instance state
             logger.info(`Successfully hot reloaded configuration from: ${configPath}`);
-        } catch (error) {
+        } catch (error: any) {
             logger.error(`Failed to hot reload configuration from ${configPath}: ${error.message}`);
             // Re-throw or handle as appropriate for your application
-            // For now, re-throwing to make the caller aware of the failure.
             throw error;
         }
     }

@@ -29,7 +29,6 @@ import { MCPClientManager } from '../client/manager.js';
 import { ILLMService } from '../ai/llm/services/types.js';
 import { createLLMService } from '../ai/llm/services/factory.js';
 import { logger } from '../logger/index.js';
-import { EventEmitter } from 'events';
 import { MessageManager } from '../ai/llm/messages/manager.js';
 import { createMessageManager } from '../ai/llm/messages/factory.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
@@ -39,6 +38,9 @@ import { ConfigManager } from '../config/manager.js';
 import type { CLIConfigOverrides } from '../config/types.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { createHistoryProvider } from '../ai/llm/messages/history/factory.js';
+import { TypedEventEmitter } from '../events/TypedEventEmitter.js';
+import { eventBus } from '../events/eventBus.js';
+import type { EventMap } from '../events/EventMap.js';
 
 /**
  * Type for the core agent services returned by initializeServices
@@ -47,7 +49,7 @@ export type AgentServices = {
     clientManager: MCPClientManager;
     promptManager: PromptManager;
     llmService: ILLMService;
-    agentEventBus: EventEmitter;
+    agentEventBus: TypedEventEmitter;
     messageManager: MessageManager;
     configManager: ConfigManager;
 };
@@ -73,7 +75,7 @@ export type InitializeServicesOptions = {
     connectionMode?: 'strict' | 'lenient'; // Connection mode override
     clientManager?: MCPClientManager; // Inject a custom or mock MCPClientManager
     llmService?: ILLMService; // Inject a custom or mock LLMService
-    agentEventBus?: EventEmitter; // Inject a custom or mock EventEmitter
+    agentEventBus?: TypedEventEmitter; // Inject a custom or mock TypedEventEmitter
     messageManager?: MessageManager; // Inject a custom or mock MessageManager
     // Add more overrides as needed
     // configOverride?: Partial<AgentConfig>; // (optional) for field-level config overrides
@@ -100,8 +102,8 @@ export async function createAgentServices(
     configManager.validate();
     const config = configManager.getConfig();
 
-    // 2. Initialize shared event bus
-    const agentEventBus = overrides?.agentEventBus ?? new EventEmitter();
+    // 3. Initialize shared event bus
+    const agentEventBus: TypedEventEmitter = overrides?.agentEventBus ?? eventBus;
     logger.debug('Agent event bus initialized');
 
     // 3. Initialize client manager

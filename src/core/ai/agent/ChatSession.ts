@@ -5,10 +5,11 @@ import type { AgentServices } from '../../utils/service-initializer.js';
 import type { MessageManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
 import type { SaikiAgent } from './SaikiAgent.js';
-import { EventEmitter } from 'events';
+import { TypedEventEmitter } from '../../events/TypedEventEmitter.js';
+import type { EventMap } from '../../events/EventMap.js';
 
 export class ChatSession {
-    public readonly eventBus: EventEmitter;
+    public readonly eventBus: TypedEventEmitter;
     private messageManager: MessageManager;
     private llmService: ILLMService;
 
@@ -20,19 +21,14 @@ export class ChatSession {
         const config = services.configManager.getConfig();
 
         // Session-level event bus: use global for default session, or a new emitter with forwarding
-        let sessionBus: EventEmitter;
+        let sessionBus: TypedEventEmitter;
         if (id === 'default') {
             sessionBus = services.agentEventBus;
         } else {
-            sessionBus = new EventEmitter();
-            const originalEmit: typeof sessionBus.emit = sessionBus.emit.bind(sessionBus);
-            sessionBus.emit = ((eventName: string | symbol, ...args: any[]): boolean => {
-                const result = originalEmit(eventName, ...args);
-                if (typeof eventName === 'string') {
-                    services.agentEventBus.emit(`session:${id}:${eventName}`, ...args);
-                }
-                return result;
-            }) as typeof sessionBus.emit;
+            // Create a new session-local bus
+            sessionBus = new TypedEventEmitter();
+            // No forwarding: use local TypedEventEmitter only
+            // TODO: Wrap emit to forward namespaced session events and also application code
         }
         this.eventBus = sessionBus;
 

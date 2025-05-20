@@ -9,7 +9,8 @@ import { getImageData, countMessagesTokens } from './utils.js';
 import { DynamicContributorContext } from '../../systemPrompt/types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { ConversationHistoryProvider } from './history/types.js';
-import { EventEmitter } from 'events';
+import { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
+import type { EventMap } from '../../../events/EventMap.js';
 /**
  * Manages conversation history and provides message formatting capabilities.
  * The MessageManager is responsible for:
@@ -31,7 +32,7 @@ export class MessageManager {
      */
     private promptManager: PromptManager;
 
-    private agentEventBus: EventEmitter;
+    private agentEventBus: TypedEventEmitter;
 
     /**
      * Formatter used to convert internal messages to LLM-specific format
@@ -72,7 +73,7 @@ export class MessageManager {
     constructor(
         formatter: IMessageFormatter,
         promptManager: PromptManager,
-        agentEventBus: EventEmitter,
+        agentEventBus: TypedEventEmitter,
         maxTokens: number,
         tokenizer: ITokenizer,
         historyProvider: ConversationHistoryProvider,
@@ -369,7 +370,7 @@ export class MessageManager {
         this.historyProvider.clearHistory(this.sessionId).catch((e) => {
             logger.error('MessageManager: Failed to clear history in provider', e);
         });
-        this.eventBus.emit('messageManager:conversationReset');
+        this.agentEventBus.emit('messageManager:conversationReset');
         // Note: We don't reset the system prompt as it's usually fixed for a service
     }
 

@@ -1,6 +1,7 @@
-import { EventEmitter } from 'events';
 import { WebSocketServer, WebSocket } from 'ws';
 import { EventSubscriber } from './types.js';
+import { TypedEventEmitter } from '@core/events/TypedEventEmitter.js';
+import type { EventMap } from '@core/events/EventMap.js';
 
 /**
  * Subscribes to core events and broadcasts them over all open WebSocket connections.
@@ -16,13 +17,13 @@ export class WebSocketEventSubscriber implements EventSubscriber {
         });
     }
 
-    subscribe(eventBus: EventEmitter): void {
+    subscribe(eventBus: TypedEventEmitter): void {
         eventBus.on('llmservice:thinking', () => this.broadcast('thinking', null));
         eventBus.on('llmservice:chunk', (text: string) => this.broadcast('chunk', { text }));
-        eventBus.on('llmservice:toolCall', (toolName: string, args: any) =>
+        eventBus.on('llmservice:toolCall', ({ toolName, args }) =>
             this.broadcast('toolCall', { toolName, args })
         );
-        eventBus.on('llmservice:toolResult', (toolName: string, result: any) =>
+        eventBus.on('llmservice:toolResult', ({ toolName, result }) =>
             this.broadcast('toolResult', { toolName, result })
         );
         eventBus.on('llmservice:response', (text: string) => this.broadcast('response', { text }));

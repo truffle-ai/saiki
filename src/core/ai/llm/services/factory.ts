@@ -10,7 +10,8 @@ import { VercelLLMService } from './vercel.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
 import { LanguageModelV1 } from 'ai';
-import { EventEmitter } from 'events';
+import { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
+import { EventMap } from '../../../events/EventMap.js';
 import { LLMRouter } from '../types.js';
 import { MessageManager } from '../messages/manager.js';
 import OpenAI from 'openai';
@@ -49,7 +50,7 @@ function extractApiKey(config: LLMConfig): string {
 function _createInBuiltLLMService(
     config: LLMConfig,
     clientManager: MCPClientManager,
-    agentEventBus: EventEmitter,
+    agentEventBus: TypedEventEmitter,
     messageManager: MessageManager
 ): ILLMService {
     // Extract and validate API key
@@ -133,7 +134,7 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 function _createVercelLLMService(
     config: LLMConfig,
     clientManager: MCPClientManager,
-    agentEventBus: EventEmitter,
+    agentEventBus: TypedEventEmitter,
     messageManager: MessageManager
 ): VercelLLMService {
     const model: LanguageModelV1 = _createVercelModel(config);
@@ -154,7 +155,7 @@ export function createLLMService(
     config: LLMConfig,
     router: LLMRouter,
     clientManager: MCPClientManager,
-    agentEventBus: EventEmitter,
+    agentEventBus: TypedEventEmitter,
     messageManager: MessageManager
 ): ILLMService {
     if (router === 'vercel') {
