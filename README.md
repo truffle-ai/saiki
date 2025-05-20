@@ -58,13 +58,13 @@ npm start
 
 Serve the experimental web interface:
 ```bash
-saiki --mode web --web-port 3000
+saiki --mode web
 ```
 
 <details><summary><strong>Alternative: without global install</strong></summary>
 
 ```bash
-npm start -- --mode web --web-port 3000
+npm start -- --mode web
 ```
 
 </details>
@@ -89,14 +89,15 @@ Make sure you have `TELEGRAM_BOT_TOKEN` set in your environment. See [here](app/
 
 ## Overview
 
-Saiki is a flexible, modular AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly.
+Saiki is an open, modular and extensible AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly, whether that means running a shell command, summarizing a webpage, or calling an API.
 
 Why developers choose Saiki:
 
-1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP). Drop in pre-built servers for GitHub, filesystem, terminal, or build your own.
-2. **AI-Powered Orchestration**: Natural language tasks are parsed into multi-step tool calls executed in the correct sequence.
-3. **Multi-Interface Support**: Use via CLI, wrap it in a web UI, or integrate into other systems – AI logic is decoupled from UI concerns.
-4. **Production-Ready**: Robust error handling, structured logging, and pluggable LLM providers (OpenAI, Anthropic, Google) ensure reliability.
+1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP).
+2. **Config-Driven**: Define your agent with a prompt, tools (via MCP), and model in YAML, no glue code required.
+3. **Multi-Interface Support**: Use via CLI, wrap it in a web UI, or integrate into other systems.
+4. **Runs Anywhere**: Local-first runtime with logging, retries, and support for any LLM provider.
+5. **Interoperable**: Expose as an API or connect to other agents via MCP/A2A(soon).
 
 Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. Interact with Saiki via the command line or the new experimental web UI.
 
@@ -197,35 +198,11 @@ npm search @modelcontextprotocol/server
 
 Find detailed guides, architecture, and API reference in the `docs/` folder:
 
-- High-level design — [docs/architecture.md](docs/architecture.md)  
-- Docker usage — [README.Docker.md](README.Docker.md)  
+- High-level design — [docs/architecture.md](docs/architecture.md)
+- Docker usage — [README.Docker.md](README.Docker.md)
 
 ## Contributing
-
-We welcome contributions! Here's how to get started:
-
-1. Fork the repository to your GitHub account.
-2. Clone your fork:
-   ```bash
-   git clone https://github.com/your-username/saiki.git
-   cd saiki
-   ```
-3. Create a new feature branch:
-   ```bash
-   git checkout -b feature/your-branch-name
-   ```
-4. Make your changes:
-   - Follow existing TypeScript and code style conventions.
-   - Run `npm run lint:fix` and `npm run format` before committing.
-   - Add or update tests for new functionality.
-5. Commit and push your branch:
-   ```bash
-   git commit -m "Brief description of changes"
-   git push origin feature/your-branch-name
-   ```
-6. Open a Pull Request against the `main` branch with a clear description of your changes.
-
-*Tip:* Open an issue first for discussion on larger enhancements or proposals.
+We welcome contributions! Refer [here](CONTRIBUTIONS.md) for more details.
 
 ## Community & Support
 
