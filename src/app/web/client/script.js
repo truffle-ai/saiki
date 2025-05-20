@@ -395,9 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
     voiceBtn.addEventListener('click',voiceConv)
   
   
-    function voiceConv(){
+function voiceConv(){
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  
+
     if (!SpeechRecognition) {
       voiceBtn.disabled = true;
       voiceBtn.title = "Speech Recognition not supported in this browser";
@@ -434,6 +434,8 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
         }
+        messageInput.value = transcript;
+        
       };
   
       recognition.onerror = (event) => {
