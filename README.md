@@ -119,6 +119,8 @@ saiki
 
 Spin up new agents out-of-the-box and use them to power AI NPCs in your game environment. You can configure these agents to go beyond simple LLMs responses to take real actions in-game.
 
+*Example project repo coming soon...*
+
 <img src="https://private-user-images.githubusercontent.com/44321453/445381023-c1fc6b60-d85c-4920-84f9-918949ef1ddb.gif?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDc3MDcxMjcsIm5iZiI6MTc0NzcwNjgyNywicGF0aCI6Ii80NDMyMTQ1My80NDUzODEwMjMtYzFmYzZiNjAtZDg1Yy00OTIwLTg0ZjktOTE4OTQ5ZWYxZGRiLmdpZj9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA1MjAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNTIwVDAyMDcwN1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTgwZjlmNGE3YmFiZWRkYzNhZTE2Yzk3MzUwYjA1NDM3NmNjZDJlZjViNjE3MmYyNmI4YzI2YTQ2N2I2NTk1ZjgmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.rZuhhfcRdZ7ZuaySVakRLakeehjZcttjDNlk3QRCZOY" alt="AI NPC Example" width="800">
 
 
@@ -176,7 +178,7 @@ Options:
 
 ## Configuration
 
-Saiki uses a YAML config file (`configuration/saiki.yml` by default) to configure tool servers (MCP servers) and LLM providers.
+Saiki defines agents using a YAML config file (`configuration/saiki.yml` by default). To configure an agent, use tool servers (MCP servers) and LLM providers.
 
 ```yaml
 mcpServers:
@@ -220,12 +222,34 @@ npm search @modelcontextprotocol/server
    - Follow the MCP spec: https://modelcontextprotocol.io/introduction
 
 
+## Advanced Usage
+
+Saiki is designed to be a flexible component in your AI and automation workflows. Beyond the CLI and Web UI, you can integrate Saiki's core agent capabilities into your own applications or have it communicate with other AI agents.
+
+### Embedding Saiki in Your Applications
+
+When Saiki runs in `web` mode (`saiki --mode web`), it exposes a comprehensive REST API and a WebSocket interface, allowing you to control and interact with the agent programmatically. This is ideal for building custom front-ends, backend integrations, or embedding Saiki into existing platforms.
+
+For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](docs/api_and_websockets.md).
+
+### Inter-Agent Communication with MCP
+
+Saiki embraces the Model Context Protocol (MCP) not just for connecting to tools, but also for **Agent-to-Agent communication**. This means Saiki can:
+
+1.  **Act as an MCP Client**: Connect to other AI agents that expose an MCP server interface, allowing Saiki to delegate tasks or query other agents as if they were any other tool.
+2.  **Act as an MCP Server**: Saiki itself exposes an MCP server interface (see `src/app/api/mcp_handler.ts` and `src/app/api/a2a.ts`). This makes Saiki discoverable and usable by other MCP-compatible agents or systems. Another agent could connect to Saiki and utilize its configured tools and LLM capabilities.
+
+This framework-agnostic approach allows Saiki to participate in a broader ecosystem of AI agents, regardless of their underlying implementation. By defining an `AgentCard` (a standardized metadata file, based on A2A protocol, describing an agent's capabilities and MCP endpoint), Saiki can be discovered and interact with other agents seamlessly. *(We also plan to integrate support for the A2A protocol soon)*
+
+This powerful A2A capability opens up possibilities for creating sophisticated multi-agent systems where different specialized agents collaborate to achieve complex goals.
+
 ## Documentation
 
 Find detailed guides, architecture, and API reference in the `docs/` folder:
 
-- High-level design — [docs/architecture.md](docs/architecture.md)
-- Docker usage — [README.Docker.md](README.Docker.md)
+- [High-level design](docs/architecture.md)
+- [Docker usage](README.Docker.md)
+- [API Endpoints](docs/api_and_websockets.md)
 
 ## Contributing
 We welcome contributions! Refer [here](CONTRIBUTIONS.md) for more details.
@@ -249,4 +273,3 @@ Elastic License 2.0. See [LICENSE](LICENSE) for details.
 Thanks to all these amazing people for contributing to Saiki! ([full list](https://github.com/truffle-ai/saiki/graphs/contributors)):
 
 [![Contributors](https://contrib.rocks/image?repo=truffle-ai/saiki)](https://github.com/truffle-ai/saiki/graphs/contributors)
-
