@@ -115,24 +115,51 @@ saiki
   <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" width="800"/>
 </a>
 
-### 📧 Email Summary to Slack
+### 🎮 Create AI NPCs For Your Games
+
+Spin up new agents out-of-the-box and use them to power AI NPCs in your game environment. You can configure these agents to go beyond simple LLMs responses to take real actions in-game.
+
+<img src="assets/npc_example.gif" alt="AI NPC Example" width="800">
+
+
+### 📧 Send Email Summaries to Slack
 **Task:** `Summarize emails and send highlights to Slack`
 ```bash
 saiki --config-file ./configuration/examples/email_slack.yml
 ```
 <img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="800">
 
-### 📝 Use Notion as a second brain
+### 📝 Use Notion As A Second Brain
 ```bash
 saiki --config-file ./configuration/examples/notion.yml #Requires setup
 ```
 <img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="800">
 
-_For more examples, see the [Examples](docs/README.md#examples--demos) section in the docs._
 
 ## CLI Reference
 
 The `saiki` command supports several options to customize its behavior. Run `saiki --help` for the full list.
+
+```
+> saiki -h
+17:51:31 INFO: Log level set to: INFO
+Usage: saiki [options] [prompt...]
+
+AI-powered CLI and WebUI for interacting with MCP servers
+
+Arguments:
+  prompt                    Optional headless prompt for single command mode
+
+Options:
+  -c, --config-file <path>  Path to config file (default: "configuration/saiki.yml")
+  -s, --strict              Require all server connections to succeed
+  --no-verbose              Disable verbose output
+  --mode <mode>             Run mode: cli, web, discord, or telegram (default: "cli")
+  --web-port <port>         Port for WebUI (default: "3000")
+  -m, --model <model>       Specify the LLM model to use
+  -r, --router <router>     Specify the LLM router to use (vercel or in-built)
+  -V, --version             output the version number
+```
 
 **Common Examples:**
 
