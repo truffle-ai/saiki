@@ -33,7 +33,7 @@ export async function handleCreateProject(projectNameFromArg?: string /* options
                     name: 'projectName',
                     message: 'What do you want to name your Saiki project?',
                     validate: (input: string) => {
-                        if (/^([A-Za-z\\-_0-9])+$/.test(input)) return true;
+                        if (/^[A-Za-z0-9_-]+$/.test(input)) return true;
                         return 'Project name may only include letters, numbers, underscores, and hyphens.';
                     },
                 },
@@ -80,8 +80,6 @@ export async function handleCreateProject(projectNameFromArg?: string /* options
         const dependenciesToInstall = `${saikiPackageName} yaml dotenv`;
         logger.info(chalk.blue(`Installing dependencies: ${chalk.cyan(dependenciesToInstall)}...`));
         await execPromise(`npm install ${dependenciesToInstall}`, { cwd: projectPath });
-        // logger.info(chalk.blue('Installing devDependencies: typescript @types/node @types/yaml...'));
-        // await execPromise('npm install typescript @types/node @types/yaml --save-dev', { cwd: projectPath });
 
         // 3. .gitignore
         logger.info(chalk.blue('Creating .gitignore...'));
@@ -92,7 +90,7 @@ dist
 `;
         await fs.writeFile(path.join(projectPath, '.gitignore'), gitignoreContent);
 
-        // 5. .env.example
+        // 4. .env
         logger.info(chalk.blue('Creating .env...'));
         const envExampleContent = [
             '# Saiki Configuration',
@@ -113,7 +111,7 @@ dist
         ].join('\n');
         await fs.writeFile(path.join(projectPath, '.env'), envExampleContent);
 
-        // Copy the Saiki config template into the new project
+        // 5. Copy the Saiki config template into the new project
         logger.info(chalk.blue('Copying Saiki configuration file...'));
         // Locate the Saiki package installation directory
         const pkgJsonPath = require.resolve('@truffle-ai/saiki/package.json');
