@@ -106,6 +106,12 @@ program
             opts.apiKey = process.env[envVar];
         }
 
+        try {
+            validateCliOptions(opts);
+        } catch (err) {
+            handleCliOptionsError(err);
+        }
+
         // ——— Load config & create agent ———
         let agent: SaikiAgent;
         try {
@@ -113,7 +119,6 @@ program
                 opts.configFile,
                 opts.configFile === DEFAULT_CONFIG_PATH
             );
-            validateCliOptions(opts);
             logger.info(`Initializing Saiki with config: ${configPath}`);
             const cfg = await loadConfigFile(configPath);
             agent = await SaikiAgent.create(
