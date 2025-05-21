@@ -29,9 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const imagePreviewContainer = document.getElementById('image-preview-container');
     const imagePreview = document.getElementById('image-preview');
     const removeImageBtn = document.getElementById('remove-image-btn');
+    const voiceBtn = document.getElementById('voice-button');
+    
+   
 
     // --- Check if critical elements exist ---
-    if (!chatLog || !messageInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv || !imageUpload || !imagePreviewContainer || !imagePreview || !removeImageBtn) {
+    if (!chatLog || !messageInput || !sendButton || !resetButton || !statusIndicator || !connectServerButton || !modal || !connectServerForm || !serverTypeSelect || !stdioOptionsDiv || !sseOptionsDiv || !imageUpload || !imagePreviewContainer || !imagePreview || !removeImageBtn || !voiceBtn) {
         console.error("Initialization failed: One or more required DOM elements not found.");
         // Display error to user if possible
         if (chatLog) {
@@ -348,6 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
             statusIndicator.setAttribute('data-tooltip', 'Connected');
             messageInput.disabled = false;
             sendButton.disabled = false;
+            voiceBtn.disabled = false
             resetButton.disabled = false;
         };
 
@@ -388,6 +392,63 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Attach Event Listeners ---
     sendButton.addEventListener('click', sendMessage);
     resetButton.addEventListener('click', resetConversation);
+    voiceBtn.addEventListener('click',voiceConv)
+  
+  
+function voiceConv(){
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      voiceBtn.disabled = true;
+      voiceBtn.title = "Speech Recognition not supported in this browser";
+      displaySystemMessage('Speech recognition is not supported in this browser. Try Chrome or Edge.', 'error');
+    } else {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = true;
+  
+      // Start on press
+      voiceBtn.addEventListener('mousedown', () => {
+        recognition.start();
+        voiceBtn.textContent = "🎙️ Listening...";
+        voiceBtn.classList.add('recording');
+       
+      });
+  
+      // Stop on release
+      voiceBtn.addEventListener('mouseup', () => {
+        recognition.stop();
+        voiceBtn.textContent = "🎤";
+        voiceBtn.classList.remove('recording');
+      });
+  
+      // Optional: also stop if user drags away from button
+      voiceBtn.addEventListener('mouseleave', () => {
+        recognition.stop();
+        voiceBtn.textContent = "🎤";
+        voiceBtn.classList.remove('recording');
+        
+      });
+  
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        messageInput.value = transcript;
+        
+      };
+  
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        voiceBtn.textContent = "🎤";
++   voiceBtn.classList.remove('recording');
++   displaySystemMessage(`Speech recognition error: ${event.error}`, 'error');
+      };
+    }
+}
 
     messageInput.addEventListener('keypress', (event) => {
         if (event.key === 'Enter' && !event.shiftKey) {

@@ -120,11 +120,8 @@ export default function ChatApp() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Export Agent Configuration</DialogTitle>
-                  <DialogDescription>
-                    Download your current Saiki agent configuration, including connected servers and model settings, to a YAML file.
-                    This file can be used to run the same agent setup via the CLI or share it with others.
-                  </DialogDescription>
+                  <DialogTitle>Export Configuration</DialogTitle>
+                  <DialogDescription>Download the current config and servers as YAML.</DialogDescription>
                 </DialogHeader>
                 {exportError && (
                   <Alert variant="destructive" className="mb-4">
