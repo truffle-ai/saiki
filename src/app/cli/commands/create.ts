@@ -10,7 +10,7 @@ import {
     addScriptsToPackageJson,
     getPackageManager,
     getPackageManagerInstallCommand,
-} from '../utils/installer.js';
+} from '../utils/package-mgmt.js';
 
 // const require = createRequire(import.meta.url);
 
@@ -271,49 +271,55 @@ export async function createSaikiProject2(name?: string) {
     await fs.writeFile('package.json', JSON.stringify(packageJson, null, 2));
     spinner.stop('package.json updated successfully!');
 
-    //     spinner.start("Installing dependencies...")
-    //     const packageManager = getPackageManager();
-    //     const installCommand = getPackageManagerInstallCommand(packageManager);
-    //     // install yaml and dotenv
-    //     await executeWithTimeout(packageManager, [installCommand, 'yaml', 'dotenv'], { cwd: projectPath });
+    spinner.start('Installing dependencies...');
+    const packageManager = getPackageManager();
+    const installCommand = getPackageManagerInstallCommand(packageManager);
+    // install yaml and dotenv
+    await executeWithTimeout(packageManager, [installCommand, 'yaml', 'dotenv'], {
+        cwd: projectPath,
+    });
 
-    //     // install typescript
-    //     await executeWithTimeout(packageManager, [installCommand, 'typescript', 'tsx', 'ts-node', '@types/node', '--save-dev'], { cwd: projectPath });
+    // install typescript
+    await executeWithTimeout(
+        packageManager,
+        [installCommand, 'typescript', 'tsx', 'ts-node', '@types/node', '--save-dev'],
+        { cwd: projectPath }
+    );
 
-    //     spinner.stop("Dependencies installed successfully!")
+    spinner.stop('Dependencies installed successfully!');
 
-    //     // install saiki
-    //     spinner.start("Installing Saiki...")
-    //     const label = "latest"
-    //     await executeWithTimeout(packageManager, [installCommand, `@truffle-ai/saiki@${label}`], { cwd: projectPath });
-    //     spinner.stop("Saiki installed successfully!")
+    // setup tsconfig.json
+    spinner.start('Setting up tsconfig.json...');
+    const tsconfig = {
+        compilerOptions: {
+            target: 'ES2022',
+            module: 'ESNext',
+            moduleResolution: 'node',
+            strict: true,
+            esModuleInterop: true,
+            forceConsistentCasingInFileNames: true,
+            skipLibCheck: true,
+            outDir: 'dist',
+            rootDir: 'src',
+        },
+        include: ['src/**/*.ts'],
+        exclude: ['node_modules', 'dist', '.saiki'],
+    };
+    await fs.writeJSON(path.join(projectPath, 'tsconfig.json'), tsconfig, { spaces: 4 });
+    spinner.stop('tsconfig.json setup successfully!');
 
-    //     // setup tsconfig.json
-    //     spinner.start("Setting up tsconfig.json...")
-    //     const tsconfig = {
-    //         compilerOptions: {
-    //             target: 'ES2022',
-    //             module: 'ESNext',
-    //             moduleResolution: 'node',
-    //             strict: true,
-    //             esModuleInterop: true,
-    //             forceConsistentCasingInFileNames: true,
-    //             skipLibCheck: true,
-    //             outDir: 'dist',
-    //             rootDir: 'src',
-    //         },
-    //         include: ['src/**/*.ts'],
-    //         exclude: ['node_modules', 'dist', '.saiki'],
-    //     };
-    //     await fs.writeJSON(
-    //         path.join(projectPath, 'tsconfig.json'),
-    //         tsconfig,
-    //         { spaces: 4 }
-    //     );
-    //     spinner.stop("tsconfig.json setup successfully!")
+    // install saiki
+    spinner.start('Installing Saiki...');
+    const label = 'latest';
+    await executeWithTimeout(packageManager, [installCommand, `@truffle-ai/saiki@${label}`], {
+        cwd: projectPath,
+    });
+    spinner.stop('Saiki installed successfully!');
 
-    //     p.outro(chalk.inverse("Saiki project created successfully!"))
+    p.outro(chalk.inverse('Saiki project created successfully!'));
 
+    // TODO: saiki.yml, install saiki ,and .env setup - can do in init command
+    // make sure to use
     //     p.note(
     //         `1. Navigate to your project: ${chalk.cyan(`cd ${projectName}`)}
     //   2. Add your API key(s) to ${chalk.cyan('.env')}
@@ -323,7 +329,6 @@ export async function createSaikiProject2(name?: string) {
     //         chalk.yellow('Next steps:')
     //     );
 
-    // TODO: saiki.yml and .env setup - can do in init command
     //         // copy saiki.yml
     //     spinner.start("Copying saiki config files...")
     //     const saikiDir = path.join(projectPath, 'src', 'saiki');

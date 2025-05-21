@@ -1,4 +1,3 @@
-import { execa } from 'execa';
 import { findProjectRoot } from './path.js';
 import fsExtra from 'fs-extra';
 import path from 'path';
@@ -17,23 +16,6 @@ export function getPackageManagerInstallCommand(pm: string): string {
         default:
             return 'install';
     }
-}
-
-export async function installPackages(packages: string[]) {
-    const packageManager = getPackageManager();
-    let runCommand = packageManager;
-    if (packageManager === 'npm') {
-        runCommand = `${packageManager} i`;
-    } else {
-        runCommand = `${packageManager} add`;
-    }
-
-    const packageList = packages.join(' ');
-    return execa(`${runCommand} ${packageList}`, {
-        all: true,
-        shell: true,
-        stdio: 'inherit',
-    });
 }
 
 export function getPackageManager(): string {

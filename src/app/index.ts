@@ -48,6 +48,7 @@ program
     .alias('new')
     .description('Scaffold a new Saiki Node.js project')
     .action(async () => {
+        // create project
         try {
             await createSaikiProject2();
             process.exit(0);
@@ -55,6 +56,7 @@ program
             logger.error('Project creation failed:', err);
             process.exit(1);
         }
+        // then call init command functions
     });
 
 // 3) DEFAULT RUNNER (CLI / HEADLESS / WEB / DISCORD / TELEGRAM)

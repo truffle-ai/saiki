@@ -29,11 +29,12 @@ export function executeWithTimeout(
             logger.debug(text);
         });
 
-        child.stderr.on('data', (data: Buffer) => {
-            const text = data.toString();
-            stderr += text;
-            logger.error(text);
-        });
+        // Supressing to avoid spamming the console with warns
+        // child.stderr.on('data', (data: Buffer) => {
+        //     const text = data.toString();
+        //     stderr += text;
+        //     logger.error(text);
+        // });
 
         child.on('error', (error: Error) => {
             clearTimeout(timer);
