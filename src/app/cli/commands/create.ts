@@ -1,5 +1,4 @@
 import fs from 'fs-extra';
-import inquirer from 'inquirer';
 import path from 'path';
 import chalk from 'chalk';
 import { logger } from '@core/index.js'; // Using logger for command output
@@ -274,6 +273,7 @@ export async function createSaikiProject2(name?: string) {
     spinner.start('Installing dependencies...');
     const packageManager = getPackageManager();
     const installCommand = getPackageManagerInstallCommand(packageManager);
+
     // install yaml and dotenv
     await executeWithTimeout(packageManager, [installCommand, 'yaml', 'dotenv'], {
         cwd: projectPath,
@@ -307,14 +307,6 @@ export async function createSaikiProject2(name?: string) {
     };
     await fs.writeJSON(path.join(projectPath, 'tsconfig.json'), tsconfig, { spaces: 4 });
     spinner.stop('tsconfig.json setup successfully!');
-
-    // install saiki
-    spinner.start('Installing Saiki...');
-    const label = 'latest';
-    await executeWithTimeout(packageManager, [installCommand, `@truffle-ai/saiki@${label}`], {
-        cwd: projectPath,
-    });
-    spinner.stop('Saiki installed successfully!');
 
     p.outro(chalk.inverse('Saiki project created successfully!'));
 
