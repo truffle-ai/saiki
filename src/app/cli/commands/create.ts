@@ -49,7 +49,7 @@ export async function handleCreateProject(projectNameFromArg?: string /* options
         const projectPath = path.resolve(process.cwd(), projectName);
 
         logger.info(
-            chalk.blueBright(`\\nCreating new Saiki project in ${chalk.green(projectPath)}...`)
+            chalk.blueBright(`Creating new Saiki project in ${chalk.green(projectPath)}...`)
         );
 
         if (await fs.pathExists(projectPath)) {
@@ -120,7 +120,7 @@ dist
         const pkgDir = path.dirname(pkgJsonPath);
         // Build path to the configuration template inside the package
         const templateConfigSrc = path.join(pkgDir, 'configuration', 'saiki.yml');
-        const destConfigDir = path.join(projectPath, 'src', 'saiki', 'config');
+        const destConfigDir = path.join(projectPath, 'src', 'saiki', 'agents');
         await fs.mkdirp(destConfigDir);
         await fs.copy(templateConfigSrc, path.join(destConfigDir, 'saiki.yml'));
 
@@ -130,11 +130,16 @@ dist
             "import 'dotenv/config';",
             "import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';",
             '',
-            '// initialize the agent from the config file',
-            "const config = await loadConfigFile('./src/saiki/config/saiki.yml');",
+            '// 1. Initialize the agent from the config file',
+            '// Every agent is defined by its own config file',
+            "const config = await loadConfigFile('./src/saiki/agents/saiki.yml');",
             'export const agent = await SaikiAgent.create(config);',
-            '// run the agent',
-            'console.log("Agent response:", await agent.run("Hello saiki! What is capital of France?"));',
+            '',
+            '// 2. Run the agent',
+            'const response = await agent.run("Hello saiki! What are the files in this directory");',
+            'console.log("Agent response:", response);',
+            '',
+            '// 3. Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki',
         ];
         const indexTsContent = indexTsLines.join('\n');
         // Ensure the directory exists
@@ -185,12 +190,20 @@ dist
         await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
         // Final instructions
-        logger.info(chalk.greenBright('\nSaiki project created successfully!'));
-        logger.info(chalk.yellow('\nNext steps:'));
+        logger.info(chalk.greenBright('Saiki project created successfully!'));
+        logger.info(chalk.yellow('Next steps:'));
         logger.info('1. Navigate to your project: ' + chalk.cyan('cd ' + projectName));
         logger.info('2. Add your API key(s) to ' + chalk.cyan('.env'));
         logger.info(
-            '3. Run the example to get started: ' + chalk.cyan('npm run build && npm start')
+            '3. Change the config file to your liking: ' +
+                chalk.cyan('./src/saiki/agents/saiki.yml')
+        );
+        logger.info(
+            '4. Run the example to get started: ' + chalk.cyan('npm run build && npm start')
+        );
+        logger.info(
+            '5. Read Saiki documentation to understand more about using Saiki: ' +
+                chalk.cyan('https://github.com/truffle-ai/saiki')
         );
     } catch (error) {
         logger.error(chalk.red('\\nFailed to create Saiki project:'));
