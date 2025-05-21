@@ -24,7 +24,7 @@ const execPromise = (command: string, options: { cwd: string }) => {
 };
 
 // TODO: Improve interactive CLI with more configurability (npm, pnpm, yarn + customize src directory?)
-export async function handleCreateProject(projectNameFromArg?: string /* options?: object */) {
+export async function createSaikiProject(projectNameFromArg?: string /* options?: object */) {
     try {
         let projectName = projectNameFromArg;
         if (!projectName) {
@@ -72,22 +72,26 @@ export async function handleCreateProject(projectNameFromArg?: string /* options
 
         await fs.mkdir(projectPath);
 
-        // 1. package.json
+        // 1. Initialize git repository
+        logger.info(chalk.blue('Initializing git repository...'));
+        await execPromise('git init', { cwd: projectPath });
+
+        // 2. Initialize npm project (package.json)
         logger.info(chalk.blue('Initializing npm project (package.json)...'));
         await execPromise('npm init -y', { cwd: projectPath });
 
-        // 2. Install dependencies
+        // 3. Install dependencies
         const saikiPackageName = '@truffle-ai/saiki'; // Confirmed from Saiki's own package.json
         const dependenciesToInstall = `${saikiPackageName} yaml dotenv`;
         logger.info(chalk.blue(`Installing dependencies: ${chalk.cyan(dependenciesToInstall)}...`));
         await execPromise(`npm install ${dependenciesToInstall}`, { cwd: projectPath });
 
-        // 3. .gitignore
+        // 4. Create .gitignore
         logger.info(chalk.blue('Creating .gitignore...'));
         const gitignoreContent = ['node_modules', '.env', 'dist', '*.log'].join('\n');
         await fs.writeFile(path.join(projectPath, '.gitignore'), gitignoreContent);
 
-        // 4. .env
+        // 5. Create .env
         logger.info(chalk.blue('Creating .env...'));
         const envExampleContent = [
             '# Fill in your API keys here',
@@ -108,7 +112,7 @@ export async function handleCreateProject(projectNameFromArg?: string /* options
         ].join('\n');
         await fs.writeFile(path.join(projectPath, '.env'), envExampleContent);
 
-        // 5. Copy the Saiki config file from installed package into the new project
+        // 6. Copy Saiki configuration file from installed package
         logger.info(chalk.blue('Copying Saiki configuration file...'));
         // Locate the Saiki package installation directory
         const pkgJsonPath = require.resolve('@truffle-ai/saiki/package.json');
@@ -119,7 +123,7 @@ export async function handleCreateProject(projectNameFromArg?: string /* options
         await fs.mkdirp(destConfigDir);
         await fs.copy(templateConfigSrc, path.join(destConfigDir, 'saiki.yml'));
 
-        // 6. Create a basic entry point for the project
+        // 7. Create basic entry point for the project
         logger.info(chalk.blue('Creating src/saiki/index.ts...'));
         const indexTsLines = [
             "import 'dotenv/config';",
@@ -140,13 +144,13 @@ export async function handleCreateProject(projectNameFromArg?: string /* options
         // Ensure the directory exists before writing the file
         await fs.writeFile(path.join(projectPath, 'src', 'saiki', 'index.ts'), indexTsContent);
 
-        // 7. Install TypeScript and related devDependencies
+        // 8. Install TypeScript devDependencies
         logger.info(chalk.blue('Installing TypeScript devDependencies...'));
         await execPromise('npm install typescript ts-node @types/node --save-dev', {
             cwd: projectPath,
         });
 
-        // 8. tsconfig.json
+        // 9. Create tsconfig.json
         logger.info(chalk.blue('Creating tsconfig.json...'));
         const tsconfig = {
             compilerOptions: {
@@ -167,7 +171,7 @@ export async function handleCreateProject(projectNameFromArg?: string /* options
             JSON.stringify(tsconfig, null, 2)
         );
 
-        // 9. Update package.json scripts and type
+        // 10. Update package.json scripts and type
         logger.info(chalk.blue('Updating package.json for TypeScript start script...'));
         const packageJsonPath = path.join(projectPath, 'package.json');
         const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
@@ -184,7 +188,7 @@ export async function handleCreateProject(projectNameFromArg?: string /* options
         }
         await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
-        // 10. Final instructions
+        // 11. Final instructions
         logger.info(chalk.greenBright('Saiki project created successfully!'));
         logger.info(chalk.yellow('Next steps:'));
         logger.info('1. Navigate to your project: ' + chalk.cyan('cd ' + projectName));
