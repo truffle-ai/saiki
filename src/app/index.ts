@@ -20,9 +20,9 @@ import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startApiServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
-import { validateCliOptions, handleCliOptionsError } from './utils/options.js';
+import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
 import { getPort } from '@core/utils/port-utils.js';
-import { createSaikiProject } from './cli/commands/create.js';
+import { createSaikiProject2 } from './cli/commands/create.js';
 
 // Load environment variables
 dotenv.config();
@@ -49,7 +49,7 @@ program
     .description('Scaffold a new Saiki Node.js project')
     .action(async () => {
         try {
-            await createSaikiProject();
+            await createSaikiProject2();
             process.exit(0);
         } catch (err) {
             logger.error('Project creation failed:', err);
