@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
+import pkg from '../../package.json' with { type: 'json' };
 
 import {
     logger,
@@ -32,7 +33,7 @@ const program = new Command();
 program
     .name('saiki')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
-    .version('0.2.3')
+    .version(pkg.version, '-v, --version', 'output the current version')
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
