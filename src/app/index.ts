@@ -66,7 +66,7 @@ program
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
-    .option('--mode <mode>', 'Run mode: cli, web, discord, or telegram', 'cli')
+    .option('--mode <mode>', 'Run mode: cli, web, discord, telegram, or api', 'cli')
     .option('--web-port <port>', 'Port for WebUI', '3000')
     // LLM Options
     .option('-m, --model <model>', 'Specify the LLM model to use')
@@ -245,6 +245,15 @@ async function startApp() {
             logger.error('Failed to start Telegram bot:', error);
             process.exit(1);
         }
+    } else if (runMode === 'api') {
+        // Start API server only
+        const agentCard = services.configManager.getConfig().agentCard ?? {};
+        const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
+        const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+
+        logger.info('Starting API server...', null, 'cyanBright');
+        await startApiServer(agent, apiPort, agentCard);
+        logger.info(`API endpoints available at ${apiUrl}`, null, 'magenta');
     }
 }
 
