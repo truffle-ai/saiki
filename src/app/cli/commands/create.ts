@@ -93,19 +93,19 @@ dist
         // 4. .env
         logger.info(chalk.blue('Creating .env...'));
         const envExampleContent = [
-            '# Saiki Configuration',
             '# Fill in your API keys here',
             '',
-            '# OpenAI API Key (if using OpenAI provider)',
+            '# OpenAI API Key (if using OpenAI provider in any of your agents)',
             'OPENAI_API_KEY=your_openai_api_key_here',
             '',
-            '# Google Generative AI API Key (if using Google provider)',
+            '# Google Generative AI API Key (if using Google provider in any of your agents)',
             '# GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key_here',
             '',
-            '# Anthropic API Key (if using Anthropic provider)',
+            '# Anthropic API Key (if using Anthropic provider in any of your agents)',
             '# ANTHROPIC_API_KEY=your_anthropic_api_key_here',
             '',
             '# Log level for Saiki (optional: error, warn, info, http, verbose, debug, silly)',
+            '# Set log level to warn/error to reduce logs, or debug/silly to see more',
             'SAIKI_LOG_LEVEL=info',
             '',
         ].join('\n');
