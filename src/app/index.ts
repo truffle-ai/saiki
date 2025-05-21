@@ -30,8 +30,8 @@ const invokedSubcommand = process.argv[2];
 // Skip API key enforcement for 'create' subcommand
 if (invokedSubcommand !== 'create' && invokedSubcommand !== 'new') {
     // Explicitly set the log level from environment
-    if (process.env.LOG_LEVEL) {
-        logger.setLevel(process.env.LOG_LEVEL);
+    if (process.env.SAIKI_LOG_LEVEL) {
+        logger.setLevel(process.env.SAIKI_LOG_LEVEL);
     }
 
     // Check for at least one required API key

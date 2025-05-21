@@ -93,10 +93,10 @@ dist
         await fs.writeFile(path.join(projectPath, '.gitignore'), gitignoreContent);
 
         // 5. .env.example
-        logger.info(chalk.blue('Creating .env.example...'));
+        logger.info(chalk.blue('Creating .env...'));
         const envExampleContent = [
             '# Saiki Configuration',
-            '# Copy this file to .env and fill in your API keys',
+            'Fill in your API keys here',
             '',
             '# OpenAI API Key (if using OpenAI provider)',
             'OPENAI_API_KEY=your_openai_api_key_here',
@@ -108,10 +108,10 @@ dist
             '# ANTHROPIC_API_KEY=your_anthropic_api_key_here',
             '',
             '# Log level for Saiki (optional: error, warn, info, http, verbose, debug, silly)',
-            '# LOG_LEVEL=info',
+            '# SAIKI_LOG_LEVEL=',
             '',
         ].join('\n');
-        await fs.writeFile(path.join(projectPath, '.env.example'), envExampleContent);
+        await fs.writeFile(path.join(projectPath, '.env'), envExampleContent);
 
         // Copy the Saiki config template into the new project
         logger.info(chalk.blue('Copying Saiki configuration file...'));
@@ -123,15 +123,21 @@ dist
         const destConfigDir = path.join(projectPath, 'src', 'saiki', 'config');
         await fs.mkdirp(destConfigDir);
         await fs.copy(templateConfigSrc, path.join(destConfigDir, 'saiki.yml'));
+        // Also copy config into a root-level config directory for runtime loading
+        const rootConfigDir = path.join(projectPath, 'config');
+        await fs.mkdirp(rootConfigDir);
+        await fs.copy(templateConfigSrc, path.join(rootConfigDir, 'saiki.yml'));
 
         // Create minimal TypeScript entry point
         logger.info(chalk.blue('Creating src/saiki/index.ts...'));
         const indexTsLines = [
+            "import 'dotenv/config';",
             "import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';",
             '',
             // relative to project root
             "const config = await loadConfigFile('./config/saiki.yml');",
             'export const agent = await SaikiAgent.create(config);',
+            'console.log(await agent.run("Hello saiki!"));',
         ];
         const indexTsContent = indexTsLines.join('\n');
         // Ensure the directory exists
@@ -172,7 +178,8 @@ dist
         packageJson.scripts = {
             ...packageJson.scripts,
             build: 'tsc',
-            start: 'ts-node src/saiki/index.ts',
+            start: 'node dist/saiki/index.js',
+            dev: 'ts-node-esm src/saiki/index.ts',
         };
         // Remove default test script if it exists
         if (packageJson.scripts.test === 'echo "Error: no test specified" && exit 1') {
