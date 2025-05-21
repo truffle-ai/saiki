@@ -78,19 +78,19 @@ program
     .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
     .version('0.2.3');
 
-// Define the 'create' command
-program
-    .command('create')
-    .alias('new')
-    .description('Scaffold a new Saiki Node.js project')
-    .action(async (options, command) => {
-        try {
-            await handleCreateProject();
-            process.exit(0);
-        } catch (error) {
-            process.exit(1);
-        }
-    });
+// Commented out create command registration to handle it manually and avoid blocking unknown commands
+// program
+//     .command('create')
+//     .alias('new')
+//     .description('Scaffold a new Saiki Node.js project')
+//     .action(async (options, command) => {
+//         try {
+//             await handleCreateProject();
+//             process.exit(0);
+//         } catch (error) {
+//             process.exit(1);
+//         }
+//     });
 
 // Potentially re-evaluate how [prompt...] is handled.
 // Commander allows for actions if no subcommand is matched.
@@ -101,10 +101,15 @@ async function startApp() {
     // Determine invoked subcommand (if any)
     const invokedSubcommand = process.argv[2];
 
-    // Use async parsing so that Commander waits for async .action handlers like 'create'
+    // Handle create invocation manually to avoid interfering with unknown command parsing
     if (invokedSubcommand === 'create' || invokedSubcommand === 'new') {
-        await program.parseAsync(process.argv);
-        // 'create' action will call process.exit(), or parsing completes and we return
+        const projectName = process.argv[3];
+        try {
+            await handleCreateProject(projectName);
+            process.exit(0);
+        } catch (error) {
+            process.exit(1);
+        }
         return;
     }
     // For all other cases, parse and then proceed to default logic
