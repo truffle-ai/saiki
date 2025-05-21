@@ -179,7 +179,7 @@ dist
             ...packageJson.scripts,
             build: 'tsc',
             start: 'node dist/saiki/index.js',
-            dev: 'ts-node-esm src/saiki/index.ts',
+            dev: 'node --loader ts-node/esm src/saiki/index.ts',
         };
         // Remove default test script if it exists
         if (packageJson.scripts.test === 'echo "Error: no test specified" && exit 1') {
@@ -196,9 +196,7 @@ dist
             '3. Change the config file to your liking: ' +
                 chalk.cyan('./src/saiki/agents/saiki.yml')
         );
-        logger.info(
-            '4. Run the example to get started: ' + chalk.cyan('npm run build && npm start')
-        );
+        logger.info('4. Run the example to get started: ' + chalk.cyan('npm run dev'));
         logger.info(
             '5. Read Saiki documentation to understand more about using Saiki: ' +
                 chalk.cyan('https://github.com/truffle-ai/saiki')
