@@ -96,7 +96,7 @@ dist
         logger.info(chalk.blue('Creating .env...'));
         const envExampleContent = [
             '# Saiki Configuration',
-            'Fill in your API keys here',
+            '# Fill in your API keys here',
             '',
             '# OpenAI API Key (if using OpenAI provider)',
             'OPENAI_API_KEY=your_openai_api_key_here',
@@ -134,7 +134,7 @@ dist
             "const config = await loadConfigFile('./src/saiki/config/saiki.yml');",
             'export const agent = await SaikiAgent.create(config);',
             '// run the agent',
-            'console.log(await agent.run("Hello saiki! What is capital of France?"));',
+            'console.log("Agent response:", await agent.run("Hello saiki! What is capital of France?"));',
         ];
         const indexTsContent = indexTsLines.join('\n');
         // Ensure the directory exists
@@ -188,16 +188,10 @@ dist
         logger.info(chalk.greenBright('\nSaiki project created successfully!'));
         logger.info(chalk.yellow('\nNext steps:'));
         logger.info('1. Navigate to your project: ' + chalk.cyan('cd ' + projectName));
+        logger.info('2. Add your API key(s) to ' + chalk.cyan('.env'));
         logger.info(
-            '2. Copy ' +
-                chalk.cyan('.env.example') +
-                ' to ' +
-                chalk.cyan('.env') +
-                ' and add your API key(s).'
+            '3. Run the example to get started: ' + chalk.cyan('npm run build && npm start')
         );
-        logger.info('   Example: ' + chalk.cyan('cp .env.example .env'));
-        logger.info('3. Edit your .env file with your actual API keys.');
-        logger.info('4. Run the example: ' + chalk.cyan('npm start'));
     } catch (error) {
         logger.error(chalk.red('\\nFailed to create Saiki project:'));
         if (error instanceof Error) {
