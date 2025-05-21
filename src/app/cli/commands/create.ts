@@ -108,7 +108,7 @@ dist
             '# ANTHROPIC_API_KEY=your_anthropic_api_key_here',
             '',
             '# Log level for Saiki (optional: error, warn, info, http, verbose, debug, silly)',
-            '# SAIKI_LOG_LEVEL=',
+            'SAIKI_LOG_LEVEL=info',
             '',
         ].join('\n');
         await fs.writeFile(path.join(projectPath, '.env'), envExampleContent);
@@ -123,10 +123,6 @@ dist
         const destConfigDir = path.join(projectPath, 'src', 'saiki', 'config');
         await fs.mkdirp(destConfigDir);
         await fs.copy(templateConfigSrc, path.join(destConfigDir, 'saiki.yml'));
-        // Also copy config into a root-level config directory for runtime loading
-        const rootConfigDir = path.join(projectPath, 'config');
-        await fs.mkdirp(rootConfigDir);
-        await fs.copy(templateConfigSrc, path.join(rootConfigDir, 'saiki.yml'));
 
         // Create minimal TypeScript entry point
         logger.info(chalk.blue('Creating src/saiki/index.ts...'));
@@ -134,10 +130,11 @@ dist
             "import 'dotenv/config';",
             "import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';",
             '',
-            // relative to project root
-            "const config = await loadConfigFile('./config/saiki.yml');",
+            '// initialize the agent from the config file',
+            "const config = await loadConfigFile('./src/saiki/config/saiki.yml');",
             'export const agent = await SaikiAgent.create(config);',
-            'console.log(await agent.run("Hello saiki!"));',
+            '// run the agent',
+            'console.log(await agent.run("Hello saiki! What is capital of France?"));',
         ];
         const indexTsContent = indexTsLines.join('\n');
         // Ensure the directory exists
