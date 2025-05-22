@@ -34,7 +34,6 @@ export function getPackageManager(): string {
         return 'npm'; // Default to npm if no project root is found
     }
     // Check for specific lock files in this project
-
     if (fsExtra.existsSync(path.join(projectRoot, 'pnpm-lock.yaml'))) {
         return 'pnpm';
     }
@@ -62,6 +61,9 @@ export async function getPackageVersion(): Promise<string> {
     }
     const pkgJsonPath = path.join(projectRoot, 'package.json');
     const content = (await fsExtra.readJSON(pkgJsonPath)) as PackageJson;
+    if (!content.version) {
+        throw new Error('Could not find version in package.json');
+    }
     return content.version;
 }
 
