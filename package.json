@@ -24,9 +24,11 @@
     "scripts": {
         "clean": "npx rimraf dist",
         "prebuild": "",
-        "build": "npm run clean && tsup && npm run copy-client",
+        "build": "npm run clean && tsup && npm run copy-client && npm run copy-webui && npm run prepare-webui",
         "prepare": "husky",
         "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"src/app/web/client/*\" public",
+        "copy-webui": "node scripts/copy-webui.js",
+        "prepare-webui": "cd dist/src/app/webui && npm install --omit=dev",
         "start": "node dist/src/app/index.js",
         "dev": "tsc --watch",
         "lint": "eslint . --ext .js,.jsx,.ts,.tsx --flat",
@@ -51,7 +53,8 @@
     "files": [
         "dist/",
         "configuration/saiki.yml",
-        "public/"
+        "public/",
+        "src/app/webui/"
     ],
     "dependencies": {
         "@ai-sdk/anthropic": "^1.2.2",

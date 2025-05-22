@@ -3,8 +3,7 @@ import { existsSync } from 'fs';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 import path from 'path';
-import os from 'os';
-import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
 import pkg from '../../package.json' with { type: 'json' };
 
 import {
@@ -27,6 +26,7 @@ import { createSaikiProject } from './cli/commands/create.js';
 import { initSaiki } from './cli/commands/init.js';
 import { getUserInput as getUserInputForProject } from './cli/commands/init.js';
 import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
+import { startNextJsWebServer } from './web.js';
 // Load environment variables
 dotenv.config();
 
@@ -205,60 +205,73 @@ program
                 const webPort = parseInt(opts.webPort, 10);
                 const frontPort = getPort(process.env.FRONTEND_PORT, webPort, 'FRONTEND_PORT');
                 const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
-                const cwd = path.resolve(process.cwd(), 'src', 'app', 'webui');
+                const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+                logger.debug(`Script directory for web mode: ${scriptDir}`);
+
+                // Try to find the webui directory - could be in different locations depending on installation type
+                let webuiPath = path.resolve(scriptDir, 'webui');
+
+                // If not found in expected location for dist, check other possible locations
+                if (!existsSync(webuiPath)) {
+                    // Check for source directory (common in dev mode and npm link)
+                    const srcPath = path.resolve(scriptDir, '..', '..', 'src', 'app', 'webui');
+                    if (existsSync(srcPath)) {
+                        webuiPath = srcPath;
+                        logger.debug(`Found webui in source path: ${webuiPath}`);
+                    } else {
+                        // Check for cwd + src path (another npm link scenario)
+                        const cwdPath = path.resolve(process.cwd(), 'src', 'app', 'webui');
+                        if (existsSync(cwdPath)) {
+                            webuiPath = cwdPath;
+                            logger.debug(`Found webui in cwd path: ${webuiPath}`);
+                        } else {
+                            logger.warn(
+                                'Could not locate webui directory. Web UI may not be available.'
+                            );
+                        }
+                    }
+                } else {
+                    logger.debug(`Using installed webui path: ${webuiPath}`);
+                }
+
                 const frontUrl = process.env.FRONTEND_URL ?? `http://localhost:${frontPort}`;
                 const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 
-                logger.info(`Launching Next.js dev server on ${frontUrl}`, null, 'cyanBright');
-                const nextProc = spawn('npm', ['run', 'dev', '--', '--port', String(frontPort)], {
-                    cwd,
-                    shell: true,
-                    stdio: 'inherit',
-                    env: {
-                        ...process.env,
-                        NODE_ENV: 'development',
-                        API_PORT: String(apiPort),
-                        API_URL: apiUrl,
-                        FRONTEND_URL: frontUrl,
-                        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? apiUrl,
-                        NEXT_PUBLIC_WS_URL:
-                            process.env.NEXT_PUBLIC_WS_URL ??
-                            (() => {
-                                const ifaces = os.networkInterfaces();
-                                for (const list of Object.values(ifaces)) {
-                                    for (const iface of list ?? []) {
-                                        if (iface.family === 'IPv4' && !iface.internal) {
-                                            return `ws://${iface.address}:${apiPort}`;
-                                        }
-                                    }
-                                }
-                                return `ws://localhost:${apiPort}`;
-                            })(),
-                        NEXT_PUBLIC_FRONTEND_URL: process.env.NEXT_PUBLIC_FRONTEND_URL ?? frontUrl,
-                    },
-                });
-                nextProc.on('error', (err) => {
-                    logger.error(`Next.js dev server failed to start: ${err}`);
-                    process.exit(1);
-                });
-                nextProc.on('exit', (code, signal) => {
-                    if (code !== 0) {
-                        logger.error(`Next.js dev server exited with code ${code}`, null, 'red');
-                        process.exit(1);
-                    }
-                });
-
+                // Start API server first
                 await startApiServer(
                     agent,
                     apiPort,
                     agent.configManager.getConfig().agentCard || {}
                 );
-                logger.info(
-                    `API endpoints and legacy web UI available at: ${apiUrl}`,
-                    null,
-                    'green'
-                );
-                logger.info(`New web UI available at: ${frontUrl}`, null, 'green');
+                logger.info(`API endpoints available at: ${apiUrl}`, null, 'green');
+
+                // Check if webui directory exists and has package.json
+                const hasWebUI =
+                    existsSync(webuiPath) && existsSync(path.join(webuiPath, 'package.json'));
+
+                if (hasWebUI) {
+                    await startNextJsWebServer(webuiPath, frontPort, apiUrl, frontUrl);
+                } else {
+                    logger.warn(
+                        'Web UI directory not found. Only API endpoints are available.',
+                        null,
+                        'yellow'
+                    );
+                    logger.error(
+                        'This is unexpected as the webui directory should be included in the package.'
+                    );
+                    logger.info('Possible fixes:');
+                    logger.info(
+                        '  1. Reinstall the package: npm uninstall -g @truffle-ai/saiki && npm install -g @truffle-ai/saiki'
+                    );
+                    logger.info(
+                        '  2. Update to the latest version: npm update -g @truffle-ai/saiki'
+                    );
+                    logger.info(
+                        '  3. Run from source: git clone https://github.com/truffle-ai/saiki.git && cd saiki && npm install && npm run build'
+                    );
+                }
+
                 break;
             }
 
