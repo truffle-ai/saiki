@@ -19,9 +19,13 @@ export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'grok';
  * @param llmApiKey - The API key for the LLM provider
  * @returns The path to the created Saiki project
  */
-export async function initSaiki(directory: string, llmProvider?: LLMProvider, llmApiKey?: string) {
+export async function initSaiki(
+    directory: string,
+    createExampleFile = true,
+    llmProvider?: LLMProvider,
+    llmApiKey?: string
+) {
     const spinner = p.spinner();
-    spinner.start('Initializing Saiki');
 
     try {
         // install saiki
@@ -30,35 +34,39 @@ export async function initSaiki(directory: string, llmProvider?: LLMProvider, ll
         spinner.start('Installing Saiki...');
         const label = 'latest';
         await executeWithTimeout(packageManager, [installCommand, `@truffle-ai/saiki@${label}`], {
-            cwd: directory,
+            cwd: process.cwd(),
         });
         spinner.stop('Saiki installed successfully!');
 
+        spinner.start('Creating Saiki files...');
         // create saiki directories (saiki, saiki/agents)
-        spinner.start('Creating Saiki directories...');
         const result = await createSaikiDirectories(directory);
 
         if (!result.ok) {
             spinner.stop(chalk.inverse('Saiki already initialized '));
             return { success: false };
         }
-        spinner.stop('Saiki directories created successfully!');
-        const saikiDir = result.dirPath;
 
-        // create saiki config file and example index file
-        spinner.start('Creating Saiki config file and example index file...');
+        // create saiki config file
+        const saikiDir = path.join(directory, 'saiki');
         const agentsDir = path.join(saikiDir, 'agents');
         await createSaikiConfigFile(agentsDir);
-        await createSaikiIndexFile(saikiDir);
-        spinner.stop('Saiki config file and example index file created successfully!');
+
+        // create saiki example file if requested
+        if (createExampleFile) {
+            await createSaikiExampleFile(saikiDir);
+        }
 
         // add/update .env file
         await updateEnvFile(directory, llmProvider, llmApiKey);
+
+        spinner.stop('Saiki files created successfully!');
     } catch (err) {
         spinner.stop(chalk.inverse('An error occurred while creating Saiki directory'));
         console.error(err);
         return { success: false };
     }
+    p.outro(chalk.greenBright('Saiki initialized successfully!'));
 }
 
 /**
@@ -69,13 +77,8 @@ export async function initSaiki(directory: string, llmProvider?: LLMProvider, ll
 export async function createSaikiDirectories(
     directory: string
 ): Promise<{ ok: true; dirPath: string } | { ok: false }> {
-    let dir = directory
-        .trim()
-        .split('/')
-        .filter((item) => item !== '');
-
-    const dirPath = path.join(process.cwd(), ...dir, 'saiki');
-    const agentsPath = path.join(dirPath, 'agents');
+    const dirPath = path.join(directory, 'saiki');
+    const agentsPath = path.join(directory, 'saiki', 'agents');
 
     try {
         await fs.access(dirPath);
@@ -109,11 +112,11 @@ export async function createSaikiConfigFile(directory: string): Promise<string> 
 }
 
 /**
- * Creates an example index file in the given directory. This file has example code to get you started.
+ * Creates an example file in the given directory showing how to use Saiki in code. This file has example code to get you started.
  * @param directory - The directory to create the example index file in
  * @returns The path to the created example index file
  */
-export async function createSaikiIndexFile(directory: string): Promise<string> {
+export async function createSaikiExampleFile(directory: string): Promise<string> {
     const indexTsLines = [
         "import 'dotenv/config';",
         "import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';",
@@ -131,18 +134,28 @@ export async function createSaikiIndexFile(directory: string): Promise<string> {
     ];
     const indexTsContent = indexTsLines.join('\n');
     // Ensure the directory exists before writing the file
-    await fs.writeFile(path.join(directory, 'index.ts'), indexTsContent);
-    return path.join(directory, 'index.ts');
+    await fs.writeFile(path.join(directory, 'saiki-example.ts'), indexTsContent);
+    return path.join(directory, 'saiki-example.ts');
 }
 
 /**
- * Updates or creates a .env file in the given directory by:
+ * Updates or creates a .env file by adding or updating a Saiki environment variables section.
+ * The function handles these scenarios:
+ *
  * 1. Finding the project root by searching for a lock file.
- * 2. Reading the existing .env file (if present), preserving unrelated lines.
- * 3. Extracting current Saiki env variables (OPENAI_API_KEY, etc.).
- * 4. Determining new values: override with provided provider/key or keep existing/defaults.
- * 5. Removing any existing '## Saiki env variables' section to avoid duplication.
- * 6. Appending a '## Saiki env variables' section with updated variables at the end.
+ * 2. Reading any existing .env file, preserving unrelated environment variables.
+ * 3. Removing any existing '## Saiki env variables' section to avoid duplication.
+ * 4. Adding a new '## Saiki env variables' section at the end of the file.
+ *
+ * For each environment variable (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.), the function handles four cases:
+ * 1. If the variable already exists elsewhere in .env and was passed as parameter:
+ *    Add a duplicate entry in the Saiki section with the new value.
+ * 2. If the variable already exists elsewhere in .env and wasn't passed:
+ *    Skip adding it to the Saiki section to avoid duplication.
+ * 3. If the variable doesn't exist in .env and was passed:
+ *    Add it to the Saiki section with the provided value.
+ * 4. If the variable doesn't exist in .env and wasn't passed:
+ *    Add it to the Saiki section with an empty string value.
  *
  * @param directory - The directory to start searching for the project root.
  * @param llmProvider - The LLM provider to use (openai, anthropic, google, grok).
@@ -153,7 +166,7 @@ export async function updateEnvFile(
     llmProvider?: LLMProvider,
     llmApiKey?: string
 ) {
-    const templateKeys = [
+    const saikiEnvKeys = [
         'OPENAI_API_KEY',
         'ANTHROPIC_API_KEY',
         'GOOGLE_GENERATIVE_AI_API_KEY',
@@ -161,6 +174,7 @@ export async function updateEnvFile(
         'SAIKI_LOG_LEVEL',
     ];
 
+    // Find project root and build .env file path
     const projectRoot = findProjectRoot(directory);
     if (!projectRoot) {
         throw new Error('Could not find project root (no lock file found)');
@@ -168,25 +182,35 @@ export async function updateEnvFile(
     const envFilePath = path.join(projectRoot, '.env');
 
     // Read existing .env if present
-    let lines: string[] = [];
+    let envLines: string[] = [];
     try {
         const existingEnv = await fs.readFile(envFilePath, 'utf8');
-        lines = existingEnv.split('\n');
+        envLines = existingEnv.split('\n');
     } catch {
-        // file may not exist, start with empty
+        // File may not exist, start with empty array
     }
 
-    // Build a map of current values for template keys
+    // Extract current values for Saiki environment variables
     const currentValues: Record<string, string> = {};
-    lines.forEach((line) => {
+    envLines.forEach((line) => {
         const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && templateKeys.includes(match[1])) {
+        if (match && saikiEnvKeys.includes(match[1])) {
             currentValues[match[1]] = match[2];
         }
     });
 
-    // Prepare new values for template keys
-    const newValues: Record<string, string> = {
+    // Map the provider to its corresponding API key name
+    const providerToKeyMap: Record<string, string> = {
+        openai: 'OPENAI_API_KEY',
+        anthropic: 'ANTHROPIC_API_KEY',
+        google: 'GOOGLE_GENERATIVE_AI_API_KEY',
+        grok: 'GROK_API_KEY',
+    };
+
+    const passedKey = llmProvider ? providerToKeyMap[llmProvider] : undefined;
+
+    // Prepare updated values for Saiki environment variables
+    const updatedValues: Record<string, string> = {
         OPENAI_API_KEY:
             llmProvider === 'openai' ? (llmApiKey ?? '') : (currentValues['OPENAI_API_KEY'] ?? ''),
         ANTHROPIC_API_KEY:
@@ -202,85 +226,133 @@ export async function updateEnvFile(
         SAIKI_LOG_LEVEL: currentValues['SAIKI_LOG_LEVEL'] ?? 'info',
     };
 
-    // Remove existing Saiki section if present and insert new section
+    // Extract content before and after the Saiki section
     const sectionHeader = '## Saiki env variables';
-    // Split lines into before and after the existing Saiki section
-    let beforeSection: string[];
-    let afterSection: string[];
-    const headerIndex = lines.findIndex((line) => line.trim() === sectionHeader);
+    const headerIndex = envLines.findIndex((line) => line.trim() === sectionHeader);
+
+    let contentLines: string[];
+
     if (headerIndex !== -1) {
-        // Preserve all lines before the header
-        beforeSection = lines.slice(0, headerIndex);
-        // Find end of the old section (skip header and key lines)
+        // Extract lines before the section header
+        const beforeSection = envLines.slice(0, headerIndex);
+
+        // Find the end of the section
         let sectionEnd = headerIndex + 1;
-        while (sectionEnd < lines.length && lines[sectionEnd].trim() !== '') {
+        while (sectionEnd < envLines.length && envLines[sectionEnd].trim() !== '') {
             sectionEnd++;
         }
+
         // Skip the blank line after the section if present
-        if (sectionEnd < lines.length && lines[sectionEnd].trim() === '') {
+        if (sectionEnd < envLines.length && envLines[sectionEnd].trim() === '') {
             sectionEnd++;
         }
-        // Preserve all lines after the old section
-        afterSection = lines.slice(sectionEnd);
+
+        // Extract lines after the section
+        const afterSection = envLines.slice(sectionEnd);
+
+        // Combine sections
+        contentLines = [...beforeSection, ...afterSection];
     } else {
-        beforeSection = lines;
-        afterSection = [];
+        contentLines = envLines;
     }
-    // Combine the preserved lines exactly as they were
-    const originalLines = [...beforeSection, ...afterSection];
-    const originalMap: Record<string, string> = {};
-    originalLines.forEach((line) => {
+
+    // Identify env variables already present outside the Saiki section
+    const existingEnvVars: Record<string, string> = {};
+    contentLines.forEach((line) => {
         const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && templateKeys.includes(match[1])) {
-            originalMap[match[1]] = match[2];
+        if (match && saikiEnvKeys.includes(match[1])) {
+            existingEnvVars[match[1]] = match[2];
         }
     });
 
-    // Determine which key is passed and its value
-    let passedKey: string | undefined;
-    switch (llmProvider) {
-        case 'openai':
-            passedKey = 'OPENAI_API_KEY';
-            break;
-        case 'anthropic':
-            passedKey = 'ANTHROPIC_API_KEY';
-            break;
-        case 'google':
-            passedKey = 'GOOGLE_GENERATIVE_AI_API_KEY';
-            break;
-        case 'grok':
-            passedKey = 'GROK_API_KEY';
-            break;
-        default:
-            passedKey = undefined;
-    }
-    const passedVal = llmApiKey ?? '';
-
-    // Combine the preserved lines exactly as they were
-    const baseLines = [...beforeSection, ...afterSection];
-    // Ensure exactly one blank line before the new Saiki section
-    if (baseLines.length === 0 || baseLines[baseLines.length - 1].trim() !== '') {
-        baseLines.push('');
+    // Ensure exactly one blank line before adding the new section
+    if (contentLines.length > 0) {
+        // If the last line is not blank, add a blank line
+        if (contentLines[contentLines.length - 1].trim() !== '') {
+            contentLines.push('');
+        }
+    } else {
+        // If the file was empty, add a blank line at the start
+        contentLines.push('');
     }
 
-    // Build new Saiki section entries using newValues and avoiding duplicates
-    const sectionEntries: string[] = [];
-    for (const key of templateKeys) {
-        // Skip keys originally present and not passed
-        if (key in originalMap && key !== passedKey) {
+    // Add the section header
+    contentLines.push(sectionHeader);
+
+    // Add environment variables that should be included
+    for (const key of saikiEnvKeys) {
+        // Skip keys already present outside Saiki section (unless it's the passed key)
+        if (key in existingEnvVars && key !== passedKey) {
             continue;
         }
-        // Otherwise insert with updated or default value
-        sectionEntries.push(`${key}=${newValues[key]}`);
+        contentLines.push(`${key}=${updatedValues[key]}`);
     }
 
-    // Append the new Saiki env section
-    baseLines.push(sectionHeader);
-    for (const entry of sectionEntries) {
-        baseLines.push(entry);
-    }
-    // End with a single blank line
-    baseLines.push('');
-    // Write merged .env
-    await fs.writeFile(envFilePath, baseLines.join('\n'), 'utf8');
+    // End with a blank line
+    contentLines.push('');
+
+    // Write the updated content
+    await fs.writeFile(envFilePath, contentLines.join('\n'), 'utf8');
+}
+
+export async function getUserInput(): Promise<{
+    llmProvider: LLMProvider;
+    llmApiKey: any;
+    directory: string;
+    createExampleFile: any;
+}> {
+    p.intro(chalk.inverse('Saiki Init'));
+
+    const answers = await p.group(
+        {
+            llmProvider: () =>
+                p.select({
+                    message: 'Select the LLM provider',
+                    options: [
+                        { value: 'openai', label: 'OpenAI', hint: 'Most popular LLM provider' },
+                        { value: 'anthropic', label: 'Anthropic' },
+                        { value: 'google', label: 'Google' },
+                        { value: 'grok', label: 'Grok' },
+                    ],
+                }),
+            llmApiKey: async ({ results }) => {
+                const llmProvider = results.llmProvider;
+                const selection = await p.select({
+                    message: `Enter your API key for ${llmProvider}?`,
+                    options: [
+                        { value: 'skip', label: 'Skip', hint: 'default' },
+                        { value: 'enter', label: 'Enter', hint: 'enter it manually' },
+                    ],
+                    initialValue: 'skip',
+                });
+
+                if (selection === 'enter') {
+                    return await p.text({
+                        message: 'Enter your API key',
+                        placeholder: 'sk-...',
+                    });
+                }
+                return '';
+            },
+            directory: () =>
+                p.text({
+                    message: 'Enter the directory to add the saiki files in',
+                    placeholder: 'src/',
+                    defaultValue: 'src/',
+                }),
+            createExampleFile: () =>
+                p.confirm({
+                    message: 'Create a saiki example file?',
+                    initialValue: true,
+                }),
+        },
+        {
+            onCancel: () => {
+                p.cancel('Saiki initialization cancelled');
+                process.exit(0);
+            },
+        }
+    );
+
+    return answers;
 }

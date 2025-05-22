@@ -1,15 +1,9 @@
 import fs from 'fs-extra';
 import path from 'path';
 import chalk from 'chalk';
-import { logger } from '@core/index.js'; // Using logger for command output
-import { createRequire } from 'module';
 import { executeWithTimeout } from '../utils/execute.js';
 import * as p from '@clack/prompts';
-import {
-    addScriptsToPackageJson,
-    getPackageManager,
-    getPackageManagerInstallCommand,
-} from '../utils/package-mgmt.js';
+import { getPackageManager, getPackageManagerInstallCommand } from '../utils/package-mgmt.js';
 
 // const require = createRequire(import.meta.url);
 
@@ -240,35 +234,30 @@ export async function createSaikiProject2(name?: string) {
             throw error;
         }
     }
-    spinner.stop('Project initialized successfully!');
 
     // Move to the new project directory
     process.chdir(projectPath);
 
     // initialize package.json
-    spinner.start('Initializing package.json...');
     await executeWithTimeout('npm', ['init', '-y'], { cwd: projectPath });
-    spinner.stop('package.json initialized successfully!');
 
     // initialize git repository
-    spinner.start('Initializing git repository...');
     await executeWithTimeout('git', ['init'], { cwd: projectPath });
     // add .gitignore
     await fs.writeFile('.gitignore', 'node_modules\n.env\ndist\n.saiki\n*.log');
-    spinner.stop('Git repository initialized successfully!');
 
     // update package.json and module type
-    spinner.start('Updating package.json and module type for typescript...');
     const packageJson = JSON.parse(await fs.readFile('package.json', 'utf8'));
     packageJson.type = 'module';
     packageJson.scripts = {
         ...packageJson.scripts,
         build: 'tsc',
-        start: 'node dist/saiki/index.js',
-        dev: 'node --loader ts-node/esm src/saiki/index.ts',
+        start: 'node dist/saiki/saiki-example.js',
+        dev: 'node --loader ts-node/esm src/saiki/saiki-example.ts',
     };
     await fs.writeFile('package.json', JSON.stringify(packageJson, null, 2));
-    spinner.stop('package.json updated successfully!');
+
+    spinner.stop('Project files created successfully!');
 
     spinner.start('Installing dependencies...');
     const packageManager = getPackageManager();
@@ -286,10 +275,9 @@ export async function createSaikiProject2(name?: string) {
         { cwd: projectPath }
     );
 
-    spinner.stop('Dependencies installed successfully!');
+    spinner.stop('Dependencies installed!');
 
     // setup tsconfig.json
-    spinner.start('Setting up tsconfig.json...');
     const tsconfig = {
         compilerOptions: {
             target: 'ES2022',
@@ -306,9 +294,8 @@ export async function createSaikiProject2(name?: string) {
         exclude: ['node_modules', 'dist', '.saiki'],
     };
     await fs.writeJSON(path.join(projectPath, 'tsconfig.json'), tsconfig, { spaces: 4 });
-    spinner.stop('tsconfig.json setup successfully!');
 
-    p.outro(chalk.inverse('Saiki project created successfully!'));
+    p.outro(chalk.greenBright('Saiki project created successfully!'));
 
     // TODO: saiki.yml, install saiki ,and .env setup - can do in init command
     // make sure to use

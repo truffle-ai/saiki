@@ -23,6 +23,8 @@ import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
 import { getPort } from '@core/utils/port-utils.js';
 import { createSaikiProject2 } from './cli/commands/create.js';
+import { initSaiki } from './cli/commands/init.js';
+import { getUserInput } from './cli/commands/init.js';
 
 // Load environment variables
 dotenv.config();
@@ -51,12 +53,24 @@ program
         // create project
         try {
             await createSaikiProject2();
-            process.exit(0);
         } catch (err) {
             logger.error('Project creation failed:', err);
             process.exit(1);
         }
-        // then call init command functions
+        // then call init to initialize the project
+        try {
+            const userInput = await getUserInput();
+            await initSaiki(
+                userInput.directory,
+                userInput.createExampleFile,
+                userInput.llmProvider,
+                userInput.llmApiKey
+            );
+            process.exit(0);
+        } catch (err) {
+            logger.error('Initialization failed:', err);
+            process.exit(1);
+        }
     });
 
 // 3) DEFAULT RUNNER (CLI / HEADLESS / WEB / DISCORD / TELEGRAM)
