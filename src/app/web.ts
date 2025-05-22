@@ -4,29 +4,75 @@ import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 import os from 'os';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 /**
- * Starts the legacy web server
- * @param webuiPath - The path to the webui directory
+ * Discovers the webui path, starting and configuring the Next.js server
+ * TODO: Refactor this to be less hacky
+ * @param webuiPathParam - Optional: The path to the webui directory (auto-discovered if not provided)
  * @param frontPort - The port to run the web server on
- * @param apiUrl - The URL of the API
+ * @param apiUrl - The URL of the API server
  * @param frontUrl - The URL of the web server
  */
-export async function startLegacyWebServer(
-    webuiPath: string,
-    frontPort: number,
-    apiUrl: string,
-    frontUrl: string
-): Promise<boolean> {}
-
-// Function to start the Next.js web server
-// TODO: Improve this to be more reliable based on different environment types
 export async function startNextJsWebServer(
-    webuiPath: string,
-    frontPort: number,
     apiUrl: string,
-    frontUrl: string
+    frontPort: number = 3000,
+    frontUrl: string = `http://localhost:${frontPort}`
 ): Promise<boolean> {
+    // Path discovery logic from index.ts
+
+    // If no path was provided, try to automatically detect it
+    const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+    logger.debug(`Script directory for web mode: ${scriptDir}`);
+
+    // Try to find the webui directory - could be in different locations depending on installation type
+    let webuiPath = path.resolve(scriptDir, 'webui');
+
+    // If not found in expected location for dist, check other possible locations
+    if (!existsSync(webuiPath)) {
+        // Check for source directory (common in dev mode and npm link)
+        const srcPath = path.resolve(scriptDir, '..', '..', 'src', 'app', 'webui');
+        if (existsSync(srcPath)) {
+            webuiPath = srcPath;
+            logger.debug(`Found webui in source path: ${webuiPath}`);
+        } else {
+            // Check for cwd + src path (another npm link scenario)
+            const cwdPath = path.resolve(process.cwd(), 'src', 'app', 'webui');
+            if (existsSync(cwdPath)) {
+                webuiPath = cwdPath;
+                logger.debug(`Found webui in cwd path: ${webuiPath}`);
+            } else {
+                logger.warn('Could not locate webui directory. Web UI may not be available.');
+                return false;
+            }
+        }
+    } else {
+        logger.debug(`Using installed webui path: ${webuiPath}`);
+    }
+
+    // Check if webui directory exists and has package.json
+    const hasWebUI = existsSync(webuiPath) && existsSync(path.join(webuiPath, 'package.json'));
+
+    if (!hasWebUI) {
+        logger.warn(
+            'Web UI directory not found. Only API endpoints are available.',
+            null,
+            'yellow'
+        );
+        logger.error(
+            'This is unexpected as the webui directory should be included in the package. Cut an issue on GitHub if you are seeing this.'
+        );
+        logger.debug('Possible fixes:');
+        logger.debug(
+            '  1. Reinstall the package: npm uninstall -g @truffle-ai/saiki && npm install -g @truffle-ai/saiki'
+        );
+        logger.info('  2. Update to the latest version: npm update -g @truffle-ai/saiki');
+        logger.info(
+            '  3. Run from source: git clone https://github.com/truffle-ai/saiki.git && cd saiki && npm install && npm run build'
+        );
+        return false;
+    }
+
     try {
         // Extract API port from API URL
         const apiPortMatch = apiUrl.match(/:(\d+)$/);
@@ -133,7 +179,7 @@ export async function startNextJsWebServer(
             }
         });
 
-        logger.info(`Web UI should be available shortly at: ${frontUrl}`, null, 'green');
+        logger.info(`New next-js web UI available at: ${frontUrl}`, null, 'green');
         return true;
     } catch (err) {
         logger.error(`Failed to spawn Next.js process: ${err}`);

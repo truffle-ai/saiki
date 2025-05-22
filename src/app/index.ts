@@ -17,7 +17,7 @@ import {
     createSaikiAgent,
 } from '@core/index.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
-import { startApiServer } from './api/server.js';
+import { startApiAndLegacyWebUIServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
@@ -205,72 +205,19 @@ program
                 const webPort = parseInt(opts.webPort, 10);
                 const frontPort = getPort(process.env.FRONTEND_PORT, webPort, 'FRONTEND_PORT');
                 const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
-                const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-                logger.debug(`Script directory for web mode: ${scriptDir}`);
-
-                // Try to find the webui directory - could be in different locations depending on installation type
-                let webuiPath = path.resolve(scriptDir, 'webui');
-
-                // If not found in expected location for dist, check other possible locations
-                if (!existsSync(webuiPath)) {
-                    // Check for source directory (common in dev mode and npm link)
-                    const srcPath = path.resolve(scriptDir, '..', '..', 'src', 'app', 'webui');
-                    if (existsSync(srcPath)) {
-                        webuiPath = srcPath;
-                        logger.debug(`Found webui in source path: ${webuiPath}`);
-                    } else {
-                        // Check for cwd + src path (another npm link scenario)
-                        const cwdPath = path.resolve(process.cwd(), 'src', 'app', 'webui');
-                        if (existsSync(cwdPath)) {
-                            webuiPath = cwdPath;
-                            logger.debug(`Found webui in cwd path: ${webuiPath}`);
-                        } else {
-                            logger.warn(
-                                'Could not locate webui directory. Web UI may not be available.'
-                            );
-                        }
-                    }
-                } else {
-                    logger.debug(`Using installed webui path: ${webuiPath}`);
-                }
-
-                const frontUrl = process.env.FRONTEND_URL ?? `http://localhost:${frontPort}`;
                 const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+                const nextJSserverURL = process.env.FRONTEND_URL ?? `http://localhost:${frontPort}`;
 
-                // Start API server first
-                await startApiServer(
+                // Start API server first with legacy web UI
+                await startApiAndLegacyWebUIServer(
                     agent,
                     apiPort,
+                    true,
                     agent.configManager.getConfig().agentCard || {}
                 );
-                logger.info(`API endpoints available at: ${apiUrl}`, null, 'green');
 
-                // Check if webui directory exists and has package.json
-                const hasWebUI =
-                    existsSync(webuiPath) && existsSync(path.join(webuiPath, 'package.json'));
-
-                if (hasWebUI) {
-                    await startNextJsWebServer(webuiPath, frontPort, apiUrl, frontUrl);
-                } else {
-                    logger.warn(
-                        'Web UI directory not found. Only API endpoints are available.',
-                        null,
-                        'yellow'
-                    );
-                    logger.error(
-                        'This is unexpected as the webui directory should be included in the package.'
-                    );
-                    logger.info('Possible fixes:');
-                    logger.info(
-                        '  1. Reinstall the package: npm uninstall -g @truffle-ai/saiki && npm install -g @truffle-ai/saiki'
-                    );
-                    logger.info(
-                        '  2. Update to the latest version: npm update -g @truffle-ai/saiki'
-                    );
-                    logger.info(
-                        '  3. Run from source: git clone https://github.com/truffle-ai/saiki.git && cd saiki && npm install && npm run build'
-                    );
-                }
+                // Start Next.js web server
+                await startNextJsWebServer(apiUrl, frontPort, nextJSserverURL);
 
                 break;
             }
