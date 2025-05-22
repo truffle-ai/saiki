@@ -22,7 +22,7 @@ import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
 import { getPort } from '@core/utils/port-utils.js';
-import { createSaikiProject2 } from './cli/commands/create.js';
+import { createSaikiProject } from './cli/commands/create.js';
 import { initSaiki } from './cli/commands/init.js';
 import { getUserInput } from './cli/commands/init.js';
 
@@ -51,7 +51,7 @@ program
     .action(async () => {
         // create project
         try {
-            await createSaikiProject2();
+            await createSaikiProject();
         } catch (err) {
             logger.error('Project creation failed:', err);
             process.exit(1);
