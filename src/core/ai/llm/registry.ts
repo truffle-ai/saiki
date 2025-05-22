@@ -21,8 +21,10 @@ export interface ProviderInfo {
 
 export const DEFAULT_MAX_TOKENS = 128000;
 
+export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'groq';
+
 // Central registry of supported LLM providers and their models
-export const LLM_REGISTRY: Record<string, ProviderInfo> = {
+export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     openai: {
         models: [
             { name: 'gpt-4.1', maxTokens: 1047576 },
@@ -54,7 +56,14 @@ export const LLM_REGISTRY: Record<string, ProviderInfo> = {
             { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 },
         ],
     },
-    // Add other providers like Groq, Cohere, etc., as needed
+    // https://console.groq.com/docs/models
+    groq: {
+        models: [
+            { name: 'gemma-2-9b-it', maxTokens: 8192 },
+            { name: 'llama-3.3-70b-versatile', maxTokens: 128000, default: true },
+        ],
+    },
+    // Add other providers like Cohere, etc., as needed
 };
 
 /**

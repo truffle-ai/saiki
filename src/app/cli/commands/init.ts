@@ -7,7 +7,12 @@ import { getPackageManager, getPackageManagerInstallCommand } from '../utils/pac
 import { executeWithTimeout } from '../utils/execute.js';
 import { createRequire } from 'module';
 import { findProjectRoot } from '../utils/path.js';
-import { loadConfigFile, getDefaultModelForProvider, writeConfigFile } from '@core/index.js';
+import {
+    loadConfigFile,
+    getDefaultModelForProvider,
+    writeConfigFile,
+    LLMProvider,
+} from '@core/index.js';
 
 const require = createRequire(import.meta.url);
 
@@ -16,10 +21,8 @@ const providerToKeyMap: Record<string, string> = {
     openai: 'OPENAI_API_KEY',
     anthropic: 'ANTHROPIC_API_KEY',
     google: 'GOOGLE_GENERATIVE_AI_API_KEY',
-    grok: 'GROK_API_KEY',
+    groq: 'GROQ_API_KEY',
 };
-
-export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'grok';
 
 /**
  * Initializes an existing project with Saiki in the given directory.
@@ -70,7 +73,9 @@ export async function initSaiki(
         }
 
         // add/update .env file
+        spinner.start('Updating .env file with saiki env variables...');
         await updateEnvFile(directory, llmProvider, llmApiKey);
+        spinner.stop('Updated .env file with saiki env variables...');
 
         spinner.stop('Saiki files created successfully!');
     } catch (err) {
@@ -179,7 +184,7 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
  *    Add it to the Saiki section with an empty string value.
  *
  * @param directory - The directory to start searching for the project root.
- * @param llmProvider - The LLM provider to use (openai, anthropic, google, grok).
+ * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
  * @param llmApiKey - The API key for the specified LLM provider.
  */
 export async function updateEnvFile(
@@ -191,7 +196,7 @@ export async function updateEnvFile(
         'OPENAI_API_KEY',
         'ANTHROPIC_API_KEY',
         'GOOGLE_GENERATIVE_AI_API_KEY',
-        'GROK_API_KEY',
+        'GROQ_API_KEY',
         'SAIKI_LOG_LEVEL',
     ];
 
@@ -234,8 +239,8 @@ export async function updateEnvFile(
             llmProvider === 'google'
                 ? (llmApiKey ?? '')
                 : (currentValues['GOOGLE_GENERATIVE_AI_API_KEY'] ?? ''),
-        GROK_API_KEY:
-            llmProvider === 'grok' ? (llmApiKey ?? '') : (currentValues['GROK_API_KEY'] ?? ''),
+        GROQ_API_KEY:
+            llmProvider === 'groq' ? (llmApiKey ?? '') : (currentValues['GROQ_API_KEY'] ?? ''),
         SAIKI_LOG_LEVEL: currentValues['SAIKI_LOG_LEVEL'] ?? 'info',
     };
 
@@ -325,7 +330,7 @@ export async function getUserInput(): Promise<{
                         { value: 'openai', label: 'OpenAI', hint: 'Most popular LLM provider' },
                         { value: 'anthropic', label: 'Anthropic' },
                         { value: 'google', label: 'Google' },
-                        { value: 'grok', label: 'Grok' },
+                        { value: 'groq', label: 'Groq' },
                     ],
                 }),
             llmApiKey: async ({ results }) => {

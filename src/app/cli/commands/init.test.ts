@@ -28,7 +28,7 @@ describe('updateEnvFile', () => {
             'OPENAI_API_KEY=key1',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
-            'GROK_API_KEY=',
+            'GROQ_API_KEY=',
             'SAIKI_LOG_LEVEL=info',
             '',
         ].join('\n');
@@ -63,7 +63,7 @@ describe('updateEnvFile', () => {
             'OPENAI_API_KEY=oldKey',
             'ANTHROPIC_API_KEY=newAnthKey',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
-            'GROK_API_KEY=',
+            'GROQ_API_KEY=',
             'SAIKI_LOG_LEVEL=info',
             '',
         ].join('\n');
@@ -94,7 +94,7 @@ describe('updateEnvFile', () => {
             '## Saiki env variables',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
-            'GROK_API_KEY=',
+            'GROQ_API_KEY=',
             'SAIKI_LOG_LEVEL=info',
             '',
         ].join('\n');
@@ -115,7 +115,7 @@ describe('updateEnvFile', () => {
             'OPENAI_API_KEY=',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=gkey',
-            'GROK_API_KEY=',
+            'GROQ_API_KEY=',
             'SAIKI_LOG_LEVEL=info',
             '',
         ].join('\n');
@@ -133,7 +133,7 @@ describe('updateEnvFile', () => {
             'OPENAI_API_KEY=',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
-            'GROK_API_KEY=',
+            'GROQ_API_KEY=',
             'SAIKI_LOG_LEVEL=info',
             '',
         ].join('\n');
@@ -155,7 +155,7 @@ describe('updateEnvFile', () => {
             'OPENAI_API_KEY=bar',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
-            'GROK_API_KEY=',
+            'GROQ_API_KEY=',
             'SAIKI_LOG_LEVEL=info',
             '',
         ].join('\n');

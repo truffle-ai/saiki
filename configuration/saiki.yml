@@ -51,7 +51,7 @@ llm:
         enabled: true
 
 ## To use Google Gemini, replace the LLM section with Google Gemini configuration below
-## Similar for anthropic/grok/etc.
+## Similar for anthropic/groq/etc.
 # llm:
 #   provider: google
 #   model: gemini-2.0-flash
