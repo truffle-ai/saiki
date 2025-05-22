@@ -15,6 +15,7 @@ import {
     getAllSupportedModels,
     SaikiAgent,
     loadConfigFile,
+    createSaikiAgent,
 } from '@core/index.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startApiServer } from './api/server.js';
@@ -30,6 +31,11 @@ import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/p
 dotenv.config();
 
 const program = new Command();
+
+// Universal stuff
+if (process.env.SAIKI_LOG_LEVEL) {
+    logger.setLevel(process.env.SAIKI_LOG_LEVEL);
+}
 
 // 1) GLOBAL OPTIONS
 program
@@ -112,9 +118,6 @@ program
         if (!existsSync('.env')) {
             logger.debug('WARNING: .env file not found; copy .env.example and set your API keys.');
         }
-        if (process.env.SAIKI_LOG_LEVEL) {
-            logger.setLevel(process.env.SAIKI_LOG_LEVEL);
-        }
         if (
             !process.env.OPENAI_API_KEY &&
             !process.env.GOOGLE_GENERATIVE_AI_API_KEY &&
@@ -168,7 +171,7 @@ program
             );
             logger.info(`Initializing Saiki with config: ${configPath}`);
             const cfg = await loadConfigFile(configPath);
-            agent = await SaikiAgent.create(
+            agent = await createSaikiAgent(
                 cfg,
                 {
                     model: opts.model,

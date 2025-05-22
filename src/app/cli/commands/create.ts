@@ -3,7 +3,11 @@ import path from 'path';
 import chalk from 'chalk';
 import { executeWithTimeout } from '../utils/execute.js';
 import * as p from '@clack/prompts';
-import { getPackageManager, getPackageManagerInstallCommand } from '../utils/package-mgmt.js';
+import {
+    getPackageManager,
+    getPackageManagerInstallCommand,
+    addScriptsToPackageJson,
+} from '../utils/package-mgmt.js';
 
 /**
  * Creates basic scaffolding for a Saiki project
@@ -84,16 +88,16 @@ export async function createSaikiProject(name?: string) {
     // add .gitignore
     await fs.writeFile('.gitignore', 'node_modules\n.env\ndist\n.saiki\n*.log');
 
-    // update package.json and module type
+    // update package.json module type
     const packageJson = JSON.parse(await fs.readFile('package.json', 'utf8'));
     packageJson.type = 'module';
-    packageJson.scripts = {
-        ...packageJson.scripts,
+    await fs.writeFile('package.json', JSON.stringify(packageJson, null, 2));
+    // add scripts for saiki project
+    await addScriptsToPackageJson({
         build: 'tsc',
         start: 'node dist/saiki/saiki-example.js',
         dev: 'node --loader ts-node/esm src/saiki/saiki-example.ts',
-    };
-    await fs.writeFile('package.json', JSON.stringify(packageJson, null, 2));
+    });
 
     spinner.stop('Project files created successfully!');
 

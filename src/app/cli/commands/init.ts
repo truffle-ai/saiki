@@ -7,7 +7,7 @@ import { getPackageManager, getPackageManagerInstallCommand } from '../utils/pac
 import { executeWithTimeout } from '../utils/execute.js';
 import { createRequire } from 'module';
 import { findProjectRoot } from '../utils/path.js';
-import { getDefaultModelForProvider, LLMProvider } from '@core/index.js';
+import { getDefaultModelForProvider, LLMProvider, logger } from '@core/index.js';
 import { parseDocument } from 'yaml';
 
 const require = createRequire(import.meta.url);
@@ -113,9 +113,31 @@ export async function initSaiki(
         const installCommand = getPackageManagerInstallCommand(packageManager);
         spinner.start('Installing Saiki...');
         const label = 'latest';
-        await executeWithTimeout(packageManager, [installCommand, `@truffle-ai/saiki@${label}`], {
-            cwd: process.cwd(),
-        });
+        logger.debug(
+            `Installing Saiki using ${packageManager} with install command: ${installCommand} and label: ${label}`
+        );
+        try {
+            await executeWithTimeout(
+                packageManager,
+                [installCommand, `@truffle-ai/saiki@${label}`],
+                {
+                    cwd: process.cwd(),
+                }
+            );
+        } catch (installError) {
+            // Handle pnpm workspace error specifically
+            logger.debug(`Install error: ${installError}`);
+            if (packageManager === 'pnpm' && 'ERR_PNPM_ADDING_TO_ROOT') {
+                spinner.stop(chalk.red('Error: Cannot install in pnpm workspace root'));
+                p.note(
+                    'You are initializing saiki in a pnpm workspace root. Go to a specific package in the workspace and run "pnpm add @truffle-ai/saiki" instead.',
+                    chalk.yellow('Workspace Error')
+                );
+                return { success: false };
+            }
+            throw installError; // Re-throw other errors
+        }
+
         spinner.stop('Saiki installed successfully!');
 
         spinner.start('Creating Saiki files...');
@@ -138,16 +160,21 @@ export async function initSaiki(
         }
 
         // create saiki config file
+        logger.debug('Creating saiki config file...');
         const saikiDir = path.join(directory, 'saiki');
         const agentsDir = path.join(saikiDir, 'agents');
         const configPath = await createSaikiConfigFile(agentsDir);
+        logger.debug(`Saiki config file created at ${configPath}`);
 
         // update saiki config file based on llmProvider
+        logger.debug(`Updating saiki config file based on llmProvider: ${llmProvider}`);
         await updateSaikiConfigFile(configPath, llmProvider);
-
+        logger.debug(`Saiki config file updated with llmProvider: ${llmProvider}`);
         // create saiki example file if requested
         if (createExampleFile) {
+            logger.debug('Creating saiki example file...');
             await createSaikiExampleFile(saikiDir);
+            logger.debug('Saiki example file created successfully!');
         }
 
         // add/update .env file
@@ -155,17 +182,18 @@ export async function initSaiki(
         await updateEnvFile(directory, llmProvider, llmApiKey);
         spinner.stop('Updated .env file with saiki env variables...');
     } catch (err) {
-        spinner.stop(chalk.inverse('An error occurred while creating Saiki directory'));
-        console.error(err);
+        spinner.stop(chalk.inverse('An error occurred initializing Saiki project'));
+        logger.debug(`Error: ${err}`);
         return { success: false };
     }
-    p.outro(chalk.greenBright('Saiki initialized successfully!'));
+    p.outro(chalk.greenBright('Saiki project initialized successfully!'));
     // List steps in a dedented, left-aligned block
     const nextSteps = [
-        `1. Add/update your API key(s) to ${chalk.cyan('.env')}`,
-        `2. Update the config file: ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'saiki.yml'))}`,
-        `3. Run the example (if created): ${chalk.cyan(`node --loader ts-node/esm ${path.join(directory, 'saiki-example.ts')}`)}`,
-        `4. Read Saiki docs: ${chalk.cyan('https://github.com/truffle-ai/saiki')}`,
+        `1. Run the example (if created): ${chalk.cyan(`node --loader ts-node/esm ${path.join(directory, 'saiki', 'saiki-example.ts')}`)}`,
+        `2. Add/update your API key(s) in ${chalk.cyan('.env')}`,
+        `3. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'saiki.yml'))}`,
+        `4. Try out different LLMs and MCP servers in the saiki.yml file`,
+        `5. Read more about Saiki: ${chalk.cyan('https://github.com/truffle-ai/saiki')}`,
     ].join('\n');
     p.note(nextSteps, chalk.yellow('Next steps:'));
 }
@@ -235,12 +263,12 @@ export async function updateSaikiConfigFile(filepath: string, llmProvider?: LLMP
 export async function createSaikiExampleFile(directory: string): Promise<string> {
     const indexTsLines = [
         "import 'dotenv/config';",
-        "import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';",
+        "import { loadConfigFile, SaikiAgent, createSaikiAgent } from '@truffle-ai/saiki';",
         '',
         '// 1. Initialize the agent from the config file',
         '// Every agent is defined by its own config file',
         "const config = await loadConfigFile('./src/saiki/agents/saiki.yml');",
-        'export const agent = await SaikiAgent.create(config);',
+        'export const agent = await createSaikiAgent(config);',
         '',
         '// 2. Run the agent',
         'const response = await agent.run("Hello saiki! What are the files in this directory");',

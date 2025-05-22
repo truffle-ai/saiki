@@ -68,24 +68,37 @@ export async function getPackageVersion(): Promise<string> {
 }
 
 /**
- * Adds scripts to the package.json file
+ * Adds scripts to the package.json file.
+ * Assumes that the package.json file is already present in the current directory
  * @param scripts - The scripts to add to the package.json file
  */
 export async function addScriptsToPackageJson(scripts: Record<string, string>) {
-    const projectRoot = findProjectRoot(process.cwd());
-    if (!projectRoot) {
-        throw new Error('Could not find project root');
+    let packageJson;
+    try {
+        packageJson = await fsExtra.readJSON('package.json');
+    } catch (err) {
+        throw new Error(
+            `Failed to read package.json: ${err instanceof Error ? err.message : String(err)}`
+        );
     }
-
-    const packageJsonPath = path.join(projectRoot, 'package.json');
-    const packageJson = await fsExtra.readJSON(packageJsonPath);
 
     packageJson.scripts = {
         ...packageJson.scripts,
         ...scripts,
     };
 
-    await fsExtra.writeJSON(packageJsonPath, packageJson, { spaces: 2 });
+    logger.debug(`Adding scripts to package.json: ${JSON.stringify(scripts, null, 2)}`);
+
+    try {
+        logger.debug(
+            `Writing to package.json. \n Contents: ${JSON.stringify(packageJson, null, 2)}`
+        );
+        await fsExtra.writeJSON('package.json', packageJson, { spaces: 4 });
+    } catch (err) {
+        throw new Error(
+            `Failed to write to package.json: ${err instanceof Error ? err.message : String(err)}`
+        );
+    }
 }
 
 /**

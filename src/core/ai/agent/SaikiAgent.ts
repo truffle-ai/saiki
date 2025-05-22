@@ -124,24 +124,24 @@ export class SaikiAgent {
         }
     }
 
-    /**
-     * Static factory method to create a SaikiAgent with all services initialized.
-     * @param agentConfig The agent configuration object
-     * @param cliArgs Optional CLI config overrides
-     * @param overrides Optional service overrides
-     * @returns Promise<SaikiAgent>
-     */
-    static async create(
-        agentConfig: AgentConfig,
-        cliArgs?: CLIConfigOverrides,
-        overrides?: InitializeServicesOptions
-    ): Promise<SaikiAgent> {
-        const services = await createAgentServices(agentConfig, cliArgs, overrides);
-        return new SaikiAgent(services);
-    }
-
     // Future methods could encapsulate more complex agent behaviors:
     // - public async startInteractiveCliSession() { /* ... */ }
     // - public async executeHeadlessCommand(command: string) { /* ... */ }
     // - public async specializedTask(params: any) { /* ... */ }
+}
+
+/**
+ * Method to create a SaikiAgent from agent config object
+ * @param agentConfig The agent configuration object
+ * @param cliArgs Optional CLI config overrides
+ * @param overrides Optional service overrides
+ * @returns Promise<SaikiAgent>
+ */
+export async function createSaikiAgent(
+    agentConfig: AgentConfig,
+    cliArgs?: CLIConfigOverrides,
+    overrides?: InitializeServicesOptions
+): Promise<SaikiAgent> {
+    const services = await createAgentServices(agentConfig, cliArgs, overrides);
+    return new SaikiAgent(services);
 }
