@@ -284,7 +284,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 }
 
 /** Serves the legacy web UI on the express app. will be deprecated soon */
-export async function startLegacyWebUI(app: Express) {
+export function startLegacyWebUI(app: Express) {
     const publicPath = resolvePackagePath('public', true);
     logger.info(`Serving static files from: ${publicPath}`);
     app.use(express.static(publicPath));
