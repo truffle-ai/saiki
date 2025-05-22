@@ -21,6 +21,72 @@ const providerToKeyMap: Record<string, string> = {
 };
 
 /**
+ * Get user preferences needed to initialize a Saiki project
+ * @returns The user preferences
+ */
+export async function getUserInput(): Promise<{
+    llmProvider: LLMProvider;
+    llmApiKey: any;
+    directory: string;
+    createExampleFile: any;
+}> {
+    p.intro(chalk.inverse('Saiki Init'));
+
+    const answers = await p.group(
+        {
+            llmProvider: () =>
+                p.select({
+                    message: 'Select your LLM provider',
+                    options: [
+                        { value: 'openai', label: 'OpenAI', hint: 'Most popular LLM provider' },
+                        { value: 'anthropic', label: 'Anthropic' },
+                        { value: 'google', label: 'Google' },
+                        { value: 'groq', label: 'Groq' },
+                    ],
+                }),
+            llmApiKey: async ({ results }) => {
+                const llmProvider = results.llmProvider;
+                const selection = await p.select({
+                    message: `Enter your API key for ${llmProvider}?`,
+                    options: [
+                        { value: 'skip', label: 'Skip', hint: 'default' },
+                        { value: 'enter', label: 'Enter', hint: 'enter it manually' },
+                    ],
+                    initialValue: 'skip',
+                });
+
+                if (selection === 'enter') {
+                    return await p.text({
+                        message: 'Enter your API key',
+                        placeholder: 'sk-...',
+                    });
+                }
+                return '';
+            },
+            directory: () =>
+                p.text({
+                    message: 'Enter the directory to add the saiki files in',
+                    placeholder: 'src/',
+                    defaultValue: 'src/',
+                }),
+            createExampleFile: () =>
+                p.confirm({
+                    message: 'Create a saiki example file?',
+                    initialValue: true,
+                }),
+        },
+        {
+            onCancel: () => {
+                p.cancel('Saiki initialization cancelled');
+                process.exit(0);
+            },
+        }
+    );
+
+    return answers;
+}
+
+/**
  * Initializes an existing project with Saiki in the given directory.
  * @param directory - The directory to initialize the Saiki project in
  * @param llmProvider - The LLM provider to use
@@ -78,6 +144,14 @@ export async function initSaiki(
         return { success: false };
     }
     p.outro(chalk.greenBright('Saiki initialized successfully!'));
+    // List steps in a dedented, left-aligned block
+    const nextSteps = [
+        `1. Add/update your API key(s) to ${chalk.cyan('.env')}`,
+        `2. Update the config file: ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'saiki.yml'))}`,
+        `3. Run the example (if created): ${chalk.cyan(`node --loader ts-node/esm ${path.join(directory, 'saiki-example.ts')}`)}`,
+        `4. Read Saiki docs: ${chalk.cyan('https://github.com/truffle-ai/saiki')}`,
+    ].join('\n');
+    p.note(nextSteps, chalk.yellow('Next steps:'));
 }
 
 /**
@@ -305,66 +379,4 @@ export async function updateEnvFile(
 
     // Write the updated content
     await fs.writeFile(envFilePath, contentLines.join('\n'), 'utf8');
-}
-
-export async function getUserInput(): Promise<{
-    llmProvider: LLMProvider;
-    llmApiKey: any;
-    directory: string;
-    createExampleFile: any;
-}> {
-    p.intro(chalk.inverse('Saiki Init'));
-
-    const answers = await p.group(
-        {
-            llmProvider: () =>
-                p.select({
-                    message: 'Select your LLM provider',
-                    options: [
-                        { value: 'openai', label: 'OpenAI', hint: 'Most popular LLM provider' },
-                        { value: 'anthropic', label: 'Anthropic' },
-                        { value: 'google', label: 'Google' },
-                        { value: 'groq', label: 'Groq' },
-                    ],
-                }),
-            llmApiKey: async ({ results }) => {
-                const llmProvider = results.llmProvider;
-                const selection = await p.select({
-                    message: `Enter your API key for ${llmProvider}?`,
-                    options: [
-                        { value: 'skip', label: 'Skip', hint: 'default' },
-                        { value: 'enter', label: 'Enter', hint: 'enter it manually' },
-                    ],
-                    initialValue: 'skip',
-                });
-
-                if (selection === 'enter') {
-                    return await p.text({
-                        message: 'Enter your API key',
-                        placeholder: 'sk-...',
-                    });
-                }
-                return '';
-            },
-            directory: () =>
-                p.text({
-                    message: 'Enter the directory to add the saiki files in',
-                    placeholder: 'src/',
-                    defaultValue: 'src/',
-                }),
-            createExampleFile: () =>
-                p.confirm({
-                    message: 'Create a saiki example file?',
-                    initialValue: true,
-                }),
-        },
-        {
-            onCancel: () => {
-                p.cancel('Saiki initialization cancelled');
-                process.exit(0);
-            },
-        }
-    );
-
-    return answers;
 }
