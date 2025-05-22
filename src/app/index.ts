@@ -238,7 +238,7 @@ program
                     },
                 });
                 nextProc.on('error', (err) => {
-                    logger.error('Next.js dev server failed to start:', err);
+                    logger.error(`Next.js dev server failed to start: ${err}`);
                     process.exit(1);
                 });
                 nextProc.on('exit', (code, signal) => {
