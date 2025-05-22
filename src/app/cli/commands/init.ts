@@ -117,8 +117,18 @@ export async function initSaiki(
         const result = await createSaikiDirectories(directory);
 
         if (!result.ok) {
-            spinner.stop(chalk.inverse('Saiki already initialized '));
-            return { success: false };
+            spinner.stop(
+                chalk.inverse(
+                    `Saiki already initialized in ${path.join(directory, 'saiki')}. Would you like to overwrite it?`
+                )
+            );
+            const overwrite = await p.confirm({
+                message: 'Overwrite Saiki?',
+                initialValue: false,
+            });
+            if (!overwrite) {
+                return { success: false };
+            }
         }
 
         // create saiki config file
