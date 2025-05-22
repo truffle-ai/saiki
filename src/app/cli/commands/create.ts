@@ -13,19 +13,44 @@ import { getPackageManager, getPackageManagerInstallCommand } from '../utils/pac
 export async function createSaikiProject(name?: string) {
     p.intro(chalk.inverse('Saiki Create'));
 
-    const projectName =
-        name ??
-        (
-            await p.text({
+    // Basic regex: must start with a letter, contain only letters, numbers, hyphens or underscores
+    const nameRegex = /^[a-zA-Z][a-zA-Z0-9-_]*$/;
+
+    let projectName: string;
+    if (name) {
+        // Validate provided project name
+        if (!nameRegex.test(name)) {
+            console.log(
+                chalk.red(
+                    'Invalid project name. Must start with a letter and contain only letters, numbers, hyphens or underscores.'
+                )
+            );
+            process.exit(1);
+        }
+        projectName = name;
+    } else {
+        let input;
+        do {
+            input = await p.text({
                 message: 'What do you want to name your Saiki project?',
                 placeholder: 'my-saiki-project',
                 defaultValue: 'my-saiki-project',
-            })
-        ).toString();
+            });
 
-    if (p.isCancel(projectName)) {
-        p.cancel('Project creation cancelled');
-        process.exit(0);
+            if (p.isCancel(input)) {
+                p.cancel('Project creation cancelled');
+                process.exit(0);
+            }
+
+            if (!nameRegex.test(input)) {
+                console.log(
+                    chalk.red(
+                        'Invalid project name. Must start with a letter and contain only letters, numbers, hyphens or underscores.'
+                    )
+                );
+            }
+        } while (!nameRegex.test(input));
+        projectName = input;
     }
 
     const spinner = p.spinner();
@@ -35,7 +60,7 @@ export async function createSaikiProject(name?: string) {
     try {
         await fs.mkdir(projectPath);
     } catch (error) {
-        // if the directory already exists, ask the user if they want to overwrite it
+        // if the directory already exists, end the process
         if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
             spinner.stop(
                 `Directory "${projectName}" already exists. Please choose a different name or delete the existing directory.`
