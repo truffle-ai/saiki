@@ -28,7 +28,7 @@ export async function getUserInputToCreateProject(): Promise<{
     llmProvider: LLMProvider;
     llmApiKey: string;
     directory: string;
-    createExampleFile: any;
+    createExampleFile: boolean;
 }> {
     const answers = await p.group(
         {
@@ -245,7 +245,7 @@ export async function createSaikiConfigFile(directory: string): Promise<string> 
  * @param filepath - The path to the saiki config file
  * @param llmProvider - The LLM provider to use
  */
-export async function updateSaikiConfigFile(filepath: string, llmProvider?: LLMProvider) {
+export async function updateSaikiConfigFile(filepath: string, llmProvider: LLMProvider) {
     const fileContent = await fs.readFile(filepath, 'utf8');
     const doc = parseDocument(fileContent);
     doc.setIn(['llm', 'provider'], llmProvider);
