@@ -15,7 +15,7 @@ import { logger } from '@core/index.js';
  * sets up git and gitignore, and sets up initial dependencies
  * Does not add scripts to package.json or create tsconfig.json which require the directory name
  * @param name - The name of the project
- * @returns The path of the created project
+ * @returns The absolute path to the created project directory
  */
 export async function createSaikiProject(name?: string): Promise<string> {
     // Basic regex: must start with a letter, contain only letters, numbers, hyphens or underscores
