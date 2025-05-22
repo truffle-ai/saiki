@@ -75,8 +75,13 @@ export async function startNextJsWebServer(
 
     try {
         // Extract API port from API URL
-        const apiPortMatch = apiUrl.match(/:(\d+)$/);
-        const apiPort = apiPortMatch ? apiPortMatch[1] : '3001';
+        const apiPort = (() => {
+            try {
+                return String(new URL(apiUrl).port || 3001);
+            } catch {
+                return '3001';
+            }
+        })();
 
         // Check if node_modules exists - might be needed for global install
         const nodeModulesPath = path.join(webuiPath, 'node_modules');
