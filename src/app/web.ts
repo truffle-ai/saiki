@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 
 /**
  * Discovers the webui path, starting and configuring the Next.js server
- * TODO: Refactor this to be less hacky
+ * TODO: Refactor this to be less hacky and more readable
  * @param webuiPathParam - Optional: The path to the webui directory (auto-discovered if not provided)
  * @param frontPort - The port to run the web server on
  * @param apiUrl - The URL of the API server
@@ -140,7 +140,7 @@ export async function startNextJsWebServer(
 
         const nextProc = spawn(command, args, {
             cwd: webuiPath,
-            stdio: 'inherit',
+            stdio: ['inherit', 'pipe', 'inherit'], // Pipe stdout to capture startup messages
             env: {
                 ...process.env,
                 NODE_ENV: 'development',
@@ -162,25 +162,60 @@ export async function startNextJsWebServer(
                         return `ws://localhost:${apiPort}`;
                     })(),
                 NEXT_PUBLIC_FRONTEND_URL: process.env.NEXT_PUBLIC_FRONTEND_URL ?? frontUrl,
-                PATH: process.env.PATH, // Ensure PATH is passed correctly
+                PATH: process.env.PATH,
             },
         });
 
-        nextProc.on('error', (err) => {
-            logger.error(`Next.js dev server failed to start: ${err}`);
-            logger.warn('Only API endpoints are available. Web UI could not be started.');
-            return false;
-        });
+        // Wait for server to start or error out
+        logger.debug(`Waiting for Next.js server to start at: ${frontUrl}`, null, 'cyan');
 
-        nextProc.on('exit', (code) => {
-            if (code !== 0) {
-                logger.error(`Next.js dev server exited with code ${code}`, null, 'red');
+        const success = await new Promise<boolean>((resolve) => {
+            // Set a reasonable timeout (10 seconds)
+            const timer = setTimeout(() => {
+                logger.info(`Next.js server startup timeout reached, assuming it's running`);
+                logger.info(`Next.js web UI available at: ${frontUrl}`, null, 'green');
+                resolve(true);
+            }, 10000);
+
+            // Handle error event once
+            nextProc.once('error', (err) => {
+                logger.error(`Next.js dev server failed to start: ${err}`);
                 logger.warn('Only API endpoints are available. Web UI could not be started.');
+                clearTimeout(timer);
+                resolve(false);
+            });
+
+            // Handle exit event once
+            nextProc.once('exit', (code) => {
+                if (code !== 0) {
+                    logger.error(`Next.js dev server exited with code ${code}`, null, 'red');
+                    logger.warn('Only API endpoints are available. Web UI could not be started.');
+                } else {
+                    logger.info(`Next.js dev server exited normally`);
+                }
+                clearTimeout(timer);
+                resolve(false);
+            });
+
+            // Check stdout for server ready message
+            if (nextProc.stdout) {
+                nextProc.stdout.on('data', (data) => {
+                    const output = data.toString();
+                    // Echo Next.js output to console for debugging
+                    process.stdout.write(data);
+
+                    // standard Next.js startup success message
+                    if (output.includes('Ready in')) {
+                        logger.info(`Next.js server started successfully`);
+                        logger.info(`Next.js web UI available at: ${frontUrl}`, null, 'green');
+                        clearTimeout(timer);
+                        resolve(true);
+                    }
+                });
             }
         });
 
-        logger.info(`New next-js web UI available at: ${frontUrl}`, null, 'green');
-        return true;
+        return success;
     } catch (err) {
         logger.error(`Failed to spawn Next.js process: ${err}`);
         logger.warn('Only API endpoints are available. Web UI could not be started.');
