@@ -4,7 +4,13 @@ import { logger } from '@core/index.js';
 // Default timeout for spawned processes (in milliseconds)
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
-// Helper to promisify spawn, prevent shell interpretation, and add timeout support
+/**
+ * Reusable helper to run any shell command with a timeout. Uses spawn to run the command.
+ * @param command - The command to execute
+ * @param args - The arguments to pass to the command
+ * @param options - The options for the command
+ * @returns A promise that resolves when the command has finished executing
+ */
 export function executeWithTimeout(
     command: string,
     args: string[],

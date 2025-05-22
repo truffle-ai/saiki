@@ -3,6 +3,11 @@ import fsExtra from 'fs-extra';
 import path from 'path';
 import { PackageJson } from 'type-fest';
 
+/**
+ * Returns the install command for the given package manager
+ * @param pm - The package manager to use
+ * @returns The install command for the given package manager
+ */
 export function getPackageManagerInstallCommand(pm: string): string {
     switch (pm) {
         case 'npm':
@@ -18,6 +23,10 @@ export function getPackageManagerInstallCommand(pm: string): string {
     }
 }
 
+/**
+ * Returns the package manager for the given project
+ * @returns The package manager for the given project
+ */
 export function getPackageManager(): string {
     const lockFile = findProjectRoot(process.cwd());
     switch (lockFile) {
@@ -34,6 +43,10 @@ export function getPackageManager(): string {
     }
 }
 
+/**
+ * Goes all the way up to the root of the project and checks package.json to find the version of a project
+ * @returns The version of the given project
+ */
 export async function getPackageVersion(): Promise<string> {
     const projectRoot = findProjectRoot(process.cwd());
     if (!projectRoot) {
@@ -44,6 +57,10 @@ export async function getPackageVersion(): Promise<string> {
     return content.version;
 }
 
+/**
+ * Adds scripts to the package.json file
+ * @param scripts - The scripts to add to the package.json file
+ */
 export async function addScriptsToPackageJson(scripts: Record<string, string>) {
     const projectRoot = findProjectRoot(process.cwd());
     if (!projectRoot) {

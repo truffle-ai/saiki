@@ -196,6 +196,12 @@ export async function createSaikiConfigFile(directory: string): Promise<string> 
     return destConfigPath;
 }
 
+/**
+ * Updates the LLM provider information in the saiki config file
+ * Based on the LLM provider, the config file is updated with the correct API key and default model configured in registry
+ * @param filepath - The path to the saiki config file
+ * @param llmProvider - The LLM provider to use
+ */
 export async function updateSaikiConfigFile(filepath: string, llmProvider?: LLMProvider) {
     const fileContent = await fs.readFile(filepath, 'utf8');
     const doc = parseDocument(fileContent);
