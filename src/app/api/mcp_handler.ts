@@ -37,7 +37,13 @@ export async function initializeMcpServerEndpoints(
         toolDescription,
         { message: z.string() }, // Input schema for the tool
         async ({ message }: { message: string }) => {
+            logger.info(
+                `MCP tool '${toolName}' received message: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`
+            );
             const text = await agent.run(message);
+            logger.info(
+                `MCP tool '${toolName}' sending response: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`
+            );
             return { content: [{ type: 'text', text }] }; // Output structure
         }
     );
@@ -78,11 +84,13 @@ export async function initializeMcpServerEndpoints(
 
     // Mount /mcp for JSON-RPC and SSE handling
     app.post('/mcp', express.json(), (req, res) => {
+        logger.info(`MCP POST /mcp received request body: ${JSON.stringify(req.body)}`);
         mcpTransport
             .handleRequest(req, res, req.body)
             .catch((err) => logger.error(`MCP POST error: ${JSON.stringify(err, null, 2)}`));
     });
     app.get('/mcp', (req, res) => {
+        logger.info(`MCP GET /mcp received request, attempting to establish SSE connection.`);
         mcpTransport
             .handleRequest(req, res)
             .catch((err) => logger.error(`MCP GET error: ${JSON.stringify(err, null, 2)}`));
