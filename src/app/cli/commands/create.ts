@@ -105,30 +105,5 @@ export async function createSaikiProject(name?: string) {
 
     p.outro(chalk.greenBright('Saiki project created successfully!'));
 
-    // TODO: saiki.yml, install saiki ,and .env setup - can do in init command
-    // make sure to use
-    //     p.note(
-    //         `1. Navigate to your project: ${chalk.cyan(`cd ${projectName}`)}
-    //   2. Add your API key(s) to ${chalk.cyan('.env')}
-    //   3. Change the config file to your liking: ${chalk.cyan('./src/saiki/agents/saiki.yml')}
-    //   4. Run the example to get started: ${chalk.cyan(`${packageManager} run dev`)}
-    //   5. Read Saiki documentation to understand more about using Saiki: ${chalk.cyan('https://github.com/truffle-ai/saiki')}`,
-    //         chalk.yellow('Next steps:')
-    //     );
-
-    //         // copy saiki.yml
-    //     spinner.start("Copying saiki config files...")
-    //     const saikiDir = path.join(projectPath, 'src', 'saiki');
-    //     await fs.copy(path.join(projectPath, 'node_modules', '@truffle-ai', 'saiki', 'configuration', 'saiki.yml'), path.join(saikiDir, 'agents', 'saiki.yml'));
-    //     spinner.stop("Saiki config files copied successfully!")
-
-    //     // setup .env
-    //     spinner.start("Setting up .env...")
-    //     await fs.writeFile(".env", `
-    // OPENAI_API_KEY=your_openai_api_key_here
-    // GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key_here
-    // ANTHROPIC_API_KEY=your_anthropic_api_key_here
-    // SAIKI_LOG_LEVEL=info
-    //     `)
-    //     spinner.stop(".env setup successfully!")
+    // Saiki install, .env setup, and saiki.yml and example setup is done in init command
 }
