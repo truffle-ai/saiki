@@ -27,6 +27,7 @@ import {
     createSaikiProject,
     createTsconfigJson,
     addSaikiScriptsToPackageJson,
+    postCreateSaiki,
 } from './cli/commands/create.js';
 import { initSaiki, postInitSaiki } from './cli/commands/init.js';
 import { getUserInputToCreateProject } from './cli/commands/init.js';
@@ -80,9 +81,9 @@ program
                 userInput.llmProvider,
                 userInput.llmApiKey
             );
-
-            // add notes for users to get started with their new initialized Saiki project
-            await postInitSaiki(userInput.directory);
+            p.outro(chalk.greenBright('Saiki project created and initialized successfully!'));
+            // add notes for users to get started with their newly created Saiki project
+            await postCreateSaiki(projectPath, userInput.directory);
             process.exit(0);
         } catch (err) {
             logger.error(`Saiki create command failed: ${err}`);

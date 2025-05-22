@@ -143,5 +143,12 @@ export async function createSaikiAgent(
     overrides?: InitializeServicesOptions
 ): Promise<SaikiAgent> {
     const services = await createAgentServices(agentConfig, cliArgs, overrides);
+
+    // log model info for observability
+    logger.info(
+        `Agent using model config: ${JSON.stringify(services.llmService.getConfig(), null, 2)}`,
+        null,
+        'yellow'
+    );
     return new SaikiAgent(services);
 }
