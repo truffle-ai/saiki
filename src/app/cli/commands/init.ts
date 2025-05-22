@@ -7,8 +7,17 @@ import { getPackageManager, getPackageManagerInstallCommand } from '../utils/pac
 import { executeWithTimeout } from '../utils/execute.js';
 import { createRequire } from 'module';
 import { findProjectRoot } from '../utils/path.js';
+import { loadConfigFile, getDefaultModelForProvider, writeConfigFile } from '@core/index.js';
 
 const require = createRequire(import.meta.url);
+
+// Map the provider to its corresponding API key name
+const providerToKeyMap: Record<string, string> = {
+    openai: 'OPENAI_API_KEY',
+    anthropic: 'ANTHROPIC_API_KEY',
+    google: 'GOOGLE_GENERATIVE_AI_API_KEY',
+    grok: 'GROK_API_KEY',
+};
 
 export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'grok';
 
@@ -50,7 +59,10 @@ export async function initSaiki(
         // create saiki config file
         const saikiDir = path.join(directory, 'saiki');
         const agentsDir = path.join(saikiDir, 'agents');
-        await createSaikiConfigFile(agentsDir);
+        const configPath = await createSaikiConfigFile(agentsDir);
+
+        // update saiki config file based on llmProvider
+        await updateSaikiConfigFile(configPath, llmProvider);
 
         // create saiki example file if requested
         if (createExampleFile) {
@@ -109,6 +121,15 @@ export async function createSaikiConfigFile(directory: string): Promise<string> 
     // Copy the config file from the Saiki package
     await fsExtra.copy(templateConfigSrc, destConfigPath);
     return destConfigPath;
+}
+
+export async function updateSaikiConfigFile(filepath: string, llmProvider?: LLMProvider) {
+    console.log('Updating saiki config file...', filepath, llmProvider);
+    const config = await loadConfigFile(filepath);
+    config.llm.provider = llmProvider;
+    config.llm.apiKey = '$' + providerToKeyMap[llmProvider];
+    config.llm.model = getDefaultModelForProvider(llmProvider);
+    await writeConfigFile(filepath, config);
 }
 
 /**
@@ -198,14 +219,6 @@ export async function updateEnvFile(
             currentValues[match[1]] = match[2];
         }
     });
-
-    // Map the provider to its corresponding API key name
-    const providerToKeyMap: Record<string, string> = {
-        openai: 'OPENAI_API_KEY',
-        anthropic: 'ANTHROPIC_API_KEY',
-        google: 'GOOGLE_GENERATIVE_AI_API_KEY',
-        grok: 'GROK_API_KEY',
-    };
 
     const passedKey = llmProvider ? providerToKeyMap[llmProvider] : undefined;
 

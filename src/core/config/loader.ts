@@ -1,5 +1,5 @@
 import fs from 'fs/promises';
-import { parse as parseYaml } from 'yaml';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { AgentConfig } from './schemas.js';
 import { logger } from '../logger/index.js';
 import { resolvePackagePath, DEFAULT_CONFIG_PATH } from '../utils/path.js';
@@ -55,6 +55,21 @@ export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
         // Include path & cause for better diagnostics
         throw new Error(
             `Failed to load config file at ${error.path || configPath}: ${error.message}`,
+            { cause: error }
+        );
+    }
+}
+
+export async function writeConfigFile(configPath: string, config: AgentConfig) {
+    const resolveFromPackageRoot = configPath === DEFAULT_CONFIG_PATH;
+    const absolutePath = resolvePackagePath(configPath, resolveFromPackageRoot);
+    try {
+        const yamlContent = stringifyYaml(config);
+        await fs.writeFile(absolutePath, yamlContent, 'utf-8');
+        logger.debug(`Wrote saiki config to: ${absolutePath}`);
+    } catch (error: any) {
+        throw new Error(
+            `Failed to write config file at ${error.path || configPath}: ${error.message}`,
             { cause: error }
         );
     }
