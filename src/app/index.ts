@@ -24,8 +24,8 @@ import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.j
 import { getPort } from '@core/utils/port-utils.js';
 import { createSaikiProject } from './cli/commands/create.js';
 import { initSaiki } from './cli/commands/init.js';
-import { getUserInput } from './cli/commands/init.js';
-
+import { getUserInput as getUserInputForProject } from './cli/commands/init.js';
+import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
 // Load environment variables
 dotenv.config();
 
@@ -58,7 +58,7 @@ program
         }
         // then call init to initialize the project
         try {
-            const userInput = await getUserInput();
+            const userInput = await getUserInputForProject();
             await initSaiki(
                 userInput.directory,
                 userInput.createExampleFile,
@@ -75,10 +75,16 @@ program
 // 3) `init` SUB-COMMAND
 program
     .command('init')
-    .description('Initialize an existing Saiki project')
+    .description('Initialize an existing Typescript project with Saiki')
     .action(async () => {
         try {
-            const userInput = await getUserInput();
+            // pre-condition: check that package.json exists in current directory to know that project is valid
+            await checkForFileInCurrentDirectory('package.json');
+            // pre-condition: check for tsconfig.json to validate it's a TypeScript project
+            await checkForFileInCurrentDirectory('tsconfig.json');
+
+            // get user input to initialize the project correctly
+            const userInput = await getUserInputForProject();
             await initSaiki(
                 userInput.directory,
                 userInput.createExampleFile,
@@ -87,7 +93,12 @@ program
             );
             process.exit(0);
         } catch (err) {
-            logger.error('Initialization failed:', err);
+            // if the package.json or tsconfig.json is not found, we give instructions to create a new project
+            if (err instanceof FileNotFoundError) {
+                logger.error(`${err.message} Run "saiki create" to create a new project`);
+                process.exit(1);
+            }
+            logger.error(`Initialization failed: ${err}`);
             process.exit(1);
         }
     });

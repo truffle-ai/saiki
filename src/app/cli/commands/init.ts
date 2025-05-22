@@ -26,7 +26,7 @@ const providerToKeyMap: Record<string, string> = {
  */
 export async function getUserInput(): Promise<{
     llmProvider: LLMProvider;
-    llmApiKey: any;
+    llmApiKey: string;
     directory: string;
     createExampleFile: any;
 }> {
@@ -83,7 +83,13 @@ export async function getUserInput(): Promise<{
         }
     );
 
-    return answers;
+    // Type assertion to bypass the possible 'Symbol' type returned by p.group which is handled in onCancel
+    return answers as {
+        llmProvider: LLMProvider;
+        llmApiKey: string;
+        directory: string;
+        createExampleFile: boolean;
+    };
 }
 
 /**

@@ -2,6 +2,7 @@ import { findProjectRoot } from './path.js';
 import fsExtra from 'fs-extra';
 import path from 'path';
 import { PackageJson } from 'type-fest';
+import { logger } from '@core/index.js';
 
 /**
  * Returns the install command for the given package manager
@@ -28,19 +29,26 @@ export function getPackageManagerInstallCommand(pm: string): string {
  * @returns The package manager for the given project
  */
 export function getPackageManager(): string {
-    const lockFile = findProjectRoot(process.cwd());
-    switch (lockFile) {
-        case 'pnpm-lock.yaml':
-            return 'pnpm';
-        case 'package-lock.json':
-            return 'npm';
-        case 'yarn.lock':
-            return 'yarn';
-        case 'bun.lock':
-            return 'bun';
-        default:
-            return 'npm';
+    const projectRoot = findProjectRoot(process.cwd());
+    if (!projectRoot) {
+        return 'npm'; // Default to npm if no project root is found
     }
+    // Check for specific lock files in this project
+
+    if (fsExtra.existsSync(path.join(projectRoot, 'pnpm-lock.yaml'))) {
+        return 'pnpm';
+    }
+    if (fsExtra.existsSync(path.join(projectRoot, 'yarn.lock'))) {
+        return 'yarn';
+    }
+    if (
+        fsExtra.existsSync(path.join(projectRoot, 'bun.lockb')) ||
+        fsExtra.existsSync(path.join(projectRoot, 'bun.lock'))
+    ) {
+        return 'bun';
+    }
+    // Default to npm if no other lock file is found
+    return 'npm';
 }
 
 /**
@@ -76,4 +84,37 @@ export async function addScriptsToPackageJson(scripts: Record<string, string>) {
     };
 
     await fsExtra.writeJSON(packageJsonPath, packageJson, { spaces: 2 });
+}
+
+/**
+ * Checks for a package.json file in the current directory
+ * Useful to decide if we are in the right folder of a valid project
+ * @returns True if a package.json file is found, false otherwise
+ */
+export async function checkForFileInCurrentDirectory(fileName: string) {
+    const file = path.join(process.cwd(), fileName);
+    let isFilePresent = false;
+
+    try {
+        await fsExtra.readJSON(file);
+        isFilePresent = true;
+    } catch {
+        isFilePresent = false;
+    }
+
+    if (isFilePresent) {
+        return;
+    }
+    logger.debug(`${fileName} not found in the current directory.`);
+    throw new FileNotFoundError(`${fileName} not found in the current directory.`);
+}
+
+/**
+ * Custom error class for when a required file is not found
+ */
+export class FileNotFoundError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'FileNotFoundError';
+    }
 }
