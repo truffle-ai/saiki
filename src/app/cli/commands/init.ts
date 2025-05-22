@@ -102,7 +102,7 @@ export async function initSaiki(
     createExampleFile = true,
     llmProvider?: LLMProvider,
     llmApiKey?: string
-) {
+): Promise<{ success: boolean }> {
     const spinner = p.spinner();
 
     try {
