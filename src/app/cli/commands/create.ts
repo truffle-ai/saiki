@@ -5,6 +5,11 @@ import { executeWithTimeout } from '../utils/execute.js';
 import * as p from '@clack/prompts';
 import { getPackageManager, getPackageManagerInstallCommand } from '../utils/package-mgmt.js';
 
+/**
+ * Creates basic scaffolding for a Saiki project
+ * Creates package.json, tsconfig.json, sets up git and gitignore, and sets up initial dependencies
+ * @param name - The name of the project
+ */
 export async function createSaikiProject(name?: string) {
     p.intro(chalk.inverse('Saiki Create'));
 
