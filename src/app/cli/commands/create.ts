@@ -8,15 +8,16 @@ import {
     getPackageManagerInstallCommand,
     addScriptsToPackageJson,
 } from '../utils/package-mgmt.js';
+import { logger } from '@core/index.js';
 
 /**
  * Creates basic scaffolding for a Saiki project
- * Creates package.json, tsconfig.json, sets up git and gitignore, and sets up initial dependencies
+ * sets up git and gitignore, and sets up initial dependencies
+ * Does not add scripts to package.json or create tsconfig.json which require the directory name
  * @param name - The name of the project
+ * @returns The path of the created project
  */
-export async function createSaikiProject(name?: string) {
-    p.intro(chalk.inverse('Saiki Create'));
-
+export async function createSaikiProject(name?: string): Promise<string> {
     // Basic regex: must start with a letter, contain only letters, numbers, hyphens or underscores
     const nameRegex = /^[a-zA-Z][a-zA-Z0-9-_]*$/;
 
@@ -92,12 +93,6 @@ export async function createSaikiProject(name?: string) {
     const packageJson = JSON.parse(await fs.readFile('package.json', 'utf8'));
     packageJson.type = 'module';
     await fs.writeFile('package.json', JSON.stringify(packageJson, null, 2));
-    // add scripts for saiki project
-    await addScriptsToPackageJson({
-        build: 'tsc',
-        start: 'node dist/saiki/saiki-example.js',
-        dev: 'node --loader ts-node/esm src/saiki/saiki-example.ts',
-    });
 
     spinner.stop('Project files created successfully!');
 
@@ -119,7 +114,27 @@ export async function createSaikiProject(name?: string) {
 
     spinner.stop('Dependencies installed!');
 
+    return projectPath;
+}
+
+/**
+ * Adds the saiki scripts to the package.json. Assumes the package.json already exists and is accessible
+ * @param directory - The directory of the project
+ */
+export async function addSaikiScriptsToPackageJson(directory: string, projectPath: string) {
+    logger.debug(`Adding saiki scripts to package.json in ${projectPath}`);
+    await addScriptsToPackageJson({
+        build: 'tsc',
+        start: `node dist/${path.join('saiki', 'saiki-example.js')}`,
+        dev: `node --loader ts-node/esm ${path.join(directory, 'saiki', 'saiki-example.ts')}`,
+    });
+    logger.debug(`Successfully added saiki scripts to package.json in ${projectPath}`);
+}
+
+/** Creates a tsconfig.json file in the project directory */
+export async function createTsconfigJson(projectPath: string, directory: string) {
     // setup tsconfig.json
+    logger.debug(`Creating tsconfig.json in ${projectPath}`);
     const tsconfig = {
         compilerOptions: {
             target: 'ES2022',
@@ -130,14 +145,11 @@ export async function createSaikiProject(name?: string) {
             forceConsistentCasingInFileNames: true,
             skipLibCheck: true,
             outDir: 'dist',
-            rootDir: 'src',
+            rootDir: directory,
         },
-        include: ['src/**/*.ts'],
+        include: [`${directory}/**/*.ts`],
         exclude: ['node_modules', 'dist', '.saiki'],
     };
     await fs.writeJSON(path.join(projectPath, 'tsconfig.json'), tsconfig, { spaces: 4 });
-
-    p.outro(chalk.greenBright('Saiki project created successfully!'));
-
-    // Saiki install, .env setup, and saiki.yml and example setup is done in init command
+    logger.debug(`Successfully created tsconfig.json in ${projectPath}`);
 }

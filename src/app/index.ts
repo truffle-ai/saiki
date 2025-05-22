@@ -2,9 +2,10 @@
 import { existsSync } from 'fs';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import * as p from '@clack/prompts';
+import chalk from 'chalk';
 import pkg from '../../package.json' with { type: 'json' };
+import path from 'path';
 
 import {
     logger,
@@ -22,9 +23,13 @@ import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
 import { getPort } from '@core/utils/port-utils.js';
-import { createSaikiProject } from './cli/commands/create.js';
-import { initSaiki } from './cli/commands/init.js';
-import { getUserInput as getUserInputForProject } from './cli/commands/init.js';
+import {
+    createSaikiProject,
+    createTsconfigJson,
+    addSaikiScriptsToPackageJson,
+} from './cli/commands/create.js';
+import { initSaiki, postInitSaiki } from './cli/commands/init.js';
+import { getUserInputToCreateProject } from './cli/commands/init.js';
 import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
 import { startNextJsWebServer } from './web.js';
 // Load environment variables
@@ -55,25 +60,32 @@ program
     .command('create')
     .description('Scaffold a new Saiki Typescript project')
     .action(async () => {
-        // create project
         try {
-            await createSaikiProject();
-        } catch (err) {
-            logger.error('Project creation failed:', err);
-            process.exit(1);
-        }
-        // then call init to initialize the project
-        try {
-            const userInput = await getUserInputForProject();
+            p.intro(chalk.inverse('Saiki Create'));
+            // first setup the initial files in the project and get the project path
+            const projectPath = await createSaikiProject();
+
+            // then get user inputs for directory, llm etc.
+            const userInput = await getUserInputToCreateProject();
+
+            // move to project directory, then add the saiki scripts to the package.json and create the tsconfig.json
+            process.chdir(projectPath);
+            await addSaikiScriptsToPackageJson(userInput.directory, projectPath);
+            await createTsconfigJson(projectPath, userInput.directory);
+
+            // then initialize the other parts of the project
             await initSaiki(
                 userInput.directory,
                 userInput.createExampleFile,
                 userInput.llmProvider,
                 userInput.llmApiKey
             );
+
+            // add notes for users to get started with their new initialized Saiki project
+            await postInitSaiki(userInput.directory);
             process.exit(0);
         } catch (err) {
-            logger.error('Initialization failed:', err);
+            logger.error(`Saiki create command failed: ${err}`);
             process.exit(1);
         }
     });
@@ -84,19 +96,23 @@ program
     .description('Initialize an existing Typescript project with Saiki')
     .action(async () => {
         try {
-            // pre-condition: check that package.json exists in current directory to know that project is valid
+            // pre-condition: check that package.json and tsconfig.json exist in current directory to know that project is valid
             await checkForFileInCurrentDirectory('package.json');
-            // pre-condition: check for tsconfig.json to validate it's a TypeScript project
             await checkForFileInCurrentDirectory('tsconfig.json');
 
-            // get user input to initialize the project correctly
-            const userInput = await getUserInputForProject();
+            // start intro
+            p.intro(chalk.inverse('Saiki Init'));
+            const userInput = await getUserInputToCreateProject();
             await initSaiki(
                 userInput.directory,
                 userInput.createExampleFile,
                 userInput.llmProvider,
                 userInput.llmApiKey
             );
+            p.outro(chalk.greenBright('Saiki project initialized successfully!'));
+
+            // add notes for users to get started with their new initialized Saiki project
+            await postInitSaiki(userInput.directory);
             process.exit(0);
         } catch (err) {
             // if the package.json or tsconfig.json is not found, we give instructions to create a new project

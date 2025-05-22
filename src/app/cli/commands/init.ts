@@ -24,14 +24,12 @@ const providerToKeyMap: Record<string, string> = {
  * Get user preferences needed to initialize a Saiki project
  * @returns The user preferences
  */
-export async function getUserInput(): Promise<{
+export async function getUserInputToCreateProject(): Promise<{
     llmProvider: LLMProvider;
     llmApiKey: string;
     directory: string;
     createExampleFile: any;
 }> {
-    p.intro(chalk.inverse('Saiki Init'));
-
     const answers = await p.group(
         {
             llmProvider: () =>
@@ -86,8 +84,8 @@ export async function getUserInput(): Promise<{
     // Type assertion to bypass the possible 'Symbol' type returned by p.group which is handled in onCancel
     return answers as {
         llmProvider: LLMProvider;
-        llmApiKey: string;
         directory: string;
+        llmApiKey: string;
         createExampleFile: boolean;
     };
 }
@@ -186,8 +184,10 @@ export async function initSaiki(
         logger.debug(`Error: ${err}`);
         return { success: false };
     }
-    p.outro(chalk.greenBright('Saiki project initialized successfully!'));
-    // List steps in a dedented, left-aligned block
+}
+
+/** Adds notes for users to get started with their new initialized Saiki project */
+export async function postInitSaiki(directory: string) {
     const nextSteps = [
         `1. Run the example (if created): ${chalk.cyan(`node --loader ts-node/esm ${path.join(directory, 'saiki', 'saiki-example.ts')}`)}`,
         `2. Add/update your API key(s) in ${chalk.cyan('.env')}`,
@@ -197,7 +197,6 @@ export async function initSaiki(
     ].join('\n');
     p.note(nextSteps, chalk.yellow('Next steps:'));
 }
-
 /**
  * Creates the saiki directories (saiki, saiki/agents) in the given directory.
  * @param directory - The directory to create the saiki directories in
@@ -261,13 +260,18 @@ export async function updateSaikiConfigFile(filepath: string, llmProvider?: LLMP
  * @returns The path to the created example index file
  */
 export async function createSaikiExampleFile(directory: string): Promise<string> {
+    // Extract the base directory from the given path (e.g., "src" from "src/saiki")
+    const baseDir = path.dirname(directory);
+
+    const configPath = `./${path.join(baseDir, 'saiki/agents/saiki.yml')}`;
+
     const indexTsLines = [
         "import 'dotenv/config';",
         "import { loadConfigFile, SaikiAgent, createSaikiAgent } from '@truffle-ai/saiki';",
         '',
         '// 1. Initialize the agent from the config file',
         '// Every agent is defined by its own config file',
-        "const config = await loadConfigFile('./src/saiki/agents/saiki.yml');",
+        `const config = await loadConfigFile('${configPath}');`,
         'export const agent = await createSaikiAgent(config);',
         '',
         '// 2. Run the agent',
@@ -277,9 +281,16 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
         '// 3. Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki',
     ];
     const indexTsContent = indexTsLines.join('\n');
+    const outputPath = path.join(directory, 'saiki-example.ts');
+
+    // Log the generated file content and paths for debugging
+    logger.debug(`Creating example file with config path: ${configPath}`);
+    logger.debug(`Base directory: ${baseDir}, Output path: ${outputPath}`);
+    logger.debug(`Generated file content:\n${indexTsContent}`);
+
     // Ensure the directory exists before writing the file
-    await fs.writeFile(path.join(directory, 'saiki-example.ts'), indexTsContent);
-    return path.join(directory, 'saiki-example.ts');
+    await fs.writeFile(outputPath, indexTsContent);
+    return outputPath;
 }
 
 /**
