@@ -7,12 +7,8 @@ import { getPackageManager, getPackageManagerInstallCommand } from '../utils/pac
 import { executeWithTimeout } from '../utils/execute.js';
 import { createRequire } from 'module';
 import { findProjectRoot } from '../utils/path.js';
-import {
-    loadConfigFile,
-    getDefaultModelForProvider,
-    writeConfigFile,
-    LLMProvider,
-} from '@core/index.js';
+import { getDefaultModelForProvider, LLMProvider } from '@core/index.js';
+import { parseDocument } from 'yaml';
 
 const require = createRequire(import.meta.url);
 
@@ -76,8 +72,6 @@ export async function initSaiki(
         spinner.start('Updating .env file with saiki env variables...');
         await updateEnvFile(directory, llmProvider, llmApiKey);
         spinner.stop('Updated .env file with saiki env variables...');
-
-        spinner.stop('Saiki files created successfully!');
     } catch (err) {
         spinner.stop(chalk.inverse('An error occurred while creating Saiki directory'));
         console.error(err);
@@ -129,12 +123,12 @@ export async function createSaikiConfigFile(directory: string): Promise<string> 
 }
 
 export async function updateSaikiConfigFile(filepath: string, llmProvider?: LLMProvider) {
-    console.log('Updating saiki config file...', filepath, llmProvider);
-    const config = await loadConfigFile(filepath);
-    config.llm.provider = llmProvider;
-    config.llm.apiKey = '$' + providerToKeyMap[llmProvider];
-    config.llm.model = getDefaultModelForProvider(llmProvider);
-    await writeConfigFile(filepath, config);
+    const fileContent = await fs.readFile(filepath, 'utf8');
+    const doc = parseDocument(fileContent);
+    doc.setIn(['llm', 'provider'], llmProvider);
+    doc.setIn(['llm', 'apiKey'], '$' + providerToKeyMap[llmProvider]);
+    doc.setIn(['llm', 'model'], getDefaultModelForProvider(llmProvider));
+    await fs.writeFile(filepath, doc.toString(), 'utf8');
 }
 
 /**
@@ -325,7 +319,7 @@ export async function getUserInput(): Promise<{
         {
             llmProvider: () =>
                 p.select({
-                    message: 'Select the LLM provider',
+                    message: 'Select your LLM provider',
                     options: [
                         { value: 'openai', label: 'OpenAI', hint: 'Most popular LLM provider' },
                         { value: 'anthropic', label: 'Anthropic' },

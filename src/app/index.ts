@@ -47,8 +47,7 @@ program
 // 2) `create` SUB-COMMAND
 program
     .command('create')
-    .alias('new')
-    .description('Scaffold a new Saiki Node.js project')
+    .description('Scaffold a new Saiki Typescript project')
     .action(async () => {
         // create project
         try {
@@ -73,7 +72,27 @@ program
         }
     });
 
-// 3) DEFAULT RUNNER (CLI / HEADLESS / WEB / DISCORD / TELEGRAM)
+// 3) `init` SUB-COMMAND
+program
+    .command('init')
+    .description('Initialize an existing Saiki project')
+    .action(async () => {
+        try {
+            const userInput = await getUserInput();
+            await initSaiki(
+                userInput.directory,
+                userInput.createExampleFile,
+                userInput.llmProvider,
+                userInput.llmApiKey
+            );
+            process.exit(0);
+        } catch (err) {
+            logger.error('Initialization failed:', err);
+            process.exit(1);
+        }
+    });
+
+// 4) DEFAULT RUNNER (CLI / HEADLESS / WEB / DISCORD / TELEGRAM)
 program
     .argument('[prompt...]', 'Natural-language prompt to run once (omit for REPL)')
     .description('Default runner: interactive REPL, single prompt, or other modes via --mode')
@@ -255,5 +274,5 @@ program
         }
     });
 
-// 4) PARSE & EXECUTE
+// 5) PARSE & EXECUTE
 program.parseAsync(process.argv);
