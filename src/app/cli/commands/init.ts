@@ -182,6 +182,7 @@ export async function initSaiki(
         );
         await updateEnvFile(process.cwd(), llmProvider, llmApiKey);
         spinner.stop('Updated .env file with saiki env variables...');
+        return { success: true };
     } catch (err) {
         spinner.stop(chalk.inverse('An error occurred initializing Saiki project'));
         logger.debug(`Error: ${err}`);
