@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Express } from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
@@ -282,17 +283,26 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     return { app, server, wss, webSubscriber };
 }
 
-export async function startApiServer(
+/** Serves the legacy web UI on the express app. will be deprecated soon */
+export function startLegacyWebUI(app: Express) {
+    const publicPath = resolvePackagePath('public', true);
+    logger.info(`Serving static files from: ${publicPath}`);
+    app.use(express.static(publicPath));
+}
+
+// TODO: Refactor this when we get rid of the legacy web UI
+export async function startApiAndLegacyWebUIServer(
     agent: SaikiAgent,
     port = 3000,
+    serveLegacyWebUI?: boolean,
     agentCardOverride?: Partial<AgentCard>
 ) {
     const { app, server, wss, webSubscriber } = await initializeApi(agent, agentCardOverride);
 
     // Serve legacy static UI from public/, for backward compatibility
-    const publicPath = resolvePackagePath('public', true);
-    logger.info(`Serving static files from: ${publicPath}`);
-    app.use(express.static(publicPath));
+    if (serveLegacyWebUI) {
+        startLegacyWebUI(app);
+    }
 
     // Next.js front-end handles static assets; only mount API and WebSocket routes here.
     server.listen(port, '0.0.0.0', () => {
@@ -306,11 +316,24 @@ export async function startApiServer(
             });
         });
 
-        logger.info(
-            `API server & WebUI(legacy) started successfully. Accessible at: http://localhost:${port} and http://${localIp}:${port} on your local network.\nLegacy WebUI will be deprecated in a future release. Use the new Next.js WebUI for a better experience.`,
-            null,
-            'green'
-        );
+        if (serveLegacyWebUI) {
+            logger.info(
+                `API server & Legacy WebUI started successfully. Accessible at: http://localhost:${port} and http://${localIp}:${port} on your local network.`,
+                null,
+                'green'
+            );
+            logger.warn(
+                `Legacy WebUI at http://localhost:${port} will be deprecated in a future release. Use the new Next.js WebUI for a better experience.`,
+                null,
+                'yellow'
+            );
+        } else {
+            logger.info(
+                `API server started successfully. Accessible at: http://localhost:${port} and http://${localIp}:${port} on your local network.`,
+                null,
+                'green'
+            );
+        }
     });
 
     return { server, wss, webSubscriber };

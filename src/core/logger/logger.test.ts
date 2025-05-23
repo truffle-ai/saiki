@@ -3,7 +3,7 @@ import { Logger, logger } from '../logger/index.js';
 
 // Ensure console.log is mocked and environment is reset between tests
 beforeEach(() => {
-    delete process.env.LOG_LEVEL;
+    delete process.env.SAIKI_LOG_LEVEL;
     delete process.env.DEBUG;
     vi.restoreAllMocks();
 });
@@ -22,8 +22,8 @@ describe('Logger utilities', () => {
         expect(l.getLevel()).toBe('info');
     });
 
-    it('respects LOG_LEVEL env var', () => {
-        process.env.LOG_LEVEL = 'debug';
+    it('respects SAIKI_LOG_LEVEL env var', () => {
+        process.env.SAIKI_LOG_LEVEL = 'debug';
         const l = new Logger();
         expect(l.getLevel()).toBe('debug');
     });

@@ -10,6 +10,7 @@ import {
 export interface ModelInfo {
     name: string;
     maxTokens: number;
+    default?: boolean;
     // Add other relevant metadata if needed, e.g., supported features, cost tier
 }
 
@@ -20,12 +21,14 @@ export interface ProviderInfo {
 
 export const DEFAULT_MAX_TOKENS = 128000;
 
+export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'groq';
+
 // Central registry of supported LLM providers and their models
-export const LLM_REGISTRY: Record<string, ProviderInfo> = {
+export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     openai: {
         models: [
             { name: 'gpt-4.1', maxTokens: 1047576 },
-            { name: 'gpt-4.1-mini', maxTokens: 1047576 },
+            { name: 'gpt-4.1-mini', maxTokens: 1047576, default: true },
             { name: 'gpt-4.1-nano', maxTokens: 1047576 },
             { name: 'gpt-4o', maxTokens: 128000 },
             { name: 'gpt-4o-mini', maxTokens: 128000 },
@@ -37,7 +40,7 @@ export const LLM_REGISTRY: Record<string, ProviderInfo> = {
     },
     anthropic: {
         models: [
-            { name: 'claude-3-7-sonnet-20250219', maxTokens: 200000 },
+            { name: 'claude-3-7-sonnet-20250219', maxTokens: 200000, default: true },
             { name: 'claude-3-5-sonnet-20240620', maxTokens: 200000 },
             { name: 'claude-3-haiku-20240307', maxTokens: 200000 },
             { name: 'claude-3-opus-20240229', maxTokens: 200000 },
@@ -46,15 +49,32 @@ export const LLM_REGISTRY: Record<string, ProviderInfo> = {
     },
     google: {
         models: [
-            { name: 'gemini-2.5-pro-exp-03-25', maxTokens: 1048576 },
+            { name: 'gemini-2.5-pro-exp-03-25', maxTokens: 1048576, default: true },
             { name: 'gemini-2.0-flash', maxTokens: 1048576 },
             { name: 'gemini-2.0-flash-lite', maxTokens: 1048576 },
             { name: 'gemini-1.5-pro-latest', maxTokens: 1048576 },
             { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 },
         ],
     },
-    // Add other providers like Groq, Cohere, etc., as needed
+    // https://console.groq.com/docs/models
+    groq: {
+        models: [
+            { name: 'gemma-2-9b-it', maxTokens: 8192 },
+            { name: 'llama-3.3-70b-versatile', maxTokens: 128000, default: true },
+        ],
+    },
+    // Add other providers like Cohere, etc., as needed
 };
+
+/**
+ * Gets the default model for a given provider from the registry.
+ * @param provider The name of the provider.
+ * @returns The default model for the provider, or null if no default model is found.
+ */
+export function getDefaultModelForProvider(provider: string): string {
+    const providerInfo = LLM_REGISTRY[provider.toLowerCase()];
+    return providerInfo ? providerInfo.models.find((m) => m.default)?.name : null;
+}
 
 /**
  * Gets the list of supported providers.

@@ -18,12 +18,7 @@ ${validLogLevels.join('|')} - Set logging level directly
  * @param agent The SaikiAgent instance providing access to all required services
  */
 async function _initCli(agent: SaikiAgent): Promise<void> {
-    // Log model and connection info
-    logger.info(
-        `Using model config: ${JSON.stringify(agent.llmService.getConfig(), null, 2)}`,
-        null,
-        'yellow'
-    );
+    // Log connection info
     logger.debug(`Log level: ${logger.getLevel()}`);
     logger.info(`Connected servers: ${agent.clientManager.getClients().size}`, null, 'green');
     const failedConnections = agent.clientManager.getFailedConnections();

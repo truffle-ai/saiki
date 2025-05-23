@@ -82,7 +82,7 @@ export interface LoggerOptions {
 
 // Helper to get default log level from environment or fallback to 'info'
 const getDefaultLogLevel = (): string => {
-    const envLevel = process.env.LOG_LEVEL;
+    const envLevel = process.env.SAIKI_LOG_LEVEL;
     if (envLevel && Object.keys(logLevels).includes(envLevel.toLowerCase())) {
         return envLevel.toLowerCase();
     }
@@ -247,7 +247,7 @@ export class Logger {
     setLevel(level: string) {
         if (Object.keys(logLevels).includes(level.toLowerCase())) {
             this.logger.level = level.toLowerCase();
-            this.info(`Log level set to: ${level}`);
+            this.debug(`Log level set to: ${level}`);
         } else {
             this.warn(`Invalid log level: ${level}. Using current level: ${this.logger.level}`);
         }
