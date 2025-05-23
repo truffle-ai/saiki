@@ -161,4 +161,26 @@ describe('updateEnvFile', () => {
         ].join('\n');
         expect(result).toBe(expected);
     });
+
+    it('works when called with project root instead of non-existent subdirectory', async () => {
+        // This simulates the init-app scenario where we call updateEnvFile with
+        // the current working directory (project root) instead of a subdirectory
+        // that might not exist yet (like "src/")
+
+        // The tempDir already has a lock file from beforeEach
+        await updateEnvFile(tempDir, 'anthropic', 'test-key');
+        const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
+
+        const expected = [
+            '',
+            '## Saiki env variables',
+            'OPENAI_API_KEY=',
+            'ANTHROPIC_API_KEY=test-key',
+            'GOOGLE_GENERATIVE_AI_API_KEY=',
+            'GROQ_API_KEY=',
+            'SAIKI_LOG_LEVEL=info',
+            '',
+        ].join('\n');
+        expect(result).toBe(expected);
+    });
 });

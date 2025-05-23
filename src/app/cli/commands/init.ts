@@ -177,7 +177,10 @@ export async function initSaiki(
 
         // add/update .env file
         spinner.start('Updating .env file with saiki env variables...');
-        await updateEnvFile(directory, llmProvider, llmApiKey);
+        logger.debug(
+            `Updating .env file with saiki env variables: directory ${directory}, llmProvider: ${llmProvider}, llmApiKey: [REDACTED]`
+        );
+        await updateEnvFile(process.cwd(), llmProvider, llmApiKey);
         spinner.stop('Updated .env file with saiki env variables...');
     } catch (err) {
         spinner.stop(chalk.inverse('An error occurred initializing Saiki project'));
@@ -312,7 +315,7 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
  * 4. If the variable doesn't exist in .env and wasn't passed:
  *    Add it to the Saiki section with an empty string value.
  *
- * @param directory - The directory to start searching for the project root.
+ * @param directory - The directory to start searching for the project root. Should be an existing directory, typically the current working directory or project root.
  * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
  * @param llmApiKey - The API key for the specified LLM provider.
  */
@@ -335,7 +338,7 @@ export async function updateEnvFile(
         throw new Error('Could not find project root (no lock file found)');
     }
     const envFilePath = path.join(projectRoot, '.env');
-
+    logger.debug(`Updating .env file with saiki env variables: envFilePath ${envFilePath}`);
     // Read existing .env if present
     let envLines: string[] = [];
     try {
