@@ -5,6 +5,7 @@ import { logger } from '../../../logger/index.js';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGroq } from '@ai-sdk/groq';
 import { VercelLLMService } from './vercel.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
@@ -29,9 +30,7 @@ function extractApiKey(config: LLMConfig): string {
     if (!apiKey) {
         const errorMsg = `Error: API key for ${provider} not found`;
         logger.error(errorMsg);
-        logger.error(
-            `Please set your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key in the config file or .env file`
-        );
+        logger.error(`Please set your ${provider} API key in the config file or .env file`);
         throw new Error(errorMsg);
     }
 
@@ -106,6 +105,8 @@ function _createVercelModel(llmConfig: LLMConfig): LanguageModelV1 {
             return createAnthropic({ apiKey })(model);
         case 'google':
             return createGoogleGenerativeAI({ apiKey })(model);
+        case 'groq':
+            return createGroq({ apiKey })(model);
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);
     }

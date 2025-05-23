@@ -137,7 +137,7 @@ export const LLMConfigSchema = z
         provider: z
             .string()
             .nonempty()
-            .describe("The LLM provider (e.g., 'openai', 'anthropic', 'groq')"),
+            .describe("The LLM provider (e.g., 'openai', 'anthropic', 'google', 'groq')"),
         model: z.string().nonempty().describe('The specific model name for the selected provider'),
         systemPrompt: z
             .union([z.string(), SystemPromptConfigSchema])

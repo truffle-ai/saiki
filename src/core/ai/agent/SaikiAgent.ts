@@ -8,6 +8,10 @@ import { EventEmitter } from 'events';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { McpServerConfig } from '../../config/schemas.js';
+import { createAgentServices } from '../../utils/service-initializer.js';
+import type { AgentConfig } from '../../config/schemas.js';
+import type { CLIConfigOverrides } from '../../config/types.js';
+import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
@@ -124,4 +128,27 @@ export class SaikiAgent {
     // - public async startInteractiveCliSession() { /* ... */ }
     // - public async executeHeadlessCommand(command: string) { /* ... */ }
     // - public async specializedTask(params: any) { /* ... */ }
+}
+
+/**
+ * Method to create a SaikiAgent from agent config object
+ * @param agentConfig The agent configuration object
+ * @param cliArgs Optional CLI config overrides
+ * @param overrides Optional service overrides
+ * @returns Promise<SaikiAgent>
+ */
+export async function createSaikiAgent(
+    agentConfig: AgentConfig,
+    cliArgs?: CLIConfigOverrides,
+    overrides?: InitializeServicesOptions
+): Promise<SaikiAgent> {
+    const services = await createAgentServices(agentConfig, cliArgs, overrides);
+
+    // log model info for observability
+    logger.info(
+        `Agent using model config: ${JSON.stringify(services.llmService.getConfig(), null, 2)}`,
+        null,
+        'yellow'
+    );
+    return new SaikiAgent(services);
 }
