@@ -21,10 +21,10 @@ const providerToKeyMap: Record<string, string> = {
 };
 
 /**
- * Get user preferences needed to initialize a Saiki project
+ * Get user preferences needed to initialize a Saiki app
  * @returns The user preferences
  */
-export async function getUserInputToCreateProject(): Promise<{
+export async function getUserInputToInitSaikiApp(): Promise<{
     llmProvider: LLMProvider;
     llmApiKey: string;
     directory: string;
