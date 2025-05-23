@@ -34,13 +34,7 @@ export default function MessageList({ messages }: MessageListProps) {
   }, [messages]);
 
   if (!messages || messages.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <Info className="h-10 w-10 mb-3 text-primary" />
-        <p className="text-lg font-medium">No messages yet.</p>
-        <p className="text-sm">Start the conversation by typing below.</p>
-      </div>
-    );
+    return null;
   }
 
   return (

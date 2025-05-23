@@ -132,7 +132,7 @@ export async function startNextJsWebServer(
         logger.info(`Launching Next.js dev server on ${frontUrl}`, null, 'cyanBright');
 
         // Try to find next CLI directly
-        const nextBin = path.join(webuiPath, 'node_modules', '.bin', 'next');
+        const nextBin = path.join(webuiPath, 'node_modules', '.bin', 'next.cmd');
         const hasNextBin = existsSync(nextBin);
 
         // Command to run

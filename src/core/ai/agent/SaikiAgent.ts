@@ -7,8 +7,10 @@ import { ConfigManager } from '../../config/manager.js';
 import { EventEmitter } from 'events';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
-import { McpServerConfig } from '../../config/schemas.js';
+import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
+import { createLLMService } from '../llm/services/factory.js';
+import { LLMRouter } from '../llm/types.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
@@ -120,6 +122,52 @@ export class SaikiAgent {
                 success: false,
                 error: errorMessage,
             });
+            throw error;
+        }
+    }
+
+    /**
+     * Gets the current LLM configuration and status.
+     * @returns Current LLM service configuration.
+     */
+    public getCurrentLLMConfig() {
+        return {
+            config: this.configManager.getConfig().llm,
+            serviceInfo: this.llmService.getConfig(),
+        };
+    }
+
+    /**
+     * Switches the LLM service while preserving conversation history.
+     * @param newLLMConfig The new LLM configuration.
+     * @param router The LLM router to use ('vercel' or 'in-built').
+     */
+    public switchLLM(newLLMConfig: LLMConfig, router: LLMRouter = 'in-built'): void {
+        try {
+            // Create new LLM service with the same dependencies but new config
+            const newLLMService = createLLMService(
+                newLLMConfig,
+                router,
+                this.clientManager,
+                this.agentEventBus,
+                this.messageManager // This preserves the conversation history
+            );
+
+            // Replace the LLM service
+            (this as any).llmService = newLLMService;
+
+            // Update the agent's config
+            this.configManager.getConfig().llm = newLLMConfig;
+
+            logger.info(
+                `SaikiAgent LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}`
+            );
+            this.agentEventBus.emit('saiki:llmSwitched', {
+                newConfig: newLLMConfig,
+                historyRetained: true,
+            });
+        } catch (error) {
+            logger.error('Error during SaikiAgent.switchLLM:', error);
             throw error;
         }
     }

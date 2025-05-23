@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
 import { Paperclip, SendHorizontal, X, Loader2 } from 'lucide-react';
-import { Card } from './ui/card';
 
 interface InputAreaProps {
   onSend: (content: string, imageData?: { base64: string; mimeType: string }) => void;

@@ -15,6 +15,7 @@ import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
 import { resolvePackagePath } from '@core/index.js';
+import { LLM_REGISTRY } from '@core/ai/llm/registry.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -319,6 +320,150 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 `Error exporting config YAML: ${err instanceof Error ? err.message : String(err)}`
             );
             res.status(500).send('Failed to export configuration');
+        }
+    });
+
+    // LLM Management Endpoints
+
+    // Get current LLM configuration
+    app.get('/api/llm/current', async (req, res) => {
+        try {
+            const currentConfig = agent.getCurrentLLMConfig();
+            res.json(currentConfig);
+        } catch (error: any) {
+            logger.error(`Error getting current LLM config: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get current LLM configuration' });
+        }
+    });
+
+    // Get available LLM providers and models
+    app.get('/api/llm/providers', async (req, res) => {
+        try {
+            // Build providers object from the LLM registry
+            const providers: Record<
+                string,
+                {
+                    name: string;
+                    models: string[];
+                    supportedRouters: string[];
+                    supportsBaseURL: boolean;
+                }
+            > = {};
+
+            for (const [providerKey, providerInfo] of Object.entries(LLM_REGISTRY)) {
+                // Convert provider key to display name
+                const displayName = (() => {
+                    switch (providerKey) {
+                        case 'openai':
+                            return 'OpenAI';
+                        case 'anthropic':
+                            return 'Anthropic';
+                        case 'google':
+                            return 'Google';
+                        case 'groq':
+                            return 'Groq';
+                        default:
+                            return providerKey.charAt(0).toUpperCase() + providerKey.slice(1);
+                    }
+                })();
+
+                // Determine supported routers based on the factory implementation
+                const supportedRouters = (() => {
+                    switch (providerKey) {
+                        case 'openai':
+                        case 'anthropic':
+                            return ['vercel', 'in-built']; // Both routers supported
+                        case 'google':
+                        case 'groq':
+                            return ['vercel']; // Only vercel router supported
+                        default:
+                            return ['vercel']; // Default to vercel for unknown providers
+                    }
+                })();
+
+                // Only OpenAI supports custom baseURL for OpenAI-compatible endpoints
+                const supportsBaseURL = providerKey === 'openai';
+
+                providers[providerKey] = {
+                    name: displayName,
+                    models: providerInfo.models.map((model) => model.name),
+                    supportedRouters,
+                    supportsBaseURL,
+                };
+            }
+
+            res.json({ providers });
+        } catch (error: any) {
+            logger.error(`Error getting LLM providers: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get LLM providers' });
+        }
+    });
+
+    // Switch LLM configuration
+    app.post('/api/llm/switch', express.json(), async (req, res) => {
+        try {
+            const { provider, model, apiKey, router, baseURL } = req.body;
+
+            if (!provider || !model) {
+                return res.status(400).json({ error: 'Provider and model are required' });
+            }
+
+            // Validate router if provided
+            if (router && !['vercel', 'in-built'].includes(router)) {
+                return res
+                    .status(400)
+                    .json({ error: 'Router must be either "vercel" or "in-built"' });
+            }
+
+            // Validate provider/router combination
+            const providerInfo = LLM_REGISTRY[provider.toLowerCase()];
+            if (!providerInfo) {
+                return res.status(400).json({ error: `Unknown provider: ${provider}` });
+            }
+
+            const selectedRouter = router || 'vercel'; // Default to vercel if not specified
+
+            // Check if the provider supports the selected router
+            if (
+                selectedRouter === 'in-built' &&
+                !['openai', 'anthropic'].includes(provider.toLowerCase())
+            ) {
+                return res.status(400).json({
+                    error: `Provider '${provider}' does not support 'in-built' router. Only OpenAI and Anthropic support in-built routing.`,
+                });
+            }
+
+            // Validate baseURL usage
+            if (baseURL && provider.toLowerCase() !== 'openai') {
+                return res.status(400).json({
+                    error: 'Custom baseURL is only supported for OpenAI provider',
+                });
+            }
+
+            // Get current config to preserve other settings
+            const currentConfig = agent.configManager.getConfig().llm;
+
+            const newLLMConfig = {
+                ...currentConfig,
+                provider,
+                model,
+                ...(apiKey && { apiKey }), // Only include apiKey if provided
+                ...(baseURL && { baseURL }), // Only include baseURL if provided
+            };
+
+            await agent.switchLLM(newLLMConfig, selectedRouter);
+
+            res.json({
+                success: true,
+                message: `Successfully switched to ${provider}/${model} using ${selectedRouter} router`,
+                config: agent.getCurrentLLMConfig(),
+            });
+        } catch (error: any) {
+            logger.error(`Error switching LLM: ${error.message}`);
+            res.status(500).json({
+                success: false,
+                error: `Failed to switch LLM: ${error.message}`,
+            });
         }
     });
 
