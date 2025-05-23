@@ -20,6 +20,6 @@
         "declaration": true,
         "declarationMap": true
     },
-    "include": ["src/**/*", "**/*.test.ts", "**/*.spec.ts", "vitest.config.ts"],
+    "include": ["src/**/*", "scripts/**/*", "**/*.test.ts", "**/*.spec.ts", "vitest.config.ts"],
     "exclude": ["node_modules"]
 }

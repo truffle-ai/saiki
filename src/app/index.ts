@@ -51,12 +51,14 @@ program
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
-    .option('--mode <mode>', 'Run mode: cli, web, discord, telegram, or mcp', 'cli')
-    .option('--web-port <port>', 'Port for WebUI', '3000')
-    // LLM Options
-    .option('-m, --model <model>', 'Specify the LLM model to use')
+    .option('-m, --model <model>', 'Specify the LLM model to use. ')
     .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
-    .option('--web-port <port>', 'Port for WebUI', '3000');
+    .option(
+        '--mode <mode>',
+        'The application in which saiki should talk to you - cli | web | discord | telegram',
+        'cli'
+    )
+    .option('--web-port <port>', 'optional port for the web UI', '3000');
 
 // 2) `create-app` SUB-COMMAND
 program
@@ -128,10 +130,23 @@ program
         }
     });
 
-// 4) DEFAULT RUNNER (CLI / HEADLESS / WEB / DISCORD / TELEGRAM)
+// 4) Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
 program
-    .argument('[prompt...]', 'Natural-language prompt to run once (omit for REPL)')
-    .description('Default runner: interactive REPL, single prompt, or other modes via --mode')
+    .argument(
+        '[prompt...]',
+        'Natural-language prompt to run once. If not passed, saiki will start as an interactive CLI'
+    )
+    // Main customer facing description
+    .description(
+        'Saiki CLI allows you to talk to Saiki, build custom AI Agents, ' +
+            'build complex AI applications like Cursor, and more.\n\n' +
+            // TODO: Add `saiki tell me about your cli` starter prompt
+            'Run saiki interactive CLI with `saiki` or run a one-shot prompt with `saiki <prompt>`\n' +
+            'Run saiki web UI with `saiki --mode web`\n' +
+            'Run saiki as a discord bot with `saiki --mode discord`\n' +
+            'Run saiki as a telegram bot with `saiki --mode telegram`\n\n' +
+            'Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples'
+    )
     .action(async (prompt: string[] = []) => {
         // ——— ENV & API-KEY VALIDATION ———
         if (!existsSync('.env')) {
