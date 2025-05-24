@@ -11,17 +11,26 @@ import type { AgentCard } from '@core/index.js';
 import { setupA2ARoutes } from './a2a.js';
 import { initializeMcpServerEndpoints } from './mcp_handler.js';
 import { createAgentCard } from '@core/index.js';
-import { SaikiAgent } from '@core/index.js';
-import { stringify as yamlStringify } from 'yaml';
+import { SaikiAgent, AgentManager } from '@core/index.js';
+import { stringify as yamlStringify, parse as yamlParse, parseDocument } from 'yaml';
 import os from 'os';
 import { resolvePackagePath } from '@core/index.js';
 import { LLM_REGISTRY } from '@core/ai/llm/registry.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { loadConfigFile } from '@core/config/loader.js';
+import { AgentConfigSchema } from '@core/config/schemas.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
     const app = express();
     const server = http.createServer(app);
     const wss = new WebSocketServer({ server });
+
+    // Create an AgentManager instance for config management
+    const agentManager = new AgentManager();
+    // Set the current agent in the manager
+    (agentManager as any).currentAgent = agent;
 
     // set up event broadcasting over WebSocket
     const webSubscriber = new WebSocketEventSubscriber(wss);
@@ -320,6 +329,123 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 `Error exporting config YAML: ${err instanceof Error ? err.message : String(err)}`
             );
             res.status(500).send('Failed to export configuration');
+        }
+    });
+
+    // Config Management Endpoints
+
+    // Get current config as JSON (for UI)
+    app.get('/api/configs/current', async (req, res) => {
+        try {
+            const config = agentManager.exportConfig(true); // Sanitized by default
+            const metadata = agentManager.getConfigMetadata();
+
+            res.json({
+                config,
+                metadata,
+                timestamp: new Date().toISOString(),
+            });
+        } catch (error: any) {
+            logger.error(`Error getting current config: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get current configuration' });
+        }
+    });
+
+    // Save current config with a name
+    app.post('/api/configs/save', express.json(), async (req, res) => {
+        try {
+            const { name, description } = req.body;
+
+            if (!name || typeof name !== 'string' || name.trim() === '') {
+                return res.status(400).json({ error: 'Config name is required' });
+            }
+
+            const result = await agentManager.saveConfig(name, description);
+
+            res.json({
+                success: true,
+                message: `Configuration saved as '${name}'`,
+                ...result,
+            });
+        } catch (error: any) {
+            logger.error(`Error saving config: ${error.message}`);
+            res.status(500).json({ error: `Failed to save configuration: ${error.message}` });
+        }
+    });
+
+    // List saved configs
+    app.get('/api/configs/saved', async (req, res) => {
+        try {
+            const configs = await agentManager.listSavedConfigs();
+            res.json({ configs });
+        } catch (error: any) {
+            logger.error(`Error listing saved configs: ${error.message}`);
+            res.status(500).json({ error: 'Failed to list saved configurations' });
+        }
+    });
+
+    // Load a saved config
+    app.post('/api/configs/load', express.json(), async (req, res) => {
+        try {
+            const { filename, preserveConversation = true } = req.body;
+
+            if (!filename || typeof filename !== 'string') {
+                return res.status(400).json({ error: 'Filename is required' });
+            }
+
+            await agentManager.loadSavedConfig(filename, preserveConversation);
+
+            res.json({
+                success: true,
+                message: `Configuration loaded and applied from '${filename}'`,
+                config: agentManager.exportConfig(true),
+            });
+        } catch (error: any) {
+            logger.error(`Error loading config: ${error.message}`);
+            res.status(500).json({ error: `Failed to load configuration: ${error.message}` });
+        }
+    });
+
+    // Import config from uploaded content
+    app.post('/api/configs/import', express.json(), async (req, res) => {
+        try {
+            const { content, preserveConversation = true } = req.body;
+
+            if (!content || typeof content !== 'string') {
+                return res.status(400).json({ error: 'Config content is required' });
+            }
+
+            await agentManager.importConfig(content, preserveConversation);
+
+            res.json({
+                success: true,
+                message: 'Configuration imported and applied successfully',
+                config: agentManager.exportConfig(true),
+            });
+        } catch (error: any) {
+            logger.error(`Error importing config: ${error.message}`);
+            res.status(500).json({ error: `Failed to import configuration: ${error.message}` });
+        }
+    });
+
+    // Delete a saved config
+    app.delete('/api/configs/saved/:filename', async (req, res) => {
+        try {
+            const { filename } = req.params;
+
+            if (!filename) {
+                return res.status(400).json({ error: 'Filename is required' });
+            }
+
+            await agentManager.deleteConfig(filename);
+
+            res.json({
+                success: true,
+                message: `Configuration '${filename}' deleted successfully`,
+            });
+        } catch (error: any) {
+            logger.error(`Error deleting config: ${error.message}`);
+            res.status(500).json({ error: `Failed to delete configuration: ${error.message}` });
         }
     });
 

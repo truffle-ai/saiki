@@ -32,6 +32,18 @@ export class WebSocketEventSubscriber implements EventSubscriber {
         eventBus.on('llmservice:conversationReset', () =>
             this.broadcast('conversationReset', null)
         );
+
+        // Config management events
+        eventBus.on('saiki:configLoaded', (data: any) => this.broadcast('configLoaded', data));
+        eventBus.on('saiki:configImported', (data: any) => this.broadcast('configImported', data));
+        eventBus.on('saiki:configApplied', (data: any) => this.broadcast('configApplied', data));
+        eventBus.on('saiki:configSaved', (data: any) => this.broadcast('configSaved', data));
+        eventBus.on('saiki:configDeleted', (data: any) => this.broadcast('configDeleted', data));
+        eventBus.on('saiki:configReloaded', (data: any) => this.broadcast('configReloaded', data));
+        eventBus.on('saiki:availableToolsUpdated', () => this.broadcast('toolsUpdated', null));
+        eventBus.on('saiki:mcpServerConnected', (data: any) =>
+            this.broadcast('serverConnected', data)
+        );
     }
 
     private broadcast(eventType: string, data: any): void {

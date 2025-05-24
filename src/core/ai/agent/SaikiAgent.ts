@@ -172,6 +172,115 @@ export class SaikiAgent {
         }
     }
 
+    /**
+     * Loads a new configuration, preserving conversation history.
+     * This is useful for switching between different agent configurations.
+     * @param newConfig The new agent configuration to load.
+     */
+    public loadConfig(newConfig: AgentConfig): void {
+        try {
+            // Store current conversation state
+            const currentMessages = this.messageManager.getHistory();
+
+            // Load new config
+            this.configManager.initFromConfig(newConfig);
+
+            // Create new LLM service with the new config but preserve message history
+            const newLLMService = createLLMService(
+                newConfig.llm,
+                newConfig.llm.router || 'in-built',
+                this.clientManager,
+                this.agentEventBus,
+                this.messageManager // This preserves conversation history
+            );
+
+            // Replace the LLM service
+            (this as any).llmService = newLLMService;
+
+            logger.info('SaikiAgent configuration reloaded successfully');
+            this.agentEventBus.emit('saiki:configReloaded', {
+                newConfig,
+                messagesRetained: currentMessages.length,
+            });
+        } catch (error) {
+            logger.error('Error during SaikiAgent.loadConfig:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Exports the current configuration with optional sanitization.
+     * @param sanitize Whether to remove sensitive data like API keys.
+     * @returns The current configuration object.
+     */
+    public exportConfig(sanitize: boolean = true): AgentConfig {
+        try {
+            const config = this.configManager.getConfig();
+
+            if (!sanitize) {
+                return config;
+            }
+
+            // Deep clone and sanitize
+            const sanitizedConfig = JSON.parse(JSON.stringify(config));
+            if (sanitizedConfig.llm && 'apiKey' in sanitizedConfig.llm) {
+                sanitizedConfig.llm.apiKey = 'SET_YOUR_API_KEY_HERE';
+            }
+
+            // Remove any other sensitive fields from MCP servers
+            if (sanitizedConfig.mcpServers) {
+                for (const serverName in sanitizedConfig.mcpServers) {
+                    const server = sanitizedConfig.mcpServers[serverName];
+                    if (server.env) {
+                        for (const envKey in server.env) {
+                            if (
+                                envKey.toLowerCase().includes('key') ||
+                                envKey.toLowerCase().includes('token') ||
+                                envKey.toLowerCase().includes('secret')
+                            ) {
+                                server.env[envKey] = 'SET_YOUR_' + envKey + '_HERE';
+                            }
+                        }
+                    }
+                }
+            }
+
+            return sanitizedConfig;
+        } catch (error) {
+            logger.error('Error during SaikiAgent.exportConfig:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Gets configuration metadata including provenance and statistics.
+     * @returns Configuration metadata and statistics.
+     */
+    public getConfigMetadata() {
+        try {
+            const config = this.configManager.getConfig();
+            const provenance = this.configManager.getProvenance();
+            const connectedServers = this.clientManager.getClients();
+            const failedConnections = this.clientManager.getFailedConnections();
+
+            return {
+                provenance,
+                statistics: {
+                    mcpServersConfigured: Object.keys(config.mcpServers || {}).length,
+                    mcpServersConnected: connectedServers.size,
+                    mcpServersFailed: Object.keys(failedConnections).length,
+                    llmProvider: config.llm?.provider,
+                    llmModel: config.llm?.model,
+                    conversationLength: this.messageManager.getHistory().length,
+                },
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            logger.error('Error during SaikiAgent.getConfigMetadata:', error);
+            throw error;
+        }
+    }
+
     // Future methods could encapsulate more complex agent behaviors:
     // - public async startInteractiveCliSession() { /* ... */ }
     // - public async executeHeadlessCommand(command: string) { /* ... */ }
