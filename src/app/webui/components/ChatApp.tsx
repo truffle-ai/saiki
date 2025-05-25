@@ -7,9 +7,9 @@ import InputArea from './InputArea';
 import ConnectServerModal from './ConnectServerModal';
 import ServersPanel from './ServersPanel';
 import { Button } from "./ui/button";
-import { ChevronLeft, ChevronRight, Server, Download, Wrench, History, Keyboard } from "lucide-react";
+import { Server, Download, Wrench, Keyboard, AlertTriangle } from "lucide-react";
 import { cn } from '@/lib/utils';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -38,41 +38,6 @@ export default function ChatApp() {
   useEffect(() => {
     setMessageCount(messages.length);
   }, [messages]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + K to open servers panel
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setServersPanelOpen(prev => !prev);
-      }
-      // Ctrl/Cmd + P to open playground
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-        e.preventDefault();
-        window.open('/playground', '_blank');
-      }
-      // Ctrl/Cmd + E to export config
-      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-        e.preventDefault();
-        setExportOpen(true);
-      }
-      // Ctrl/Cmd + ? to show shortcuts
-      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-        e.preventDefault();
-        setShowShortcuts(true);
-      }
-      // Escape to close panels
-      if (e.key === 'Escape') {
-        if (isServersPanelOpen) setServersPanelOpen(false);
-        else if (isExportOpen) setExportOpen(false);
-        else if (showShortcuts) setShowShortcuts(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isExportOpen, showShortcuts]);
 
   useEffect(() => {
     if (isExportOpen) {
@@ -177,221 +142,301 @@ export default function ChatApp() {
     }
   ];
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + K to open servers panel
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setServersPanelOpen(prev => !prev);
+      }
+      // Ctrl/Cmd + P to open playground
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        window.open('/playground', '_blank');
+      }
+      // Ctrl/Cmd + E to export config
+      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        setExportOpen(true);
+      }
+      // Ctrl/Cmd + ? to show shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        setShowShortcuts(true);
+      }
+      // Escape to close panels
+      if (e.key === 'Escape') {
+        if (isServersPanelOpen) setServersPanelOpen(false);
+        else if (isExportOpen) setExportOpen(false);
+        else if (showShortcuts) setShowShortcuts(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isServersPanelOpen, isExportOpen, showShortcuts]);
+
   return (
     <div className="flex h-screen bg-background">
       <main className="flex-1 flex flex-col relative">
-        <header className="flex justify-between items-center p-4 border-b border-border bg-background z-10">
+        {/* Simplified Header */}
+        <header className="shrink-0 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+          <div className="flex justify-between items-center px-4 py-3">
+            <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1">
-              <img src="/logo.png" alt="Saiki Logo" className="mt-1 h-7 w-7" />
-              <span className="font-semibold text-xl">Saiki</span>
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground">
+                  <img src="/logo.png" alt="Saiki" className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <h1 className="text-base font-semibold tracking-tight">Saiki</h1>
+                  <div className="flex items-center space-x-2">
+                    <div className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      "bg-green-500"
+                    )}></div>
+                    <span className="text-xs text-muted-foreground">Default Session</span>
+                  </div>
+                </div>
             </div>
-            {/* Session Info */}
-            <div className="hidden sm:flex items-center space-x-2 text-sm text-muted-foreground">
-              <History className="h-3 w-3" />
-              <span>{formatSessionDuration()}</span>
+              
+              {/* Session Status - More Minimal */}
               {messageCount > 0 && (
-                <>
-                  <span>•</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {messageCount} messages
-                  </Badge>
-                </>
+                <div className="hidden md:flex items-center space-x-2 text-xs text-muted-foreground">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                  <span>{formatSessionDuration()}</span>
+                  <span className="text-muted-foreground/50">•</span>
+                  <span>{messageCount} msgs</span>
+                </div>
               )}
-            </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            {/* Quick Access to Playground */}
-            <Button variant="ghost" size="sm" asChild className="hidden md:flex">
-              <Link href="/playground" title="Open Playground (Ctrl+P)">
-                <Wrench className="h-4 w-4 mr-2" />
-                <span>Playground</span>
-              </Link>
-            </Button>
-
-            {/* LLM Model Selector */}
+            {/* Minimal Action Bar */}
+            <div className="flex items-center space-x-1">
             <LLMSelector />
 
-            {/* Keyboard Shortcuts */}
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => setShowShortcuts(true)}
-              className="hidden sm:flex"
-              title="Keyboard Shortcuts (Ctrl+/)"
-            >
-              <Keyboard className="h-4 w-4" />
+                onClick={() => setServersPanelOpen(!isServersPanelOpen)}
+                className={cn(
+                  "h-8 px-2 text-xs transition-colors",
+                  isServersPanelOpen && "bg-muted"
+                )}
+              >
+                <Server className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline ml-1.5">Tools</span>
             </Button>
             
             <Button 
-              variant="outline" 
-              onClick={() => setServersPanelOpen(open => !open)} 
-              className="flex items-center space-x-2"
-              title="Toggle Servers Panel (Ctrl+K)"
-            >
-              <Server className="h-4 w-4" />
-              <span className="hidden sm:inline">Servers</span>
-              {isServersPanelOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                variant="ghost"
+                size="sm"
+                asChild
+                className="h-8 px-2 text-xs"
+              >
+                <Link href="/playground" target="_blank">
+                  <Wrench className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline ml-1.5">Play</span>
+                </Link>
             </Button>
             
-            <Dialog open={isExportOpen} onOpenChange={setExportOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="flex items-center space-x-2" title="Export Configuration (Ctrl+E)">
-                  <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">Export</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowShortcuts(true)}
+                className="h-8 w-8 p-0"
+              >
+                <Keyboard className="h-3.5 w-3.5" />
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Export Configuration</DialogTitle>
-                  <DialogDescription>Download the current config and servers as YAML.</DialogDescription>
-                </DialogHeader>
-                {exportError && (
-                  <Alert variant="destructive" className="mb-4">
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>{exportError}</AlertDescription>
-                  </Alert>
-                )}
-                {copySuccess && (
-                  <Alert className="mb-4">
-                    <AlertTitle>Copied to clipboard</AlertTitle>
-                  </Alert>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="exportName">Filename</Label>
-                  <Input id="exportName" value={exportName} onChange={(e) => setExportName(e.target.value)} />
-                </div>
-                {exportContent && (
-                  <div className="mt-4">
-                    <Label className='mb-2'>Preview</Label>
-                    <Textarea readOnly value={exportContent} className="font-mono text-xs" rows={10} />
                   </div>
-                )}
-                <DialogFooter>
-                  <Button onClick={handleDownload}>Download YAML</Button>
-                  <Button variant="outline" onClick={handleCopy}>Copy YAML</Button>
-                  <DialogClose asChild>
-                    <Button variant="ghost">Cancel</Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
           </div>
         </header>
         
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messageCount === 0 && (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center max-w-xl w-full px-4">
-                <div className="mb-6">
-                  <img src="/logo.png" alt="Saiki Logo" className="h-16 w-16 mx-auto opacity-50" />
+        {/* Main Content Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Chat Content */}
+          <div className="flex-1 flex flex-col">
+            {messages.length === 0 ? (
+              /* Welcome Screen - Clean Design */
+              <div className="flex-1 flex items-center justify-center p-6">
+                <div className="w-full max-w-2xl mx-auto text-center space-y-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-2xl bg-primary/10 text-primary">
+                      <img src="/logo.png" alt="Saiki" className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-semibold mb-2">Welcome to Saiki</h3>
-                <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                  Your AI Agent development playground. Start chatting or connect MCP servers to expand capabilities.
-                </p>
-                
-                {/* Quick Actions */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10 max-w-6xl mx-auto">
+                    <div className="space-y-2">
+                      <h2 className="text-2xl font-semibold tracking-tight">Welcome to Saiki</h2>
+                      <p className="text-muted-foreground text-base">
+                        Build powerful AI agents with integrated tools and seamless workflows
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
                   {quickActions.map((action, index) => (
                     <button
                       key={index}
                       onClick={action.action}
-                      className="flex flex-col items-center gap-3 p-4 bg-card border border-border rounded-xl hover:shadow-lg hover:border-primary/30 transition-all text-center group"
-                    >
-                      <div className="text-3xl">{action.icon}</div>
-                      <div>
-                        <h4 className="font-semibold text-sm group-hover:text-primary mb-1">{action.title}</h4>
-                        <p className="text-xs text-muted-foreground">{action.description}</p>
+                        className="group p-4 text-left rounded-xl border border-border/50 bg-card hover:bg-muted/50 transition-all duration-200 hover:border-border hover:shadow-minimal"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="text-lg">{action.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-sm group-hover:text-foreground transition-colors">
+                              {action.title}
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {action.description}
+                            </p>
+                          </div>
                       </div>
                     </button>
                   ))}
                 </div>
                 
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button variant="outline" size="sm" onClick={() => setServersPanelOpen(true)}>
-                    <Server className="h-4 w-4 mr-2" />
-                    Connect Servers
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/playground">
-                      <Wrench className="h-4 w-4 mr-2" />
-                      Try Playground
-                    </Link>
-                  </Button>
+                  {/* Quick Tips */}
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘P</kbd> for playground</p>
+                  </div>
                 </div>
               </div>
+            ) : (
+              /* Messages Area */
+              <div className="flex-1 overflow-hidden">
+                <div className="h-full overflow-y-auto">
+                  <MessageList 
+                    messages={messages}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Input Area */}
+            <div className="shrink-0 border-t border-border/50 bg-background/80 backdrop-blur-xl">
+              <div className="p-4">
+                <InputArea
+                  onSend={handleSend}
+                  isSending={isSendingMessage}
+                />
+              </div>
             </div>
-          )}
-          <MessageList messages={messages} />
+          </div>
+
+          {/* Servers Panel - Slide Animation */}
+          <div className={cn(
+            "shrink-0 transition-all duration-300 ease-in-out border-l border-border/50 bg-card",
+            isServersPanelOpen ? "w-80" : "w-0 overflow-hidden"
+          )}>
+            {isServersPanelOpen && (
+              <ServersPanel
+                isOpen={isServersPanelOpen}
+                onClose={() => setServersPanelOpen(false)}
+                onOpenConnectModal={() => setModalOpen(true)}
+                variant="inline"
+              />
+            )}
+          </div>
         </div>
         
-        <div className="p-4 border-t border-border">
-          <InputArea onSend={handleSend} isSending={isSendingMessage} />
-        </div>
-        <ConnectServerModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} />
+        {/* Connect Server Modal */}
+        <ConnectServerModal 
+          isOpen={isModalOpen} 
+          onClose={() => setModalOpen(false)} 
+        />
 
-        {/* Keyboard Shortcuts Dialog */}
-        <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
-          <DialogContent className="max-w-md">
+        {/* Export Configuration Modal */}
+        <Dialog open={isExportOpen} onOpenChange={setExportOpen}>
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Keyboard className="h-5 w-5" />
-                Keyboard Shortcuts
+              <DialogTitle className="flex items-center space-x-2">
+                <Download className="h-5 w-5" />
+                <span>Export Configuration</span>
               </DialogTitle>
-              <DialogDescription>Speed up your workflow with these shortcuts</DialogDescription>
+              <DialogDescription>
+                Download your agent configuration for Claude Desktop or other MCP clients
+              </DialogDescription>
             </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="filename">File name</Label>
+                <Input
+                  id="filename"
+                  value={exportName}
+                  onChange={(e) => setExportName(e.target.value)}
+                  placeholder="saiki-config"
+                  className="font-mono"
+                />
+              </div>
+              
+              {exportError && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Export Error</AlertTitle>
+                  <AlertDescription>{exportError}</AlertDescription>
+                </Alert>
+              )}
+              
+              {exportContent && (
+                <div className="space-y-2">
+                  <Label>Configuration Preview</Label>
+                  <Textarea
+                    value={exportContent}
+                    readOnly
+                    className="h-32 font-mono text-xs bg-muted/30"
+                  />
+                </div>
+              )}
+        </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCopy} className="flex items-center space-x-2">
+                <span>{copySuccess ? 'Copied!' : 'Copy'}</span>
+              </Button>
+              <Button onClick={handleDownload} className="flex items-center space-x-2">
+                <Download className="h-4 w-4" />
+                <span>Download</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Shortcuts Modal */}
+        <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <Keyboard className="h-5 w-5" />
+                <span>Keyboard Shortcuts</span>
+              </DialogTitle>
+            </DialogHeader>
+            
             <div className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm">Toggle Servers Panel</span>
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + K
+              {[
+                { key: '⌘ K', desc: 'Toggle tools panel' },
+                { key: '⌘ P', desc: 'Open playground' },
+                { key: '⌘ E', desc: 'Export config' },
+                { key: '⌘ /', desc: 'Show shortcuts' },
+                { key: 'Esc', desc: 'Close panels' },
+              ].map((shortcut, index) => (
+                <div key={index} className="flex justify-between items-center py-1">
+                  <span className="text-sm text-muted-foreground">{shortcut.desc}</span>
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {shortcut.key}
                 </Badge>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm">Open Playground</span>
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + P
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm">Export Configuration</span>
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + E
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm">Show Shortcuts</span>
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + /
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-sm">Close Panels</span>
-                <Badge variant="secondary" className="font-mono text-xs">Escape</Badge>
-              </div>
+              ))}
             </div>
+            
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline">Got it</Button>
+                <Button variant="outline">Close</Button>
               </DialogClose>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </main>
-      <div className={cn(
-        "h-full flex-shrink-0 transition-all duration-300 ease-in-out",
-        isServersPanelOpen ? "w-80 border-l border-border shadow-xl" : "w-0 border-none shadow-none",
-        "overflow-hidden"
-      )}>
-        <ServersPanel
-          isOpen={isServersPanelOpen}
-          variant="inline"
-          onClose={() => setServersPanelOpen(false)}
-          onOpenConnectModal={() => setModalOpen(true)}
-        />
-      </div>
     </div>
   );
 } 

@@ -96,7 +96,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   return (
     <div
       id="input-area"
-      className="flex items-end gap-2 w-full p-2 bg-background"
+      className="flex items-end gap-2 w-full"
     >
       <Button 
         variant="outline" 

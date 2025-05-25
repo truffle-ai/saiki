@@ -181,3 +181,57 @@ export interface LLMConfig {
         modelMaxTokens?: number;
     };
 }
+
+// MCP Server Registry types
+export interface ServerRegistryEntry {
+    id: string;
+    name: string;
+    description: string;
+    category:
+        | 'productivity'
+        | 'development'
+        | 'research'
+        | 'creative'
+        | 'data'
+        | 'communication'
+        | 'custom';
+    icon?: string;
+    version?: string;
+    author?: string;
+    homepage?: string;
+    config: {
+        type: 'stdio' | 'sse';
+        command?: string;
+        args?: string[];
+        url?: string;
+        env?: Record<string, string>;
+        headers?: Record<string, string>;
+        timeout?: number;
+    };
+    tags: string[];
+    isOfficial: boolean;
+    isInstalled: boolean;
+    popularity?: number;
+    lastUpdated: Date;
+    requirements?: {
+        platform?: 'win32' | 'darwin' | 'linux' | 'all';
+        node?: string;
+        python?: string;
+        dependencies?: string[];
+    };
+}
+
+export interface ServerRegistryFilter {
+    category?: string;
+    tags?: string[];
+    search?: string;
+    installed?: boolean;
+    official?: boolean;
+}
+
+export interface ServerRegistryState {
+    entries: ServerRegistryEntry[];
+    isLoading: boolean;
+    error?: string;
+    lastUpdated?: Date;
+}

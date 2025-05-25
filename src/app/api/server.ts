@@ -82,6 +82,23 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Reset to default configuration
+    app.post('/api/configs/reset', express.json(), async (req, res) => {
+        logger.info('Received request via POST /api/configs/reset');
+        try {
+            // Use the new resetToDefault method
+            await agentManager.resetToDefault();
+
+            res.status(200).json({
+                status: 'reset to default',
+                message: 'Agent reset to default configuration',
+            });
+        } catch (error: any) {
+            logger.error(`Error handling POST /api/configs/reset: ${error.message}`);
+            res.status(500).json({ error: `Failed to reset configuration: ${error.message}` });
+        }
+    });
+
     app.post('/api/connect-server', express.json(), async (req, res) => {
         logger.info('Received request via POST /api/connect-server');
         const { name, config } = req.body;
@@ -339,10 +356,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             const config = agentManager.exportConfig(true); // Sanitized by default
             const metadata = agentManager.getConfigMetadata();
+            const status = agentManager.getConfigStatus();
 
             res.json({
                 config,
                 metadata,
+                status,
                 timestamp: new Date().toISOString(),
             });
         } catch (error: any) {
@@ -351,16 +370,35 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Get configuration status and info
+    app.get('/api/configs/status', async (req, res) => {
+        try {
+            const status = agentManager.getConfigStatus();
+            res.json({ status });
+        } catch (error: any) {
+            logger.error(`Error getting config status: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get configuration status' });
+        }
+    });
+
     // Save current config with a name
     app.post('/api/configs/save', express.json(), async (req, res) => {
         try {
-            const { name, description } = req.body;
+            const { name, description, config } = req.body;
 
             if (!name || typeof name !== 'string' || name.trim() === '') {
                 return res.status(400).json({ error: 'Config name is required' });
             }
 
-            const result = await agentManager.saveConfig(name, description);
+            let result;
+
+            if (config) {
+                // Save provided config data (e.g., from import)
+                result = await agentManager.saveConfigFromData(config, name, description);
+            } else {
+                // Save current agent config
+                result = await agentManager.saveConfig(name, description);
+            }
 
             res.json({
                 success: true,
@@ -406,22 +444,38 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
-    // Import config from uploaded content
+    // Import config from uploaded content (import-only, don't apply)
     app.post('/api/configs/import', express.json(), async (req, res) => {
         try {
-            const { content, preserveConversation = true } = req.body;
+            const { content, name, description, applyImmediately = false } = req.body;
 
             if (!content || typeof content !== 'string') {
                 return res.status(400).json({ error: 'Config content is required' });
             }
 
-            await agentManager.importConfig(content, preserveConversation);
+            if (applyImmediately) {
+                // Old behavior: import and apply immediately
+                await agentManager.importConfig(content, true);
+                res.json({
+                    success: true,
+                    message: 'Configuration imported and applied successfully',
+                    config: agentManager.exportConfig(true),
+                });
+            } else {
+                // New behavior: import to file only
+                if (!name) {
+                    return res
+                        .status(400)
+                        .json({ error: 'Name is required when importing to file' });
+                }
 
-            res.json({
-                success: true,
-                message: 'Configuration imported and applied successfully',
-                config: agentManager.exportConfig(true),
-            });
+                const result = await agentManager.importConfigToFile(content, name, description);
+                res.json({
+                    success: true,
+                    message: `Configuration imported and saved as '${name}'`,
+                    ...result,
+                });
+            }
         } catch (error: any) {
             logger.error(`Error importing config: ${error.message}`);
             res.status(500).json({ error: `Failed to import configuration: ${error.message}` });
@@ -446,6 +500,37 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         } catch (error: any) {
             logger.error(`Error deleting config: ${error.message}`);
             res.status(500).json({ error: `Failed to delete configuration: ${error.message}` });
+        }
+    });
+
+    // Export a saved config as YAML
+    app.get('/api/configs/saved/:filename/export', async (req, res) => {
+        try {
+            const { filename } = req.params;
+
+            if (!filename) {
+                return res.status(400).json({ error: 'Filename is required' });
+            }
+
+            // Load the saved config
+            const configPath = path.join(process.cwd(), 'agent_configs', `${filename}.yml`);
+            const configContent = await fs.readFile(configPath, 'utf-8');
+
+            // Parse and sanitize the config (remove sensitive data)
+            const configData = yamlParse(configContent);
+            if (configData.llm && 'apiKey' in configData.llm) {
+                configData.llm.apiKey = 'SET_YOUR_API_KEY_HERE';
+            }
+
+            // Serialize back to YAML
+            const sanitizedYaml = yamlStringify(configData);
+
+            res.setHeader('Content-Type', 'application/x-yaml');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}.yml"`);
+            res.send(sanitizedYaml);
+        } catch (error: any) {
+            logger.error(`Error exporting saved config: ${error.message}`);
+            res.status(500).json({ error: `Failed to export configuration: ${error.message}` });
         }
     });
 

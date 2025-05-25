@@ -15,6 +15,7 @@ import type { InitializeServicesOptions } from '../../utils/service-initializer.
 export class AgentManager {
     private currentAgent: SaikiAgent | null = null;
     private configsDirectory: string;
+    private activeConfigFile: string | null = null; // Track which config file is currently active
 
     constructor(configsDirectory: string = './saved-configs') {
         this.configsDirectory = configsDirectory;
@@ -25,6 +26,34 @@ export class AgentManager {
      */
     getCurrentAgent(): SaikiAgent | null {
         return this.currentAgent;
+    }
+
+    /**
+     * Gets the filename of the currently active config, if any.
+     */
+    getActiveConfigFile(): string | null {
+        return this.activeConfigFile;
+    }
+
+    /**
+     * Checks if a config file exists.
+     */
+    async configExists(filename: string): Promise<boolean> {
+        try {
+            const filePath = path.join(this.configsDirectory, filename);
+            await fs.access(filePath);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Validates config data against the schema.
+     */
+    async validateConfigData(configData: any): Promise<AgentConfig> {
+        const { AgentConfigSchema } = await import('../../config/schemas.js');
+        return AgentConfigSchema.parse(configData);
     }
 
     /**
@@ -307,6 +336,9 @@ export class AgentManager {
             // Switch to the new configuration
             await this.switchAgentConfig(newConfig, preserveConversation);
 
+            // Track the active config file
+            this.activeConfigFile = filename;
+
             logger.info(`AgentManager: Loaded and applied config from ${filePath}`);
 
             // Emit event
@@ -463,6 +495,265 @@ export class AgentManager {
             logger.error('Error during AgentManager.getConfigMetadata:', error);
             throw error;
         }
+    }
+
+    /**
+     * Saves configuration data to a file without requiring a current agent.
+     * This is useful for importing configs that should be saved but not immediately applied.
+     */
+    async saveConfigFromData(
+        configData: any,
+        name: string,
+        description?: string
+    ): Promise<{
+        filename: string;
+        path: string;
+        name: string;
+        description: string;
+    }> {
+        try {
+            if (!name || typeof name !== 'string' || name.trim() === '') {
+                throw new Error('Config name is required');
+            }
+
+            // Validate the config data first
+            await this.validateConfigData(configData);
+
+            const sanitizedName = name.trim().replace(/[^a-zA-Z0-9-_]/g, '-');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `${sanitizedName}-${timestamp}.yml`;
+
+            // Add metadata to the config
+            const configWithMeta = {
+                ...configData,
+                _metadata: {
+                    name,
+                    description: description || '',
+                    savedAt: new Date().toISOString(),
+                    version: '1.0.0',
+                },
+            };
+
+            // Sanitize sensitive data before saving
+            const exportConfig = this.sanitizeConfig(configWithMeta);
+
+            // Ensure configs directory exists
+            await fs.mkdir(this.configsDirectory, { recursive: true });
+            const filePath = path.join(this.configsDirectory, filename);
+
+            // Write config file
+            const yamlContent = yamlStringify(exportConfig);
+            await fs.writeFile(filePath, yamlContent, 'utf-8');
+
+            logger.info(`AgentManager: Saved config data '${name}' to ${filePath}`);
+
+            // Emit event if we have a current agent
+            if (this.currentAgent) {
+                this.currentAgent.agentEventBus.emit('saiki:configSaved', {
+                    name,
+                    filename,
+                    path: filePath,
+                    timestamp: new Date().toISOString(),
+                });
+            }
+
+            return {
+                filename,
+                path: filePath,
+                name,
+                description: description || '',
+            };
+        } catch (error) {
+            logger.error('Error during AgentManager.saveConfigFromData:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Imports config data and saves it to a file without applying it.
+     * This allows for import-only operations separate from import-and-apply.
+     */
+    async importConfigToFile(
+        configData: any | string,
+        name: string,
+        description?: string
+    ): Promise<{
+        filename: string;
+        path: string;
+        name: string;
+        description: string;
+        config: AgentConfig;
+    }> {
+        try {
+            let parsedConfig: any;
+
+            // Parse the config data if it's a string
+            if (typeof configData === 'string') {
+                try {
+                    // Try YAML first
+                    const { parse: parseYaml } = await import('yaml');
+                    parsedConfig = parseYaml(configData);
+                } catch {
+                    try {
+                        // Fall back to JSON
+                        parsedConfig = JSON.parse(configData);
+                    } catch {
+                        throw new Error('Invalid YAML or JSON format');
+                    }
+                }
+            } else {
+                parsedConfig = configData;
+            }
+
+            // Validate the config
+            const validatedConfig = await this.validateConfigData(parsedConfig);
+
+            // Save to file
+            const result = await this.saveConfigFromData(validatedConfig, name, description);
+
+            logger.info(`AgentManager: Imported config to file '${result.filename}'`);
+
+            // Emit event if we have a current agent
+            if (this.currentAgent) {
+                this.currentAgent.agentEventBus.emit('saiki:configImportedToFile', {
+                    filename: result.filename,
+                    name,
+                    timestamp: new Date().toISOString(),
+                });
+            }
+
+            return {
+                ...result,
+                config: validatedConfig,
+            };
+        } catch (error) {
+            logger.error('Error during AgentManager.importConfigToFile:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Gets detailed information about a saved config file.
+     */
+    async getConfigInfo(filename: string): Promise<{
+        filename: string;
+        name: string;
+        description: string;
+        savedAt: string;
+        size: number;
+        path: string;
+        isValid: boolean;
+        config?: AgentConfig;
+    } | null> {
+        try {
+            const filePath = path.join(this.configsDirectory, filename);
+
+            // Check if file exists
+            try {
+                await fs.access(filePath);
+            } catch {
+                return null;
+            }
+
+            const content = await fs.readFile(filePath, 'utf-8');
+            const stats = await fs.stat(filePath);
+
+            let metadata: any = {};
+            let config: AgentConfig | undefined;
+            let isValid = false;
+
+            try {
+                const doc = parseDocument(content);
+                metadata = (doc.get('_metadata') as any) || {};
+
+                // Try to parse and validate the full config
+                const { parse: parseYaml } = await import('yaml');
+                const parsedConfig = parseYaml(content);
+                config = await this.validateConfigData(parsedConfig);
+                isValid = true;
+            } catch (error) {
+                logger.warn(`Config file ${filename} is invalid: ${error.message}`);
+            }
+
+            return {
+                filename,
+                name: metadata.name || filename.replace(/\.(yml|yaml)$/, ''),
+                description: metadata.description || '',
+                savedAt: metadata.savedAt || stats.mtime.toISOString(),
+                size: stats.size,
+                path: filePath,
+                isValid,
+                config: isValid ? config : undefined,
+            };
+        } catch (error) {
+            logger.error(`Error getting config info for ${filename}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Resets the agent to a default state without any saved configuration.
+     */
+    async resetToDefault(): Promise<void> {
+        if (!this.currentAgent) {
+            throw new Error('No current agent to reset');
+        }
+
+        try {
+            // Reset conversation
+            this.currentAgent.resetConversation();
+
+            // Clear active config file tracking
+            this.activeConfigFile = null;
+
+            logger.info('AgentManager: Agent reset to default state');
+
+            // Emit event
+            this.currentAgent.agentEventBus.emit('saiki:agentReset', {
+                timestamp: new Date().toISOString(),
+            });
+        } catch (error) {
+            logger.error('Error during AgentManager.resetToDefault:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Gets the current status of configurations.
+     */
+    getConfigStatus(): {
+        hasCurrentAgent: boolean;
+        activeConfigFile: string | null;
+        configsDirectory: string;
+        currentAgentInfo?: {
+            mcpServersConnected: number;
+            mcpServersFailed: number;
+            conversationLength: number;
+            llmProvider?: string;
+            llmModel?: string;
+        };
+    } {
+        const status = {
+            hasCurrentAgent: !!this.currentAgent,
+            activeConfigFile: this.activeConfigFile,
+            configsDirectory: this.configsDirectory,
+        };
+
+        if (this.currentAgent) {
+            const config = this.currentAgent.configManager.getConfig();
+            const connectedServers = this.currentAgent.clientManager.getClients();
+            const failedConnections = this.currentAgent.clientManager.getFailedConnections();
+
+            (status as any).currentAgentInfo = {
+                mcpServersConnected: connectedServers.size,
+                mcpServersFailed: Object.keys(failedConnections).length,
+                conversationLength: this.currentAgent.messageManager.getHistory().length,
+                llmProvider: config.llm?.provider,
+                llmModel: config.llm?.model,
+            };
+        }
+
+        return status;
     }
 
     // === PRIVATE HELPER METHODS ===

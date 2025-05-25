@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
-import { X, PlusCircle, Server, ListChecks, ChevronRight, RefreshCw, AlertTriangle, ChevronDown, Terminal, Trash2 } from 'lucide-react';
+import { X, PlusCircle, Server, ListChecks, ChevronRight, RefreshCw, AlertTriangle, ChevronDown, Terminal, Trash2, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import type { McpServer, McpTool } from '@/types';
+import type { McpServer, McpTool, ServerRegistryEntry } from '@/types';
+import ServerRegistryModal from './ServerRegistryModal';
 
 interface ServersPanelProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
   const [toolsError, setToolsError] = useState<string | null>(null);
   const [isToolsExpanded, setIsToolsExpanded] = useState(false); // State for tools section collapse
   const [isDeletingServer, setIsDeletingServer] = useState<string | null>(null); // Tracks which server is being deleted
+  const [isRegistryModalOpen, setIsRegistryModalOpen] = useState(false);
 
   const handleError = (message: string, area: 'servers' | 'tools' | 'delete') => {
     console.error(`ServersPanel Error (${area}):`, message);
@@ -71,6 +73,72 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
       }
     }
   }, []);
+
+  const handleInstallServer = async (entry: ServerRegistryEntry) => {
+    // Close the registry modal first
+    setIsRegistryModalOpen(false);
+    
+    // Prepare the config for the connect API
+    const config = {
+      type: entry.config.type,
+      command: entry.config.command,
+      args: entry.config.args || [],
+      url: entry.config.url,
+      env: entry.config.env || {},
+      headers: entry.config.headers || {},
+      timeout: entry.config.timeout || 30000,
+    };
+
+    try {
+      const res = await fetch('/api/connect-server', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: entry.name, config }),
+      });
+      
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || `Server returned status ${res.status}`);
+      }
+      
+      // Refresh the servers list
+      await fetchServers();
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to install server');
+    }
+  };
+
+  const handleDeleteServer = async (serverId: string) => {
+    const server = servers.find(s => s.id === serverId);
+    if (!server) return;
+
+    if (!window.confirm(`Are you sure you want to remove server "${server.name}"?`)) {
+      return;
+    }
+
+    setIsDeletingServer(serverId);
+    setServerError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/mcp/servers/${serverId}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to remove server' }));
+        throw new Error(errorData.message || errorData.error || `Server Removal: ${response.statusText}`);
+      }
+      
+      // If this was the selected server, deselect it
+      if (selectedServerId === serverId) {
+        setSelectedServerId(null);
+        setTools([]);
+      }
+      
+      await fetchServers(); // Refresh server list
+    } catch (err: any) {
+      handleError(err.message, 'servers');
+    } finally {
+      setIsDeletingServer(null);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -146,184 +214,245 @@ export default function ServersPanel({ isOpen, onClose, onOpenConnectModal, vari
   return (
     <aside className={variant === 'overlay' ? overlayClass : inlineClass}>
       {/* Panel Header */}
-      <div className="flex items-center justify-between p-3 border-b border-border flex-shrink-0">
-        <h2 className="text-lg font-semibold text-card-foreground">Servers & Tools</h2>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur-sm">
+        <h2 className="text-sm font-semibold text-foreground">Tools & Servers</h2>
         <div className="flex items-center space-x-1">
-            <Button variant="ghost" size="icon" onClick={() => fetchServers()} disabled={isLoadingServers} aria-label="Refresh servers">
-                <RefreshCw className={cn("h-4 w-4 text-muted-foreground", isLoadingServers && "animate-spin")} />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => fetchServers()} 
+            disabled={isLoadingServers} 
+            className="h-8 w-8 p-0"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", isLoadingServers && "animate-spin")} />
+          </Button>
+          {variant === 'overlay' && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onClose} 
+              className="h-8 w-8 p-0"
+            >
+              <X className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close panel">
-                <X className="h-5 w-5 text-muted-foreground" />
-            </Button>
+          )}
         </div>
       </div>
 
-      {/* Connect New Server Button - Moved to top */}
-      <div className="p-3 border-b border-border flex-shrink-0">
-        <Button onClick={() => { onClose(); onOpenConnectModal();}} className="w-full py-2.5">
+      {/* Add Server Actions */}
+      <div className="px-4 py-3 space-y-2 border-b border-border/30">
+        <Button 
+          onClick={() => { onClose(); onOpenConnectModal(); }} 
+          className="w-full h-9 text-sm font-medium"
+          size="sm"
+        >
           <PlusCircle className="mr-2 h-4 w-4" />
-          Connect New Server
+          Connect Server
+        </Button>
+        <Button 
+          onClick={() => setIsRegistryModalOpen(true)} 
+          variant="outline" 
+          className="w-full h-9 text-sm font-medium"
+          size="sm"
+        >
+          <Package className="mr-2 h-4 w-4" />
+          Browse Registry
         </Button>
       </div>
 
-      {/* MCP Playground Button - Positioned below Connect New Server */}
-      <div className="p-3 border-b border-border flex-shrink-0">
-        <Button variant="outline" className="w-full py-2.5" asChild>
-          <Link href="/playground">
-            <Terminal className="mr-2 h-4 w-4" />
-            MCP Playground
-          </Link>
-        </Button>
-      </div>
-
-      {/* Servers List Section */}
-      <div className="overflow-y-auto p-3 space-y-2 flex-shrink-0">
-        <h3 className="px-1 text-sm font-medium text-muted-foreground mb-1">SERVERS</h3>
-        {isLoadingServers && <p className="text-sm text-muted-foreground px-1 py-2">Loading servers...</p>}
-        {serverError && !isLoadingServers && (
-          <div className="p-2 bg-destructive/10 rounded-md text-destructive text-sm flex items-start space-x-2">
-            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0"/> 
-            <span><strong>Error:</strong> {serverError}</span>
+      {/* Content Area */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {/* Servers Section */}
+        <div className="p-4 border-b border-border/30">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Connected Servers ({servers.length})
+            </h3>
           </div>
-        )}
-        {!isLoadingServers && !serverError && servers.length === 0 && (
-          <div className="text-center py-4 px-1">
-            <p className="text-sm text-muted-foreground mb-3">No servers connected yet.</p>
-            <Button onClick={() => { onClose(); onOpenConnectModal();}} className="w-full">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Connect Your First Server
-            </Button>
-          </div>
-        )}
-        {servers.map((server) => (
-          <div key={server.id} className="flex items-center space-x-1 group">
-            <Button
-              variant={selectedServerId === server.id ? 'secondary' : 'ghost'}
-              className="flex-1 w-full justify-start items-center h-10 px-3 text-left truncate"
-              onClick={() => {
-                setSelectedServerId(server.id); 
-              }}
-              disabled={isDeletingServer === server.id}
-            >
-              <Server className={cn(
-                  "h-4 w-4 mr-2.5 flex-shrink-0",
-                  server.status === 'connected' ? 'text-green-500' :
-                  server.status === 'disconnected' ? 'text-slate-500' :
-                  'text-yellow-500'
-              )} />
-              <span className="flex-1 truncate text-sm font-normal group-hover:font-medium">
-                {isDeletingServer === server.id ? `Deleting ${server.name}...` : server.name}
-              </span>
-              {server.status !== 'connected' && <span className='ml-auto text-xs text-muted-foreground/70 normal-case'>({server.status})</span>}
-              {selectedServerId === server.id && server.status === 'connected' && <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />}
-            </Button>
-            <Button 
-              variant="ghost"
-              size="icon"
-              className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-destructive disabled:opacity-50"
-              onClick={async () => {
-                if (window.confirm(`Are you sure you want to remove server "${server.name}"?`)) {
-                  setIsDeletingServer(server.id);
-                  setServerError(null);
-                  try {
-                    const response = await fetch(`${API_BASE_URL}/mcp/servers/${server.id}`, { method: 'DELETE' });
-                    if (!response.ok) {
-                      const errorData = await response.json().catch(() => ({ error: 'Failed to remove server' }));
-                      throw new Error(errorData.message || errorData.error || `Server Removal: ${response.statusText}`);
-                    }
-                    // If this was the selected server, deselect it
-                    if (selectedServerId === server.id) {
-                        setSelectedServerId(null);
-                        setTools([]);
-                    }
-                    await fetchServers(); // Refresh server list
-                  } catch (err: any) {
-                    handleError(err.message, 'delete');
-                    setServerError(`Failed to remove ${server.name}: ${err.message}`); // Show error in general server error area
-                  } finally {
-                    setIsDeletingServer(null);
-                  }
-                }
-              }}
-              disabled={isDeletingServer === server.id}
-              aria-label={`Remove server ${server.name}`}
-            >
-              {isDeletingServer === server.id ? 
-                <RefreshCw className="h-4 w-4 animate-spin" /> : 
-                <Trash2 className="h-4 w-4" />
-              }
-            </Button>
-          </div>
-        ))}
-      </div>
 
-      {/* Selected Server Tools Section (conditionally rendered and takes remaining space) */}
-      <div className="flex-1 overflow-y-auto p-3 border-t border-border space-y-2 bg-background/20 min-h-0">
-        {selectedServer ? (
-            <button // Changed h3 to button for clickability and accessibility
-                className="w-full flex items-center justify-between px-1 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1" 
-                onClick={() => setIsToolsExpanded(!isToolsExpanded)}
-                aria-expanded={isToolsExpanded}
-                aria-controls="tools-list-section"
-            >
-                <span>
-                    AVAILABLE TOOLS <span className="font-semibold">({selectedServer.name})</span>
-                </span>
-                <ChevronDown className={cn("h-5 w-5 transition-transform", isToolsExpanded && "rotate-180")} />
-            </button>
-        ) : (
-            <p className="text-sm text-muted-foreground px-1 py-10 text-center">Select a server to view its tools.</p>
-        )}
-        
-        {selectedServer && selectedServer.status !== 'connected' && !isToolsExpanded && (
-            // Show a brief non-expanded message if server is not connected
-            <p className="px-1 text-xs text-amber-700 dark:text-amber-500">Server not connected. Expand to see details.</p>
-        )}
-
-        {/* Collapsible content area for tools */}
-        {isToolsExpanded && (
-            <div id="tools-list-section" className="mt-2 space-y-2">
-                {selectedServer && selectedServer.status !== 'connected' && (
-                    <div className="p-2 bg-amber-500/10 rounded-md text-amber-700 dark:text-amber-400 text-sm flex items-start space-x-2">
-                        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0"/> 
-                        <span>Server "{selectedServer.name}" is {selectedServer.status}. Tools may be unavailable or outdated.</span>
-                    </div>
-                )}
-
-                {isLoadingTools && selectedServer?.status === 'connected' && (
-                    <p className="text-sm text-muted-foreground px-1 py-2">Loading tools for {selectedServer.name}...</p>
-                )}
-
-                {toolsError && !isLoadingTools && selectedServer?.status === 'connected' && (
-                    <div className="p-2 bg-destructive/10 rounded-md text-destructive text-sm flex items-start space-x-2">
-                        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0"/> 
-                        <span><strong>Error loading tools:</strong> {toolsError}</span>
-                    </div>
-                )}
-
-                {selectedServer && selectedServer.status === 'connected' && !isLoadingTools && !toolsError && tools.length === 0 && (
-                  <p className="text-sm text-muted-foreground px-1 py-2">No tools available for {selectedServer.name}.</p>
-                )}
-
-                {selectedServer && selectedServer.status === 'connected' && !isLoadingTools && tools.length > 0 && (
-                  tools.map((tool) => (
-                    <div 
-                      key={tool.id} 
-                      className="p-3 rounded-md bg-card hover:bg-muted/60 border border-border/80 hover:border-border cursor-default shadow-sm transition-all duration-150 hover:shadow-md"
-                    >
-                      <div className="flex items-center">
-                        <ListChecks className="h-4 w-4 mr-2.5 text-primary flex-shrink-0" />
-                        <p className="text-sm font-medium text-card-foreground truncate">{tool.name}</p>
-                      </div>
-                      {tool.description && 
-                        <p className="text-xs text-muted-foreground mt-1 ml-[26px] leading-relaxed">{tool.description}</p>
-                      }
-                    </div>
-                  ))
-                )}
+          {/* Server Loading State */}
+          {isLoadingServers && (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex flex-col items-center space-y-2">
+                <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Loading servers...</span>
+              </div>
             </div>
+          )}
+
+          {/* Server Error */}
+          {serverError && (
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 mb-3">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-destructive">Connection Error</p>
+                  <p className="text-xs text-destructive/80 mt-1">{serverError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Servers List */}
+          {!isLoadingServers && servers.length === 0 && !serverError && (
+            <div className="text-center py-8">
+              <Server className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">No servers connected</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Connect or browse the registry</p>
+            </div>
+          )}
+
+          {servers.map((server) => (
+            <div
+              key={server.id}
+              onClick={() => setSelectedServerId(server.id)}
+              className={cn(
+                "p-3 rounded-lg border cursor-pointer transition-all duration-200 mb-2 last:mb-0",
+                selectedServerId === server.id
+                  ? "bg-primary/5 border-primary/20 shadow-sm"
+                  : "bg-background hover:bg-muted/50 border-border/50 hover:border-border"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full flex-shrink-0",
+                      server.status === 'connected' ? "bg-green-500" : 
+                      server.status === 'error' ? "bg-red-500" : "bg-yellow-500"
+                    )} />
+                    <h4 className="text-sm font-medium truncate">{server.name}</h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 capitalize">
+                    {server.status}
+                  </p>
+                </div>
+                
+                {isDeletingServer === server.id ? (
+                  <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteServer(server.id);
+                    }}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tools Section */}
+        {selectedServer && (
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="px-4 py-3 border-b border-border/30">
+              <button
+                onClick={() => setIsToolsExpanded(!isToolsExpanded)}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Available Tools
+                </h3>
+                <ChevronDown 
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform text-muted-foreground",
+                    isToolsExpanded && "rotate-180"
+                  )} 
+                />
+              </button>
+            </div>
+
+            {isToolsExpanded && (
+              <div className="flex-1 overflow-y-auto px-4 py-3">
+                {/* Tools Loading State */}
+                {isLoadingTools && (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="flex flex-col items-center space-y-2">
+                      <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Loading tools...</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tools Error */}
+                {toolsError && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 mb-3">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-destructive">Tools Error</p>
+                        <p className="text-xs text-destructive/80 mt-1">{toolsError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* No Tools */}
+                {!isLoadingTools && tools.length === 0 && !toolsError && selectedServer.status === 'connected' && (
+                  <div className="text-center py-6">
+                    <ListChecks className="h-6 w-6 text-muted-foreground/50 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">No tools available</p>
+                  </div>
+                )}
+
+                {/* Server Not Connected */}
+                {selectedServer.status !== 'connected' && (
+                  <div className="text-center py-6">
+                    <AlertTriangle className="h-6 w-6 text-muted-foreground/50 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">Server not connected</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Tools unavailable</p>
+                  </div>
+                )}
+
+                {/* Tools List */}
+                {tools.map((tool) => (
+                  <div
+                    key={tool.name}
+                    className="p-3 rounded-lg border border-border/50 bg-background hover:bg-muted/30 transition-colors mb-2 last:mb-0"
+                  >
+                    <h4 className="text-sm font-medium mb-1">{tool.name}</h4>
+                    {tool.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                        {tool.description}
+                      </p>
+                    )}
+                    {tool.inputSchema?.properties && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {Object.keys(tool.inputSchema.properties).slice(0, 3).map((param) => (
+                          <span
+                            key={param}
+                            className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-xs font-medium"
+                          >
+                            {param}
+                          </span>
+                        ))}
+                        {Object.keys(tool.inputSchema.properties).length > 3 && (
+                          <span className="text-xs text-muted-foreground">
+                            +{Object.keys(tool.inputSchema.properties).length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+      {/* Server Registry Modal */}
+      <ServerRegistryModal
+        isOpen={isRegistryModalOpen}
+        onClose={() => setIsRegistryModalOpen(false)}
+        onInstallServer={handleInstallServer}
+      />
     </aside>
   );
 } 
