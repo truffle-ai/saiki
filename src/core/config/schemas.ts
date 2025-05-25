@@ -230,7 +230,7 @@ export const LLMConfigSchema = z
             if (maxTokensIsSet) {
                 try {
                     const registryMaxTokens = getMaxTokensForModel(providerLower, data.model);
-                    if (data.maxTokens > registryMaxTokens) {
+                    if (data.maxTokens != null && data.maxTokens > registryMaxTokens) {
                         ctx.addIssue({
                             code: z.ZodIssueCode.custom,
                             path: ['maxTokens'],

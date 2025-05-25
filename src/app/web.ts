@@ -2,16 +2,13 @@
 import { logger } from '@core/index.js';
 import { spawn } from 'child_process';
 import { existsSync } from 'fs';
-import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 /**
- * Discovers the webui path, starting and configuring the Next.js server
- * TODO: Refactor this to be less hacky and more readable
- * @param webuiPathParam - Optional: The path to the webui directory (auto-discovered if not provided)
- * @param frontPort - The port to run the web server on
+ * Discovers the webui path and starts the standalone Next.js server
  * @param apiUrl - The URL of the API server
+ * @param frontPort - The port to run the web server on
  * @param frontUrl - The URL of the web server
  */
 export async function startNextJsWebServer(
@@ -19,56 +16,38 @@ export async function startNextJsWebServer(
     frontPort: number = 3000,
     frontUrl: string = `http://localhost:${frontPort}`
 ): Promise<boolean> {
-    // Path discovery logic from index.ts
-
-    // If no path was provided, try to automatically detect it
+    // Path discovery logic for the built webui
     const scriptDir = path.dirname(fileURLToPath(import.meta.url));
     logger.debug(`Script directory for web mode: ${scriptDir}`);
 
-    // Try to find the webui directory - could be in different locations depending on installation type
+    // Try to find the built webui directory
     let webuiPath = path.resolve(scriptDir, 'webui');
 
     // If not found in expected location for dist, check other possible locations
     if (!existsSync(webuiPath)) {
-        // Check for source directory (common in dev mode and npm link)
+        // Check for source directory (dev mode scenario)
         const srcPath = path.resolve(scriptDir, '..', '..', 'src', 'app', 'webui');
         if (existsSync(srcPath)) {
-            webuiPath = srcPath;
-            logger.debug(`Found webui in source path: ${webuiPath}`);
+            // In dev mode, fall back to dev server
+            return startDevServer(apiUrl, frontPort, frontUrl, srcPath);
         } else {
-            // Check for cwd + src path (another npm link scenario)
-            const cwdPath = path.resolve(process.cwd(), 'src', 'app', 'webui');
-            if (existsSync(cwdPath)) {
-                webuiPath = cwdPath;
-                logger.debug(`Found webui in cwd path: ${webuiPath}`);
-            } else {
-                logger.warn('Could not locate webui directory. Web UI may not be available.');
-                return false;
-            }
+            logger.warn('Could not locate webui directory. Web UI may not be available.');
+            return false;
         }
-    } else {
-        logger.debug(`Using installed webui path: ${webuiPath}`);
     }
 
-    // Check if webui directory exists and has package.json
-    const hasWebUI = existsSync(webuiPath) && existsSync(path.join(webuiPath, 'package.json'));
+    // Check if we have a built standalone app
+    const standaloneServerPath = path.join(webuiPath, '.next', 'standalone', 'server.js');
+    const serverScriptPath = path.join(webuiPath, 'server.js');
 
-    if (!hasWebUI) {
+    if (!existsSync(standaloneServerPath) && !existsSync(serverScriptPath)) {
         logger.warn(
-            'Web UI directory not found. Only API endpoints are available.',
+            'Built WebUI not found. This may indicate the package was not built correctly.',
             null,
             'yellow'
         );
         logger.error(
-            'This is unexpected as the webui directory should be included in the package. Cut an issue on GitHub if you are seeing this.'
-        );
-        logger.debug('Possible fixes:');
-        logger.debug(
-            '  1. Reinstall the package: npm uninstall -g @truffle-ai/saiki && npm install -g @truffle-ai/saiki'
-        );
-        logger.info('  2. Update to the latest version: npm update -g @truffle-ai/saiki');
-        logger.info(
-            '  3. Run from source: git clone https://github.com/truffle-ai/saiki.git && cd saiki && npm install && npm run build'
+            'Please ensure the package was built with "npm run build" which includes building the WebUI.'
         );
         return false;
     }
@@ -83,120 +62,58 @@ export async function startNextJsWebServer(
             }
         })();
 
-        // Check if node_modules exists - might be needed for global install
-        const nodeModulesPath = path.join(webuiPath, 'node_modules');
-        const needsInstall =
-            !existsSync(nodeModulesPath) || !existsSync(path.join(nodeModulesPath, 'next'));
+        logger.info(`Starting Next.js production server on ${frontUrl}`, null, 'cyanBright');
 
-        if (needsInstall) {
-            logger.info(
-                'Installing Next.js dependencies (first run after installation)...',
-                null,
-                'cyanBright'
-            );
-            try {
-                // Run npm install in the webui directory
-                const installProc = spawn('npm', ['install', '--omit=dev'], {
-                    cwd: webuiPath,
-                    stdio: 'inherit',
-                });
+        // Use the server.js script if it exists, otherwise use the standalone server directly
+        const serverToUse = existsSync(serverScriptPath) ? serverScriptPath : standaloneServerPath;
 
-                // Wait for the installation to complete
-                const success = await new Promise<boolean>((resolve) => {
-                    installProc.on('error', (err) => {
-                        logger.error(`Failed to install dependencies: ${err}`);
-                        resolve(false);
-                    });
-
-                    installProc.on('exit', (code) => {
-                        if (code !== 0) {
-                            logger.error(`Dependency installation exited with code ${code}`);
-                            resolve(false);
-                        } else {
-                            logger.info('Dependencies installed successfully');
-                            resolve(true);
-                        }
-                    });
-                });
-
-                if (!success) {
-                    return false;
-                }
-            } catch (err) {
-                logger.error(`Error during dependency installation: ${err}`);
-                return false;
-            }
-        }
-
-        // We have the webui directory, try to start Next.js
-        logger.info(`Launching Next.js dev server on ${frontUrl}`, null, 'cyanBright');
-
-        // Try to find next CLI directly
-        const nextBin = path.join(webuiPath, 'node_modules', '.bin', 'next.cmd');
-        const hasNextBin = existsSync(nextBin);
-
-        // Command to run
-        const command = hasNextBin ? nextBin : 'npx';
-        const args = hasNextBin
-            ? ['dev', '--port', String(frontPort)]
-            : ['next', 'dev', '--port', String(frontPort)];
-
-        logger.debug(`Starting Next.js with: ${command} ${args.join(' ')}`);
-
-        const nextProc = spawn(command, args, {
+        const nextProc = spawn('node', [serverToUse], {
             cwd: webuiPath,
-            stdio: ['inherit', 'pipe', 'inherit'], // Pipe stdout to capture startup messages
+            stdio: ['inherit', 'pipe', 'inherit'],
             env: {
                 ...process.env,
-                NODE_ENV: 'development',
+                NODE_ENV: 'production',
+                HOSTNAME: '0.0.0.0',
+                PORT: String(frontPort),
                 API_PORT: String(apiPort),
                 API_URL: apiUrl,
                 FRONTEND_URL: frontUrl,
                 NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? apiUrl,
-                NEXT_PUBLIC_WS_URL:
-                    process.env.NEXT_PUBLIC_WS_URL ??
-                    (() => {
-                        const ifaces = os.networkInterfaces();
-                        for (const list of Object.values(ifaces)) {
-                            for (const iface of list ?? []) {
-                                if (iface.family === 'IPv4' && !iface.internal) {
-                                    return `ws://${iface.address}:${apiPort}`;
-                                }
-                            }
-                        }
-                        return `ws://localhost:${apiPort}`;
-                    })(),
+                NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL ?? `ws://localhost:${apiPort}`,
                 NEXT_PUBLIC_FRONTEND_URL: process.env.NEXT_PUBLIC_FRONTEND_URL ?? frontUrl,
-                PATH: process.env.PATH,
             },
         });
 
         // Wait for server to start or error out
-        logger.debug(`Waiting for Next.js server to start at: ${frontUrl}`, null, 'cyan');
+        logger.debug(
+            `Waiting for Next.js production server to start at: ${frontUrl}`,
+            null,
+            'cyan'
+        );
 
         const success = await new Promise<boolean>((resolve) => {
-            // Set a reasonable timeout (10 seconds)
+            // Set a reasonable timeout (15 seconds)
             const timer = setTimeout(() => {
                 logger.info(`Next.js server startup timeout reached, assuming it's running`);
                 logger.info(`Next.js web UI available at: ${frontUrl}`, null, 'green');
                 resolve(true);
-            }, 10000);
+            }, 15000);
 
-            // Handle error event once
+            // Handle error event
             nextProc.once('error', (err) => {
-                logger.error(`Next.js dev server failed to start: ${err}`);
+                logger.error(`Next.js production server failed to start: ${err}`);
                 logger.warn('Only API endpoints are available. Web UI could not be started.');
                 clearTimeout(timer);
                 resolve(false);
             });
 
-            // Handle exit event once
+            // Handle exit event
             nextProc.once('exit', (code) => {
                 if (code !== 0) {
-                    logger.error(`Next.js dev server exited with code ${code}`, null, 'red');
+                    logger.error(`Next.js production server exited with code ${code}`, null, 'red');
                     logger.warn('Only API endpoints are available. Web UI could not be started.');
                 } else {
-                    logger.info(`Next.js dev server exited normally`);
+                    logger.info(`Next.js production server exited normally`);
                 }
                 clearTimeout(timer);
                 resolve(false);
@@ -206,12 +123,16 @@ export async function startNextJsWebServer(
             if (nextProc.stdout) {
                 nextProc.stdout.on('data', (data) => {
                     const output = data.toString();
-                    // Echo Next.js output to console for debugging
+                    // Echo output to console for debugging
                     process.stdout.write(data);
 
-                    // standard Next.js startup success message
-                    if (output.includes('Ready in')) {
-                        logger.info(`Next.js server started successfully`);
+                    // Look for standard Next.js server startup messages
+                    if (
+                        output.includes('Ready') ||
+                        output.includes('started server') ||
+                        output.includes('Local:')
+                    ) {
+                        logger.info(`Next.js production server started successfully`);
                         logger.info(`Next.js web UI available at: ${frontUrl}`, null, 'green');
                         clearTimeout(timer);
                         resolve(true);
@@ -222,8 +143,111 @@ export async function startNextJsWebServer(
 
         return success;
     } catch (err) {
-        logger.error(`Failed to spawn Next.js process: ${err}`);
+        logger.error(`Failed to spawn Next.js production server: ${err}`);
         logger.warn('Only API endpoints are available. Web UI could not be started.');
+        return false;
+    }
+}
+
+/**
+ * Fallback function for development mode when source files are available
+ */
+async function startDevServer(
+    apiUrl: string,
+    frontPort: number,
+    frontUrl: string,
+    webuiPath: string
+): Promise<boolean> {
+    logger.info('Development mode detected, starting dev server...', null, 'yellow');
+
+    try {
+        // Extract API port from API URL
+        const apiPort = (() => {
+            try {
+                return String(new URL(apiUrl).port || 3001);
+            } catch {
+                return '3001';
+            }
+        })();
+
+        // Check if node_modules exists
+        const nodeModulesPath = path.join(webuiPath, 'node_modules');
+        const needsInstall = !existsSync(nodeModulesPath);
+
+        if (needsInstall) {
+            logger.info('Installing Next.js dependencies...', null, 'cyanBright');
+            const installProc = spawn('npm', ['install'], {
+                cwd: webuiPath,
+                stdio: 'inherit',
+            });
+
+            const installSuccess = await new Promise<boolean>((resolve) => {
+                installProc.on('error', () => resolve(false));
+                installProc.on('exit', (code) => resolve(code === 0));
+            });
+
+            if (!installSuccess) {
+                logger.error('Failed to install dependencies');
+                return false;
+            }
+        }
+
+        logger.info(`Starting Next.js dev server on ${frontUrl}`, null, 'cyanBright');
+
+        const nextProc = spawn('npm', ['run', 'dev', '--', '--port', String(frontPort)], {
+            cwd: webuiPath,
+            stdio: ['inherit', 'pipe', 'inherit'],
+            env: {
+                ...process.env,
+                NODE_ENV: 'development',
+                API_PORT: String(apiPort),
+                API_URL: apiUrl,
+                FRONTEND_URL: frontUrl,
+                NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? apiUrl,
+                NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL ?? `ws://localhost:${apiPort}`,
+                NEXT_PUBLIC_FRONTEND_URL: process.env.NEXT_PUBLIC_FRONTEND_URL ?? frontUrl,
+            },
+        });
+
+        const success = await new Promise<boolean>((resolve) => {
+            const timer = setTimeout(() => {
+                logger.info(`Dev server startup timeout reached, assuming it's running`);
+                logger.info(`Next.js web UI available at: ${frontUrl}`, null, 'green');
+                resolve(true);
+            }, 30000);
+
+            nextProc.once('error', (err) => {
+                logger.error(`Next.js dev server failed to start: ${err}`);
+                clearTimeout(timer);
+                resolve(false);
+            });
+
+            nextProc.once('exit', (code) => {
+                if (code !== 0) {
+                    logger.error(`Next.js dev server exited with code ${code}`);
+                }
+                clearTimeout(timer);
+                resolve(false);
+            });
+
+            if (nextProc.stdout) {
+                nextProc.stdout.on('data', (data) => {
+                    const output = data.toString();
+                    process.stdout.write(data);
+
+                    if (output.includes('Ready in') || output.includes('ready started server')) {
+                        logger.info(`Next.js dev server started successfully`);
+                        logger.info(`Next.js web UI available at: ${frontUrl}`, null, 'green');
+                        clearTimeout(timer);
+                        resolve(true);
+                    }
+                });
+            }
+        });
+
+        return success;
+    } catch (err) {
+        logger.error(`Failed to start dev server: ${err}`);
         return false;
     }
 }

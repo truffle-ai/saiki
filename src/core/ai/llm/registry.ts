@@ -71,9 +71,9 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
  * @param provider The name of the provider.
  * @returns The default model for the provider, or null if no default model is found.
  */
-export function getDefaultModelForProvider(provider: string): string {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase()];
-    return providerInfo ? providerInfo.models.find((m) => m.default)?.name : null;
+export function getDefaultModelForProvider(provider: string): string | null {
+    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
+    return providerInfo ? providerInfo.models.find((m) => m.default)?.name || null : null;
 }
 
 /**
@@ -90,7 +90,7 @@ export function getSupportedProviders(): string[] {
  * @returns An array of supported model names for the provider, or an empty array if the provider is not found.
  */
 export function getSupportedModels(provider: string): string[] {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase()];
+    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
     return providerInfo ? providerInfo.models.map((m) => m.name) : [];
 }
 
@@ -106,7 +106,7 @@ export function getMaxTokensForModel(provider: string, model: string): number {
     const lowerProvider = provider?.toLowerCase();
     const lowerModel = model?.toLowerCase();
 
-    const providerInfo = LLM_REGISTRY[lowerProvider];
+    const providerInfo = LLM_REGISTRY[lowerProvider as LLMProvider];
     if (!providerInfo) {
         const supportedProviders = getSupportedProviders().join(', ');
         logger.error(
@@ -142,7 +142,7 @@ export function isValidProviderModel(provider?: string, model?: string): boolean
     }
     const lowerProvider = provider.toLowerCase();
     const lowerModel = model.toLowerCase();
-    const providerInfo = LLM_REGISTRY[lowerProvider];
+    const providerInfo = LLM_REGISTRY[lowerProvider as LLMProvider];
     if (!providerInfo) {
         return false;
     }
