@@ -1,5 +1,5 @@
 /**
- * Shared type definitions for WebUI components
+ * Shared type definitions for Saiki - MCP tool testing playground
  */
 
 export interface JsonSchemaProperty {
@@ -39,78 +39,10 @@ export interface ToolResult {
     };
 }
 
-// New types for Agent Studio functionality
-export interface AgentTemplate {
-    id: string;
-    name: string;
-    description: string;
-    category: 'productivity' | 'development' | 'research' | 'creative' | 'data' | 'custom';
-    icon?: string;
-    prompt: string;
-    tools: string[]; // Tool IDs
-    settings: {
-        temperature?: number;
-        maxTokens?: number;
-        timeoutMs?: number;
-    };
-    variables?: AgentVariable[];
-    examples?: AgentExample[];
-    tags: string[];
-    createdAt: Date;
-    updatedAt: Date;
-    isPublic: boolean;
-    author?: string;
-}
-
-export interface AgentVariable {
-    name: string;
-    description: string;
-    type: 'string' | 'number' | 'boolean' | 'select';
-    options?: string[];
-    defaultValue?: any;
-    required: boolean;
-}
-
-export interface AgentExample {
-    input: string;
-    expectedOutput: string;
-    description?: string;
-}
-
-export interface WorkflowNode {
-    id: string;
-    type: 'agent' | 'tool' | 'condition' | 'input' | 'output' | 'delay';
-    position: { x: number; y: number };
-    data: {
-        label: string;
-        agentId?: string;
-        toolId?: string;
-        config?: any;
-    };
-}
-
-export interface WorkflowEdge {
-    id: string;
-    source: string;
-    target: string;
-    condition?: string;
-}
-
-export interface Workflow {
-    id: string;
-    name: string;
-    description: string;
-    nodes: WorkflowNode[];
-    edges: WorkflowEdge[];
-    isPublic: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-}
-
+// Chat and session types
 export interface ConversationSession {
     id: string;
     name: string;
-    agentId?: string;
     messages: ChatMessage[];
     createdAt: Date;
     updatedAt: Date;
@@ -146,14 +78,6 @@ export interface MessageAttachment {
     url: string;
     mimeType?: string;
     size?: number;
-}
-
-export interface AgentMetrics {
-    totalExecutions: number;
-    successRate: number;
-    averageResponseTime: number;
-    popularTools: string[];
-    recentActivity: Date[];
 }
 
 // LLM Management types

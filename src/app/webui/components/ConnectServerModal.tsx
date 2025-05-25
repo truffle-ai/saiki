@@ -144,7 +144,7 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
               value={serverName}
               onChange={e => setServerName(e.target.value)}
               className="col-span-3"
-              placeholder="e.g., My Local Agent"
+              placeholder="e.g., My Local Tools"
               required
               disabled={isSubmitting}
             />

@@ -32,7 +32,8 @@ import {
     Filter,
     Plus,
     Tag,
-    Settings
+    Settings,
+    Server
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -149,82 +150,32 @@ export default function ServerRegistryModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Download className="h-5 w-5" />
-                        MCP Server Registry
+            <DialogContent className="max-w-2xl max-h-[70vh] overflow-hidden flex flex-col border-0 shadow-2xl">
+                <DialogHeader className="pb-6">
+                    <DialogTitle className="flex items-center gap-3 text-lg">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                            <Server className="h-5 w-5 text-primary" />
+                        </div>
+                        Browse Tools
                     </DialogTitle>
-                    <DialogDescription>
-                        Browse and install MCP servers to extend your agent capabilities
+                    <DialogDescription className="text-muted-foreground">
+                        Discover and add new capabilities to your AI assistant
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Filters */}
-                <div className="flex flex-col sm:flex-row gap-3 py-4 border-b">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search servers..."
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            className="pl-10"
-                        />
-                    </div>
-                    <Select
-                        value={filter.category || 'all'}
-                        onValueChange={(value) => setFilter(prev => ({
-                            ...prev,
-                            category: value === 'all' ? undefined : value
-                        }))}
-                    >
-                        <SelectTrigger className="w-full sm:w-48">
-                            <SelectValue placeholder="Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {categories.map(cat => (
-                                <SelectItem key={cat.value} value={cat.value}>
-                                    {cat.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <div className="flex gap-2">
-                        <Button
-                            variant={filter.official ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setFilter(prev => ({
-                                ...prev,
-                                official: prev.official ? undefined : true
-                            }))}
-                        >
-                            <Star className="h-4 w-4 mr-1" />
-                            Official
-                        </Button>
-                        <Button
-                            variant={filter.installed ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setFilter(prev => ({
-                                ...prev,
-                                installed: prev.installed ? undefined : true
-                            }))}
-                        >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Installed
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsAddCustomModalOpen(true)}
-                        >
-                            <Settings className="h-4 w-4 mr-1" />
-                            Add Custom
-                        </Button>
-                    </div>
+                {/* Simple Search */}
+                <div className="relative mb-6">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search for tools and integrations..."
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        className="pl-10 h-11 border-border/50 focus:border-primary/50 bg-background/50"
+                    />
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto -mx-1 px-1">
                     {error && (
                         <Alert variant="destructive" className="mb-4">
                             <AlertDescription>{error}</AlertDescription>
@@ -232,116 +183,90 @@ export default function ServerRegistryModal({
                     )}
 
                     {isLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                            <div className="text-muted-foreground">Loading servers...</div>
-                        </div>
-                    ) : filteredEntries.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <Filter className="h-12 w-12 text-muted-foreground mb-4" />
-                            <div className="text-muted-foreground">
-                                {entries.length === 0 
-                                    ? 'No servers available'
-                                    : 'No servers match your filters'
-                                }
+                        <div className="flex items-center justify-center py-12">
+                            <div className="flex flex-col items-center space-y-3">
+                                <div className="h-8 w-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                                <div className="text-sm text-muted-foreground">Discovering tools...</div>
                             </div>
                         </div>
+                    ) : filteredEntries.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="p-3 rounded-full bg-muted/50 mb-4">
+                                <Server className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                            <div className="text-muted-foreground">
+                                {entries.length === 0 
+                                    ? 'No tools available in the registry'
+                                    : 'No tools match your search'
+                                }
+                            </div>
+                            {searchInput && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => setSearchInput('')}
+                                    className="mt-2"
+                                >
+                                    Clear search
+                                </Button>
+                            )}
+                        </div>
                     ) : (
-                        <div className="grid gap-4">
-                            {filteredEntries.map((entry) => (
-                                <Card key={entry.id} className="transition-all hover:shadow-md">
-                                    <CardHeader className="pb-3">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-start gap-3">
-                                                <div className="text-2xl">{entry.icon || '⚡'}</div>
-                                                <div className="flex-1">
-                                                    <CardTitle className="text-lg flex items-center gap-2">
-                                                        {entry.name}
-                                                        {entry.isOfficial && (
-                                                            <Badge variant="secondary" className="text-xs">
-                                                                <Star className="h-3 w-3 mr-1" />
-                                                                Official
-                                                            </Badge>
-                                                        )}
-                                                        {entry.isInstalled && (
-                                                            <Badge variant="default" className="text-xs">
-                                                                <CheckCircle className="h-3 w-3 mr-1" />
-                                                                Installed
-                                                            </Badge>
-                                                        )}
-                                                    </CardTitle>
-                                                    <p className="text-sm text-muted-foreground mt-1">
-                                                        {entry.description}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                onClick={() => handleInstall(entry)}
-                                                disabled={entry.isInstalled || installing === entry.id}
-                                                className="shrink-0"
-                                            >
-                                                {installing === entry.id ? (
-                                                    'Installing...'
-                                                ) : entry.isInstalled ? (
-                                                    <>
-                                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                                        Installed
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Plus className="h-4 w-4 mr-2" />
-                                                        Add to Agent
-                                                    </>
-                                                )}
-                                            </Button>
+                        <div className="space-y-3">
+                            {filteredEntries.map((entry, index) => (
+                                <div 
+                                    key={entry.id} 
+                                    className="group relative flex items-center justify-between p-4 border border-border/50 rounded-xl hover:border-border hover:shadow-sm bg-card/50 hover:bg-card transition-all duration-200"
+                                    style={{ animationDelay: `${index * 50}ms` }}
+                                >
+                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                        <div className="flex-shrink-0 text-2xl p-2 rounded-lg bg-primary/5 border border-primary/10">
+                                            {entry.icon || '⚡'}
                                         </div>
-                                    </CardHeader>
-                                    <CardContent className="pt-0">
-                                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                                            <Badge className={getCategoryColor(entry.category)}>
-                                                {entry.category}
-                                            </Badge>
-                                            {entry.tags.slice(0, 3).map(tag => (
-                                                <Badge key={tag} variant="outline" className="text-xs">
-                                                    <Tag className="h-3 w-3 mr-1" />
-                                                    {tag}
-                                                </Badge>
-                                            ))}
-                                            {entry.tags.length > 3 && (
-                                                <Badge variant="outline" className="text-xs">
-                                                    +{entry.tags.length - 3} more
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        
-                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                            <div className="flex items-center gap-4">
-                                                {entry.author && (
-                                                    <span>By {entry.author}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
+                                                    {entry.name}
+                                                </h3>
+                                                {entry.isOfficial && (
+                                                    <Badge variant="secondary" className="text-xs font-medium px-2">
+                                                        Official
+                                                    </Badge>
                                                 )}
-                                                {entry.version && (
-                                                    <span>v{entry.version}</span>
-                                                )}
-                                                {entry.popularity && (
-                                                    <span className="flex items-center gap-1">
-                                                        <Star className="h-3 w-3" />
-                                                        {entry.popularity}%
-                                                    </span>
+                                                {entry.isInstalled && (
+                                                    <Badge className="text-xs font-medium px-2 bg-green-100 text-green-800 border-green-200">
+                                                        Added
+                                                    </Badge>
                                                 )}
                                             </div>
-                                            {entry.homepage && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-6 px-2 text-xs"
-                                                    onClick={() => window.open(entry.homepage, '_blank')}
-                                                >
-                                                    <ExternalLink className="h-3 w-3 mr-1" />
-                                                    Docs
-                                                </Button>
-                                            )}
+                                            <p className="text-sm text-muted-foreground line-clamp-1 leading-relaxed">
+                                                {entry.description}
+                                            </p>
                                         </div>
-                                    </CardContent>
-                                </Card>
+                                    </div>
+                                    <Button
+                                        onClick={() => handleInstall(entry)}
+                                        disabled={entry.isInstalled || installing === entry.id}
+                                        size="sm"
+                                        variant={entry.isInstalled ? "outline" : "default"}
+                                        className={cn(
+                                            "flex-shrink-0 ml-3 min-w-[80px] transition-all",
+                                            !entry.isInstalled && "hover:shadow-sm",
+                                            installing === entry.id && "opacity-70"
+                                        )}
+                                    >
+                                        {installing === entry.id ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                                <span>Adding...</span>
+                                            </div>
+                                        ) : entry.isInstalled ? (
+                                            'Added'
+                                        ) : (
+                                            'Add'
+                                        )}
+                                    </Button>
+                                </div>
                             ))}
                         </div>
                     )}

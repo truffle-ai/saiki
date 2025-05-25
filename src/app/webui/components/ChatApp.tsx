@@ -5,9 +5,10 @@ import { useChatContext } from './hooks/ChatContext';
 import MessageList from './MessageList';
 import InputArea from './InputArea';
 import ConnectServerModal from './ConnectServerModal';
+import ServerRegistryModal from './ServerRegistryModal';
 import ServersPanel from './ServersPanel';
 import { Button } from "./ui/button";
-import { Server, Download, Wrench, Keyboard, AlertTriangle } from "lucide-react";
+import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
@@ -15,13 +16,19 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
-import LLMSelector from './LLMSelector';
 import Link from 'next/link';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 export default function ChatApp() {
   const { messages, sendMessage } = useChatContext();
 
   const [isModalOpen, setModalOpen] = useState(false);
+  const [isServerRegistryOpen, setServerRegistryOpen] = useState(false);
   const [isServersPanelOpen, setServersPanelOpen] = useState(false);
   const [isExportOpen, setExportOpen] = useState(false);
   const [exportName, setExportName] = useState('saiki-config');
@@ -30,14 +37,8 @@ export default function ChatApp() {
   const [copySuccess, setCopySuccess] = useState(false);
   
   // Enhanced features
-  const [messageCount, setMessageCount] = useState(0);
-  const [sessionStartTime] = useState(Date.now());
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
-
-  useEffect(() => {
-    setMessageCount(messages.length);
-  }, [messages]);
 
   useEffect(() => {
     if (isExportOpen) {
@@ -98,6 +99,13 @@ export default function ChatApp() {
     }
   }, [setCopySuccess, setExportError]);
 
+  const handleInstallServer = useCallback(async (entry: any) => {
+    // This will be implemented to install servers from the registry
+    console.log('Installing server:', entry);
+    // For now, just close the modal
+    setServerRegistryOpen(false);
+  }, []);
+
   const handleSend = useCallback(async (content: string, imageData?: { base64: string; mimeType: string }) => {
     setIsSendingMessage(true);
     try {
@@ -109,43 +117,37 @@ export default function ChatApp() {
     }
   }, [sendMessage]);
 
-  const formatSessionDuration = () => {
-    const duration = Date.now() - sessionStartTime;
-    const minutes = Math.floor(duration / 60000);
-    return minutes > 0 ? `${minutes}m` : 'Just started';
-  };
-
   const quickActions = [
     {
-      title: "What Can You Do?",
-      description: "See your capabilities",
-      action: () => handleSend("What tools and skills do you have? What kinds of tasks can you help me with?"),
+      title: "What can you do?",
+      description: "See my current capabilities",
+      action: () => handleSend("What tools and capabilities do you have available right now?"),
       icon: "🤔"
     },
     {
       title: "Create Snake Game",
-      description: "Build & open in browser",
+      description: "Build a game and open it",
       action: () => handleSend("Create a snake game in a new directory with HTML, CSS, and JavaScript, then open it in the browser for me to play."),
       icon: "🐍"
     },
     {
-      title: "What is Saiki?",
-      description: "Learn about this platform",
-      action: () => handleSend("Tell me about Saiki. What is it, how does it work, and what makes it special for AI agent development?"),
-      icon: "💡"
+      title: "Connect new tools",
+      description: "Browse and add MCP servers",
+      action: () => setServersPanelOpen(true),
+      icon: "🔧"
     },
     {
-      title: "Learn MCP",
-      description: "Understand protocols",
-      action: () => handleSend("Explain how MCP (Model Context Protocol) works and show me practical examples of tool integrations."),
-      icon: "📚"
+      title: "Test existing tools",
+      description: "Try out connected capabilities",
+      action: () => handleSend("Show me how to use one of your available tools. Pick an interesting one and demonstrate it."),
+      icon: "🧪"
     }
   ];
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + K to open servers panel
+      // Ctrl/Cmd + K to toggle tools panel
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         setServersPanelOpen(prev => !prev);
@@ -168,6 +170,7 @@ export default function ChatApp() {
       // Escape to close panels
       if (e.key === 'Escape') {
         if (isServersPanelOpen) setServersPanelOpen(false);
+        else if (isServerRegistryOpen) setServerRegistryOpen(false);
         else if (isExportOpen) setExportOpen(false);
         else if (showShortcuts) setShowShortcuts(false);
       }
@@ -175,7 +178,7 @@ export default function ChatApp() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isExportOpen, showShortcuts]);
+  }, [isServersPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -185,36 +188,15 @@ export default function ChatApp() {
           <div className="flex justify-between items-center px-4 py-3">
             <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3">
-                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary text-primary-foreground">
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg border border-border/50 text-primary-foreground">
                   <img src="/logo.png" alt="Saiki" className="w-4 h-4" />
                 </div>
-                <div className="flex flex-col">
-                  <h1 className="text-base font-semibold tracking-tight">Saiki</h1>
-                  <div className="flex items-center space-x-2">
-                    <div className={cn(
-                      "w-1.5 h-1.5 rounded-full",
-                      "bg-green-500"
-                    )}></div>
-                    <span className="text-xs text-muted-foreground">Default Session</span>
-                  </div>
-                </div>
+                <h1 className="text-base font-semibold tracking-tight">Saiki</h1>
             </div>
-              
-              {/* Session Status - More Minimal */}
-              {messageCount > 0 && (
-                <div className="hidden md:flex items-center space-x-2 text-xs text-muted-foreground">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                  <span>{formatSessionDuration()}</span>
-                  <span className="text-muted-foreground/50">•</span>
-                  <span>{messageCount} msgs</span>
-                </div>
-              )}
           </div>
           
             {/* Minimal Action Bar */}
             <div className="flex items-center space-x-1">
-            <LLMSelector />
-
             <Button 
               variant="ghost" 
               size="sm" 
@@ -236,28 +218,35 @@ export default function ChatApp() {
               >
                 <Link href="/playground" target="_blank">
                   <Wrench className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline ml-1.5">Play</span>
+                  <span className="hidden sm:inline ml-1.5">Playground</span>
                 </Link>
             </Button>
             
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setExportOpen(true)}
-              className="h-8 px-2 text-xs"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline ml-1.5">Export</span>
-            </Button>
-            
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowShortcuts(true)}
-                className="h-8 w-8 p-0"
-              >
-                <Keyboard className="h-3.5 w-3.5" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setServerRegistryOpen(true)}>
+                  <Server className="h-4 w-4 mr-2" />
+                  Browse MCP Registry
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setExportOpen(true)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Config
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowShortcuts(true)}>
+                  <Keyboard className="h-4 w-4 mr-2" />
+                  Shortcuts
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
                   </div>
           </div>
         </header>
@@ -275,9 +264,9 @@ export default function ChatApp() {
                       <img src="/logo.png" alt="Saiki" className="w-8 h-8" />
                 </div>
                     <div className="space-y-2">
-                      <h2 className="text-2xl font-semibold tracking-tight">Welcome to Saiki</h2>
+                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">Hello, I'm Saiki!</h2>
                       <p className="text-muted-foreground text-base">
-                        Build powerful AI agents with integrated tools and seamless workflows
+                        Try asking me something or connect new tools to expand what I can do
                       </p>
                     </div>
                   </div>
@@ -355,6 +344,13 @@ export default function ChatApp() {
           onClose={() => setModalOpen(false)} 
         />
 
+        {/* Server Registry Modal */}
+        <ServerRegistryModal
+          isOpen={isServerRegistryOpen}
+          onClose={() => setServerRegistryOpen(false)}
+          onInstallServer={handleInstallServer}
+        />
+
         {/* Export Configuration Modal */}
         <Dialog open={isExportOpen} onOpenChange={setExportOpen}>
           <DialogContent className="sm:max-w-2xl">
@@ -364,7 +360,7 @@ export default function ChatApp() {
                 <span>Export Configuration</span>
               </DialogTitle>
               <DialogDescription>
-                Download your agent configuration for Claude Desktop or other MCP clients
+                Download your tool configuration for Claude Desktop or other MCP clients
               </DialogDescription>
             </DialogHeader>
             
