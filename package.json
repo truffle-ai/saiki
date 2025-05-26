@@ -25,7 +25,7 @@
         "clean": "npx rimraf dist",
         "prebuild": "",
         "build": "npm run clean && tsup && npm run copy-client && npm run copy-webui && npm run prepare-webui",
-        "prepare": "husky",
+        "prepare": "if [ \"$NODE_ENV\" != \"production\" ]; then husky; fi",
         "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"src/app/web/client/*\" public",
         "copy-webui": "npx tsx scripts/copy-webui.ts",
         "prepare-webui": "cd dist/src/app/webui && npm install --omit=dev",

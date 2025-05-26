@@ -29,6 +29,9 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev
 
+# Remove .map files from node_modules to reduce image size
+RUN find node_modules -name '*.map' -type f -delete
+
 ################################################################################
 # Create a stage for building the application.
 FROM deps AS build
