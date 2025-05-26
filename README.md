@@ -203,23 +203,55 @@ llm:
 ```
 
 ## Discovering & Connecting MCP Servers
+Saiki uses Model Context Protocol (MCP) servers to connect with tools. Find servers through:
 
-Saiki communicates with your tools via Model Context Protocol (MCP) servers. You can discover and connect to MCP servers in several ways:
+1. Pre-built catalogs:
+   - [MCP Reference Servers](https://github.com/modelcontextprotocol/reference-servers)
+   - [Smithery.ai Tools](https://smithery.ai/tools)
+   - [Composio Registry](https://mcp.composio.dev/)
 
-1. Browse pre-built servers:
-   - Model Context Protocol reference servers: https://github.com/modelcontextprotocol/reference-servers
-   - Smithery.ai catalog: https://smithery.ai/tools
-   - Composio MCP registry: https://mcp.composio.dev/
+2. npm: `npm search @modelcontextprotocol/server`
 
-2. Search on npm:
-```bash
-npm search @modelcontextprotocol/server
+3. Add to `configuration/saiki.yml` under `mcpServers`
+
+4. Build custom servers using the [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) and [spec](https://modelcontextprotocol.io/introduction)
+
+
+## Building with Saiki
+
+Saiki can be easily integrated into your applications as a powerful AI agent library. Here's a simple example to get you started:
+
+### Quick Start: Programmatic Usage
+
+```typescript
+import 'dotenv/config';
+import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+
+// Load your agent configuration
+const config = await loadConfigFile('./saiki.yml');
+const agent = await createSaikiAgent(config);
+
+// Use the agent for single tasks
+const result = await agent.run("Analyze the files in this directory and create a summary");
+console.log(result);
+
+// Or have conversations
+const response1 = await agent.run("What files are in the current directory?");
+const response2 = await agent.run("Create a README for the main.py file");
+
+// Reset conversation when needed
+agent.resetConversation();
 ```
-3. Add servers to your `configuration/saiki.yml` under the `mcpServers` key (see the snippet above).
 
-4. Create custom servers:
-   - Use the MCP TypeScript SDK: https://github.com/modelcontextprotocol/typescript-sdk
-   - Follow the MCP spec: https://modelcontextprotocol.io/introduction
+### Learn More
+
+For comprehensive guides on building different types of applications with Saiki, including:
+- **Web backends and APIs**
+- **Discord/Telegram bots** 
+- **Multi-agent coordination**
+- **Advanced patterns and best practices**
+
+See our **[Building with Saiki Developer Guide](docs/building-with-saiki.md)**.
 
 
 ## Advanced Usage
@@ -243,13 +275,15 @@ This framework-agnostic approach allows Saiki to participate in a broader ecosys
 
 This powerful A2A capability opens up possibilities for creating sophisticated multi-agent systems where different specialized agents collaborate to achieve complex goals.
 
+
 ## Documentation
 
 Find detailed guides, architecture, and API reference in the `docs/` folder:
 
+- [Building with Saiki Developer Guide](docs/building-with-saiki.md) - Comprehensive guide for developers
 - [High-level design](docs/architecture.md)
-- [Docker usage](README.Docker.md)
 - [API Endpoints](docs/api_and_websockets.md)
+- [Docker usage](README.Docker.md)
 
 ## Contributing
 We welcome contributions! Refer [here](CONTRIBUTIONS.md) for more details.
