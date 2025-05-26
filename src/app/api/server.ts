@@ -12,12 +12,10 @@ import { setupA2ARoutes } from './a2a.js';
 import { initializeMcpServerEndpoints } from './mcp_handler.js';
 import { createAgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
-import { stringify as yamlStringify, parse as yamlParse, parseDocument } from 'yaml';
+import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
 import { resolvePackagePath } from '@core/index.js';
 import { LLM_REGISTRY } from '@core/ai/llm/registry.js';
-import fs from 'fs/promises';
-import path from 'path';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, ChangeEvent, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Clock, CheckCircle, XCircle, Copy, Share2 } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, XCircle, Copy, Share2, AlertTriangle } from 'lucide-react';
 import ConnectServerModal from '../ConnectServerModal';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { JsonSchemaProperty, McpServer, McpTool, ToolResult } from '@/types';
 
 export default function PlaygroundView() {
@@ -27,6 +28,10 @@ export default function PlaygroundView() {
   const [currentError, setCurrentError] = useState<string | null>(null); // General error display
   const [inputErrors, setInputErrors] = useState<Record<string, string>>({});
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const [clipboardNotification, setClipboardNotification] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
 
   // Enhanced features
   const [executionHistory, setExecutionHistory] = useState<Array<{
@@ -493,9 +498,19 @@ export default function PlaygroundView() {
   const copyToClipboard = async (text: string, successMessage?: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      console.log(successMessage || 'Copied to clipboard');
-      // You could add a toast notification here
+      setClipboardNotification({
+        message: successMessage || 'Copied to clipboard',
+        type: 'success'
+      });
+      // Auto-hide success notification after 3 seconds
+      setTimeout(() => setClipboardNotification(null), 3000);
     } catch (err) {
+      setClipboardNotification({
+        message: 'Failed to copy to clipboard. Please check browser permissions.',
+        type: 'error'
+      });
+      // Auto-hide error notification after 5 seconds
+      setTimeout(() => setClipboardNotification(null), 5000);
       console.error('Failed to copy to clipboard:', err);
     }
   };
@@ -679,6 +694,20 @@ export default function PlaygroundView() {
             <p className="font-medium">Error:</p>
             <p>{currentError}</p>
           </div>}
+        
+        {/* Clipboard notification */}
+        {clipboardNotification && (
+          <Alert 
+            variant={clipboardNotification.type === 'error' ? "destructive" : "default"}
+            className={`mb-4 ${clipboardNotification.type === 'success' 
+              ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-400' 
+              : ''}`}
+          >
+            {clipboardNotification.type === 'error' && <AlertTriangle className="h-4 w-4" />}
+            {clipboardNotification.type === 'success' && <CheckCircle className="h-4 w-4" />}
+            <AlertDescription>{clipboardNotification.message}</AlertDescription>
+          </Alert>
+        )}
         
         {!selectedTool && (
           <div className="flex items-center justify-center h-full">

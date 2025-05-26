@@ -242,7 +242,10 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => window.open('/api/llm/models', '_blank')}>
+                <DropdownMenuItem onClick={() => {
+                  // TODO: Implement proper model viewer UI
+                  console.log('View all models clicked');
+                }}>
                   View all models
                 </DropdownMenuItem>
               </DropdownMenuContent>

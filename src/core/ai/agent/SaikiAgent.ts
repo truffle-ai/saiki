@@ -153,8 +153,8 @@ export class SaikiAgent {
                 this.messageManager // This preserves the conversation history
             );
 
-            // Replace the LLM service
-            (this as any).llmService = newLLMService;
+            // Replace the LLM service using the private setter
+            this.setLLMService(newLLMService);
 
             // Update the agent's config
             this.configManager.getConfig().llm = newLLMConfig;
@@ -170,6 +170,21 @@ export class SaikiAgent {
             logger.error('Error during SaikiAgent.switchLLM:', error);
             throw error;
         }
+    }
+
+    /**
+     * Private setter method to safely update the llmService property.
+     * This maintains type safety while allowing controlled internal mutation.
+     * @param newLLMService The new LLM service instance.
+     */
+    private setLLMService(newLLMService: ILLMService): void {
+        // Use object assignment to update the readonly property safely
+        Object.defineProperty(this, 'llmService', {
+            value: newLLMService,
+            writable: false,
+            enumerable: true,
+            configurable: false,
+        });
     }
 
     // Future methods could encapsulate more complex agent behaviors:

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { serverRegistry } from '@/lib/serverRegistry';
 import type { ServerRegistryEntry, ServerRegistryFilter } from '@/types';
 
@@ -15,57 +15,122 @@ export function useServerRegistry(options: UseServerRegistryOptions = {}) {
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<ServerRegistryFilter>(initialFilter || {});
 
-    const loadEntries = async (newFilter?: ServerRegistryFilter) => {
-        setIsLoading(true);
-        setError(null);
+    // Track if component is mounted to prevent state updates after unmount
+    const isMountedRef = useRef(true);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
-        try {
-            const filterToUse = newFilter || filter;
-            const registryEntries = await serverRegistry.getEntries(filterToUse);
-            setEntries(registryEntries);
-        } catch (err: any) {
-            setError(err.message || 'Failed to load server registry');
-        } finally {
-            setIsLoading(false);
+    const loadEntries = useCallback(
+        async (newFilter?: ServerRegistryFilter) => {
+            // Cancel any ongoing request
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+
+            // Create new AbortController for this request
+            const abortController = new AbortController();
+            abortControllerRef.current = abortController;
+
+            // Only update state if component is still mounted
+            if (!isMountedRef.current) return;
+
+            setIsLoading(true);
+            setError(null);
+
+            try {
+                const filterToUse = newFilter || filter;
+                const registryEntries = await serverRegistry.getEntries(filterToUse);
+
+                // Check if component is still mounted and request wasn't aborted
+                if (isMountedRef.current && !abortController.signal.aborted) {
+                    setEntries(registryEntries);
+                }
+            } catch (err: unknown) {
+                // Only set error if component is still mounted and request wasn't aborted
+                if (isMountedRef.current && !abortController.signal.aborted) {
+                    const errorMessage =
+                        err instanceof Error ? err.message : 'Failed to load server registry';
+                    setError(errorMessage);
+                }
+            } finally {
+                // Only update loading state if component is still mounted and request wasn't aborted
+                if (isMountedRef.current && !abortController.signal.aborted) {
+                    setIsLoading(false);
+                }
+            }
+        },
+        [filter]
+    );
+
+    const updateFilter = (newFilter: ServerRegistryFilter) => {
+        if (isMountedRef.current) {
+            setFilter(newFilter);
         }
     };
 
-    const updateFilter = (newFilter: ServerRegistryFilter) => {
-        setFilter(newFilter);
-        loadEntries(newFilter);
-    };
+    useEffect(() => {
+        if (isMountedRef.current) {
+            loadEntries();
+        }
+    }, [filter, loadEntries]);
 
     const markAsInstalled = async (entryId: string) => {
+        if (!isMountedRef.current) return;
+
         try {
             await serverRegistry.setInstalled(entryId, true);
-            setEntries((prev) =>
-                prev.map((entry) =>
-                    entry.id === entryId ? { ...entry, isInstalled: true } : entry
-                )
-            );
-        } catch (err: any) {
-            setError(err.message || 'Failed to mark server as installed');
+            if (isMountedRef.current) {
+                setEntries((prev) =>
+                    prev.map((entry) =>
+                        entry.id === entryId ? { ...entry, isInstalled: true } : entry
+                    )
+                );
+            }
+        } catch (err: unknown) {
+            if (isMountedRef.current) {
+                const errorMessage =
+                    err instanceof Error ? err.message : 'Failed to mark server as installed';
+                setError(errorMessage);
+            }
         }
     };
 
     const addCustomEntry = async (
         entry: Omit<ServerRegistryEntry, 'id' | 'isOfficial' | 'lastUpdated'>
     ) => {
+        if (!isMountedRef.current) return;
+
         try {
             const newEntry = await serverRegistry.addCustomEntry(entry);
-            setEntries((prev) => [newEntry, ...prev]);
+            if (isMountedRef.current) {
+                setEntries((prev) => [newEntry, ...prev]);
+            }
             return newEntry;
-        } catch (err: any) {
-            setError(err.message || 'Failed to add custom server');
+        } catch (err: unknown) {
+            if (isMountedRef.current) {
+                const errorMessage =
+                    err instanceof Error ? err.message : 'Failed to add custom server';
+                setError(errorMessage);
+            }
             throw err;
         }
     };
 
     useEffect(() => {
-        if (autoLoad) {
+        if (autoLoad && isMountedRef.current) {
             loadEntries();
         }
-    }, [autoLoad]);
+    }, [autoLoad, loadEntries]);
+
+    // Cleanup effect to handle unmounting
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            // Abort any ongoing requests
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
+    }, []);
 
     return {
         entries,
@@ -76,6 +141,10 @@ export function useServerRegistry(options: UseServerRegistryOptions = {}) {
         updateFilter,
         markAsInstalled,
         addCustomEntry,
-        clearError: () => setError(null),
+        clearError: () => {
+            if (isMountedRef.current) {
+                setError(null);
+            }
+        },
     };
 }

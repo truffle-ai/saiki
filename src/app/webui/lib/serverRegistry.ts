@@ -29,6 +29,9 @@ export class ServerRegistryService {
         // Load built-in registry entries
         this.registryEntries = this.getBuiltinEntries();
 
+        // Load custom entries from localStorage
+        await this.loadCustomEntries();
+
         // TODO: Load from external registry sources (GitHub, npm, etc.)
         // await this.loadExternalRegistries();
 

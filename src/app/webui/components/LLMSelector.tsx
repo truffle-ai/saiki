@@ -7,9 +7,52 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { Bot, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bot, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Key } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { LLMProvider, LLMConfig } from '../types';
+
+// Interface for the LLM switch request body
+interface LLMSwitchRequest {
+  provider: string;
+  model: string;
+  router: string;
+  apiKey?: string;
+  baseURL?: string;
+}
+
+// Function to validate OpenAI-compatible base URL
+const validateBaseURL = (url: string): { isValid: boolean; error?: string } => {
+  if (!url.trim()) {
+    return { isValid: true }; // Empty URL is valid (optional field)
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    
+    // Check if protocol is http or https
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return { 
+        isValid: false, 
+        error: 'URL must use http:// or https:// protocol' 
+      };
+    }
+
+    // Check if URL includes '/v1' for OpenAI compatibility
+    if (!parsedUrl.pathname.includes('/v1')) {
+      return { 
+        isValid: false, 
+        error: 'URL must include "/v1" path for OpenAI compatibility' 
+      };
+    }
+
+    return { isValid: true };
+  } catch (error) {
+    return { 
+      isValid: false, 
+      error: 'Invalid URL format' 
+    };
+  }
+};
 
 export default function LLMSelector() {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,6 +68,7 @@ export default function LLMSelector() {
   const [isSwitching, setIsSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [hasExistingApiKey, setHasExistingApiKey] = useState<boolean>(false);
 
   // Fetch current LLM config and available providers
   useEffect(() => {
@@ -39,6 +83,8 @@ export default function LLMSelector() {
         if (currentRes.ok) {
           const current = await currentRes.json();
           setCurrentConfig(current);
+          // Check if there's an existing API key
+          setHasExistingApiKey(!!current.config.apiKey);
         }
 
         if (providersRes.ok) {
@@ -61,13 +107,17 @@ export default function LLMSelector() {
       setSelectedProvider(currentConfig.config.provider);
       setSelectedModel(currentConfig.config.model);
       setSelectedRouter(currentConfig.serviceInfo.router || 'vercel');
-      setApiKey('');
+      // Keep existing apiKey value instead of resetting to empty
+      // Only reset if there's no existing key
+      if (!hasExistingApiKey) {
+        setApiKey('');
+      }
       setBaseURL(currentConfig.config.baseURL || '');
       setShowAdvanced(false);
       setError(null);
       setSuccess(null);
     }
-  }, [isOpen, currentConfig]);
+  }, [isOpen, currentConfig, hasExistingApiKey]);
 
   // Reset dependent fields when provider changes
   useEffect(() => {
@@ -91,12 +141,21 @@ export default function LLMSelector() {
       return;
     }
 
+    // Validate baseURL if provided
+    if (baseURL) {
+      const urlValidation = validateBaseURL(baseURL);
+      if (!urlValidation.isValid) {
+        setError(urlValidation.error || 'Invalid base URL');
+        return;
+      }
+    }
+
     setIsSwitching(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const requestBody: any = {
+      const requestBody: LLMSwitchRequest = {
         provider: selectedProvider,
         model: selectedModel,
         router: selectedRouter
@@ -297,14 +356,29 @@ export default function LLMSelector() {
 
                 {/* API Key Input */}
                 <div className="space-y-2">
-                  <Label htmlFor="apiKey">API Key</Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="apiKey">API Key</Label>
+                    {hasExistingApiKey && (
+                      <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                        <Key className="h-3 w-3" />
+                        Key Set
+                      </Badge>
+                    )}
+                  </div>
                   <Input
                     id="apiKey"
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Leave empty to keep current"
+                    placeholder={hasExistingApiKey ? "Leave empty to keep existing key" : "Enter API key"}
+                    className={hasExistingApiKey ? "border-green-200 bg-green-50/50" : ""}
                   />
+                  <div className="text-xs text-muted-foreground">
+                    {hasExistingApiKey 
+                      ? "An API key is already configured. Leave empty to keep current key."
+                      : "Enter your API key for this provider"
+                    }
+                  </div>
                 </div>
               </div>
             )}

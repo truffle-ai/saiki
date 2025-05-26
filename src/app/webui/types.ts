@@ -124,7 +124,7 @@ export interface ServerRegistryEntry {
     author?: string;
     homepage?: string;
     config: {
-        type: 'stdio' | 'sse';
+        type: 'stdio' | 'sse' | 'http';
         command?: string;
         args?: string[];
         url?: string;

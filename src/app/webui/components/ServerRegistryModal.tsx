@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { serverRegistry } from '@/lib/serverRegistry';
 import type { ServerRegistryEntry, ServerRegistryFilter } from '@/types';
 import AddCustomServerModal from './AddCustomServerModal';
@@ -59,6 +59,29 @@ export default function ServerRegistryModal({
     const [filter, setFilter] = useState<ServerRegistryFilter>({});
     const [searchInput, setSearchInput] = useState('');
     
+    // Ref for debouncing
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    
+    // Track if component is mounted to prevent state updates after unmount
+    const isMountedRef = useRef(true);
+    const abortControllerRef = useRef<AbortController | null>(null);
+
+    // Cleanup effect to handle unmounting
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            // Clear debounce timer
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+            // Abort any ongoing requests
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
+    }, []);
+
     const categories = [
         { value: 'all', label: 'All Categories' },
         { value: 'productivity', label: 'Productivity' },
@@ -70,58 +93,113 @@ export default function ServerRegistryModal({
         { value: 'custom', label: 'Custom' },
     ];
 
-    // Load registry entries
+    // Load entries when modal opens
     useEffect(() => {
         if (!isOpen) return;
-        
+
         const loadEntries = async () => {
+            // Cancel any ongoing request
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+            
+            // Create new AbortController for this request
+            const abortController = new AbortController();
+            abortControllerRef.current = abortController;
+
+            if (!isMountedRef.current) return;
+            
             setIsLoading(true);
             setError(null);
             try {
                 const registryEntries = await serverRegistry.getEntries();
-                setEntries(registryEntries);
-                setFilteredEntries(registryEntries);
-            } catch (err: any) {
-                setError(err.message || 'Failed to load server registry');
+                
+                // Check if component is still mounted and request wasn't aborted
+                if (isMountedRef.current && !abortController.signal.aborted) {
+                    setEntries(registryEntries);
+                    setFilteredEntries(registryEntries);
+                }
+            } catch (err: unknown) {
+                // Only set error if component is still mounted and request wasn't aborted
+                if (isMountedRef.current && !abortController.signal.aborted) {
+                    const errorMessage = err instanceof Error ? err.message : 'Failed to load server registry';
+                    setError(errorMessage);
+                }
             } finally {
-                setIsLoading(false);
+                // Only update loading state if component is still mounted and request wasn't aborted
+                if (isMountedRef.current && !abortController.signal.aborted) {
+                    setIsLoading(false);
+                }
             }
         };
 
         loadEntries();
     }, [isOpen]);
 
-    // Apply filters
-    useEffect(() => {
-        const applyFilters = async () => {
-            try {
-                const filtered = await serverRegistry.getEntries({
-                    ...filter,
-                    search: searchInput || undefined,
-                });
+    // Debounced filter function
+    const debouncedApplyFilters = useCallback(async (currentFilter: ServerRegistryFilter, currentSearchInput: string) => {
+        if (!isMountedRef.current) return;
+        
+        try {
+            const filtered = await serverRegistry.getEntries({
+                ...currentFilter,
+                search: currentSearchInput || undefined,
+            });
+            
+            if (isMountedRef.current) {
                 setFilteredEntries(filtered);
-            } catch (err: any) {
-                setError(err.message || 'Failed to filter entries');
+            }
+        } catch (err: unknown) {
+            if (isMountedRef.current) {
+                const errorMessage = err instanceof Error ? err.message : 'Failed to filter entries';
+                setError(errorMessage);
+            }
+        }
+    }, []);
+
+    // Apply filters with debouncing
+    useEffect(() => {
+        // Clear the previous timer
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+
+        // Set a new timer to debounce the filter operation
+        debounceTimerRef.current = setTimeout(() => {
+            debouncedApplyFilters(filter, searchInput);
+        }, 300); // 300ms delay
+
+        // Cleanup function to clear timer on unmount
+        return () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
             }
         };
-
-        applyFilters();
-    }, [filter, searchInput, entries]);
+    }, [filter, searchInput, entries, debouncedApplyFilters]);
 
     const handleInstall = async (entry: ServerRegistryEntry) => {
+        if (!isMountedRef.current) return;
+        
         setInstalling(entry.id);
         try {
             await onInstallServer(entry);
             await serverRegistry.setInstalled(entry.id, true);
             
-            // Update local state
-            setEntries(prev => prev.map(e => 
-                e.id === entry.id ? { ...e, isInstalled: true } : e
-            ));
-        } catch (err: any) {
-            setError(err.message || 'Failed to install server');
+            // Update local state only if component is still mounted
+            if (isMountedRef.current) {
+                setEntries(prev => prev.map(e => 
+                    e.id === entry.id ? { ...e, isInstalled: true } : e
+                ));
+            }
+        } catch (err: unknown) {
+            if (isMountedRef.current) {
+                const errorMessage = err instanceof Error ? err.message : 'Failed to install server';
+                setError(errorMessage);
+            }
         } finally {
-            setInstalling(null);
+            if (isMountedRef.current) {
+                setInstalling(null);
+            }
         }
     };
 
@@ -139,12 +217,20 @@ export default function ServerRegistryModal({
     };
 
     const handleAddCustomServer = async (entry: Omit<ServerRegistryEntry, 'id' | 'isOfficial' | 'lastUpdated'>) => {
+        if (!isMountedRef.current) return;
+        
         try {
             const newEntry = await serverRegistry.addCustomEntry(entry);
-            setEntries(prev => [newEntry, ...prev]);
-            setIsAddCustomModalOpen(false);
-        } catch (err: any) {
-            setError(err.message || 'Failed to add custom server');
+            
+            if (isMountedRef.current) {
+                setEntries(prev => [newEntry, ...prev]);
+                setIsAddCustomModalOpen(false);
+            }
+        } catch (err: unknown) {
+            if (isMountedRef.current) {
+                const errorMessage = err instanceof Error ? err.message : 'Failed to add custom server';
+                setError(errorMessage);
+            }
         }
     };
 
@@ -217,7 +303,7 @@ export default function ServerRegistryModal({
                                 <div 
                                     key={entry.id} 
                                     className="group relative flex items-center justify-between p-4 border border-border/50 rounded-xl hover:border-border hover:shadow-sm bg-card/50 hover:bg-card transition-all duration-200"
-                                    style={{ animationDelay: `${index * 50}ms` }}
+                                    style={{ animationDelay: `${Math.min(index * 50, 500)}ms` }}
                                 >
                                     <div className="flex items-center gap-4 flex-1 min-w-0">
                                         <div className="flex-shrink-0 text-2xl p-2 rounded-lg bg-primary/5 border border-primary/10">

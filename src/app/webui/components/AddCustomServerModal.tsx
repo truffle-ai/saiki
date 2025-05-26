@@ -90,6 +90,7 @@ export default function AddCustomServerModal({
     const [argsInput, setArgsInput] = useState('');
     const [tagsInput, setTagsInput] = useState('');
     const [envInput, setEnvInput] = useState('');
+    const [dependenciesInput, setDependenciesInput] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -119,15 +120,29 @@ export default function AddCustomServerModal({
             // Parse inputs
             const args = argsInput.split(',').map(s => s.trim()).filter(Boolean);
             const tags = tagsInput.split(',').map(s => s.trim()).filter(Boolean);
+            const dependencies = dependenciesInput.split(',').map(s => s.trim()).filter(Boolean);
             
             // Parse environment variables
             const env: Record<string, string> = {};
             if (envInput.trim()) {
                 const envLines = envInput.split('\n');
                 for (const line of envLines) {
-                    const [key, ...valueParts] = line.split('=');
-                    if (key && valueParts.length > 0) {
-                        env[key.trim()] = valueParts.join('=').trim();
+                    // Skip empty lines
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) {
+                        continue;
+                    }
+                    
+                    // Split only at the first '=' character
+                    const equalIndex = trimmedLine.indexOf('=');
+                    if (equalIndex > 0) { // Key must exist (equalIndex > 0, not >= 0)
+                        const key = trimmedLine.substring(0, equalIndex).trim();
+                        const value = trimmedLine.substring(equalIndex + 1).trim();
+                        
+                        // Only add if key is not empty
+                        if (key) {
+                            env[key] = value; // Value can be empty string
+                        }
                     }
                 }
             }
@@ -156,7 +171,7 @@ export default function AddCustomServerModal({
                 tags,
                 requirements: {
                     ...formData.requirements,
-                    dependencies: formData.requirements.dependencies?.filter(Boolean) || [],
+                    dependencies,
                 },
             };
 
@@ -193,6 +208,7 @@ export default function AddCustomServerModal({
             setArgsInput('');
             setTagsInput('');
             setEnvInput('');
+            setDependenciesInput('');
         } catch (err: any) {
             setError(err.message || 'Failed to add custom server');
         } finally {
@@ -335,7 +351,7 @@ export default function AddCustomServerModal({
                                 id="env"
                                 value={envInput}
                                 onChange={(e) => setEnvInput(e.target.value)}
-                                placeholder="KEY1=value1&#10;KEY2=value2"
+                                placeholder={`KEY1=value1\nKEY2=value2`}
                                 rows={3}
                             />
                         </div>
@@ -382,6 +398,83 @@ export default function AddCustomServerModal({
                                 onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
                                 placeholder="Your Name"
                             />
+                        </div>
+                    </div>
+
+                    <div>
+                        <Label htmlFor="homepage">Homepage URL</Label>
+                        <Input
+                            id="homepage"
+                            value={formData.homepage}
+                            onChange={(e) => setFormData(prev => ({ ...prev, homepage: e.target.value }))}
+                            placeholder="https://github.com/youruser/yourserver"
+                        />
+                    </div>
+
+                    {/* Requirements Section */}
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-medium">Requirements</h3>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="platform">Platform</Label>
+                                <Select
+                                    value={formData.requirements.platform}
+                                    onValueChange={(value: 'win32' | 'darwin' | 'linux' | 'all') => 
+                                        setFormData(prev => ({ 
+                                            ...prev, 
+                                            requirements: { ...prev.requirements, platform: value } 
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger id="platform">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {platforms.map(platform => (
+                                            <SelectItem key={platform.value} value={platform.value}>
+                                                {platform.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label htmlFor="dependencies">Dependencies</Label>
+                                <Input
+                                    id="dependencies"
+                                    value={dependenciesInput}
+                                    onChange={(e) => setDependenciesInput(e.target.value)}
+                                    placeholder="Comma-separated: package1, package2"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="nodeVersion">Node.js Version</Label>
+                                <Input
+                                    id="nodeVersion"
+                                    value={formData.requirements.node}
+                                    onChange={(e) => setFormData(prev => ({ 
+                                        ...prev, 
+                                        requirements: { ...prev.requirements, node: e.target.value } 
+                                    }))}
+                                    placeholder=">=16.0.0"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="pythonVersion">Python Version</Label>
+                                <Input
+                                    id="pythonVersion"
+                                    value={formData.requirements.python}
+                                    onChange={(e) => setFormData(prev => ({ 
+                                        ...prev, 
+                                        requirements: { ...prev.requirements, python: e.target.value } 
+                                    }))}
+                                    placeholder=">=3.8"
+                                />
+                            </div>
                         </div>
                     </div>
 

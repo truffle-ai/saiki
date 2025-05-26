@@ -147,23 +147,23 @@ export default function ChatApp() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + K to toggle tools panel
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      // Ctrl/Cmd + Shift + K to toggle tools panel
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'k') {
         e.preventDefault();
         setServersPanelOpen(prev => !prev);
       }
-      // Ctrl/Cmd + P to open playground
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      // Ctrl/Cmd + Shift + P to open playground
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'p') {
         e.preventDefault();
         window.open('/playground', '_blank');
       }
-      // Ctrl/Cmd + E to export config
-      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+      // Ctrl/Cmd + Shift + E to export config
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'e') {
         e.preventDefault();
         setExportOpen(true);
       }
-      // Ctrl/Cmd + ? to show shortcuts
-      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+      // Ctrl/Cmd + Shift + / to show shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '/') {
         e.preventDefault();
         setShowShortcuts(true);
       }
@@ -296,7 +296,7 @@ export default function ChatApp() {
                 
                   {/* Quick Tips */}
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘P</kbd> for playground</p>
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧K</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧P</kbd> for playground</p>
                   </div>
                 </div>
               </div>
@@ -420,10 +420,10 @@ export default function ChatApp() {
             
             <div className="space-y-3">
               {[
-                { key: '⌘ K', desc: 'Toggle tools panel' },
-                { key: '⌘ P', desc: 'Open playground' },
-                { key: '⌘ E', desc: 'Export config' },
-                { key: '⌘ /', desc: 'Show shortcuts' },
+                { key: '⌘ ⇧ K', desc: 'Toggle tools panel' },
+                { key: '⌘ ⇧ P', desc: 'Open playground' },
+                { key: '⌘ ⇧ E', desc: 'Export config' },
+                { key: '⌘ ⇧ /', desc: 'Show shortcuts' },
                 { key: 'Esc', desc: 'Close panels' },
               ].map((shortcut, index) => (
                 <div key={index} className="flex justify-between items-center py-1">
