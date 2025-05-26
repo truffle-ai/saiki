@@ -9,14 +9,22 @@ mcpServers:
       - .
   puppeteer:
     type: stdio
-    command: node
+    command: npx
     args:
-      - dist/src/servers/puppeteerServer.js
+      - -y
+      - "@truffle-ai/puppeteer-server"
+  hf:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@llmindset/mcp-hfspace"
 
 # # describes the llm configuration
 llm:
   provider: openai
   model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY
   # you can update the system prompt to change the behavior of the llm
   systemPrompt:
     contributors:
@@ -47,17 +55,16 @@ llm:
         priority: 10
         source: dateTime
         enabled: true
-  apiKey: $OPENAI_API_KEY
 
-## To use Google Gemini, replace the OpenAI configuration with Google Gemini configuration below
-# # describes the llm configuration
+## To use Google Gemini, replace the LLM section with Google Gemini configuration below
+## Similar for anthropic/groq/etc.
 # llm:
 #   provider: google
 #   model: gemini-2.0-flash
+#   apiKey: $GOOGLE_GENERATIVE_AI_API_KEY
 #   # you can update the system prompt to change the behavior of the llm
 #   systemPrompt: |
 #     You are Saiki, a helpful AI assistant with access to tools.
 #     Use these tools when appropriate to answer user queries.
 #     You can use multiple tools in sequence to solve complex problems.
-#     After each tool result, determine if you need more information or can provide a final answer.
-#   apiKey: $GOOGLE_GENERATIVE_AI_API_KEY
+#     After each tool result, determine if you need more information or can provide a final answer. 

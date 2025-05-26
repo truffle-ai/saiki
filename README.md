@@ -4,12 +4,14 @@
   <img src="https://img.shields.io/badge/Status-Beta-yellow" alt="Status: Beta">
   <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0">
   <a href="https://discord.gg/GwxwQs8CN5"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord"></a>
+  <a href="https://deepwiki.com/truffle-ai/saiki"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
+
 
 **Use natural language to control your tools, apps, and services — connect once, command everything.**
 
 <div align="center">
-  <img src="assets/notion_webui_example.gif" alt="Saiki Demo" width="800" />
+  <img src="https://github.com/user-attachments/assets/9a796427-ab97-4c8f-8ac2-09cf58135553" alt="Saiki Demo" width="900" />
 </div>
 
 ## Installation
@@ -92,7 +94,7 @@ Saiki is an open, modular and extensible AI agent that lets you perform tasks ac
 Why developers choose Saiki:
 
 1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP).
-2. **Config-Driven**: Define your agent with a prompt, tools (via MCP), and model in YAML, no glue code required.
+2. **Config-Driven Agents**: Define & save your agent prompts, tools (via MCP), and model in YAML.
 3. **Multi-Interface Support**: Use via CLI, wrap it in a web UI, or integrate into other systems.
 4. **Runs Anywhere**: Local-first runtime with logging, retries, and support for any LLM provider.
 5. **Interoperable**: Expose as an API or connect to other agents via MCP/A2A(soon).
@@ -113,25 +115,53 @@ saiki
   <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" width="800"/>
 </a>
 
-### 📧 Email Summary to Slack
+### 🎮 Create AI NPCs For Your Games
+
+Spin up new agents out-of-the-box and use them to power AI NPCs in your game environment. You can configure these agents to go beyond simple LLMs responses to take real actions in-game.
+
+*Example project repo coming soon...*
+
+<img src="https://github.com/user-attachments/assets/c1fc6b60-d85c-4920-84f9-918949ef1ddb" alt="AI NPC Example" width="800">
+
+
+### 📧 Send Email Summaries to Slack
 **Task:** `Summarize emails and send highlights to Slack`
 ```bash
 saiki --config-file ./configuration/examples/email_slack.yml
 ```
 <img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="800">
 
-### 🎨 AI Website Designer
-**Task:** `Design a landing page based on README.md`
+### 📝 Use Notion As A Second Brain
 ```bash
-saiki --config-file ./configuration/examples/website_designer.yml
+saiki --config-file ./configuration/examples/notion.yml #Requires setup
 ```
-<img src="assets/website_demo.gif" alt="Website Designer Demo" width="800">
+<img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="800">
 
-_For more examples, see the [Examples](docs/README.md#examples--demos) section in the docs._
 
 ## CLI Reference
 
 The `saiki` command supports several options to customize its behavior. Run `saiki --help` for the full list.
+
+```
+> saiki -h
+17:51:31 INFO: Log level set to: INFO
+Usage: saiki [options] [prompt...]
+
+AI-powered CLI and WebUI for interacting with MCP servers
+
+Arguments:
+  prompt                    Optional headless prompt for single command mode
+
+Options:
+  -c, --config-file <path>  Path to config file (default: "configuration/saiki.yml")
+  -s, --strict              Require all server connections to succeed
+  --no-verbose              Disable verbose output
+  --mode <mode>             Run mode: cli, web, discord, or telegram (default: "cli")
+  --web-port <port>         Port for WebUI (default: "3000")
+  -m, --model <model>       Specify the LLM model to use
+  -r, --router <router>     Specify the LLM router to use (vercel or in-built)
+  -V, --version             output the version number
+```
 
 **Common Examples:**
 
@@ -148,7 +178,7 @@ The `saiki` command supports several options to customize its behavior. Run `sai
 
 ## Configuration
 
-Saiki uses a YAML config file (`configuration/saiki.yml` by default) to configure tool servers (MCP servers) and LLM providers.
+Saiki defines agents using a YAML config file (`configuration/saiki.yml` by default). To configure an agent, use tool servers (MCP servers) and LLM providers.
 
 ```yaml
 mcpServers:
@@ -161,9 +191,10 @@ mcpServers:
       - .
   puppeteer:
     type: stdio
-    command: node
+    command: npx
     args:
-      - dist/src/servers/puppeteerServer.js
+      - -y
+      - "@truffle-ai/puppeteer-server"
 
 llm:
   provider: openai
@@ -191,12 +222,34 @@ npm search @modelcontextprotocol/server
    - Follow the MCP spec: https://modelcontextprotocol.io/introduction
 
 
+## Advanced Usage
+
+Saiki is designed to be a flexible component in your AI and automation workflows. Beyond the CLI and Web UI, you can integrate Saiki's core agent capabilities into your own applications or have it communicate with other AI agents.
+
+### Embedding Saiki in Your Applications
+
+When Saiki runs in `web` mode (`saiki --mode web`), it exposes a comprehensive REST API and a WebSocket interface, allowing you to control and interact with the agent programmatically. This is ideal for building custom front-ends, backend integrations, or embedding Saiki into existing platforms.
+
+For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](docs/api_and_websockets.md).
+
+### Inter-Agent Communication with MCP
+
+Saiki embraces the Model Context Protocol (MCP) not just for connecting to tools, but also for **Agent-to-Agent communication**. This means Saiki can:
+
+1.  **Act as an MCP Client**: Connect to other AI agents that expose an MCP server interface, allowing Saiki to delegate tasks or query other agents as if they were any other tool.
+2.  **Act as an MCP Server**: Saiki itself exposes an MCP server interface (see `src/app/api/mcp_handler.ts` and `src/app/api/a2a.ts`). This makes Saiki discoverable and usable by other MCP-compatible agents or systems. Another agent could connect to Saiki and utilize its configured tools and LLM capabilities.
+
+This framework-agnostic approach allows Saiki to participate in a broader ecosystem of AI agents, regardless of their underlying implementation. By defining an `AgentCard` (a standardized metadata file, based on A2A protocol, describing an agent's capabilities and MCP endpoint), Saiki can be discovered and interact with other agents seamlessly. *(We also plan to integrate support for the A2A protocol soon)*
+
+This powerful A2A capability opens up possibilities for creating sophisticated multi-agent systems where different specialized agents collaborate to achieve complex goals.
+
 ## Documentation
 
 Find detailed guides, architecture, and API reference in the `docs/` folder:
 
-- High-level design — [docs/architecture.md](docs/architecture.md)
-- Docker usage — [README.Docker.md](README.Docker.md)
+- [High-level design](docs/architecture.md)
+- [Docker usage](README.Docker.md)
+- [API Endpoints](docs/api_and_websockets.md)
 
 ## Contributing
 We welcome contributions! Refer [here](CONTRIBUTIONS.md) for more details.
@@ -220,4 +273,3 @@ Elastic License 2.0. See [LICENSE](LICENSE) for details.
 Thanks to all these amazing people for contributing to Saiki! ([full list](https://github.com/truffle-ai/saiki/graphs/contributors)):
 
 [![Contributors](https://contrib.rocks/image?repo=truffle-ai/saiki)](https://github.com/truffle-ai/saiki/graphs/contributors)
-

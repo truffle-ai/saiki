@@ -4,14 +4,22 @@
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "baseUrl": ".",
+        "paths": {
+            "@app/*": ["src/app/*"],
+            "@core/*": ["src/core/*"]
+        },
         "outDir": "./dist",
         "rootDir": ".",
         "strict": false,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "types": ["node", "vitest/globals"],
-        "lib": ["ES2022", "DOM"]
+        "lib": ["ES2022", "DOM"],
+        "declaration": true,
+        "declarationMap": true
     },
-    "include": ["src/**/*", "app/**/*", "**/*.test.ts", "**/*.spec.ts", "vitest.config.ts"],
+    "include": ["src/**/*", "scripts/**/*", "**/*.test.ts", "**/*.spec.ts", "vitest.config.ts"],
     "exclude": ["node_modules"]
 }

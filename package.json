@@ -1,22 +1,38 @@
 {
     "name": "@truffle-ai/saiki",
-    "version": "0.2.1",
+    "version": "0.2.3",
+    "engines": {
+        "node": ">=20.0.0",
+        "npm": ">=8.3.0"
+    },
     "description": "Your command center for controlling computers and services with natural language - connect once, command everything",
     "type": "module",
-    "main": "dist/app/index.js",
+    "main": "dist/src/core/index.cjs",
+    "module": "dist/src/core/index.js",
+    "types": "dist/src/core/index.d.ts",
     "bin": {
-        "saiki": "./dist/app/index.js"
+        "saiki": "./dist/src/app/index.js"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/src/core/index.d.ts",
+            "import": "./dist/src/core/index.js",
+            "require": "./dist/src/core/index.cjs"
+        },
+        "./package.json": "./package.json"
     },
     "scripts": {
         "clean": "npx rimraf dist",
         "prebuild": "",
-        "build": "npm run clean && npx tsc && npm run copy-client",
-        "prepare": "husky install",
-        "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"app/web/client/*\" public",
-        "start": "node dist/app/index.js",
+        "build": "npm run clean && tsup && npm run copy-client && npm run copy-webui && npm run prepare-webui",
+        "prepare": "husky",
+        "copy-client": "npx rimraf public && mkdir public && npx copyfiles -f \"src/app/web/client/*\" public",
+        "copy-webui": "npx tsx scripts/copy-webui.ts",
+        "prepare-webui": "cd dist/src/app/webui && npm install --omit=dev",
+        "start": "node dist/src/app/index.js",
         "dev": "tsc --watch",
-        "lint": "eslint . --ext .ts",
-        "lint:fix": "eslint . --ext .ts --fix",
+        "lint": "eslint . --ext .js,.jsx,.ts,.tsx --flat",
+        "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --flat --fix",
         "format": "prettier --write \"src/**/*.ts\" \"app/**/*.ts\"",
         "format:check": "prettier --check \"src/**/*.ts\" \"app/**/*.ts\"",
         "test": "vitest run",
@@ -37,13 +53,16 @@
     "files": [
         "dist/",
         "configuration/saiki.yml",
-        "public/"
+        "public/",
+        "src/app/webui/"
     ],
     "dependencies": {
         "@ai-sdk/anthropic": "^1.2.2",
         "@ai-sdk/google": "^1.2.8",
+        "@ai-sdk/groq": "^1.2.9",
         "@ai-sdk/openai": "^1.3.3",
         "@anthropic-ai/sdk": "^0.39.0",
+        "@clack/prompts": "^0.10.1",
         "@modelcontextprotocol/sdk": "^1.11.0",
         "ai": "^4.2.6",
         "boxen": "^7.1.1",
@@ -53,6 +72,7 @@
         "discord.js": "^14.19.3",
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
+        "fs-extra": "^11.3.0",
         "marked": "^15.0.8",
         "node-telegram-bot-api": "^0.66.0",
         "openai": "^4.89.0",
@@ -60,7 +80,7 @@
         "puppeteer-core": "^24.4.0",
         "readline-sync": "^1.4.10",
         "rimraf": "^6.0.1",
-        "tiktoken": "^1.0.20",
+        "tiktoken": "^1.0.21",
         "typescript": "^5.3.3",
         "winston": "^3.17.0",
         "ws": "^8.18.1",
@@ -70,6 +90,7 @@
     "devDependencies": {
         "@eslint/js": "^9.23.0",
         "@types/express": "^4.17.21",
+        "@types/fs-extra": "^11.0.4",
         "@types/node": "^20.17.36",
         "@types/readline-sync": "^1.4.8",
         "@typescript-eslint/eslint-plugin": "^8.28.0",
@@ -82,11 +103,17 @@
         "prettier": "^3.5.3",
         "supertest": "^7.1.0",
         "ts-node": "^10.9.2",
+        "tsup": "^8.4.0",
+        "tsx": "^4.19.2",
         "vitest": "^3.1.3"
     },
     "lint-staged": {
         "*.ts": [
             "prettier --write"
         ]
+    },
+    "overrides": {
+        "tough-cookie": "^4.1.3",
+        "undici": "^6.21.2"
     }
 }
