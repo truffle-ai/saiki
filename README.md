@@ -87,6 +87,14 @@ saiki --mode telegram
 ```
 Make sure you have `TELEGRAM_BOT_TOKEN` set in your environment. See [here](app/telegram/README.md) for more details.
 
+### MCP Server Mode
+
+Spin up an agent that acts as an MCP server
+
+```bash
+saiki --mode mcp
+```
+
 ## Overview
 
 Saiki is an open, modular and extensible AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly, whether that means running a shell command, summarizing a webpage, or calling an API.
@@ -243,12 +251,17 @@ const response2 = await agent.run("Create a README for the main.py file");
 agent.resetConversation();
 ```
 
+### Embedding Saiki in Your Applications Via Backend APIs
+
+When Saiki runs in `web` mode (`saiki --mode web`), it exposes a comprehensive REST API and a WebSocket interface, allowing you to control and interact with the agent programmatically. This is ideal for building custom front-ends, backend integrations, or embedding Saiki into existing platforms.
+
+For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](docs/api_and_websockets.md).
+
 ### Learn More
 
 For comprehensive guides on building different types of applications with Saiki, including:
 - **Web backends and APIs**
 - **Discord/Telegram bots** 
-- **Multi-agent coordination**
 - **Advanced patterns and best practices**
 
 See our **[Building with Saiki Developer Guide](docs/building-with-saiki.md)**.
@@ -258,18 +271,12 @@ See our **[Building with Saiki Developer Guide](docs/building-with-saiki.md)**.
 
 Saiki is designed to be a flexible component in your AI and automation workflows. Beyond the CLI and Web UI, you can integrate Saiki's core agent capabilities into your own applications or have it communicate with other AI agents.
 
-### Embedding Saiki in Your Applications
-
-When Saiki runs in `web` mode (`saiki --mode web`), it exposes a comprehensive REST API and a WebSocket interface, allowing you to control and interact with the agent programmatically. This is ideal for building custom front-ends, backend integrations, or embedding Saiki into existing platforms.
-
-For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](docs/api_and_websockets.md).
-
 ### Inter-Agent Communication with MCP
 
 Saiki embraces the Model Context Protocol (MCP) not just for connecting to tools, but also for **Agent-to-Agent communication**. This means Saiki can:
 
 1.  **Act as an MCP Client**: Connect to other AI agents that expose an MCP server interface, allowing Saiki to delegate tasks or query other agents as if they were any other tool.
-2.  **Act as an MCP Server**: Saiki itself exposes an MCP server interface (see `src/app/api/mcp_handler.ts` and `src/app/api/a2a.ts`). This makes Saiki discoverable and usable by other MCP-compatible agents or systems. Another agent could connect to Saiki and utilize its configured tools and LLM capabilities.
+2.  **Act as an MCP Server**: Saiki itself exposes an MCP server interface using `saiki --mode mcp`. This makes Saiki discoverable and usable by other MCP-compatible agents or systems. Another agent could connect to Saiki and utilize its configured tools and LLM capabilities by talking to it as a user.
 
 This framework-agnostic approach allows Saiki to participate in a broader ecosystem of AI agents, regardless of their underlying implementation. By defining an `AgentCard` (a standardized metadata file, based on A2A protocol, describing an agent's capabilities and MCP endpoint), Saiki can be discovered and interact with other agents seamlessly. *(We also plan to integrate support for the A2A protocol soon)*
 
