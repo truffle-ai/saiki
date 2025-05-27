@@ -44,7 +44,9 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     },
     anthropic: {
         models: [
-            { name: 'claude-3-7-sonnet-20250219', maxTokens: 200000, default: true },
+            { name: 'claude-4-opus-20250514', maxTokens: 200000 },
+            { name: 'claude-4-sonnet-20250514', maxTokens: 200000, default: true },
+            { name: 'claude-3-7-sonnet-20250219', maxTokens: 200000 },
             { name: 'claude-3-5-sonnet-20240620', maxTokens: 200000 },
             { name: 'claude-3-haiku-20240307', maxTokens: 200000 },
             { name: 'claude-3-opus-20240229', maxTokens: 200000 },
