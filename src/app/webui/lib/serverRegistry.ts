@@ -369,6 +369,33 @@ export class ServerRegistryService {
                 homepage: 'https://github.com/modelcontextprotocol/servers',
             },
             {
+                id: 'http-example',
+                name: 'HTTP MCP Server',
+                description: 'Example HTTP-based MCP server for API integrations',
+                category: 'development',
+                icon: '🌐',
+                config: {
+                    type: 'http',
+                    baseUrl: 'http://localhost:8080',
+                    headers: {
+                        Authorization: 'Bearer your-api-key',
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: 30000,
+                },
+                tags: ['http', 'api', 'integration', 'web'],
+                isOfficial: false,
+                isInstalled: false,
+                popularity: 70,
+                lastUpdated: new Date(),
+                requirements: {
+                    platform: 'all',
+                },
+                author: 'Community',
+                version: '1.0.0',
+                homepage: 'https://github.com/modelcontextprotocol/servers',
+            },
+            {
                 id: 'memory',
                 name: 'Memory',
                 description:

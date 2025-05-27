@@ -23,6 +23,13 @@ import {
 } from "./ui/select";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Plus, Save } from 'lucide-react';
+import { KeyValueEditor } from "./ui/key-value-editor";
+
+interface HeaderPair {
+    key: string;
+    value: string;
+    id: string;
+}
 
 interface AddCustomServerModalProps {
     isOpen: boolean;
@@ -44,10 +51,11 @@ export default function AddCustomServerModal({
         author: string;
         homepage: string;
         config: {
-            type: 'stdio' | 'sse';
+            type: 'stdio' | 'sse' | 'http';
             command: string;
             args: string[];
             url: string;
+            baseUrl: string;
             env: Record<string, string>;
             headers: Record<string, string>;
             timeout: number;
@@ -73,6 +81,7 @@ export default function AddCustomServerModal({
             command: '',
             args: [],
             url: '',
+            baseUrl: '',
             env: {},
             headers: {},
             timeout: 30000,
@@ -90,6 +99,7 @@ export default function AddCustomServerModal({
     const [argsInput, setArgsInput] = useState('');
     const [tagsInput, setTagsInput] = useState('');
     const [envInput, setEnvInput] = useState('');
+    const [headerPairs, setHeaderPairs] = useState<HeaderPair[]>([]);
     const [dependenciesInput, setDependenciesInput] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -147,6 +157,14 @@ export default function AddCustomServerModal({
                 }
             }
 
+            // Convert header pairs to record
+            const headers: Record<string, string> = {};
+            headerPairs.forEach(pair => {
+                if (pair.key.trim() && pair.value.trim()) {
+                    headers[pair.key.trim()] = pair.value.trim();
+                }
+            });
+
             // Validate required fields
             if (!formData.name.trim()) {
                 throw new Error('Server name is required');
@@ -160,6 +178,9 @@ export default function AddCustomServerModal({
             if (formData.config.type === 'sse' && !formData.config.url.trim()) {
                 throw new Error('URL is required for SSE servers');
             }
+            if (formData.config.type === 'http' && !formData.config.baseUrl.trim()) {
+                throw new Error('Base URL is required for HTTP servers');
+            }
 
             const entry: Omit<ServerRegistryEntry, 'id' | 'isOfficial' | 'lastUpdated'> = {
                 ...formData,
@@ -167,6 +188,7 @@ export default function AddCustomServerModal({
                     ...formData.config,
                     args,
                     env,
+                    headers,
                 },
                 tags,
                 requirements: {
@@ -192,6 +214,7 @@ export default function AddCustomServerModal({
                     command: '',
                     args: [],
                     url: '',
+                    baseUrl: '',
                     env: {},
                     headers: {},
                     timeout: 30000,
@@ -208,6 +231,7 @@ export default function AddCustomServerModal({
             setArgsInput('');
             setTagsInput('');
             setEnvInput('');
+            setHeaderPairs([]);
             setDependenciesInput('');
         } catch (err: any) {
             setError(err.message || 'Failed to add custom server');
@@ -287,7 +311,7 @@ export default function AddCustomServerModal({
                             <Label htmlFor="serverType">Server Type</Label>
                             <Select
                                 value={formData.config.type}
-                                onValueChange={(value: 'stdio' | 'sse') => 
+                                onValueChange={(value: 'stdio' | 'sse' | 'http') => 
                                     setFormData(prev => ({ 
                                         ...prev, 
                                         config: { ...prev.config, type: value } 
@@ -300,6 +324,7 @@ export default function AddCustomServerModal({
                                 <SelectContent>
                                     <SelectItem value="stdio">stdio</SelectItem>
                                     <SelectItem value="sse">sse</SelectItem>
+                                    <SelectItem value="http">http</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -329,7 +354,7 @@ export default function AddCustomServerModal({
                                     />
                                 </div>
                             </>
-                        ) : (
+                        ) : formData.config.type === 'sse' ? (
                             <div>
                                 <Label htmlFor="url">URL *</Label>
                                 <Input
@@ -339,22 +364,51 @@ export default function AddCustomServerModal({
                                         ...prev, 
                                         config: { ...prev.config, url: e.target.value } 
                                     }))}
-                                    placeholder="https://example.com/api"
+                                    placeholder="https://example.com/api/events"
+                                    required
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                <Label htmlFor="baseUrl">Base URL *</Label>
+                                <Input
+                                    id="baseUrl"
+                                    value={formData.config.baseUrl}
+                                    onChange={(e) => setFormData(prev => ({ 
+                                        ...prev, 
+                                        config: { ...prev.config, baseUrl: e.target.value } 
+                                    }))}
+                                    placeholder="https://example.com"
                                     required
                                 />
                             </div>
                         )}
 
-                        <div>
-                            <Label htmlFor="env">Environment Variables</Label>
-                            <Textarea
-                                id="env"
-                                value={envInput}
-                                onChange={(e) => setEnvInput(e.target.value)}
-                                placeholder={`KEY1=value1\nKEY2=value2`}
-                                rows={3}
-                            />
-                        </div>
+                        {formData.config.type === 'stdio' && (
+                            <div>
+                                <Label htmlFor="env">Environment Variables</Label>
+                                <Textarea
+                                    id="env"
+                                    value={envInput}
+                                    onChange={(e) => setEnvInput(e.target.value)}
+                                    placeholder={`KEY1=value1\nKEY2=value2`}
+                                    rows={3}
+                                />
+                            </div>
+                        )}
+
+                        {(formData.config.type === 'sse' || formData.config.type === 'http') && (
+                            <div>
+                                <KeyValueEditor
+                                    label="Headers"
+                                    pairs={headerPairs}
+                                    onChange={setHeaderPairs}
+                                    placeholder={{ key: 'Authorization', value: 'Bearer your-token' }}
+                                    keyLabel="Header"
+                                    valueLabel="Value"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Additional Information */}

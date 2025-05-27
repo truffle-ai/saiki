@@ -147,13 +147,13 @@ export default function ChatApp() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + Shift + K to toggle tools panel
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'k') {
+      // Ctrl/Cmd + J to toggle tools panel
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
         e.preventDefault();
         setServersPanelOpen(prev => !prev);
       }
-      // Ctrl/Cmd + Shift + P to open playground
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'p') {
+      // Ctrl/Cmd + Shift + J to open playground
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'j') {
         e.preventDefault();
         window.open('/playground', '_blank');
       }
@@ -162,8 +162,8 @@ export default function ChatApp() {
         e.preventDefault();
         setExportOpen(true);
       }
-      // Ctrl/Cmd + Shift + / to show shortcuts
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '/') {
+      // Ctrl/Cmd + / to show shortcuts
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === '/') {
         e.preventDefault();
         setShowShortcuts(true);
       }
@@ -207,7 +207,7 @@ export default function ChatApp() {
                 )}
               >
                 <Server className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline ml-1.5">Tools</span>
+                <span className="hidden sm:inline ml-1.5">MCP Servers</span>
             </Button>
             
             <Button 
@@ -218,7 +218,7 @@ export default function ChatApp() {
               >
                 <Link href="/playground" target="_blank">
                   <Wrench className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline ml-1.5">Playground</span>
+                  <span className="hidden sm:inline ml-1.5">MCP Playground</span>
                 </Link>
             </Button>
             
@@ -296,7 +296,7 @@ export default function ChatApp() {
                 
                   {/* Quick Tips */}
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧K</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧P</kbd> for playground</p>
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧J</kbd> for playground</p>
                   </div>
                 </div>
               </div>
@@ -420,10 +420,10 @@ export default function ChatApp() {
             
             <div className="space-y-3">
               {[
-                { key: '⌘ ⇧ K', desc: 'Toggle tools panel' },
-                { key: '⌘ ⇧ P', desc: 'Open playground' },
+                { key: '⌘ J', desc: 'Toggle tools panel' },
+                { key: '⌘ ⇧ J', desc: 'Open playground' },
                 { key: '⌘ ⇧ E', desc: 'Export config' },
-                { key: '⌘ ⇧ /', desc: 'Show shortcuts' },
+                { key: '⌘ /', desc: 'Show shortcuts' },
                 { key: 'Esc', desc: 'Close panels' },
               ].map((shortcut, index) => (
                 <div key={index} className="flex justify-between items-center py-1">
