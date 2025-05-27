@@ -68,7 +68,7 @@ const config: Config = {
         navbar: {
             title: 'Saiki',
             logo: {
-                alt: 'My site',
+                alt: 'Saiki Logo',
                 src: 'img/favicon.ico',
             },
             items: [
