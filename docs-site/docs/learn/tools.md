@@ -6,7 +6,7 @@ sidebar_position: 4
 
 ## The Role of Tools
 
-In the context of Saiki and AI agents, **tools** are external services, APIs, or modules that an agent can use to perform actions, retrieve information, or manipulate data.
+ **Tools** are external services, APIs, or modules that an AI agent can use to perform actions, retrieve information, or manipulate data.
 
 ### Why Tools Matter
 
@@ -22,16 +22,16 @@ AI agents are powerful because they can go beyond language understanding—they 
 
 ### How Tools Work
 
-- Tools are registered with Saiki via configuration (see the Configuration docs).
+- Tools are registered with Saiki agents via configuration (see the Configuration docs).
 - When you give a natural language command, the agent decides which tools to use and in what order.
 - The agent can chain multiple tools together to accomplish complex tasks.
 
 **Example:**
 > "Find all PDF files in my Downloads folder and email them to me."
 
-- The agent uses the Filesystem Tool to search for PDFs.
+- The Saiki agent uses the Filesystem Tool to search for PDFs.
 - Then uses the Email Tool to send them—all automatically.
 
 ### Extending with Your Own Tools
 
-Saiki is extensible: you can add your own tools by implementing an MCP server or connecting to existing APIs. This lets you automate anything you can describe and connect. 
+Saiki agents are extensible: you can add your own tools by implementing an MCP server or connecting to existing APIs. This lets you automate anything you can describe and connect. 

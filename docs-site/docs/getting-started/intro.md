@@ -2,28 +2,23 @@
 sidebar_position: 1
 ---
 
-# Introduction to Saiki
+# Introduction
 
-**Saiki** lets you use natural language to control your tools, apps, and services — connect once, command everything.
+<!-- Saiki is an open, modular and extensible AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly, whether that means running a shell command, summarizing a webpage, or calling an API. -->
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Status-Beta-yellow" alt="Status: Beta" />
-  <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0" />
-  <a href="https://discord.gg/GwxwQs8CN5">
-    <img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord" />
-  </a>
-</div>
+Saiki is an open-source, modular and extensible framework that lets you build AI Agents and AI powered applications seamlessly. 
 
-Saiki is a flexible, modular AI agent that enables you to perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly.
+Why developers choose Saiki:
 
-## Why Saiki?
+- **Customizable, Config-Driven Agents**: Create a Saiki agent by creating one config file. Configure your tools, LLM configuration, prompts, context management strategies in one file and re-use that anywhere. 
+- **Feature-rich developer tools**: Saiki has a powerful CLI and web UI playground you can use to build, test and experiment with different AI agents.
+- **First-class MCP support** : Connect to any MCP servers to your Saiki agents to enhance their functionality
+- **Multi-LLM support**: Saiki supports OpenAI, Anthropic, Google and Groq LLMs. Saiki is open
+- **Powerful in-built APIs**: Saiki agents come with powerful in-built APIs - your AI Agent already has most of the functionality you will need. Saiki core library makes it extremely easy to build your own APIs as well.
+- **Use saiki agents in any application**: Saiki agents can be used on telegram, discord, slack, and even as their own MCP servers - all out of the box! 
+- **In-built context management**: Saiki agents have in-built context management to handle the token limits of LLMs. Even this is customizable!
 
-- **Open & Extensible:** Connect to any service via the Model Context Protocol (MCP). Use pre-built servers for GitHub, filesystem, terminal, or build your own.
-- **AI-Powered Orchestration:** Natural language tasks are parsed into multi-step tool calls executed in the correct sequence.
-- **Multi-Interface Support:** Use via CLI, wrap it in a web UI, or integrate into other systems – AI logic is decoupled from UI concerns.
-- **Production-Ready:** Robust error handling, structured logging, and pluggable LLM providers (OpenAI, Anthropic, Google) ensure reliability.
-
-Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs.
+Saiki is the missing natural language layer across your stack. Its powerful in-built features and high customizability means that whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. 
 
 ## Getting Started
 
@@ -31,19 +26,37 @@ Saiki is the missing natural language layer across your stack. Whether you're au
   ```bash
   npm install -g @truffle-ai/saiki
   ```
-- **Run the CLI:**
+- **Run the interactive CLI:**
   ```bash
   saiki
   ```
-- **Try the Web UI:**
+- **Ask saiki anything, in your terminal!:**
+  <!-- ```bash
+  saiki what is the best way to build AI agents
+  ``` -->
   ```bash
-  saiki --mode web --web-port 3000
+  saiki what are the current files in my directory
   ```
+  ```bash
+  saiki write a script to add two numbers in ./addition
+  ```
+
+  Saiki CLI uses the default configuration defined in `configuration/saiki.yml`
+
+  You can customize this as well.
+- Check out [Saiki CLI guide](../user-guide/cli.md)
+- **Try the Web Playground:**
+  ```bash
+  saiki --mode web
+  ```
+
   Then open [http://localhost:3000](http://localhost:3000) in your browser.
+  
+  The web playground gives you an interactive way to use your connect to MCP servers, test out the servers, try out different LLMs, and finally save your preferred combinations as AI agents
 
-For more details, see the [Installation](./installation.md) and [Usage](./usage.md) guides.
+  Check our WEb playground
 
-## Example Use Cases
+<!-- ## Example Use Cases
 
 - **Amazon Shopping Assistant:**
   > "Can you go to amazon and add some snacks to my cart? I like trail mix, cheetos and maybe surprise me with something else?"
@@ -52,13 +65,13 @@ For more details, see the [Installation](./installation.md) and [Usage](./usage.
 - **AI Website Designer:**
   > "Design a landing page based on README.md."
 
-Explore more in the [Examples & Demos](./examples-demos.md) section.
+Explore more in the [Examples & Demos](./examples-demos.md) section. -->
 
 ## Learn More
 
 - [Basics of AI Agents](../ai-agents-basics/what-is-an-ai-agent.md) : If you're new to AI Agents and want to learn the basics
 - [Configuration](../configuring-saiki/configuration.md): How to connect MCP servers and LLM providers
-- [Architecture](../architecture/architecture.md): High-level design
+- [Architecture](../architecture/architecture.md): Saiki High-level design
 - [Contributing](../contributing.md): How to get involved
 - [Community & Support](https://discord.gg/GwxwQs8CN5)
 

@@ -4,11 +4,13 @@ sidebar_position: 1
 
 # Configuring Saiki
 
-Saiki's power comes from its customizability. You can customize every facet of saiki with yml config files. This guide walks through all the different features of saiki you can customize.
+Saiki's power comes from its customizability. You can customize every part of your Saiki agent with one config file. 
+
+This guide walks through all the different features you can customize, and the expected format
 
 We chose `yml` instead of the more popular `json` because of its support for comments (which we find super useful!), and better parsing libraries.
 
-One of our core tenets is that for every new feature we add, we will add a configuration entry for it to allow users to use it easily.
+One of our core tenets is that for most new features we add, we will add a configuration entry for it to allow users to use it easily.
 
 ## Where to Place Your Config
 
@@ -53,7 +55,7 @@ llm:
 - **mcpServers:**
   - This section represents the different MCP servers that you want to connect to Saiki
   - Each key represents a different MCP server
-  - [Complete Reference](./mcpServers). 
+  - [Complete Reference](./mcpServers)
 - **llm:**
   - This section defines the configuration for the LLM that Saiki will use as its brain.
   - [Complete Reference](./llm)

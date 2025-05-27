@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # What is MCP (Model Context Protocol)?
 
-The **Model Context Protocol (MCP)** is an open protocol that defines how AI agents (like those in Saiki) can discover, connect to, and interact with external tools, services, and APIs in a standardized way.
+The **Model Context Protocol (MCP)** is an open protocol that defines how AI agents (like Saiki agents) can discover, connect to, and interact with external tools, services, and APIs in a standardized way.
 
 ## Why MCP Matters
 
@@ -12,16 +12,16 @@ The **Model Context Protocol (MCP)** is an open protocol that defines how AI age
 - **Extensibility:** Anyone can build and share MCP-compatible tools, expanding what agents can do.
 - **Modularity:** Tools are decoupled from the agent's core logic, so you can add, remove, or swap tools as needed.
 
-## How Saiki Uses MCP
+## How Saiki Agents Use MCP
 
-Saiki uses MCP to:
+Saiki agents uses MCP to:
 - **Discover available tools:** MCP servers advertise what actions they support (e.g., read a file, send an email, browse the web).
-- **Connect to tools:** Saiki communicates with MCP servers using a standard protocol (often over stdio, HTTP, or sockets).
+- **Connect to tools:** Saiki agents communicate with MCP servers using a standard protocol (often over stdio, HTTP, or sockets).
 - **Invoke tool actions:** When you give a command, Saiki selects the right tool(s) via MCP and orchestrates their use to fulfill your request.
 
 ## Example: Registering a Tool via MCP
 
-Suppose you want to add a filesystem tool. In your Saiki configuration, you might specify:
+Suppose you want to add a filesystem tool. In your Saiki agent configuration file, you might specify:
 
 ```yaml
 mcpServers:
@@ -34,7 +34,7 @@ mcpServers:
       - .
 ```
 
-This tells Saiki to launch the MCP-compatible filesystem server, which then advertises its capabilities to the agent.
+This tells your Saiki agent to connect to the filesystem MCP server, which then advertises its capabilities to the agent.
 
 ## Learn More
 

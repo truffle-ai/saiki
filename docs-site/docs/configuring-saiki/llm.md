@@ -12,8 +12,8 @@ The `llm` section configures the Large Language Model (LLM) used by Saiki for na
 export type LLMConfig = {
     provider: string;
     model: string;
-    systemPrompt: string | SystemPromptConfig;
     apiKey?: string;
+    systemPrompt: string | SystemPromptConfig;
     providerOptions?: Record<string, any>;
 };
 
@@ -39,13 +39,13 @@ export interface ContributorConfig {
 - **model** (string, required):  
   The model name (e.g., `gpt-4.1-mini`, `claude-3-opus-20240229`).
 
+- **apiKey** (string, required):  
+API key for the provider. You can either directly pass the key, or link to environment variables (e.g., `$OPENAI_API_KEY`).
+
 - **systemPrompt** (`string` or `SystemPromptConfig`, required):  
   The system prompt to guide the LLM's behavior. Can be a simple string, or a structured object for advanced prompt composition.
   - If a string: Used directly as the prompt.
   - If an object: Should match the `SystemPromptConfig` type, with a `contributors` array. We support both dynamic prompt contributors and static prompt contributors. Refer examples 
-
-- **apiKey** (string, optional):  
-  API key for the provider. Use environment variables (e.g., `$OPENAI_API_KEY`).
 
 - **providerOptions** (object, optional):  
   Additional provider-specific options. Key-value pairs passed directly to the LLM provider SDK.

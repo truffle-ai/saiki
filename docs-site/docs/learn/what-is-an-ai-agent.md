@@ -16,9 +16,9 @@ An **AI agent** is an autonomous software entity that can perceive its environme
 
 ## What is Saiki?
 
-Saiki is a customizable, flexible AI Agent.
+Saiki is a framework to help you build customizable, flexible AI Agents.
 
-Saiki can:
+Saiki AI agents can:
 - Understand natural language instructions from users
 - Select and orchestrate the right tools, apps, or services to fulfill those instructions
 - Automate complex workflows by chaining together multiple actions
@@ -34,4 +34,4 @@ A Saiki AI agent will:
 
 ## Why AI Agents Matter
 
-AI agents make it possible to automate tasks that would otherwise require manual effort or custom scripting. They are the foundation for building intelligent, user-friendly experiences. We're going to be seeing a lot more AI Agents in the coming years! 
+AI agents make it possible to automate tasks that would otherwise require manual effort or custom scripting. They are the foundation for building intelligent, user-friendly experiences. We think that we are going to be seeing a lot more AI Agents in the coming years! 
