@@ -337,7 +337,7 @@ Find detailed guides, architecture, and API reference in the `docs/` folder:
 - [Docker usage](README.Docker.md)
 
 ## Contributing
-We welcome contributions! Refer [here](CONTRIBUTIONS.md) for more details.
+We welcome contributions! Refer [here](CONTRIBUTING.md) for more details.
 
 ## Community & Support
 
