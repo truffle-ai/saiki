@@ -338,7 +338,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.get('/api/llm/current', async (req, res) => {
         try {
             const currentConfig = agent.getCurrentLLMConfig();
-            res.json(currentConfig);
+            res.json({ config: currentConfig });
         } catch (error: any) {
             logger.error(`Error getting current LLM config: ${error.message}`);
             res.status(500).json({ error: 'Failed to get current LLM configuration' });
