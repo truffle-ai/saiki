@@ -210,6 +210,49 @@ llm:
   apiKey: $OPENAI_API_KEY
 ```
 
+## LLM Providers & Setup
+
+Saiki supports multiple LLM providers out of the box, plus any OpenAI SDK-compatible provider.
+
+### Built-in Providers
+
+- **OpenAI**: `gpt-4.1-mini`, `gpt-4o`, `o3`, `o1` and more
+- **Anthropic**: `claude-3-7-sonnet-20250219`, `claude-3-5-sonnet-20240620` and more  
+- **Google**: `gemini-2.5-pro-exp-03-25`, `gemini-2.0-flash` and more
+- **Groq**: `llama-3.3-70b-versatile`, `gemma-2-9b-it`
+
+You will need to set your provider specific API keys accordingly.
+
+### Custom/OpenAI-Compatible Providers
+
+Use any provider implementing the OpenAI SDK interface:
+
+```yaml
+llm:
+  provider: openai
+  model: your-custom-model
+  apiKey: $YOUR_API_KEY
+  baseURL: https://api.your-provider.com/v1
+  maxTokens: 100000
+```
+
+**Compatible providers**: Local models (Ollama), Azure OpenAI, OpenRouter, Together.ai, Anyscale, Perplexity, and more.
+
+### Quick Setup
+
+Set your API key and run:
+```bash
+# OpenAI (default)
+export OPENAI_API_KEY=your_key
+saiki
+
+# Switch providers via CLI
+saiki -m claude-3-5-sonnet-20240620
+saiki -m gemini-2.0-flash
+```
+
+For comprehensive setup instructions, all supported models, advanced configuration, and troubleshooting, see our **[LLM Providers Guide](docs/llm-providers.md)**.
+
 ## Discovering & Connecting MCP Servers
 Saiki uses Model Context Protocol (MCP) servers to connect with tools. Find servers through:
 
@@ -288,6 +331,7 @@ This powerful A2A capability opens up possibilities for creating sophisticated m
 Find detailed guides, architecture, and API reference in the `docs/` folder:
 
 - [Building with Saiki Developer Guide](docs/building-with-saiki.md) - Comprehensive guide for developers
+- [LLM Providers Guide](docs/llm-providers.md) - Complete LLM setup and configuration
 - [High-level design](docs/architecture.md)
 - [API Endpoints](docs/api_and_websockets.md)
 - [Docker usage](README.Docker.md)
