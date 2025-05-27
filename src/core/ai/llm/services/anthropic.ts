@@ -7,8 +7,7 @@ import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
-import type { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
-import type { EventMap } from '../../../events/EventMap.js';
+import type { TypedEventEmitter, EventMap } from '../../../events/index.js';
 
 /**
  * Anthropic implementation of LLMService
@@ -115,7 +114,10 @@ export class AnthropicService implements ILLMService {
                 // If no tools were used, we're done
                 if (toolUses.length === 0) {
                     fullResponse += textContent;
-                    this.eventEmitter.emit('llmservice:response', fullResponse);
+                    this.eventEmitter.emit('llmservice:response', {
+                        content: fullResponse,
+                        model: this.model,
+                    });
                     return fullResponse;
                 }
 
@@ -131,7 +133,11 @@ export class AnthropicService implements ILLMService {
                     const toolUseId = toolUse.id;
 
                     // Notify tool call
-                    this.eventEmitter.emit('llmservice:toolCall', { toolName, args });
+                    this.eventEmitter.emit('llmservice:toolCall', {
+                        toolName,
+                        args,
+                        callId: toolUseId,
+                    });
 
                     // Execute tool
                     try {
@@ -141,7 +147,12 @@ export class AnthropicService implements ILLMService {
                         this.messageManager.addToolResult(toolUseId, toolName, result);
 
                         // Notify tool result
-                        this.eventEmitter.emit('llmservice:toolResult', { toolName, result });
+                        this.eventEmitter.emit('llmservice:toolResult', {
+                            toolName,
+                            result,
+                            callId: toolUseId,
+                            success: true,
+                        });
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -155,6 +166,8 @@ export class AnthropicService implements ILLMService {
                         this.eventEmitter.emit('llmservice:toolResult', {
                             toolName,
                             result: { error: errorMessage },
+                            callId: toolUseId,
+                            success: false,
                         });
                     }
                 }
@@ -165,7 +178,10 @@ export class AnthropicService implements ILLMService {
 
             // If we reached max iterations
             logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
-            this.eventEmitter.emit('llmservice:response', fullResponse);
+            this.eventEmitter.emit('llmservice:response', {
+                content: fullResponse,
+                model: this.model,
+            });
             return (
                 fullResponse ||
                 'Reached maximum number of tool call iterations without a final response.'
@@ -175,10 +191,11 @@ export class AnthropicService implements ILLMService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in Anthropic service API call: ${errorMessage}`, { error });
 
-            this.eventEmitter.emit(
-                'llmservice:error',
-                error instanceof Error ? error : new Error(errorMessage)
-            );
+            this.eventEmitter.emit('llmservice:error', {
+                error: error instanceof Error ? error : new Error(errorMessage),
+                context: 'Anthropic API call',
+                recoverable: false,
+            });
             return `Error processing request: ${errorMessage}`;
         }
     }

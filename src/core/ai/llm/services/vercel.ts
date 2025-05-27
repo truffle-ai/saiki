@@ -8,7 +8,7 @@ import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
-import type { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
+import type { TypedEventEmitter } from '../../../events/index.js';
 
 /**
  * Vercel implementation of LLMService
@@ -119,10 +119,11 @@ export class VercelLLMService implements ILLMService {
             logger.warn(
                 `Possible token overflow encountered. If due to exceeding model's token limit, configure 'maxTokens' in your LLMConfig.`
             );
-            this.eventEmitter.emit(
-                'llmservice:error',
-                error instanceof Error ? error : new Error(errorMessage)
-            );
+            this.eventEmitter.emit('llmservice:error', {
+                error: error instanceof Error ? error : new Error(errorMessage),
+                context: 'Vercel LLM service execution',
+                recoverable: false,
+            });
             return `Error processing request: ${errorMessage}`;
         }
     }
@@ -151,7 +152,10 @@ export class VercelLLMService implements ILLMService {
                 );
 
                 if (step.text) {
-                    this.eventEmitter.emit('llmservice:response', step.text);
+                    this.eventEmitter.emit('llmservice:response', {
+                        content: step.text,
+                        model: this.model,
+                    });
                 }
                 // Emit events based on step content (kept from original)
                 if (step.toolCalls && step.toolCalls.length > 0) {
@@ -159,6 +163,7 @@ export class VercelLLMService implements ILLMService {
                         this.eventEmitter.emit('llmservice:toolCall', {
                             toolName: toolCall.toolName,
                             args: toolCall.args,
+                            callId: toolCall.toolCallId,
                         });
                     }
                 }
@@ -167,6 +172,8 @@ export class VercelLLMService implements ILLMService {
                         this.eventEmitter.emit('llmservice:toolResult', {
                             toolName: toolResult.toolName,
                             result: toolResult.result,
+                            callId: toolResult.toolCallId,
+                            success: true,
                         });
                     }
                 }
@@ -196,7 +203,10 @@ export class VercelLLMService implements ILLMService {
         // Add final assistant message, might not be needed
         this.messageManager.addAssistantMessage(fullResponse);
 
-        this.eventEmitter.emit('llmservice:response', fullResponse);
+        this.eventEmitter.emit('llmservice:response', {
+            content: fullResponse,
+            model: this.model,
+        });
         return fullResponse;
     }
 
@@ -215,15 +225,19 @@ export class VercelLLMService implements ILLMService {
             onChunk: (chunk) => {
                 logger.debug(`Chunk type: ${chunk.chunk.type}`);
                 if (chunk.chunk.type === 'text-delta') {
-                    this.eventEmitter.emit('llmservice:chunk', chunk.chunk.textDelta);
+                    this.eventEmitter.emit('llmservice:chunk', {
+                        content: chunk.chunk.textDelta,
+                        isComplete: false,
+                    });
                 }
             },
             onError: (error) => {
                 logger.error(`Error in streamText: ${JSON.stringify(error, null, 2)}`);
-                this.eventEmitter.emit(
-                    'llmservice:error',
-                    error instanceof Error ? error : new Error(String(error))
-                );
+                this.eventEmitter.emit('llmservice:error', {
+                    error: error instanceof Error ? error : new Error(String(error)),
+                    context: 'streamText',
+                    recoverable: false,
+                });
             },
             onStepFinish: (step) => {
                 logger.debug(`Step iteration: ${stepIteration}`);
@@ -245,6 +259,7 @@ export class VercelLLMService implements ILLMService {
                         this.eventEmitter.emit('llmservice:toolCall', {
                             toolName: toolCall.toolName,
                             args: toolCall.args,
+                            callId: toolCall.toolCallId,
                         });
                     }
                 }
@@ -257,6 +272,8 @@ export class VercelLLMService implements ILLMService {
                         this.eventEmitter.emit('llmservice:toolResult', {
                             toolName: toolResult.toolName,
                             result: toolResult.result,
+                            callId: toolResult.toolCallId,
+                            success: true,
                         });
                     }
                 }

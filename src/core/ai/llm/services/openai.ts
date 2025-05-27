@@ -7,7 +7,7 @@ import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
-import type { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
+import type { TypedEventEmitter } from '../../../events/index.js';
 
 /**
  * OpenAI implementation of LLMService
@@ -69,7 +69,11 @@ export class OpenAIService implements ILLMService {
                     // Add assistant message to history
                     this.messageManager.addAssistantMessage(responseText);
 
-                    this.eventEmitter.emit('llmservice:response', responseText);
+                    // Emit final response
+                    this.eventEmitter.emit('llmservice:response', {
+                        content: responseText,
+                        model: this.model,
+                    });
                     return responseText;
                 }
 
@@ -93,7 +97,11 @@ export class OpenAIService implements ILLMService {
                     }
 
                     // Notify tool call
-                    this.eventEmitter.emit('llmservice:toolCall', { toolName, args });
+                    this.eventEmitter.emit('llmservice:toolCall', {
+                        toolName,
+                        args,
+                        callId: toolCall.id,
+                    });
 
                     // Execute tool
                     try {
@@ -103,7 +111,12 @@ export class OpenAIService implements ILLMService {
                         this.messageManager.addToolResult(toolCall.id, toolName, result);
 
                         // Notify tool result
-                        this.eventEmitter.emit('llmservice:toolResult', { toolName, result });
+                        this.eventEmitter.emit('llmservice:toolResult', {
+                            toolName,
+                            result,
+                            callId: toolCall.id,
+                            success: true,
+                        });
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -117,6 +130,8 @@ export class OpenAIService implements ILLMService {
                         this.eventEmitter.emit('llmservice:toolResult', {
                             toolName,
                             result: { error: errorMessage },
+                            callId: toolCall.id,
+                            success: false,
                         });
                     }
                 }
@@ -129,7 +144,12 @@ export class OpenAIService implements ILLMService {
             logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
             const finalResponse = 'Task completed but reached maximum tool call iterations.';
             this.messageManager.addAssistantMessage(finalResponse);
-            this.eventEmitter.emit('llmservice:response', finalResponse);
+
+            // Emit final response
+            this.eventEmitter.emit('llmservice:response', {
+                content: finalResponse,
+                model: this.model,
+            });
             return finalResponse;
         } catch (error) {
             // Handle API errors
@@ -139,10 +159,11 @@ export class OpenAIService implements ILLMService {
             logger.warn(
                 `If this error is due to token overflow, consider configuring 'maxTokens' in your LLMConfig.`
             );
-            this.eventEmitter.emit(
-                'llmservice:error',
-                error instanceof Error ? error : new Error(errorMessage)
-            );
+            this.eventEmitter.emit('llmservice:error', {
+                error: error instanceof Error ? error : new Error(errorMessage),
+                context: 'OpenAI API call',
+                recoverable: false,
+            });
             return `Error processing request: ${errorMessage}`;
         }
     }

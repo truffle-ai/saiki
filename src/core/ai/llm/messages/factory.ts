@@ -7,8 +7,7 @@ import { PromptManager } from '../../systemPrompt/manager.js';
 import { logger } from '../../../logger/index.js';
 import { getEffectiveMaxTokens } from '../registry.js';
 import { ConversationHistoryProvider } from './history/types.js';
-import { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
-import type { EventMap } from '../../../events/EventMap.js';
+import { TypedEventEmitter, EventMap } from '../../../events/index.js';
 /**
  * Factory function to create a MessageManager instance with the correct formatter, tokenizer, and maxTokens
  * based on the LLM config and router

@@ -5,8 +5,7 @@ import type { AgentServices } from '../../utils/service-initializer.js';
 import type { MessageManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
 import type { SaikiAgent } from './SaikiAgent.js';
-import { TypedEventEmitter } from '../../events/TypedEventEmitter.js';
-import type { EventMap } from '../../events/EventMap.js';
+import { TypedEventEmitter, EventMap } from '../../events/index.js';
 
 export class ChatSession {
     public readonly eventBus: TypedEventEmitter;

@@ -211,10 +211,14 @@ export function startTelegramBot(agent: SaikiAgent) {
         if (userText === undefined && !imageDataInput) return; // Catches case where msg.text was initially undefined and no photo or photo failed
 
         // Subscribe for toolCall events
-        const toolCallHandler = (toolName: string, args: any) => {
-            bot.sendMessage(chatId, `Calling *${toolName}* with args: ${JSON.stringify(args)}`, {
-                parse_mode: 'Markdown',
-            });
+        const toolCallHandler = (payload: { toolName: string; args: any; callId?: string }) => {
+            bot.sendMessage(
+                chatId,
+                `Calling *${payload.toolName}* with args: ${JSON.stringify(payload.args)}`,
+                {
+                    parse_mode: 'Markdown',
+                }
+            );
         };
         agentEventBus.on('llmservice:toolCall', toolCallHandler);
 

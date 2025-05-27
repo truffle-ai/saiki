@@ -13,8 +13,7 @@ import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 import { randomUUID } from 'crypto';
 import { ChatSession } from './ChatSession.js';
-import { TypedEventEmitter } from '../../events/TypedEventEmitter.js';
-import type { EventMap } from '../../events/EventMap.js';
+import { TypedEventEmitter, EventMap } from '../../events/index.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
@@ -116,7 +115,10 @@ export class SaikiAgent {
         try {
             await this.clientManager.connectServer(name, config);
             this.agentEventBus.emit('saiki:mcpServerConnected', { name, success: true });
-            this.agentEventBus.emit('saiki:availableToolsUpdated');
+            this.agentEventBus.emit('saiki:availableToolsUpdated', {
+                tools: Object.keys(await this.clientManager.getAllTools()),
+                source: 'mcp',
+            });
             logger.info(`SaikiAgent: Successfully connected to MCP server '${name}'.`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);

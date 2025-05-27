@@ -38,9 +38,7 @@ import { ConfigManager } from '../config/manager.js';
 import type { CLIConfigOverrides } from '../config/types.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { createHistoryProvider } from '../ai/llm/messages/history/factory.js';
-import { TypedEventEmitter } from '../events/TypedEventEmitter.js';
-import { eventBus } from '../events/eventBus.js';
-import type { EventMap } from '../events/EventMap.js';
+import { TypedEventEmitter, eventBus, EventMap } from '../events/index.js';
 
 /**
  * Type for the core agent services returned by initializeServices

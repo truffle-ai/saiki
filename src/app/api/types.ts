@@ -1,5 +1,4 @@
-import { TypedEventEmitter } from '@core/events/TypedEventEmitter.js';
-import type { EventMap } from '@core/events/EventMap.js';
+import { TypedEventEmitter, EventMap } from '@core/events/index.js';
 
 /**
  * Generic interface for subscribing to core events.

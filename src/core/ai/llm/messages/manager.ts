@@ -9,7 +9,7 @@ import { getImageData, countMessagesTokens } from './utils.js';
 import { DynamicContributorContext } from '../../systemPrompt/types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { ConversationHistoryProvider } from './history/types.js';
-import { TypedEventEmitter } from '../../../events/TypedEventEmitter.js';
+import { TypedEventEmitter } from '../../../events/index.js';
 /**
  * Manages conversation history and provides message formatting capabilities.
  * The MessageManager is responsible for:
