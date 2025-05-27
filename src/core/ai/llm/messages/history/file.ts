@@ -1,8 +1,12 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { z } from 'zod';
 import type { ConversationHistoryProvider } from './types.js';
 import type { InternalMessage } from '../types.js';
 import { logger } from '../../../../logger/index.js';
+
+// Zod schema for validating history data
+const HistorySchema = z.array(z.any()).catch([]);
 
 export class FileHistoryProvider implements ConversationHistoryProvider {
     private dir: string;
@@ -14,7 +18,9 @@ export class FileHistoryProvider implements ConversationHistoryProvider {
     }
 
     private filePath(sessionId: string): string {
-        return path.join(this.dir, `${sessionId}.json`);
+        // Sanitize sessionId to prevent path traversal
+        const sanitizedId = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        return path.join(this.dir, `${sanitizedId}.json`);
     }
 
     async getHistory(sessionId: string): Promise<InternalMessage[]> {
@@ -22,13 +28,19 @@ export class FileHistoryProvider implements ConversationHistoryProvider {
         const fp = this.filePath(sessionId);
         try {
             const data = await fs.readFile(fp, 'utf-8');
-            return JSON.parse(data) as InternalMessage[];
+            const parsed = JSON.parse(data);
+            // Validate with Zod schema - returns empty array if invalid
+            const validated = HistorySchema.parse(parsed);
+            return validated as InternalMessage[];
         } catch (e: any) {
             if (e.code === 'ENOENT') {
                 // No file yet
                 return [];
             }
-            throw e;
+            logger.warn(
+                `FileHistoryProvider: Failed to parse history for session "${sessionId}": ${e.message}`
+            );
+            return [];
         }
     }
 
@@ -40,7 +52,7 @@ export class FileHistoryProvider implements ConversationHistoryProvider {
                 const history = await this.getHistory(sessionId);
                 history.push(message);
                 logger.debug(
-                    `FileHistoryProvider: Saving history for session "${sessionId}" to ${fp}: ${JSON.stringify(history, null, 2)}`
+                    `FileHistoryProvider: Saving message to session "${sessionId}" (${history.length} total messages)`
                 );
                 // Ensure the history directory exists
                 await fs.mkdir(path.dirname(fp), { recursive: true });

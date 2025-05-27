@@ -34,10 +34,11 @@ export function createToolConfirmationProvider(
             return new CLIConfirmationProvider(toolsProvider);
         case 'web':
         case 'discord':
-        case 'telegram':
+        case 'telegram': {
             // No-op confirmation with optional storage of allowed tools
             const provider = toolsProvider ?? new InMemoryAllowedToolsProvider();
             return new NoOpConfirmationProvider(provider);
+        }
         default:
             throw new Error(`Unknown run mode for ToolConfirmationProvider: ${runMode}`);
     }

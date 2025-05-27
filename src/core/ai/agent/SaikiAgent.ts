@@ -43,7 +43,12 @@ export class SaikiAgent {
     public readonly messageManager: MessageManager;
     public readonly configManager: ConfigManager;
     public readonly services: AgentServices;
+
+    // Session management safeguards
+    private readonly maxSessions = 100;
+    private readonly sessionTTL = 3600000; // 1 hour in ms
     private sessions: Record<string, ChatSession> = {};
+    private sessionTimestamps: Record<string, number> = {};
 
     constructor(services: AgentServices) {
         // Validate all required services are provided
@@ -134,12 +139,29 @@ export class SaikiAgent {
 
     public startSession(sessionId?: string): ChatSession {
         const id = sessionId ?? randomUUID();
+
+        // Clean up expired sessions
+        this.cleanupExpiredSessions();
+
         if (this.sessions[id]) {
+            this.sessionTimestamps[id] = Date.now();
             return this.sessions[id];
         }
-        const session = new ChatSession(this, id);
-        this.sessions[id] = session;
-        return session;
+
+        // Check session limit
+        if (Object.keys(this.sessions).length >= this.maxSessions) {
+            throw new Error(`Maximum number of sessions (${this.maxSessions}) reached`);
+        }
+
+        try {
+            const session = new ChatSession(this, id);
+            this.sessions[id] = session;
+            this.sessionTimestamps[id] = Date.now();
+            return session;
+        } catch (error) {
+            logger.error(`Failed to create session ${id}:`, error);
+            throw error;
+        }
     }
 
     public listSessions(): string[] {
@@ -149,8 +171,23 @@ export class SaikiAgent {
     public async endSession(sessionId: string): Promise<void> {
         const session = this.sessions[sessionId];
         if (session) {
-            await session.reset();
-            delete this.sessions[sessionId];
+            try {
+                await session.reset();
+            } finally {
+                delete this.sessions[sessionId];
+                delete this.sessionTimestamps[sessionId];
+            }
+        }
+    }
+
+    private cleanupExpiredSessions(): void {
+        const now = Date.now();
+        for (const [id, timestamp] of Object.entries(this.sessionTimestamps)) {
+            if (now - timestamp > this.sessionTTL) {
+                this.endSession(id).catch((err) =>
+                    logger.error(`Failed to cleanup expired session ${id}:`, err)
+                );
+            }
         }
     }
 
