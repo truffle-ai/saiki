@@ -13,7 +13,7 @@ const config: Config = {
     url: 'https://truffle-ai.github.io',
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
-    baseUrl: '/',
+    baseUrl: '/saiki/',
 
     // GitHub pages deployment config.
     // If you aren't using GitHub pages, you don't need these.
@@ -39,7 +39,7 @@ const config: Config = {
                     sidebarPath: './sidebars.ts',
                     // Please change this to your repo.
                     // Remove this to remove the "edit this page" links.
-                    editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs-site/',
+                    editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
                 },
                 blog: {
                     showReadingTime: true,
@@ -49,7 +49,7 @@ const config: Config = {
                     },
                     // Please change this to your repo.
                     // Remove this to remove the "edit this page" links.
-                    editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs-site/',
+                    editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
                     // Useful options to enforce blogging best practices
                     onInlineTags: 'warn',
                     onInlineAuthors: 'warn',

@@ -51,5 +51,7 @@ This doesn't automatically update with the latest code changes, so you will need
 saiki -h
 ```
 
+4. **Check contributing guide on github to raise a PR**
+
 Once you are ready with the above steps, check https://github.com/truffle-ai/saiki/blob/main/CONTRIBUTING.md for details on opening a PR
 
