@@ -73,7 +73,7 @@ Explore more in the [Examples & Demos](./examples-demos.md) section. -->
 - [Configuration](../configuring-saiki/configuration.md): How to connect MCP servers and LLM providers
 - [Architecture](../architecture/overview.md): Saiki High-level design
 - [Contributing](../contribution-guide/overview.md): Get involved
-- [Community & Support](https://discord.gg/GwxwQs8CN5)
+- [Community & Support](https://discord.gg/GFzWFAAZcm)
 
 ---
 

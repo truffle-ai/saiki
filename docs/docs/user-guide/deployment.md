@@ -8,7 +8,9 @@ Saiki CLI and web playground allow you to build, run and save long-lived AI Agen
 
 This guide talks about how you can then deploy these AI agents, either locally or into the cloud.
 
-Currently, saiki supports docker for long-lived agents.
+Currently, Saiki integrates with Docker to deploy long-lived agents anywhere.
+
+We are also working on CLI commands and a platform experience to simplify the deployment process!
 
 ## Docker guide 
 Check [README.Docker.md](https://github.com/truffle-ai/saiki/blob/main/README.Docker.md)

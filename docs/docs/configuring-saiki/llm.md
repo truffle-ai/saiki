@@ -12,7 +12,7 @@ The `llm` section configures the Large Language Model (LLM) used by Saiki for na
 export type LLMConfig = {
     provider: string;
     model: string;
-    apiKey?: string;
+    apiKey: string;
     systemPrompt: string | SystemPromptConfig;
     providerOptions?: Record<string, any>;
 };

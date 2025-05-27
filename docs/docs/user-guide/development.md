@@ -6,7 +6,7 @@ sidebar_position: 4
 
 This document describes how to build AI powered applications using Saiki-core.
 
-**Setup your project**
+**Set up your project**
 
 Setup a fresh typescript project using saiki-core
 ```bash

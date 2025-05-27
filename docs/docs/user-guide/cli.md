@@ -89,7 +89,7 @@ saiki --mode discord
 ```
 To use a specific agent config file for the discord bot:
 ```bash
-saiki --mode telegram --config-file ./discord-agent-config.yml
+saiki --mode discord --config-file ./discord-agent-config.yml
 ```
 
 <!-- Todo: add discord demo -->

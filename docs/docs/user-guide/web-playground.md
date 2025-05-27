@@ -10,7 +10,7 @@ Saiki web playground is the easiest way to build useful AI agents.
 
 It gives you an interactive way to test out different LLMs, MCP servers, prompts, and more.
 
-Once you are happy with a specific combination and you want to save it, you can then save the combination as a **Re-usable** AI agent built with Saiki, and deploy the agent anywhere.
+Once you're satisfied with a specific combination, save it as a **Re-usable** AI agent built with Saiki, and deploy the agent anywhere.
 
 All this is possible because Saiki sees any valid config file as a re-usable AI agent. 
 
