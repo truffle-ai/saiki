@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
-import TelegramBot from 'node-telegram-bot-api';
+import { Bot, Context, InlineKeyboard } from 'grammy';
 import https from 'https';
 import { SaikiAgent } from '@core/index.js';
 
@@ -50,41 +50,38 @@ export function startTelegramBot(agent: SaikiAgent) {
 
     const agentEventBus = agent.agentEventBus;
 
-    // Create and start Telegram Bot with polling
-    const bot = new TelegramBot(token, { polling: true });
+    // Create and start Telegram Bot
+    const bot = new Bot(token);
     console.log('Telegram bot started');
 
     // /start command with sample buttons
-    bot.onText(/\/start/, (msg) => {
-        const chatId = msg.chat.id;
-        bot.sendMessage(chatId, 'Welcome to Saiki AI Bot! Choose an option below:', {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '🔄 Reset Conversation', callback_data: 'reset' }],
-                    [{ text: '❓ Help', callback_data: 'help' }],
-                ],
-            },
+    bot.command('start', async (ctx) => {
+        const keyboard = new InlineKeyboard()
+            .text('🔄 Reset Conversation', 'reset')
+            .row()
+            .text('❓ Help', 'help');
+
+        await ctx.reply('Welcome to Saiki AI Bot! Choose an option below:', {
+            reply_markup: keyboard,
         });
     });
 
     // Handle button callbacks
-    bot.on('callback_query', async (callbackQuery) => {
-        const action = callbackQuery.data;
-        const chatId = callbackQuery.message?.chat.id;
-        if (!chatId) return;
+    bot.on('callback_query:data', async (ctx) => {
+        const action = ctx.callbackQuery.data;
         try {
             if (action === 'reset') {
                 agent.resetConversation();
-                await bot.sendMessage(chatId, '🔄 Conversation has been reset.');
+                await ctx.reply('🔄 Conversation has been reset.');
             } else if (action === 'help') {
-                await bot.sendMessage(chatId, 'Send me text or images and I will respond.');
+                await ctx.reply('Send me text or images and I will respond.');
             }
-            await bot.answerCallbackQuery(callbackQuery.id);
+            await ctx.answerCallbackQuery();
         } catch (error) {
             console.error('Error handling callback query', error);
             // Attempt to notify user of the error
             try {
-                await bot.sendMessage(chatId, `Error processing request: ${error.message}`);
+                await ctx.reply(`Error processing request: ${error.message}`);
             } catch (e) {
                 console.error('Failed to send error message for callback query', e);
             }
@@ -92,58 +89,62 @@ export function startTelegramBot(agent: SaikiAgent) {
     });
 
     // Group chat slash command: /ask <your question>
-    bot.onText(/\/ask\s+(.+)/, async (msg, match) => {
-        const chatId = msg.chat.id;
-        const question = match?.[1];
+    bot.command('ask', async (ctx) => {
+        const question = ctx.match;
         if (!question) {
-            return bot.sendMessage(chatId, 'Please provide a question, e.g. `/ask How do I ...?`', {
+            return ctx.reply('Please provide a question, e.g. `/ask How do I ...?`', {
                 parse_mode: 'Markdown',
             });
         }
         try {
-            await bot.sendChatAction(chatId, 'typing');
+            await ctx.replyWithChatAction('typing');
             const answer = await agent.run(question);
             if (answer) {
-                await bot.sendMessage(chatId, answer);
+                await ctx.reply(answer);
             } else {
-                await bot.sendMessage(chatId, '🤖 …agent failed to respond');
+                await ctx.reply('🤖 …agent failed to respond');
             }
         } catch (err) {
             console.error('Error handling /ask command', err);
-            await bot.sendMessage(chatId, `Error: ${err.message}`);
+            await ctx.reply(`Error: ${err.message}`);
         }
     });
 
     // Inline query handler
-    bot.on('inline_query', async (inlineQuery) => {
-        if (!inlineQuery.query) return;
-        const userId = inlineQuery.from.id;
-        const queryText = inlineQuery.query.trim();
+    bot.on('inline_query', async (ctx) => {
+        const query = ctx.inlineQuery.query;
+        if (!query) return;
+
+        const userId = ctx.inlineQuery.from.id;
+        const queryText = query.trim();
         const cacheKey = `${userId}:${queryText}`;
         const now = Date.now();
+
         // Debounce: return cached results if query repeated within interval
         const cached = inlineQueryCache[cacheKey];
         if (cached && now - cached.timestamp < INLINE_QUERY_DEBOUNCE_INTERVAL) {
-            return bot.answerInlineQuery(inlineQuery.id, cached.results);
+            return ctx.answerInlineQuery(cached.results);
         }
+
         // Concurrency cap
         if (currentInlineQueries >= MAX_CONCURRENT_INLINE_QUERIES) {
             // Too many concurrent inline queries; respond with empty list
-            return bot.answerInlineQuery(inlineQuery.id, []);
+            return ctx.answerInlineQuery([]);
         }
+
         currentInlineQueries++;
         try {
             const queryTimeout = 15000; // 15 seconds timeout
             const resultText = await Promise.race<string>([
-                agent.run(inlineQuery.query),
+                agent.run(query),
                 new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Query timed out')), queryTimeout)
                 ),
             ]);
             const results = [
                 {
-                    type: 'article',
-                    id: inlineQuery.id,
+                    type: 'article' as const,
+                    id: ctx.inlineQuery.id,
                     title: 'AI Answer',
                     input_message_content: { message_text: resultText },
                     description: resultText.substring(0, 100),
@@ -151,15 +152,15 @@ export function startTelegramBot(agent: SaikiAgent) {
             ];
             // Cache the results
             inlineQueryCache[cacheKey] = { timestamp: now, results };
-            await bot.answerInlineQuery(inlineQuery.id, results);
+            await ctx.answerInlineQuery(results);
         } catch (error) {
             console.error('Error handling inline query', error);
             // Inform user about the error through inline results
             try {
-                await bot.answerInlineQuery(inlineQuery.id, [
+                await ctx.answerInlineQuery([
                     {
-                        type: 'article',
-                        id: inlineQuery.id,
+                        type: 'article' as const,
+                        id: ctx.inlineQuery.id,
                         title: 'Error processing query',
                         input_message_content: {
                             message_text: `Sorry, I encountered an error: ${error.message}`,
@@ -176,28 +177,24 @@ export function startTelegramBot(agent: SaikiAgent) {
     });
 
     // Message handler with image support and toolCall notifications
-    bot.on('message', async (msg) => {
-        const chatId = msg.chat.id;
-        let userText = msg.text;
+    bot.on('message', async (ctx) => {
+        let userText = ctx.message.text;
         let imageDataInput;
 
         try {
             // Detect image messages
-            if (msg.photo) {
-                const photo = msg.photo[msg.photo.length - 1];
-                const fileInfo = await bot.getFile(photo.file_id);
-                const fileUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.file_path}`;
+            if (ctx.message.photo) {
+                const photo = ctx.message.photo[ctx.message.photo.length - 1];
+                const file = await ctx.api.getFile(photo.file_id);
+                const fileUrl = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
                 const { base64, mimeType } = await downloadFileAsBase64(fileUrl);
                 imageDataInput = { image: base64, mimeType };
-                userText = msg.caption || ''; // Use caption if available
+                userText = ctx.message.caption || ''; // Use caption if available
             }
         } catch (err) {
             console.error('Failed to process attached image in Telegram bot', err);
             try {
-                await bot.sendMessage(
-                    chatId,
-                    `🖼️ Error downloading or processing image: ${err.message}`
-                );
+                await ctx.reply(`🖼️ Error downloading or processing image: ${err.message}`);
             } catch (sendError) {
                 console.error('Failed to send image error message to user', sendError);
             }
@@ -208,31 +205,29 @@ export function startTelegramBot(agent: SaikiAgent) {
         if (!userText && !imageDataInput) return;
         // If userText is undefined (e.g. only an image was sent with no caption) and no image was processed (e.g. due to an error caught above, though `return` should prevent this)
         // or simply no text was ever present and no image.
-        if (userText === undefined && !imageDataInput) return; // Catches case where msg.text was initially undefined and no photo or photo failed
+        if (userText === undefined && !imageDataInput) return;
 
         // Subscribe for toolCall events
         const toolCallHandler = (payload: { toolName: string; args: any; callId?: string }) => {
-            bot.sendMessage(
-                chatId,
-                `Calling *${payload.toolName}* with args: ${JSON.stringify(payload.args)}`,
-                {
-                    parse_mode: 'Markdown',
-                }
-            );
+            ctx.reply(`Calling *${payload.toolName}* with args: ${JSON.stringify(payload.args)}`, {
+                parse_mode: 'Markdown',
+            });
         };
         agentEventBus.on('llmservice:toolCall', toolCallHandler);
 
         try {
-            await bot.sendChatAction(chatId, 'typing');
+            await ctx.replyWithChatAction('typing');
             const responseText = await agent.run(userText || '', imageDataInput);
-            await bot.sendMessage(chatId, responseText);
+            await ctx.reply(responseText);
         } catch (error) {
             console.error('Error handling Telegram message', error);
-            await bot.sendMessage(chatId, `Error: ${error.message}`);
+            await ctx.reply(`Error: ${error.message}`);
         } finally {
             agentEventBus.off('llmservice:toolCall', toolCallHandler);
         }
     });
 
+    // Start the bot
+    bot.start();
     return bot;
 }
