@@ -69,10 +69,10 @@ Explore more in the [Examples & Demos](./examples-demos.md) section. -->
 
 ## Learn More
 
-- [Basics of AI Agents](../ai-agents-basics/what-is-an-ai-agent.md) : If you're new to AI Agents and want to learn the basics
+- [Basics of AI Agents](../learn/what-is-an-ai-agent.md)new to AI Agents and want to learn the basics
 - [Configuration](../configuring-saiki/configuration.md): How to connect MCP servers and LLM providers
-- [Architecture](../architecture/architecture.md): Saiki High-level design
-- [Contributing](../contributing.md): How to get involved
+- [Architecture](../architecture/overview.md): Saiki High-level design
+- [Contributing](../contribution-guide/overview.md): Get involved
 - [Community & Support](https://discord.gg/GwxwQs8CN5)
 
 ---

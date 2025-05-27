@@ -1,4 +1,4 @@
-# Saiki API and WebSocket Interface
+# API Guide
 
 When Saiki runs in `web` mode (`saiki --mode web`), it exposes a comprehensive REST API and a WebSocket interface, allowing you to control and interact with the agent programmatically. This is ideal for building custom front-ends, backend integrations, or embedding Saiki into existing platforms.
 
