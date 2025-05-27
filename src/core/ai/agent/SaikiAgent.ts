@@ -36,9 +36,9 @@ export class SaikiAgent {
      * This gives users the option to use methods of the services directly if they know what they are doing
      * But the main recommended entry points/functions would still be the wrapper methods we define below
      */
+    private _llmService: ILLMService;
     public readonly clientManager: MCPClientManager;
     public readonly promptManager: PromptManager;
-    public readonly llmService: ILLMService;
     public readonly agentEventBus: EventEmitter;
     public readonly messageManager: MessageManager;
     public readonly configManager: ConfigManager;
@@ -53,12 +53,20 @@ export class SaikiAgent {
 
         this.clientManager = services.clientManager;
         this.promptManager = services.promptManager;
-        this.llmService = services.llmService;
+        this._llmService = services.llmService;
         this.agentEventBus = services.agentEventBus;
         this.messageManager = services.messageManager;
         this.configManager = services.configManager;
 
         logger.info('SaikiAgent initialized.');
+    }
+
+    /**
+     * Gets the LLM service instance.
+     * @returns The current LLM service.
+     */
+    public getLLMService(): ILLMService {
+        return this._llmService;
     }
 
     /**
@@ -73,7 +81,7 @@ export class SaikiAgent {
         imageDataInput?: { image: string; mimeType: string }
     ): Promise<string | null> {
         try {
-            const llmResponse = await this.llmService.completeTask(userInput, imageDataInput);
+            const llmResponse = await this._llmService.completeTask(userInput, imageDataInput);
 
             // If llmResponse is an empty string, treat it as no significant response.
             if (llmResponse && llmResponse.trim() !== '') {
@@ -93,7 +101,7 @@ export class SaikiAgent {
      */
     public resetConversation(): void {
         try {
-            this.llmService.resetConversation();
+            this._llmService.resetConversation();
             logger.info('SaikiAgent conversation reset.');
             this.agentEventBus.emit('saiki:conversationReset');
         } catch (error) {
@@ -128,13 +136,11 @@ export class SaikiAgent {
 
     /**
      * Gets the current LLM configuration and status.
-     * @returns Current LLM service configuration.
+     * @returns Current LLM service configuration (read-only copy).
      */
     public getCurrentLLMConfig() {
-        return {
-            config: this.configManager.getConfig().llm,
-            serviceInfo: this.llmService.getConfig(),
-        };
+        // Return a copy to prevent direct mutation
+        return { ...this.configManager.getConfig().llm };
     }
 
     /**
@@ -154,10 +160,10 @@ export class SaikiAgent {
             );
 
             // Replace the LLM service using the private setter
-            this.setLLMService(newLLMService);
+            this._setLLMService(newLLMService);
 
-            // Update the agent's config
-            this.configManager.getConfig().llm = newLLMConfig;
+            // Update the agent's config using the safe helper method
+            this.configManager.updateLLMConfig(newLLMConfig);
 
             logger.info(
                 `SaikiAgent LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}`
@@ -173,18 +179,11 @@ export class SaikiAgent {
     }
 
     /**
-     * Private setter method to safely update the llmService property.
-     * This maintains type safety while allowing controlled internal mutation.
+     * Private setter method to safely update the LLM service.
      * @param newLLMService The new LLM service instance.
      */
-    private setLLMService(newLLMService: ILLMService): void {
-        // Use object assignment to update the readonly property safely
-        Object.defineProperty(this, 'llmService', {
-            value: newLLMService,
-            writable: false,
-            enumerable: true,
-            configurable: false,
-        });
+    private _setLLMService(newLLMService: ILLMService): void {
+        this._llmService = newLLMService;
     }
 
     // Future methods could encapsulate more complex agent behaviors:

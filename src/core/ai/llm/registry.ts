@@ -16,6 +16,8 @@ export interface ModelInfo {
 
 export interface ProviderInfo {
     models: ModelInfo[];
+    supportedRouters: string[];
+    supportsBaseURL: boolean;
     // Add other provider-specific metadata if needed
 }
 
@@ -37,6 +39,8 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
             { name: 'o3-mini', maxTokens: 200000 },
             { name: 'o1', maxTokens: 200000 },
         ],
+        supportedRouters: ['vercel', 'in-built'],
+        supportsBaseURL: true,
     },
     anthropic: {
         models: [
@@ -46,6 +50,8 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
             { name: 'claude-3-opus-20240229', maxTokens: 200000 },
             { name: 'claude-3-sonnet-20240229', maxTokens: 200000 },
         ],
+        supportedRouters: ['vercel', 'in-built'],
+        supportsBaseURL: false,
     },
     google: {
         models: [
@@ -55,6 +61,8 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
             { name: 'gemini-1.5-pro-latest', maxTokens: 1048576 },
             { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 },
         ],
+        supportedRouters: ['vercel'],
+        supportsBaseURL: false,
     },
     // https://console.groq.com/docs/models
     groq: {
@@ -62,6 +70,8 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
             { name: 'gemma-2-9b-it', maxTokens: 8192 },
             { name: 'llama-3.3-70b-versatile', maxTokens: 128000, default: true },
         ],
+        supportedRouters: ['vercel'],
+        supportsBaseURL: false,
     },
     // Add other providers like Cohere, etc., as needed
 };
@@ -172,6 +182,112 @@ export function getProviderFromModel(model: string): string {
  */
 export function getAllSupportedModels(): string[] {
     return Object.values(LLM_REGISTRY).flatMap((info) => info.models.map((m) => m.name));
+}
+
+/**
+ * Gets the supported routers for a given provider.
+ * @param provider The name of the provider.
+ * @returns An array of supported router names for the provider, or ['vercel'] as default if provider not found.
+ */
+export function getSupportedRoutersForProvider(provider: string): string[] {
+    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
+    return providerInfo ? providerInfo.supportedRouters : ['vercel']; // Default to vercel for unknown providers
+}
+
+/**
+ * Checks if a provider supports custom baseURL.
+ * @param provider The name of the provider.
+ * @returns True if the provider supports custom baseURL, false otherwise.
+ */
+export function supportsBaseURL(provider: string): boolean {
+    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
+    return providerInfo ? providerInfo.supportsBaseURL : false; // Default to false for unknown providers
+}
+
+/**
+ * Validates if a router name is valid.
+ * @param router The router name to validate.
+ * @returns True if the router is valid, false otherwise.
+ */
+export function isValidRouter(router: string): boolean {
+    const validRouters = ['vercel', 'in-built'];
+    return validRouters.includes(router);
+}
+
+/**
+ * Validates if a provider exists in the registry.
+ * @param provider The provider name to validate.
+ * @returns True if the provider exists, false otherwise.
+ */
+export function isValidProvider(provider: string): boolean {
+    return provider.toLowerCase() in LLM_REGISTRY;
+}
+
+/**
+ * Checks if a provider supports a specific router.
+ * @param provider The name of the provider.
+ * @param router The router name to check.
+ * @returns True if the provider supports the router, false otherwise.
+ */
+export function isRouterSupportedForProvider(provider: string, router: string): boolean {
+    const supportedRouters = getSupportedRoutersForProvider(provider);
+    return supportedRouters.includes(router);
+}
+
+/**
+ * Validates an LLM switch request and returns validation errors if any.
+ * @param request The LLM switch request parameters.
+ * @returns An array of validation error messages. Empty array if valid.
+ */
+export function validateLLMSwitchRequest(request: {
+    provider?: string;
+    model?: string;
+    router?: string;
+    baseURL?: string;
+}): string[] {
+    const errors: string[] = [];
+    const { provider, model, router, baseURL } = request;
+
+    // Check required fields
+    if (!provider || !model) {
+        errors.push('Provider and model are required');
+        return errors; // Return early if basic requirements aren't met
+    }
+
+    // Validate router if provided
+    if (router && !isValidRouter(router)) {
+        errors.push('Router must be either "vercel" or "in-built"');
+    }
+
+    // Validate provider exists
+    if (!isValidProvider(provider)) {
+        errors.push(`Unknown provider: ${provider}`);
+        return errors; // Return early if provider doesn't exist
+    }
+
+    // Validate provider/model combination
+    if (!isValidProviderModel(provider, model)) {
+        const supportedModels = getSupportedModels(provider);
+        errors.push(
+            `Model '${model}' is not supported for provider '${provider}'. Supported models: ${supportedModels.join(', ')}`
+        );
+    }
+
+    // Validate provider/router combination
+    const selectedRouter = router || 'vercel';
+    if (!isRouterSupportedForProvider(provider, selectedRouter)) {
+        const supportedRouters = getSupportedRoutersForProvider(provider);
+        errors.push(
+            `Provider '${provider}' does not support '${selectedRouter}' router. Supported routers: ${supportedRouters.join(', ')}`
+        );
+    }
+
+    // Validate baseURL usage
+    if (baseURL && !supportsBaseURL(provider)) {
+        errors.push(`Custom baseURL is not supported for ${provider} provider`);
+    }
+
+    return errors;
 }
 
 /**

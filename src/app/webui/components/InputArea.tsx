@@ -28,8 +28,9 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const [currentModel, setCurrentModel] = useState('Loading...');
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   
+  // TODO: Populate using LLM_REGISTRY by exposing an API endpoint
   const coreModels = [
-    { name: 'Claude 4 Sonnet', provider: 'anthropic', model: 'claude-4-opus-20250514' },
+    { name: 'Claude 4 Sonnet', provider: 'anthropic', model: 'claude-4-sonnet-20240229' },
     { name: 'GPT-4o', provider: 'openai', model: 'gpt-4o' },
     { name: 'GPT-4.1 Mini', provider: 'openai', model: 'gpt-4.1-mini' },
     { name: 'Gemini 2.5 Pro', provider: 'google', model: 'gemini-2.5-pro-exp-03-25' },

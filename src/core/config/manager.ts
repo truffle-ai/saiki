@@ -107,6 +107,66 @@ export class ConfigManager {
         return this.provenance;
     }
 
+    /**
+     * Updates the LLM configuration safely and validates the changes.
+     * @param newLLMConfig The new LLM configuration to apply.
+     */
+    updateLLMConfig(newLLMConfig: Partial<AgentConfig['llm']>): void {
+        logger.debug('Updating LLM configuration...');
+
+        if (!this.resolved.llm) {
+            throw new Error('LLM config is not initialized');
+        }
+
+        // Merge the new config with existing config
+        this.resolved.llm = { ...this.resolved.llm, ...newLLMConfig };
+
+        // Update provenance for any fields that were changed
+        Object.keys(newLLMConfig).forEach((key) => {
+            if (key in this.provenance.llm) {
+                (this.provenance.llm as any)[key] = 'runtime';
+            }
+        });
+
+        // Validate the updated configuration
+        this.validate();
+        logger.debug('LLM configuration updated successfully');
+    }
+
+    /**
+     * Adds or updates an MCP server configuration.
+     * @param serverName The name of the MCP server.
+     * @param serverConfig The server configuration.
+     */
+    addMcpServer(serverName: string, serverConfig: AgentConfig['mcpServers'][string]): void {
+        logger.debug(`Adding/updating MCP server: ${serverName}`);
+
+        if (!this.resolved.mcpServers) {
+            this.resolved.mcpServers = {};
+        }
+
+        this.resolved.mcpServers[serverName] = serverConfig;
+
+        // Validate the updated configuration
+        this.validate();
+        logger.debug(`MCP server '${serverName}' added/updated successfully`);
+    }
+
+    /**
+     * Removes an MCP server configuration.
+     * @param serverName The name of the MCP server to remove.
+     */
+    removeMcpServer(serverName: string): void {
+        logger.debug(`Removing MCP server: ${serverName}`);
+
+        if (this.resolved.mcpServers && this.resolved.mcpServers[serverName]) {
+            delete this.resolved.mcpServers[serverName];
+            logger.debug(`MCP server '${serverName}' removed successfully`);
+        } else {
+            logger.warn(`MCP server '${serverName}' not found for removal`);
+        }
+    }
+
     /** Pretty-print the resolved config and provenance */
     print(): void {
         logger.info('Resolved configuration (current state):');

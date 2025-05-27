@@ -15,7 +15,12 @@ import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
 import { resolvePackagePath } from '@core/index.js';
-import { LLM_REGISTRY } from '@core/ai/llm/registry.js';
+import {
+    LLM_REGISTRY,
+    getSupportedRoutersForProvider,
+    supportsBaseURL,
+    validateLLMSwitchRequest,
+} from '@core/ai/llm/registry.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -103,9 +108,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             await agent.connectMcpServer(name, config);
             // Add dynamic server config to in-memory AgentConfig
             try {
-                const cfg = agent.configManager.getConfig();
-                if (!cfg.mcpServers) cfg.mcpServers = {} as any;
-                cfg.mcpServers[name] = config;
+                agent.configManager.addMcpServer(name, config);
             } catch (error) {
                 // Log the error but don't fail the connection since it succeeded
                 logger.warn(
@@ -187,16 +190,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             );
 
             // Remove from in-memory config - this is still important for the agent's own configuration
-            const cfg = agent.configManager.getConfig();
-            if (cfg.mcpServers && cfg.mcpServers[serverId]) {
-                delete cfg.mcpServers[serverId];
-                logger.info(`Removed server '${serverId}' from in-memory AgentConfig.`);
-            } else {
-                // This case might occur if removeClient cleaned up a failed connection not yet in mcpServers fully
-                logger.warn(
-                    `Server '${serverId}' was not found in AgentConfig mcpServers, though removal from ClientManager was processed.`
-                );
-            }
+            agent.configManager.removeMcpServer(serverId);
 
             res.status(200).json({ status: 'disconnected', id: serverId });
         } catch (error: any) {
@@ -367,43 +361,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
             for (const [providerKey, providerInfo] of Object.entries(LLM_REGISTRY)) {
                 // Convert provider key to display name
-                const displayName = (() => {
-                    switch (providerKey) {
-                        case 'openai':
-                            return 'OpenAI';
-                        case 'anthropic':
-                            return 'Anthropic';
-                        case 'google':
-                            return 'Google';
-                        case 'groq':
-                            return 'Groq';
-                        default:
-                            return providerKey.charAt(0).toUpperCase() + providerKey.slice(1);
-                    }
-                })();
-
-                // Determine supported routers based on the factory implementation
-                const supportedRouters = (() => {
-                    switch (providerKey) {
-                        case 'openai':
-                        case 'anthropic':
-                            return ['vercel', 'in-built']; // Both routers supported
-                        case 'google':
-                        case 'groq':
-                            return ['vercel']; // Only vercel router supported
-                        default:
-                            return ['vercel']; // Default to vercel for unknown providers
-                    }
-                })();
-
-                // Only OpenAI supports custom baseURL for OpenAI-compatible endpoints
-                const supportsBaseURL = providerKey === 'openai';
+                const displayName = providerKey.charAt(0).toUpperCase() + providerKey.slice(1);
 
                 providers[providerKey] = {
                     name: displayName,
                     models: providerInfo.models.map((model) => model.name),
-                    supportedRouters,
-                    supportsBaseURL,
+                    supportedRouters: getSupportedRoutersForProvider(providerKey),
+                    supportsBaseURL: supportsBaseURL(providerKey),
                 };
             }
 
@@ -419,41 +383,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             const { provider, model, apiKey, router, baseURL } = req.body;
 
-            if (!provider || !model) {
-                return res.status(400).json({ error: 'Provider and model are required' });
-            }
-
-            // Validate router if provided
-            if (router && !['vercel', 'in-built'].includes(router)) {
-                return res
-                    .status(400)
-                    .json({ error: 'Router must be either "vercel" or "in-built"' });
-            }
-
-            // Validate provider/router combination
-            const providerInfo = LLM_REGISTRY[provider.toLowerCase()];
-            if (!providerInfo) {
-                return res.status(400).json({ error: `Unknown provider: ${provider}` });
+            // Validate the request using core validation
+            const validationErrors = validateLLMSwitchRequest({ provider, model, router, baseURL });
+            if (validationErrors.length > 0) {
+                return res.status(400).json({ error: validationErrors[0] }); // Return first error
             }
 
             const selectedRouter = router || 'vercel'; // Default to vercel if not specified
-
-            // Check if the provider supports the selected router
-            if (
-                selectedRouter === 'in-built' &&
-                !['openai', 'anthropic'].includes(provider.toLowerCase())
-            ) {
-                return res.status(400).json({
-                    error: `Provider '${provider}' does not support 'in-built' router. Only OpenAI and Anthropic support in-built routing.`,
-                });
-            }
-
-            // Validate baseURL usage
-            if (baseURL && provider.toLowerCase() !== 'openai') {
-                return res.status(400).json({
-                    error: 'Custom baseURL is only supported for OpenAI provider',
-                });
-            }
 
             // Get current config to preserve other settings
             const currentConfig = agent.configManager.getConfig().llm;
