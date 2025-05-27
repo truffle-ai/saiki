@@ -136,31 +136,3 @@ Some of the CLI commands we're working on!
 #### Load pre-built templates for saiki CLI
 
 #### Deploy config files as AI agents with saiki CLI
-
-
-<!-- ## Running saiki with npm locally
-
-This is for developers who have cloned saiki repository locally, as an alternative to `saiki` command
-
-CLI mode: 
-```bash
-npm run build && npm start
-```
-
-Web UI mode:
-```bash
-npm run build && npm start -- --mode web
-```
-
-## Example Commands
-
-- **Natural language task:**
-  > "Summarize my latest emails and send the highlights to Slack."
-- **Automate web browsing:**
-  > "Go to amazon.com and add trail mix to my cart."
-
-Saiki will interpret your request, select the right tools, and execute the workflow for you.
-
-For more advanced usage, see the rest of the documentation! 
-
-Our [Configuration guide](../configuring-saiki/configuration) is the best place to start, it describes exactly how you can customize Saiki for your specific use-case! -->

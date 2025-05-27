@@ -6,7 +6,7 @@ sidebar_position: 1
 
 Saiki's power comes from its customizability. You can customize every part of your Saiki agent with one config file. 
 
-This guide walks through all the different features you can customize, and the expected format
+This guide walks through all the different features you can customize, and the expected format.
 
 We chose `yml` instead of the more popular `json` because of its support for comments (which we find super useful!), and better parsing libraries.
 
