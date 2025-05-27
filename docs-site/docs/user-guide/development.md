@@ -2,7 +2,7 @@
 sidebar_position: 4
 ---
 
-# Application development
+# Application Development Guide
 
 This document describes how to build AI powered applications using Saiki-core.
 

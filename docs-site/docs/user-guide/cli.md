@@ -127,7 +127,7 @@ Add saiki into an existing typescript project
 saiki init-app
 ```
 
-Check [Application Guide](./application.md) for more information!
+Check [Application Development Guide](./development.md) for more information!
 
 ## Coming soon!
 
