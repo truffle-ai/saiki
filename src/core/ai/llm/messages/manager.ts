@@ -366,7 +366,7 @@ export class MessageManager {
      * Resets the conversation history
      * Does not reset the system prompt
      */
-    reset(): void {
+    resetConversation(): void {
         this.history = [];
         // clear persisted history
         this.historyProvider.clearHistory(this.sessionId).catch((e) => {

@@ -66,7 +66,7 @@ export class ChatSession {
 
     public async reset(): Promise<void> {
         // Reset history via MessageManager
-        this.messageManager.reset();
+        this.messageManager.resetConversation();
         // Notify listeners of conversation reset
         this.eventBus.emit('messageManager:conversationReset');
     }

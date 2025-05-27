@@ -97,7 +97,7 @@ export class SaikiAgent {
      */
     public resetConversation(): void {
         try {
-            this.messageManager.reset();
+            this.messageManager.resetConversation();
             logger.info('SaikiAgent conversation reset.');
             this.agentEventBus.emit('saiki:conversationReset');
         } catch (error) {
