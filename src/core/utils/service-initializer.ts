@@ -38,6 +38,8 @@ import { loadConfigFile } from '../config/loader.js';
 import { ConfigManager } from '../config/manager.js';
 import type { CLIConfigOverrides } from '../config/types.js';
 import type { AgentConfig } from '../config/schemas.js';
+import { createHistoryProvider } from '../ai/llm/messages/history/factory.js';
+
 /**
  * Type for the core agent services returned by initializeServices
  */
@@ -105,7 +107,10 @@ export async function createAgentServices(
     // 3. Initialize client manager
     const connectionMode = overrides?.connectionMode ?? 'lenient';
     const runMode = overrides?.runMode ?? 'cli';
-    const confirmationProvider = createToolConfirmationProvider(runMode);
+    const confirmationProvider = createToolConfirmationProvider(
+        runMode,
+        config.storage.allowedTools
+    );
     const clientManager = overrides?.clientManager ?? new MCPClientManager(confirmationProvider);
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
     logger.debug(
@@ -117,10 +122,16 @@ export async function createAgentServices(
     // 4. Initialize prompt manager
     const promptManager = new PromptManager(config.llm.systemPrompt);
 
-    // 5. Initialize message manager
+    // 5. Initialize message manager (with conversation history persistence)
     const router = config.llm.router;
+    logger.debug(
+        `Creating history provider with config: ${JSON.stringify(config.storage.history)}`
+    );
+    const historyProvider = createHistoryProvider(config.storage.history);
+    const sessionId = 'default';
     const messageManager =
-        overrides?.messageManager ?? createMessageManager(config.llm, router, promptManager);
+        overrides?.messageManager ??
+        createMessageManager(config.llm, router, promptManager, historyProvider, sessionId);
 
     // 6. Initialize LLM service
     const llmService =

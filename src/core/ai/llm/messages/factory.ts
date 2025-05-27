@@ -6,6 +6,7 @@ import { LLMRouter } from '../types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { logger } from '../../../logger/index.js';
 import { getEffectiveMaxTokens } from '../registry.js';
+import { ConversationHistoryProvider } from './history/types.js';
 
 /**
  * Factory function to create a MessageManager instance with the correct formatter, tokenizer, and maxTokens
@@ -14,13 +15,17 @@ import { getEffectiveMaxTokens } from '../registry.js';
  * @param config LLMConfig object containing provider, model, systemPrompt, etc.
  * @param router LLMRouter flag
  * @param promptManager PromptManager instance
+ * @param historyProvider ConversationHistoryProvider instance
+ * @param sessionId string
  * @returns MessageManager instance
  * TODO: Make compression strategy also configurable
  */
 export function createMessageManager(
     config: LLMConfig,
     router: LLMRouter,
-    promptManager: PromptManager
+    promptManager: PromptManager,
+    historyProvider: ConversationHistoryProvider,
+    sessionId: string
 ): MessageManager {
     const provider = config.provider.toLowerCase();
     const model = config.model.toLowerCase();
@@ -36,5 +41,12 @@ export function createMessageManager(
     logger.debug(
         `Creating MessageManager for ${provider}/${model} using ${router} router with maxTokens: ${effectiveMaxTokens}`
     );
-    return new MessageManager(formatter, promptManager, effectiveMaxTokens, tokenizer);
+    return new MessageManager(
+        formatter,
+        promptManager,
+        effectiveMaxTokens,
+        tokenizer,
+        historyProvider,
+        sessionId
+    );
 }

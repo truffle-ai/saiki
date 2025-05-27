@@ -8,6 +8,7 @@ import { logger } from '../../../logger/index.js';
 import { getImageData, countMessagesTokens } from './utils.js';
 import { DynamicContributorContext } from '../../systemPrompt/types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
+import { ConversationHistoryProvider } from './history/types.js';
 
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -52,6 +53,9 @@ export class MessageManager {
      */
     private compressionStrategies: ICompressionStrategy[];
 
+    private historyProvider: ConversationHistoryProvider;
+    private sessionId: string;
+
     /**
      * Creates a new MessageManager instance
      *
@@ -59,6 +63,8 @@ export class MessageManager {
      * @param promptManager PromptManager instance for the conversation
      * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
      * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
+     * @param historyProvider ConversationHistoryProvider instance for managing conversation history
+     * @param sessionId Unique identifier for the conversation session
      * @param compressionStrategies Optional array of compression strategies to apply sequentially when maxTokens is exceeded. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
      */
     constructor(
@@ -66,6 +72,8 @@ export class MessageManager {
         promptManager: PromptManager,
         maxTokens: number,
         tokenizer: ITokenizer,
+        historyProvider: ConversationHistoryProvider,
+        sessionId: string,
         compressionStrategies: ICompressionStrategy[] = [
             new MiddleRemovalStrategy(),
             new OldestRemovalStrategy(),
@@ -78,6 +86,17 @@ export class MessageManager {
         this.promptManager = promptManager;
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
+        this.historyProvider = historyProvider;
+        this.sessionId = sessionId;
+        // preload persisted history
+        this.historyProvider
+            .getHistory(this.sessionId)
+            .then((msgs) => {
+                this.history = msgs;
+            })
+            .catch((e) => {
+                logger.warn(`MessageManager: Failed to preload history: ${e}`);
+            });
         this.compressionStrategies = compressionStrategies;
     }
 
@@ -188,6 +207,10 @@ export class MessageManager {
         }
 
         this.history.push(message);
+        // persist message
+        this.historyProvider.saveMessage(this.sessionId, message).catch((e) => {
+            logger.error(`MessageManager: Failed to save message to history provider: ${e}`);
+        });
         // Note: Compression is currently handled lazily in getFormattedMessages
     }
 
@@ -332,6 +355,10 @@ export class MessageManager {
      */
     reset(): void {
         this.history = [];
+        // clear persisted history
+        this.historyProvider.clearHistory(this.sessionId).catch((e) => {
+            logger.error('MessageManager: Failed to clear history in provider', e);
+        });
         // Note: We don't reset the system prompt as it's usually fixed for a service
     }
 

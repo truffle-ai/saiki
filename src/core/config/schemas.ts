@@ -343,6 +343,44 @@ export const AgentConfigSchema = z
             'Configurations for MCP (Multi-Capability Peer) servers used by the agent'
         ),
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
+        storage: z
+            .object({
+                history: z
+                    .object({
+                        provider: z.enum(['memory', 'file']).default('memory'),
+                        options: z.record(z.any()).optional(),
+                    })
+                    .optional()
+                    .default({ provider: 'memory' }),
+                allowedTools: z
+                    .object({
+                        provider: z.enum(['memory']).default('memory'),
+                        options: z.record(z.any()).optional(),
+                    })
+                    .optional()
+                    .default({ provider: 'memory' }),
+                userInfo: z
+                    .object({
+                        provider: z.enum(['memory']).default('memory'),
+                        options: z.record(z.any()).optional(),
+                    })
+                    .optional()
+                    .default({ provider: 'memory' }),
+                toolCache: z
+                    .object({
+                        provider: z.enum(['memory']).default('memory'),
+                        options: z.record(z.any()).optional(),
+                    })
+                    .optional()
+                    .default({ provider: 'memory' }),
+            })
+            .optional()
+            .default({
+                history: { provider: 'memory' },
+                allowedTools: { provider: 'memory' },
+                userInfo: { provider: 'memory' },
+                toolCache: { provider: 'memory' },
+            }),
     })
     .describe('Main configuration for an agent, including its LLM and server connections');
 
