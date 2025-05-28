@@ -32,6 +32,11 @@ export class WebSocketEventSubscriber implements EventSubscriber {
         eventBus.on('llmservice:conversationReset', () =>
             this.broadcast('conversationReset', null)
         );
+
+        eventBus.on('saiki:availableToolsUpdated', () => this.broadcast('toolsUpdated', null));
+        eventBus.on('saiki:mcpServerConnected', (data: any) =>
+            this.broadcast('serverConnected', data)
+        );
     }
 
     private broadcast(eventType: string, data: any): void {

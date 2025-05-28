@@ -19,7 +19,7 @@ export type CLIConfigOverrides = Partial<Pick<LLMConfig, LLMOverrideKey>>;
 /**
  * Possible sources for configuration field overrides
  */
-export type Source = 'file' | 'cli' | 'default';
+export type Source = 'file' | 'cli' | 'default' | 'runtime';
 
 /**
  * Provenance for CLI-overridable LLM fields only
