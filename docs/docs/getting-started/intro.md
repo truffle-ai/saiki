@@ -69,11 +69,14 @@ Explore more in the [Examples & Demos](./examples-demos.md) section. -->
 
 ## Learn More
 
-- [Basics of AI Agents](../learn/what-is-an-ai-agent.md)new to AI Agents and want to learn the basics
-- [Configuration](../configuring-saiki/configuration.md): How to connect MCP servers and LLM providers
-- [Architecture](../architecture/overview.md): Saiki High-level design
-- [Contributing](../contribution-guide/overview.md): Get involved
-- [Community & Support](https://discord.gg/GFzWFAAZcm)
+- **New to AI Agents?** Start with [Basics of AI Agents](../learn/what-is-an-ai-agent.md) to learn the fundamentals
+- **Building Applications?** See the [Building with Saiki Guide](../user-guide/development.md) for patterns and examples
+- **LLM Configuration:** Check out [LLM Providers & Setup Guide](../configuring-saiki/llm-providers.md) for all supported models
+- **Adding Tools:** Learn about [MCP Server Configuration](../configuring-saiki/mcpServers.md) to enhance your agents
+- **Core Configuration:** Understand [Configuration](../configuring-saiki/configuration.md) for complete setup
+- **System Design:** Explore [Architecture](../architecture/overview.md) for Saiki's high-level design
+- **Get Involved:** See [Contributing Guide](../contribution-guide/overview.md) to help improve Saiki
+- **Community & Support:** Join our [Discord](https://discord.gg/GFzWFAAZcm) for help and discussions
 
 ---
 

@@ -2,9 +2,13 @@
 sidebar_position: 3
 ---
 
-# llm Configuration
+# LLM Configuration
 
 The `llm` section configures the Large Language Model (LLM) used by Saiki for natural language processing and tool reasoning.
+
+:::tip
+For a comprehensive guide to all supported LLM providers, models, and setup instructions, see the [LLM Providers & Setup Guide](./llm-providers.md).
+:::
 
 ## Type Definition
 
@@ -15,6 +19,9 @@ export type LLMConfig = {
     apiKey: string;
     systemPrompt: string | SystemPromptConfig;
     providerOptions?: Record<string, any>;
+    baseURL?: string;
+    maxTokens?: number;
+    router?: 'vercel' | 'in-built';
 };
 
 export interface SystemPromptConfig {
@@ -31,27 +38,9 @@ export interface ContributorConfig {
 }
 ```
 
-## Fields
+## Quick Examples
 
-- **provider** (string, required):  
-  The LLM provider to use (e.g., `openai`, `anthropic`, `google`).
-
-- **model** (string, required):  
-  The model name (e.g., `gpt-4.1-mini`, `claude-3-opus-20240229`).
-
-- **apiKey** (string, required):  
-API key for the provider. You can either directly pass the key, or link to environment variables (e.g., `$OPENAI_API_KEY`).
-
-- **systemPrompt** (`string` or `SystemPromptConfig`, required):  
-  The system prompt to guide the LLM's behavior. Can be a simple string, or a structured object for advanced prompt composition.
-  - If a string: Used directly as the prompt.
-  - If an object: Should match the `SystemPromptConfig` type, with a `contributors` array. We support both dynamic prompt contributors and static prompt contributors. Refer examples 
-
-- **providerOptions** (object, optional):  
-  Additional provider-specific options. Key-value pairs passed directly to the LLM provider SDK.
-
-## Example (Simple)
-
+### Basic Configuration
 ```yaml
 llm:
   provider: openai
@@ -59,13 +48,50 @@ llm:
   systemPrompt: |
     You are Saiki, a helpful AI assistant with access to tools.
     Use these tools when appropriate to answer user queries.
-    You can use multiple tools in sequence to solve complex problems.
-    After each tool result, determine if you need more information or can provide a final answer.
   apiKey: $OPENAI_API_KEY
 ```
-Here we use a basic system prompt which is just a simple string
 
-## Example (Advanced SystemPromptConfig)
+### Multiple Providers
+```yaml
+# OpenAI
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY
+
+# Anthropic
+llm:
+  provider: anthropic
+  model: claude-3-5-sonnet-20240620
+  apiKey: $ANTHROPIC_API_KEY
+
+# Google
+llm:
+  provider: google
+  model: gemini-2.0-flash
+  apiKey: $GOOGLE_GENERATIVE_AI_API_KEY
+
+# Custom/Local Provider
+llm:
+  provider: openai
+  model: llama3.2
+  apiKey: dummy
+  baseURL: http://localhost:11434/v1
+  maxTokens: 8000
+```
+
+## Configuration Fields
+
+- **provider** (string, required): The LLM provider (`openai`, `anthropic`, `google`, `groq`)
+- **model** (string, required): The model name (see [LLM Providers Guide](./llm-providers.md) for full list)
+- **apiKey** (string, required): API key or environment variable (e.g., `$OPENAI_API_KEY`)
+- **systemPrompt** (string | SystemPromptConfig, required): System prompt configuration
+- **providerOptions** (object, optional): Provider-specific options like temperature, top_p
+- **baseURL** (string, optional): Custom API endpoint for OpenAI-compatible providers
+- **maxTokens** (number, optional): Maximum response tokens (required for custom providers)
+- **router** (string, optional): Choose between `vercel` (default) or `in-built` routers
+
+## Advanced System Prompt Configuration
 
 ```yaml
 llm:
@@ -85,16 +111,12 @@ llm:
   apiKey: $OPENAI_API_KEY
 ```
 
-Here, we have one static contributor and one dynamic contributor.
+- **Static contributors**: Use `content` field for fixed text
+- **Dynamic contributors**: Use `source` field for dynamically generated content
+- **dateTime contributor**: Automatically adds current date/time context
 
-Static contributors use the `content` field to directly add their content
-Dynamic contributors use the `source` field to map to the function that will dynamically generate the content. Dynamic contributor functions must be registered in [the registry](https://github.com/truffle-ai/saiki/blob/main/src/ai/systemPrompt/registry.ts).
+## Next Steps
 
-Dynamic contributor is very useful for information that is ever changing - such as the current time and agent memories. 
-We already have a `dateTime` contributor that can be used to add knowledge of the current date and time into the LLM.
-
-## Notes
-
-- Use environment variables for secrets (e.g., `apiKey: $OPENAI_API_KEY`).
-- The advanced `systemPrompt` format allows for modular, multi-source dynamic prompt construction.
-- See the [mcpServers Configuration](./mcpServers.md) for server setup details. 
+- **Comprehensive Provider Guide**: See [LLM Providers & Setup Guide](./llm-providers.md) for all supported models and providers
+- **MCP Servers**: Learn about [MCP Server Configuration](./mcpServers.md) to add tools
+- **Building Apps**: Check out [Building with Saiki](../user-guide/development.md) for implementation patterns 
