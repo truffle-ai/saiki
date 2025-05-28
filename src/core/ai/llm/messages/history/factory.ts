@@ -3,6 +3,7 @@ import { InMemoryHistoryProvider } from './in-memory.js';
 import { FileHistoryProvider } from './file.js';
 import os from 'os';
 import path from 'path';
+import { logger } from '../../../../logger/index.js';
 
 export type HistoryConfig = {
     provider?: 'memory' | 'file';
@@ -11,6 +12,7 @@ export type HistoryConfig = {
 
 export function createHistoryProvider(cfg: HistoryConfig): ConversationHistoryProvider {
     const provider = cfg.provider ?? 'memory';
+    logger.debug(`Creating HistoryProvider: ${provider}`);
     switch (provider) {
         case 'memory':
             return new InMemoryHistoryProvider();

@@ -7,7 +7,7 @@ import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
-import type { TypedEventEmitter, EventMap } from '../../../events/index.js';
+import type { SessionEventBus } from '../../../events/index.js';
 
 /**
  * Anthropic implementation of LLMService
@@ -17,13 +17,13 @@ export class AnthropicService implements ILLMService {
     private model: string;
     private clientManager: MCPClientManager;
     private messageManager: MessageManager;
-    private eventEmitter: TypedEventEmitter;
+    private sessionEventBus: SessionEventBus;
     private maxIterations: number;
 
     constructor(
         clientManager: MCPClientManager,
         anthropic: Anthropic,
-        agentEventBus: TypedEventEmitter,
+        sessionEventBus: SessionEventBus,
         messageManager: MessageManager,
         model: string,
         maxIterations: number = 10
@@ -32,7 +32,7 @@ export class AnthropicService implements ILLMService {
         this.model = model;
         this.anthropic = anthropic;
         this.clientManager = clientManager;
-        this.eventEmitter = agentEventBus;
+        this.sessionEventBus = sessionEventBus;
         this.messageManager = messageManager;
     }
 
@@ -42,7 +42,7 @@ export class AnthropicService implements ILLMService {
 
     async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
         // Add user message with optional image data
-        this.messageManager.addUserMessage(userInput, imageData);
+        await this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();
@@ -51,7 +51,7 @@ export class AnthropicService implements ILLMService {
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
         // Notify thinking
-        this.eventEmitter.emit('llmservice:thinking');
+        this.sessionEventBus.emit('llmservice:thinking');
 
         let iterationCount = 0;
         let fullResponse = '';
@@ -105,16 +105,16 @@ export class AnthropicService implements ILLMService {
                     }));
 
                     // Add assistant message with all tool calls
-                    this.messageManager.addAssistantMessage(textContent, formattedToolCalls);
+                    await this.messageManager.addAssistantMessage(textContent, formattedToolCalls);
                 } else {
                     // Add regular assistant message
-                    this.messageManager.addAssistantMessage(textContent);
+                    await this.messageManager.addAssistantMessage(textContent);
                 }
 
                 // If no tools were used, we're done
                 if (toolUses.length === 0) {
                     fullResponse += textContent;
-                    this.eventEmitter.emit('llmservice:response', {
+                    this.sessionEventBus.emit('llmservice:response', {
                         content: fullResponse,
                         model: this.model,
                     });
@@ -133,7 +133,7 @@ export class AnthropicService implements ILLMService {
                     const toolUseId = toolUse.id;
 
                     // Notify tool call
-                    this.eventEmitter.emit('llmservice:toolCall', {
+                    this.sessionEventBus.emit('llmservice:toolCall', {
                         toolName,
                         args,
                         callId: toolUseId,
@@ -144,10 +144,10 @@ export class AnthropicService implements ILLMService {
                         const result = await this.clientManager.executeTool(toolName, args);
 
                         // Add tool result to message manager
-                        this.messageManager.addToolResult(toolUseId, toolName, result);
+                        await this.messageManager.addToolResult(toolUseId, toolName, result);
 
                         // Notify tool result
-                        this.eventEmitter.emit('llmservice:toolResult', {
+                        this.sessionEventBus.emit('llmservice:toolResult', {
                             toolName,
                             result,
                             callId: toolUseId,
@@ -159,11 +159,11 @@ export class AnthropicService implements ILLMService {
                         logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
 
                         // Add error as tool result
-                        this.messageManager.addToolResult(toolUseId, toolName, {
+                        await this.messageManager.addToolResult(toolUseId, toolName, {
                             error: errorMessage,
                         });
 
-                        this.eventEmitter.emit('llmservice:toolResult', {
+                        this.sessionEventBus.emit('llmservice:toolResult', {
                             toolName,
                             result: { error: errorMessage },
                             callId: toolUseId,
@@ -173,12 +173,12 @@ export class AnthropicService implements ILLMService {
                 }
 
                 // Notify thinking for next iteration
-                this.eventEmitter.emit('llmservice:thinking');
+                this.sessionEventBus.emit('llmservice:thinking');
             }
 
             // If we reached max iterations
             logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
-            this.eventEmitter.emit('llmservice:response', {
+            this.sessionEventBus.emit('llmservice:response', {
                 content: fullResponse,
                 model: this.model,
             });
@@ -191,7 +191,7 @@ export class AnthropicService implements ILLMService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in Anthropic service API call: ${errorMessage}`, { error });
 
-            this.eventEmitter.emit('llmservice:error', {
+            this.sessionEventBus.emit('llmservice:error', {
                 error: error instanceof Error ? error : new Error(errorMessage),
                 context: 'Anthropic API call',
                 recoverable: false,

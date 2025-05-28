@@ -76,6 +76,7 @@ export class MCPClientManager {
         }
 
         // Cache resources, if supported
+        // TODO: HF SERVER HAS 100000+ RESOURCES - need to think of a way to make resources/caching optional or better.
         try {
             const resources = await client.listResources();
             resources.forEach((resourceUri) => {

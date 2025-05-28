@@ -1,43 +1,52 @@
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { generateText, streamText, tool } from 'ai';
+import { z } from 'zod';
 import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../logger/index.js';
-import { streamText, generateText, CoreMessage, LanguageModelV1 } from 'ai';
 import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
-import type { TypedEventEmitter } from '../../../events/index.js';
+import type { SessionEventBus } from '../../../events/index.js';
 
 /**
- * Vercel implementation of LLMService
+ * Vercel AI SDK implementation of LLMService
  */
 export class VercelLLMService implements ILLMService {
-    private model: LanguageModelV1;
-    private provider: string;
+    private model: any;
     private clientManager: MCPClientManager;
     private messageManager: MessageManager;
-    private eventEmitter: TypedEventEmitter;
+    private sessionEventBus: SessionEventBus;
     private maxIterations: number;
 
     constructor(
         clientManager: MCPClientManager,
-        model: LanguageModelV1,
-        provider: string,
-        agentEventBus: TypedEventEmitter,
+        sessionEventBus: SessionEventBus,
         messageManager: MessageManager,
-        maxIterations: number
+        provider: string,
+        model: string,
+        apiKey: string,
+        maxIterations: number = 10
     ) {
         this.maxIterations = maxIterations;
-        this.model = model;
         this.clientManager = clientManager;
-        this.eventEmitter = agentEventBus;
-        this.provider = provider;
+        this.sessionEventBus = sessionEventBus;
         this.messageManager = messageManager;
-        logger.debug(
-            `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, messageManager: ${this.messageManager}`
-        );
+
+        // Initialize the appropriate provider
+        if (provider === 'openai') {
+            const openai = createOpenAI({ apiKey });
+            this.model = openai(model);
+        } else if (provider === 'anthropic') {
+            const anthropic = createAnthropic({ apiKey });
+            this.model = anthropic(model);
+        } else {
+            throw new Error(`Unsupported provider: ${provider}`);
+        }
     }
 
     getAllTools(): Promise<ToolSet> {
@@ -60,7 +69,10 @@ export class VercelLLMService implements ILLMService {
 
     async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
         // Add user message, with optional image data
-        this.messageManager.addUserMessage(userInput, imageData);
+        logger.debug(
+            `VercelLLMService: Adding user message: ${userInput} and imageData: ${imageData}`
+        );
+        await this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const tools: any = await this.clientManager.getAllTools();
@@ -78,7 +90,7 @@ export class VercelLLMService implements ILLMService {
 
         try {
             while (iterationCount < 1) {
-                this.eventEmitter.emit('llmservice:thinking');
+                this.sessionEventBus.emit('llmservice:thinking');
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
@@ -93,7 +105,7 @@ export class VercelLLMService implements ILLMService {
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
                 // Estimate tokens before sending (optional)
-                const currentTokens = this.messageManager.getTokenCount();
+                const currentTokens = await this.messageManager.getTokenCount();
                 logger.debug(`Estimated tokens being sent to Vercel provider: ${currentTokens}`);
 
                 // Choose between generateText or processStream
@@ -119,7 +131,7 @@ export class VercelLLMService implements ILLMService {
             logger.warn(
                 `Possible token overflow encountered. If due to exceeding model's token limit, configure 'maxTokens' in your LLMConfig.`
             );
-            this.eventEmitter.emit('llmservice:error', {
+            this.sessionEventBus.emit('llmservice:error', {
                 error: error instanceof Error ? error : new Error(errorMessage),
                 context: 'Vercel LLM service execution',
                 recoverable: false,
@@ -129,7 +141,7 @@ export class VercelLLMService implements ILLMService {
     }
 
     async generateText(
-        messages: CoreMessage[],
+        messages: any[],
         tools: VercelToolSet,
         maxSteps: number = 50
     ): Promise<string> {
@@ -152,15 +164,15 @@ export class VercelLLMService implements ILLMService {
                 );
 
                 if (step.text) {
-                    this.eventEmitter.emit('llmservice:response', {
+                    this.sessionEventBus.emit('llmservice:response', {
                         content: step.text,
-                        model: this.model,
+                        model: this.model.modelId,
                     });
                 }
                 // Emit events based on step content (kept from original)
                 if (step.toolCalls && step.toolCalls.length > 0) {
                     for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit('llmservice:toolCall', {
+                        this.sessionEventBus.emit('llmservice:toolCall', {
                             toolName: toolCall.toolName,
                             args: toolCall.args,
                             callId: toolCall.toolCallId,
@@ -169,7 +181,7 @@ export class VercelLLMService implements ILLMService {
                 }
                 if (step.toolResults && step.toolResults.length > 0) {
                     for (const toolResult of step.toolResults as any) {
-                        this.eventEmitter.emit('llmservice:toolResult', {
+                        this.sessionEventBus.emit('llmservice:toolResult', {
                             toolName: toolResult.toolName,
                             result: toolResult.result,
                             callId: toolResult.toolCallId,
@@ -183,13 +195,13 @@ export class VercelLLMService implements ILLMService {
         });
 
         // Parse and append each new InternalMessage from the formatter using MessageManager
-        this.messageManager.processLLMResponse(response);
+        await this.messageManager.processLLMResponse(response);
         // Return the plain text of the response
         return response.text;
     }
 
     async processStream(
-        messages: CoreMessage[],
+        messages: any[],
         tools: VercelToolSet,
         maxSteps: number = 10
     ): Promise<string> {
@@ -197,25 +209,21 @@ export class VercelLLMService implements ILLMService {
         let fullResponse = '';
         for await (const textPart of stream) {
             fullResponse += textPart;
-            // this.eventEmitter.emit('chunk', textPart);
+            // this.sessionEventBus.emit('chunk', textPart);
         }
 
         // Add final assistant message, might not be needed
-        this.messageManager.addAssistantMessage(fullResponse);
+        await this.messageManager.addAssistantMessage(fullResponse);
 
-        this.eventEmitter.emit('llmservice:response', {
+        this.sessionEventBus.emit('llmservice:response', {
             content: fullResponse,
-            model: this.model,
+            model: this.model.modelId,
         });
         return fullResponse;
     }
 
     // returns AsyncIterable<string> & ReadableStream<string>
-    async streamText(
-        messages: CoreMessage[],
-        tools: VercelToolSet,
-        maxSteps: number = 10
-    ): Promise<any> {
+    async streamText(messages: any[], tools: VercelToolSet, maxSteps: number = 10): Promise<any> {
         let stepIteration = 0;
         // use vercel's streamText with mcp
         const response = streamText({
@@ -225,7 +233,7 @@ export class VercelLLMService implements ILLMService {
             onChunk: (chunk) => {
                 logger.debug(`Chunk type: ${chunk.chunk.type}`);
                 if (chunk.chunk.type === 'text-delta') {
-                    this.eventEmitter.emit('llmservice:chunk', {
+                    this.sessionEventBus.emit('llmservice:chunk', {
                         content: chunk.chunk.textDelta,
                         isComplete: false,
                     });
@@ -233,7 +241,7 @@ export class VercelLLMService implements ILLMService {
             },
             onError: (error) => {
                 logger.error(`Error in streamText: ${JSON.stringify(error, null, 2)}`);
-                this.eventEmitter.emit('llmservice:error', {
+                this.sessionEventBus.emit('llmservice:error', {
                     error: error instanceof Error ? error : new Error(String(error)),
                     context: 'streamText',
                     recoverable: false,
@@ -256,7 +264,7 @@ export class VercelLLMService implements ILLMService {
                     // Don't add assistant message with tool calls to history
                     // Just emit the events
                     for (const toolCall of step.toolCalls) {
-                        this.eventEmitter.emit('llmservice:toolCall', {
+                        this.sessionEventBus.emit('llmservice:toolCall', {
                             toolName: toolCall.toolName,
                             args: toolCall.args,
                             callId: toolCall.toolCallId,
@@ -269,7 +277,7 @@ export class VercelLLMService implements ILLMService {
                     for (const toolResult of step.toolResults as any) {
                         // Don't add tool results to message manager
                         // Just emit the events
-                        this.eventEmitter.emit('llmservice:toolResult', {
+                        this.sessionEventBus.emit('llmservice:toolResult', {
                             toolName: toolResult.toolName,
                             result: toolResult.result,
                             callId: toolResult.toolCallId,
@@ -314,7 +322,7 @@ export class VercelLLMService implements ILLMService {
         // Fetching max tokens from LLM registry - default to configured max tokens if not found
         // Max tokens may not be found if the model is supplied by user
         try {
-            modelMaxTokens = getMaxTokensForModel(this.provider, this.model.modelId);
+            modelMaxTokens = getMaxTokensForModel(this.model.provider, this.model.modelId);
         } catch (error) {
             // if the model is not found in the LLM registry, log and default to configured max tokens
             if (error instanceof ModelNotFoundError) {
@@ -329,7 +337,7 @@ export class VercelLLMService implements ILLMService {
         }
         return {
             router: 'vercel',
-            provider: `${this.provider}`,
+            provider: `${this.model.provider}`,
             model: this.model,
             configuredMaxTokens: configuredMaxTokens,
             modelMaxTokens,

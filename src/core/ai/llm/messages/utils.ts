@@ -1,5 +1,6 @@
 import { InternalMessage } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
+import { logger } from '../../../logger/index.js';
 
 // Approximation for message format overhead
 const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
@@ -26,6 +27,7 @@ export function countMessagesTokens(
     overheadPerMessage: number = DEFAULT_OVERHEAD_PER_MESSAGE
 ): number {
     let total = 0;
+    logger.debug(`Counting messages tokens: ${JSON.stringify(history, null, 2)}`);
     try {
         for (const message of history) {
             if (message.content) {

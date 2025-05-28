@@ -9,32 +9,30 @@ import { getImageData, countMessagesTokens } from './utils.js';
 import { DynamicContributorContext } from '../../systemPrompt/types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { ConversationHistoryProvider } from './history/types.js';
-import { TypedEventEmitter } from '../../../events/index.js';
+import { SessionEventBus } from '../../../events/index.js';
 /**
  * Manages conversation history and provides message formatting capabilities.
  * The MessageManager is responsible for:
- * - Storing and validating conversation messages
+ * - Validating and storing conversation messages via the history provider
  * - Managing the system prompt
  * - Formatting messages for specific LLM providers through an injected formatter
  * - Optionally counting tokens using a provided tokenizer
  * - Applying compression strategies sequentially if token limits are exceeded
  * - Providing access to conversation history
+ *
+ * Note: All conversation history is stored and retrieved via the injected ConversationHistoryProvider.
+ * The MessageManager does not maintain an internal history cache.
  */
 export class MessageManager {
-    /**
-     * Internal storage for conversation messages
-     */
-    private history: InternalMessage[] = [];
-
     /**
      * PromptManager used to generate/manage the system prompt
      */
     private promptManager: PromptManager;
 
     /**
-     * Event bus for agent events
+     * Event bus for session events
      */
-    private agentEventBus: TypedEventEmitter;
+    private sessionEventBus: SessionEventBus;
 
     /**
      * Formatter used to convert internal messages to LLM-specific format
@@ -66,16 +64,17 @@ export class MessageManager {
      *
      * @param formatter Formatter implementation for the target LLM provider
      * @param promptManager PromptManager instance for the conversation
+     * @param sessionEventBus Session-level event bus for emitting message-related events
      * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
      * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
      * @param historyProvider ConversationHistoryProvider instance for managing conversation history
      * @param sessionId Unique identifier for the conversation session
-     * @param compressionStrategies Optional array of compression strategies to apply sequentially when maxTokens is exceeded. Defaults to [MiddleRemoval, OldestRemoval]. Order matters.
+     * @param compressionStrategies Optional array of compression strategies to apply when token limits are exceeded
      */
     constructor(
         formatter: IMessageFormatter,
         promptManager: PromptManager,
-        agentEventBus: TypedEventEmitter,
+        sessionEventBus: SessionEventBus,
         maxTokens: number,
         tokenizer: ITokenizer,
         historyProvider: ConversationHistoryProvider,
@@ -90,35 +89,25 @@ export class MessageManager {
         if (!tokenizer) throw new Error('tokenizer is required');
         this.formatter = formatter;
         this.promptManager = promptManager;
-        this.agentEventBus = agentEventBus;
+        this.sessionEventBus = sessionEventBus;
         this.maxTokens = maxTokens;
         this.tokenizer = tokenizer;
         this.historyProvider = historyProvider;
         this.sessionId = sessionId;
-        // preload persisted history
-        const timeout = setTimeout(() => {
-            logger.warn(`MessageManager: History preload timed out after 5000ms`);
-        }, 5000);
-
-        this.historyProvider
-            .getHistory(this.sessionId)
-            .then((msgs) => {
-                clearTimeout(timeout);
-                this.history = msgs;
-            })
-            .catch((e) => {
-                clearTimeout(timeout);
-                logger.warn(`MessageManager: Failed to preload history: ${e}`);
-            });
         this.compressionStrategies = compressionStrategies;
+
+        logger.debug(
+            `MessageManager: Initialized for session ${sessionId} - history will be managed by ${historyProvider.constructor.name}`
+        );
     }
 
     /**
      * Returns the current token count of the conversation history.
-     * @returns The number of tokens in the current history
+     * @returns Promise that resolves to the number of tokens in the current history
      */
-    getTokenCount(): number {
-        return countMessagesTokens(this.history, this.tokenizer);
+    async getTokenCount(): Promise<number> {
+        const history = await this.historyProvider.getHistory(this.sessionId);
+        return countMessagesTokens(history, this.tokenizer);
     }
 
     /**
@@ -141,10 +130,11 @@ export class MessageManager {
      * Gets the raw conversation history
      * Returns a defensive copy to prevent modification
      *
-     * @returns A read-only copy of the conversation history
+     * @returns Promise that resolves to a read-only copy of the conversation history
      */
-    getHistory(): Readonly<InternalMessage[]> {
-        return [...this.history];
+    async getHistory(): Promise<Readonly<InternalMessage[]>> {
+        const history = await this.historyProvider.getHistory(this.sessionId);
+        return [...history];
     }
 
     /**
@@ -155,7 +145,7 @@ export class MessageManager {
      * @param message The message to add to the history
      * @throws Error if message validation fails
      */
-    addMessage(message: InternalMessage): void {
+    async addMessage(message: InternalMessage): Promise<void> {
         // Validation based on role
         if (!message.role) {
             throw new Error('MessageManager: Message must have a role.');
@@ -219,11 +209,17 @@ export class MessageManager {
                 throw new Error(`MessageManager: Unknown message role: ${(message as any).role}`);
         }
 
-        this.history.push(message);
-        // persist message
-        this.historyProvider.saveMessage(this.sessionId, message).catch((e) => {
-            logger.error(`MessageManager: Failed to save message to history provider: ${e}`);
-        });
+        logger.debug(
+            `MessageManager: Adding message to history provider: ${JSON.stringify(message, null, 2)}`
+        );
+
+        // Save to history provider
+        await this.historyProvider.saveMessage(this.sessionId, message);
+
+        // Get updated history for logging
+        const history = await this.historyProvider.getHistory(this.sessionId);
+        logger.debug(`MessageManager: History now contains ${history.length} messages`);
+
         // Note: Compression is currently handled lazily in getFormattedMessages
     }
 
@@ -233,7 +229,7 @@ export class MessageManager {
      * @param content The user message content
      * @throws Error if content is empty or not a string
      */
-    addUserMessage(textContent: string, imageData?: ImageData): void {
+    async addUserMessage(textContent: string, imageData?: ImageData): Promise<void> {
         if (typeof textContent !== 'string' || textContent.trim() === '') {
             throw new Error('addUserMessage: Content must be a non-empty string.');
         }
@@ -243,7 +239,10 @@ export class MessageManager {
                   { type: 'image', image: imageData.image, mimeType: imageData.mimeType },
               ]
             : [{ type: 'text', text: textContent }];
-        this.addMessage({ role: 'user', content: messageParts });
+        logger.debug(
+            `MessageManager: Adding user message: ${JSON.stringify(messageParts, null, 2)}`
+        );
+        await this.addMessage({ role: 'user', content: messageParts });
     }
 
     /**
@@ -254,13 +253,16 @@ export class MessageManager {
      * @param toolCalls Optional tool calls requested by the assistant
      * @throws Error if neither content nor toolCalls are provided
      */
-    addAssistantMessage(content: string | null, toolCalls?: InternalMessage['toolCalls']): void {
+    async addAssistantMessage(
+        content: string | null,
+        toolCalls?: InternalMessage['toolCalls']
+    ): Promise<void> {
         // Validate that either content or toolCalls is provided
         if (content === null && (!toolCalls || toolCalls.length === 0)) {
             throw new Error('addAssistantMessage: Must provide content or toolCalls.');
         }
         // Further validation happens within addMessage
-        this.addMessage({ role: 'assistant', content, toolCalls });
+        await this.addMessage({ role: 'assistant', content, toolCalls });
     }
 
     /**
@@ -271,7 +273,7 @@ export class MessageManager {
      * @param result The result returned by the tool
      * @throws Error if required parameters are missing
      */
-    addToolResult(toolCallId: string, name: string, result: any): void {
+    async addToolResult(toolCallId: string, name: string, result: any): Promise<void> {
         if (!toolCallId || !name) {
             throw new Error('addToolResult: toolCallId and name are required.');
         }
@@ -301,7 +303,7 @@ export class MessageManager {
             content = JSON.stringify(result ?? '');
         }
 
-        this.addMessage({ role: 'tool', content, toolCallId, name });
+        await this.addMessage({ role: 'tool', content, toolCallId, name });
     }
 
     /**
@@ -328,13 +330,16 @@ export class MessageManager {
         context: DynamicContributorContext,
         systemPrompt?: string
     ): Promise<any[]> {
+        // Fetch current history from provider
+        let history = await this.historyProvider.getHistory(this.sessionId);
+
         // Apply compression if needed *before* formatting
-        this.compressHistoryIfNeeded();
+        history = await this.compressHistoryIfNeeded(history);
 
         try {
             // Use pre-computed system prompt if provided
             const prompt = systemPrompt ?? (await this.getSystemPrompt(context));
-            return this.formatter.format([...this.history], prompt);
+            return this.formatter.format([...history], prompt);
         } catch (error) {
             logger.error('Error formatting messages:', error);
             throw new Error(
@@ -366,37 +371,37 @@ export class MessageManager {
      * Resets the conversation history
      * Does not reset the system prompt
      */
-    resetConversation(): void {
-        this.history = [];
-        // clear persisted history
-        this.historyProvider.clearHistory(this.sessionId).catch((e) => {
-            logger.error('MessageManager: Failed to clear history in provider', e);
-        });
-        this.agentEventBus.emit('messageManager:conversationReset');
+    async resetConversation(): Promise<void> {
+        // Clear persisted history
+        await this.historyProvider.clearHistory(this.sessionId);
+        this.sessionEventBus.emit('messageManager:conversationReset');
+        logger.debug(`MessageManager: Conversation history cleared for session ${this.sessionId}`);
         // Note: We don't reset the system prompt as it's usually fixed for a service
     }
 
     /**
      * Checks if history compression is needed based on token count and applies strategies.
      */
-    private compressHistoryIfNeeded(): void {
-        let currentTotalTokens: number = this.getTokenCount();
+    private async compressHistoryIfNeeded(history: InternalMessage[]): Promise<InternalMessage[]> {
+        let currentTotalTokens: number = countMessagesTokens(history, this.tokenizer);
         logger.debug(`MessageManager: Checking if history compression is needed.`);
+
         // If counting failed or we are within limits, do nothing
         if (currentTotalTokens <= this.maxTokens) {
             logger.debug(
                 `MessageManager: History compression not needed. Current token count: ${currentTotalTokens}, Max tokens: ${this.maxTokens}`
             );
-            return;
+            return history;
         }
 
         logger.info(
             `MessageManager: History exceeds token limit (${currentTotalTokens} > ${this.maxTokens}). Applying compression strategies sequentially.`
         );
 
-        const initialLength = this.history.length;
+        const initialLength = history.length;
+        let workingHistory = [...history];
 
-        // Iterate through the configured compression strategies
+        // Iterate through the configured compression strategies sequentially
         for (const strategy of this.compressionStrategies) {
             const strategyName = strategy.constructor.name; // Get the class name for logging
             logger.debug(`MessageManager: Applying ${strategyName}...`);
@@ -404,7 +409,11 @@ export class MessageManager {
             try {
                 // Pass a copy of the history to avoid potential side effects within the strategy
                 // The strategy should return the new, potentially compressed, history
-                this.history = strategy.compress([...this.history], this.tokenizer, this.maxTokens);
+                workingHistory = strategy.compress(
+                    [...workingHistory],
+                    this.tokenizer,
+                    this.maxTokens
+                );
             } catch (error) {
                 logger.error(`MessageManager: Error applying ${strategyName}:`, error);
                 // Decide if we should stop or try the next strategy. Let's stop for now.
@@ -412,8 +421,8 @@ export class MessageManager {
             }
 
             // Recalculate tokens after applying the strategy
-            currentTotalTokens = this.getTokenCount();
-            const messagesRemoved = initialLength - this.history.length;
+            currentTotalTokens = countMessagesTokens(workingHistory, this.tokenizer);
+            const messagesRemoved = initialLength - workingHistory.length;
 
             // If counting failed or we are now within limits, stop applying strategies
             if (currentTotalTokens <= this.maxTokens) {
@@ -423,6 +432,8 @@ export class MessageManager {
                 break;
             }
         }
+
+        return workingHistory;
     }
 
     /**
@@ -430,8 +441,10 @@ export class MessageManager {
      *
      * @param response The response from the LLM provider
      */
-    processLLMResponse(response: any): void {
+    async processLLMResponse(response: any): Promise<void> {
         const msgs = this.formatter.parseResponse(response) ?? [];
-        msgs.forEach((m) => this.addMessage(m));
+        for (const msg of msgs) {
+            await this.addMessage(msg);
+        }
     }
 }

@@ -7,7 +7,7 @@ import { MessageManager } from '../messages/manager.js';
 import { getMaxTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
-import type { TypedEventEmitter } from '../../../events/index.js';
+import type { SessionEventBus } from '../../../events/index.js';
 
 /**
  * OpenAI implementation of LLMService
@@ -17,13 +17,13 @@ export class OpenAIService implements ILLMService {
     private model: string;
     private clientManager: MCPClientManager;
     private messageManager: MessageManager;
-    private eventEmitter: TypedEventEmitter;
+    private sessionEventBus: SessionEventBus;
     private maxIterations: number;
 
     constructor(
         clientManager: MCPClientManager,
         openai: OpenAI,
-        agentEventBus: TypedEventEmitter,
+        sessionEventBus: SessionEventBus,
         messageManager: MessageManager,
         model: string,
         maxIterations: number = 10
@@ -32,7 +32,7 @@ export class OpenAIService implements ILLMService {
         this.model = model;
         this.openai = openai;
         this.clientManager = clientManager;
-        this.eventEmitter = agentEventBus;
+        this.sessionEventBus = sessionEventBus;
         this.messageManager = messageManager;
     }
 
@@ -42,7 +42,7 @@ export class OpenAIService implements ILLMService {
 
     async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
         // Add user message with optional image data
-        this.messageManager.addUserMessage(userInput, imageData);
+        await this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();
@@ -51,7 +51,7 @@ export class OpenAIService implements ILLMService {
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
         // Notify thinking
-        this.eventEmitter.emit('llmservice:thinking');
+        this.sessionEventBus.emit('llmservice:thinking');
 
         let iterationCount = 0;
 
@@ -67,10 +67,10 @@ export class OpenAIService implements ILLMService {
                     const responseText = message.content || '';
 
                     // Add assistant message to history
-                    this.messageManager.addAssistantMessage(responseText);
+                    await this.messageManager.addAssistantMessage(responseText);
 
                     // Emit final response
-                    this.eventEmitter.emit('llmservice:response', {
+                    this.sessionEventBus.emit('llmservice:response', {
                         content: responseText,
                         model: this.model,
                     });
@@ -78,7 +78,7 @@ export class OpenAIService implements ILLMService {
                 }
 
                 // Add assistant message with tool calls to history
-                this.messageManager.addAssistantMessage(message.content, message.tool_calls);
+                await this.messageManager.addAssistantMessage(message.content, message.tool_calls);
 
                 // Handle tool calls
                 for (const toolCall of message.tool_calls) {
@@ -90,14 +90,14 @@ export class OpenAIService implements ILLMService {
                         args = JSON.parse(toolCall.function.arguments);
                     } catch (e) {
                         logger.error(`Error parsing arguments for ${toolName}:`, e);
-                        this.messageManager.addToolResult(toolCall.id, toolName, {
+                        await this.messageManager.addToolResult(toolCall.id, toolName, {
                             error: `Failed to parse arguments: ${e}`,
                         });
                         continue;
                     }
 
                     // Notify tool call
-                    this.eventEmitter.emit('llmservice:toolCall', {
+                    this.sessionEventBus.emit('llmservice:toolCall', {
                         toolName,
                         args,
                         callId: toolCall.id,
@@ -108,10 +108,10 @@ export class OpenAIService implements ILLMService {
                         const result = await this.clientManager.executeTool(toolName, args);
 
                         // Add tool result to message manager
-                        this.messageManager.addToolResult(toolCall.id, toolName, result);
+                        await this.messageManager.addToolResult(toolCall.id, toolName, result);
 
                         // Notify tool result
-                        this.eventEmitter.emit('llmservice:toolResult', {
+                        this.sessionEventBus.emit('llmservice:toolResult', {
                             toolName,
                             result,
                             callId: toolCall.id,
@@ -123,11 +123,11 @@ export class OpenAIService implements ILLMService {
                         logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
 
                         // Add error as tool result
-                        this.messageManager.addToolResult(toolCall.id, toolName, {
+                        await this.messageManager.addToolResult(toolCall.id, toolName, {
                             error: errorMessage,
                         });
 
-                        this.eventEmitter.emit('llmservice:toolResult', {
+                        this.sessionEventBus.emit('llmservice:toolResult', {
                             toolName,
                             result: { error: errorMessage },
                             callId: toolCall.id,
@@ -137,16 +137,16 @@ export class OpenAIService implements ILLMService {
                 }
 
                 // Notify thinking for next iteration
-                this.eventEmitter.emit('llmservice:thinking');
+                this.sessionEventBus.emit('llmservice:thinking');
             }
 
             // If we reached max iterations, return a message
             logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
             const finalResponse = 'Task completed but reached maximum tool call iterations.';
-            this.messageManager.addAssistantMessage(finalResponse);
+            await this.messageManager.addAssistantMessage(finalResponse);
 
             // Emit final response
-            this.eventEmitter.emit('llmservice:response', {
+            this.sessionEventBus.emit('llmservice:response', {
                 content: finalResponse,
                 model: this.model,
             });
@@ -159,7 +159,7 @@ export class OpenAIService implements ILLMService {
             logger.warn(
                 `If this error is due to token overflow, consider configuring 'maxTokens' in your LLMConfig.`
             );
-            this.eventEmitter.emit('llmservice:error', {
+            this.sessionEventBus.emit('llmservice:error', {
                 error: error instanceof Error ? error : new Error(errorMessage),
                 context: 'OpenAI API call',
                 recoverable: false,
@@ -224,7 +224,7 @@ export class OpenAIService implements ILLMService {
                 );
 
                 // Directly count tokens and log
-                const currentTokens = this.messageManager.getTokenCount();
+                const currentTokens = await this.messageManager.getTokenCount();
                 logger.debug(`Estimated tokens being sent to OpenAI: ${currentTokens}`);
 
                 // Call OpenAI API

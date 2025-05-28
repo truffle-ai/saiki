@@ -381,6 +381,31 @@ export const AgentConfigSchema = z
                 userInfo: { provider: 'memory' },
                 toolCache: { provider: 'memory' },
             }),
+        sessions: z
+            .object({
+                maxSessions: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .default(100)
+                    .describe('Maximum number of concurrent sessions allowed, defaults to 100'),
+                sessionTTL: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .default(3600000)
+                    .describe(
+                        'Session time-to-live in milliseconds, defaults to 3600000ms (1 hour)'
+                    ),
+            })
+            .optional()
+            .default({
+                maxSessions: 100,
+                sessionTTL: 3600000,
+            })
+            .describe('Session management configuration'),
     })
     .describe('Main configuration for an agent, including its LLM and server connections');
 

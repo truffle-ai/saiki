@@ -10,7 +10,7 @@ import { VercelLLMService } from './vercel.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
 import { LanguageModelV1 } from 'ai';
-import { TypedEventEmitter, EventMap } from '../../../events/index.js';
+import { SessionEventBus } from '../../../events/index.js';
 import { LLMRouter } from '../types.js';
 import { MessageManager } from '../messages/manager.js';
 import OpenAI from 'openai';
@@ -42,14 +42,14 @@ function extractApiKey(config: LLMConfig): string {
  * Create an instance of one of our in-built LLM services
  * @param config LLM configuration from the config file
  * @param clientManager Client manager instance
- * @param agentEventBus Event emitter instance
+ * @param sessionEventBus Session-level event bus for emitting LLM events
  * @param messageManager Message manager instance
  * @returns ILLMService instance
  */
 function _createInBuiltLLMService(
     config: LLMConfig,
     clientManager: MCPClientManager,
-    agentEventBus: TypedEventEmitter,
+    sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): ILLMService {
     // Extract and validate API key
@@ -65,7 +65,7 @@ function _createInBuiltLLMService(
             return new OpenAIService(
                 clientManager,
                 openai,
-                agentEventBus,
+                sessionEventBus,
                 messageManager,
                 config.model,
                 config.maxIterations
@@ -76,7 +76,7 @@ function _createInBuiltLLMService(
             return new AnthropicService(
                 clientManager,
                 anthropic,
-                agentEventBus,
+                sessionEventBus,
                 messageManager,
                 config.model,
                 config.maxIterations
@@ -133,16 +133,17 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 function _createVercelLLMService(
     config: LLMConfig,
     clientManager: MCPClientManager,
-    agentEventBus: TypedEventEmitter,
+    sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): VercelLLMService {
-    const model: LanguageModelV1 = _createVercelModel(config);
+    const apiKey = extractApiKey(config);
     return new VercelLLMService(
         clientManager,
-        model,
-        config.provider,
-        agentEventBus,
+        sessionEventBus,
         messageManager,
+        config.provider,
+        config.model,
+        apiKey,
         config.maxIterations
     );
 }
@@ -154,12 +155,12 @@ export function createLLMService(
     config: LLMConfig,
     router: LLMRouter,
     clientManager: MCPClientManager,
-    agentEventBus: TypedEventEmitter,
+    sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): ILLMService {
     if (router === 'vercel') {
-        return _createVercelLLMService(config, clientManager, agentEventBus, messageManager);
+        return _createVercelLLMService(config, clientManager, sessionEventBus, messageManager);
     } else {
-        return _createInBuiltLLMService(config, clientManager, agentEventBus, messageManager);
+        return _createInBuiltLLMService(config, clientManager, sessionEventBus, messageManager);
     }
 }

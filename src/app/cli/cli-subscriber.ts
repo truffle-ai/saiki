@@ -2,7 +2,7 @@ import { logger } from '@core/index.js';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import { EventSubscriber } from '../api/types.js';
-import { TypedEventEmitter, EventMap } from '@core/events/index.js';
+import { AgentEventBus } from '@core/events/index.js';
 
 /**
  * Wrapper class to store methods describing how the CLI should handle agent events
@@ -20,7 +20,7 @@ export class CLISubscriber implements EventSubscriber {
     private accumulatedResponse: string = '';
     private currentLines: number = 0;
 
-    subscribe(eventBus: TypedEventEmitter): void {
+    subscribe(eventBus: AgentEventBus): void {
         eventBus.on('llmservice:thinking', this.onThinking.bind(this));
         eventBus.on('llmservice:chunk', (payload) => this.onChunk(payload.content));
         eventBus.on('llmservice:toolCall', (payload) =>
