@@ -6,7 +6,12 @@ import type { ILLMService } from '../llm/services/types.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { MCPClientManager } from '../../client/manager.js';
-import { SessionEventBus, AgentEventBus, SessionEventNames } from '../../events/index.js';
+import {
+    SessionEventBus,
+    AgentEventBus,
+    SessionEventNames,
+    SessionEventName,
+} from '../../events/index.js';
 import { logger } from '../../logger/index.js';
 
 /**
@@ -85,6 +90,12 @@ export class ChatSession {
     private llmService: ILLMService;
 
     /**
+     * Map of event forwarder functions for cleanup.
+     * Stores the bound functions so they can be removed from the event bus.
+     */
+    private forwarders: Map<SessionEventName, (payload?: any) => void> = new Map();
+
+    /**
      * Creates a new ChatSession instance.
      *
      * Each session creates its own isolated services:
@@ -126,7 +137,7 @@ export class ChatSession {
     private setupEventForwarding(): void {
         // Forward each session event type to the agent bus with session context
         SessionEventNames.forEach((eventName) => {
-            this.eventBus.on(eventName, (payload?: any) => {
+            const forwarder = (payload?: any) => {
                 // Create payload with sessionId - handle both void and object payloads
                 const payloadWithSession =
                     payload && typeof payload === 'object'
@@ -137,7 +148,13 @@ export class ChatSession {
                 );
                 // Forward to agent bus with session context
                 this.services.agentEventBus.emit(eventName as any, payloadWithSession);
-            });
+            };
+
+            // Store the forwarder function for later cleanup
+            this.forwarders.set(eventName, forwarder);
+
+            // Attach the forwarder to the session event bus
+            this.eventBus.on(eventName, forwarder);
         });
     }
 
@@ -284,5 +301,26 @@ export class ChatSession {
      */
     public getLLMService(): ILLMService {
         return this.llmService;
+    }
+
+    /**
+     * Cleans up listeners and other resources to prevent memory leaks.
+     *
+     * This method should be called when the session is being discarded to ensure
+     * that event listeners are properly removed from the global event bus.
+     * Without this cleanup, sessions would remain in memory due to listener references.
+     */
+    public dispose(): void {
+        logger.debug(`Disposing session ${this.id} - cleaning up event listeners`);
+
+        // Remove all event forwarders from the session event bus
+        this.forwarders.forEach((forwarder, eventName) => {
+            this.eventBus.off(eventName, forwarder);
+        });
+
+        // Clear the forwarders map
+        this.forwarders.clear();
+
+        logger.debug(`Session ${this.id} disposed successfully`);
     }
 }

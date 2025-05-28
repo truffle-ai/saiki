@@ -84,9 +84,16 @@ export class MessageManager {
             new OldestRemovalStrategy(),
         ]
     ) {
+        if (!formatter) throw new Error('formatter is required');
         if (!promptManager) throw new Error('promptManager is required');
-        if (maxTokens == null) throw new Error('maxTokens is required');
+        if (!sessionEventBus) throw new Error('sessionEventBus is required');
+        if (!maxTokens) throw new Error('maxTokens is required');
         if (!tokenizer) throw new Error('tokenizer is required');
+        if (!historyProvider) throw new Error('historyProvider is required');
+        if (!sessionId) throw new Error('sessionId is required');
+        if (!tokenizer) throw new Error('tokenizer is required');
+        if (!compressionStrategies) throw new Error('compressionStrategies is required');
+
         this.formatter = formatter;
         this.promptManager = promptManager;
         this.sessionEventBus = sessionEventBus;

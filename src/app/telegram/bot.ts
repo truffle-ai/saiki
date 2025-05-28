@@ -71,7 +71,7 @@ export function startTelegramBot(agent: SaikiAgent) {
         const action = ctx.callbackQuery.data;
         try {
             if (action === 'reset') {
-                agent.resetConversation();
+                await agent.resetConversation();
                 await ctx.reply('🔄 Conversation has been reset.');
             } else if (action === 'help') {
                 await ctx.reply('Send me text or images and I will respond.');

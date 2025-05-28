@@ -1,6 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateText, streamText, tool } from 'ai';
+import { generateText, LanguageModelV1, streamText } from 'ai';
 import { z } from 'zod';
 import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
@@ -17,7 +17,8 @@ import type { SessionEventBus } from '../../../events/index.js';
  * Vercel AI SDK implementation of LLMService
  */
 export class VercelLLMService implements ILLMService {
-    private model: any;
+    private model: LanguageModelV1;
+    private provider: string;
     private clientManager: MCPClientManager;
     private messageManager: MessageManager;
     private sessionEventBus: SessionEventBus;
@@ -25,28 +26,22 @@ export class VercelLLMService implements ILLMService {
 
     constructor(
         clientManager: MCPClientManager,
+        model: LanguageModelV1,
+        provider: string,
         sessionEventBus: SessionEventBus,
         messageManager: MessageManager,
-        provider: string,
-        model: string,
-        apiKey: string,
         maxIterations: number = 10
     ) {
+        this.model = model;
+        this.provider = provider;
         this.maxIterations = maxIterations;
         this.clientManager = clientManager;
         this.sessionEventBus = sessionEventBus;
         this.messageManager = messageManager;
 
-        // Initialize the appropriate provider
-        if (provider === 'openai') {
-            const openai = createOpenAI({ apiKey });
-            this.model = openai(model);
-        } else if (provider === 'anthropic') {
-            const anthropic = createAnthropic({ apiKey });
-            this.model = anthropic(model);
-        } else {
-            throw new Error(`Unsupported provider: ${provider}`);
-        }
+        logger.debug(
+            `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, messageManager: ${this.messageManager}`
+        );
     }
 
     getAllTools(): Promise<ToolSet> {
@@ -146,6 +141,7 @@ export class VercelLLMService implements ILLMService {
         maxSteps: number = 50
     ): Promise<string> {
         let stepIteration = 0;
+        let totalTokens = 0;
 
         const response = await generateText({
             model: this.model,
@@ -163,10 +159,16 @@ export class VercelLLMService implements ILLMService {
                     `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
                 );
 
+                // Track token usage from each step
+                if (step.usage) {
+                    totalTokens += step.usage.totalTokens;
+                }
+
                 if (step.text) {
                     this.sessionEventBus.emit('llmservice:response', {
                         content: step.text,
                         model: this.model.modelId,
+                        tokenCount: totalTokens > 0 ? totalTokens : undefined,
                     });
                 }
                 // Emit events based on step content (kept from original)
@@ -207,6 +209,8 @@ export class VercelLLMService implements ILLMService {
     ): Promise<string> {
         const stream = await this.streamText(messages, tools, maxSteps);
         let fullResponse = '';
+        let totalTokens = 0;
+
         for await (const textPart of stream) {
             fullResponse += textPart;
             // this.sessionEventBus.emit('chunk', textPart);
@@ -218,6 +222,7 @@ export class VercelLLMService implements ILLMService {
         this.sessionEventBus.emit('llmservice:response', {
             content: fullResponse,
             model: this.model.modelId,
+            tokenCount: totalTokens > 0 ? totalTokens : undefined,
         });
         return fullResponse;
     }

@@ -159,10 +159,7 @@ export type EventName = keyof AgentEventMap;
 /**
  * Compile-time checks to ensure event name arrays and maps stay synchronized
  */
-type _AgentEventNamesInMap = (typeof AGENT_EVENT_NAMES)[number] extends keyof Pick<
-    AgentEventMap,
-    'saiki:conversationReset' | 'saiki:mcpServerConnected' | 'saiki:availableToolsUpdated'
->
+type _AgentEventNamesInMap = (typeof AGENT_EVENT_NAMES)[number] extends keyof AgentEventMap
     ? true
     : never;
 type _SessionEventNamesInMap = (typeof SESSION_EVENT_NAMES)[number] extends SessionEventName
@@ -182,10 +179,7 @@ void _checkEventNames;
 /**
  * Runtime arrays of event names for iteration, validation, etc.
  */
-export const AgentEventNames: readonly (keyof Pick<
-    AgentEventMap,
-    'saiki:conversationReset' | 'saiki:mcpServerConnected' | 'saiki:availableToolsUpdated'
->)[] = Object.freeze([...AGENT_EVENT_NAMES]);
+export const AgentEventNames: readonly AgentEventName[] = Object.freeze([...AGENT_EVENT_NAMES]);
 export const SessionEventNames: readonly SessionEventName[] = Object.freeze([
     ...SESSION_EVENT_NAMES,
 ]);

@@ -58,7 +58,12 @@ export class FileHistoryProvider implements ConversationHistoryProvider {
                 await fs.mkdir(path.dirname(fp), { recursive: true });
                 // Serialize and write directly to the JSON file (atomic via truncate)
                 const data = JSON.stringify(history, null, 2) + '\n';
-                await fs.writeFile(fp, data, 'utf-8');
+                const tmp = `${fp}.tmp`;
+                await fs.writeFile(tmp, data, 'utf-8');
+                await fs.rename(tmp, fp);
+                logger.debug(
+                    `FileHistoryProvider: Saved message to session "${sessionId}" (${history.length} total messages)`
+                );
             })
             .catch((e) => {
                 // Handle or log errors in the queue chain (prevent blocking subsequent writes)

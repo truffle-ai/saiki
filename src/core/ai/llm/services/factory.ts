@@ -136,14 +136,13 @@ function _createVercelLLMService(
     sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): VercelLLMService {
-    const apiKey = extractApiKey(config);
+    const model = _createVercelModel(config);
     return new VercelLLMService(
         clientManager,
+        model,
+        config.provider,
         sessionEventBus,
         messageManager,
-        config.provider,
-        config.model,
-        apiKey,
         config.maxIterations
     );
 }

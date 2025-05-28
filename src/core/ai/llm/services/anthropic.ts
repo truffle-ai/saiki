@@ -55,6 +55,7 @@ export class AnthropicService implements ILLMService {
 
         let iterationCount = 0;
         let fullResponse = '';
+        let totalTokens = 0;
 
         try {
             while (iterationCount < this.maxIterations) {
@@ -79,6 +80,11 @@ export class AnthropicService implements ILLMService {
                     tools: formattedTools,
                     max_tokens: 4096,
                 });
+
+                // Track token usage
+                if (response.usage) {
+                    totalTokens += response.usage.input_tokens + response.usage.output_tokens;
+                }
 
                 // Extract text content and tool uses
                 let textContent = '';
@@ -117,6 +123,7 @@ export class AnthropicService implements ILLMService {
                     this.sessionEventBus.emit('llmservice:response', {
                         content: fullResponse,
                         model: this.model,
+                        tokenCount: totalTokens > 0 ? totalTokens : undefined,
                     });
                     return fullResponse;
                 }
@@ -181,6 +188,7 @@ export class AnthropicService implements ILLMService {
             this.sessionEventBus.emit('llmservice:response', {
                 content: fullResponse,
                 model: this.model,
+                tokenCount: totalTokens > 0 ? totalTokens : undefined,
             });
             return (
                 fullResponse ||

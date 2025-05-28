@@ -64,7 +64,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.post('/api/reset', express.json(), async (req, res) => {
         logger.info('Received request via POST /api/reset');
         try {
-            agent.resetConversation();
+            await agent.resetConversation();
             res.status(200).send({ status: 'reset initiated' });
         } catch (error) {
             logger.error(`Error handling POST /api/reset: ${error.message}`);
@@ -195,7 +195,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     await agent.run(data.content, imageDataInput);
                 } else if (data.type === 'reset') {
                     logger.info('Processing reset command from WebSocket.');
-                    agent.resetConversation();
+                    await agent.resetConversation();
                 } else {
                     logger.warn(`Received unknown WebSocket message type: ${data.type}`);
                     ws.send(

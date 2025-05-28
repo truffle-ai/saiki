@@ -100,13 +100,13 @@ export class SaikiAgent {
      * Resets the conversation history for the default session.
      * For backward compatibility.
      */
-    public resetConversation(): void {
+    public async resetConversation(): Promise<void> {
         try {
             if (!this.defaultSession) {
                 this.defaultSession = this.sessionManager.createSession('default');
             }
 
-            this.defaultSession.reset();
+            await this.defaultSession.reset();
             logger.info('SaikiAgent conversation reset.');
             this.agentEventBus.emit('saiki:conversationReset', {
                 sessionId: this.defaultSession.id,

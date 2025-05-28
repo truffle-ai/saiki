@@ -54,13 +54,19 @@ export class OpenAIService implements ILLMService {
         this.sessionEventBus.emit('llmservice:thinking');
 
         let iterationCount = 0;
+        let totalTokens = 0;
 
         try {
             while (iterationCount < this.maxIterations) {
                 iterationCount++;
 
                 // Attempt to get a response, with retry logic
-                const message = await this.getAIResponseWithRetries(formattedTools);
+                const { message, usage } = await this.getAIResponseWithRetries(formattedTools);
+
+                // Track token usage
+                if (usage) {
+                    totalTokens += usage.total_tokens;
+                }
 
                 // If there are no tool calls, we're done
                 if (!message.tool_calls || message.tool_calls.length === 0) {
@@ -73,6 +79,7 @@ export class OpenAIService implements ILLMService {
                     this.sessionEventBus.emit('llmservice:response', {
                         content: responseText,
                         model: this.model,
+                        tokenCount: totalTokens > 0 ? totalTokens : undefined,
                     });
                     return responseText;
                 }
@@ -92,6 +99,13 @@ export class OpenAIService implements ILLMService {
                         logger.error(`Error parsing arguments for ${toolName}:`, e);
                         await this.messageManager.addToolResult(toolCall.id, toolName, {
                             error: `Failed to parse arguments: ${e}`,
+                        });
+                        // Notify failure so UI & logging subscribers stay in sync
+                        this.sessionEventBus.emit('llmservice:toolResult', {
+                            toolName,
+                            result: { error: `Failed to parse arguments: ${e}` },
+                            callId: toolCall.id,
+                            success: false,
                         });
                         continue;
                     }
@@ -149,6 +163,7 @@ export class OpenAIService implements ILLMService {
             this.sessionEventBus.emit('llmservice:response', {
                 content: finalResponse,
                 model: this.model,
+                tokenCount: totalTokens > 0 ? totalTokens : undefined,
             });
             return finalResponse;
         } catch (error) {
@@ -164,6 +179,9 @@ export class OpenAIService implements ILLMService {
                 context: 'OpenAI API call',
                 recoverable: false,
             });
+            await this.messageManager.addAssistantMessage(
+                `Error processing request: ${errorMessage}`
+            );
             return `Error processing request: ${errorMessage}`;
         }
     }
@@ -203,7 +221,7 @@ export class OpenAIService implements ILLMService {
     }
 
     // Helper methods
-    private async getAIResponseWithRetries(tools: any[]): Promise<any> {
+    private async getAIResponseWithRetries(tools: any[]): Promise<{ message: any; usage?: any }> {
         let attempts = 0;
         const MAX_ATTEMPTS = 3;
 
@@ -245,7 +263,11 @@ export class OpenAIService implements ILLMService {
                 if (!message) {
                     throw new Error('Received empty message from OpenAI API');
                 }
-                return message;
+
+                // Get usage information
+                const usage = response.usage;
+
+                return { message, usage };
             } catch (error) {
                 const apiError = error as any;
                 logger.error(

@@ -101,6 +101,8 @@ export class SessionManager {
         if (session) {
             try {
                 await session.reset();
+                // Clean up event listeners to prevent memory leaks
+                session.dispose();
             } finally {
                 this.sessions.delete(sessionId);
                 this.sessionMetadata.delete(sessionId);
