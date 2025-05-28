@@ -282,6 +282,35 @@ export class MCPClientManager {
     }
 
     /**
+     * Disconnect and remove a specific client by name.
+     * @param name The name of the client to remove.
+     */
+    async removeClient(name: string): Promise<void> {
+        const client = this.clients.get(name);
+        if (client) {
+            if (typeof client.disconnect === 'function') {
+                try {
+                    await client.disconnect();
+                    logger.info(`Successfully disconnected client: ${name}`);
+                } catch (error) {
+                    logger.error(
+                        `Error disconnecting client '${name}': ${error instanceof Error ? error.message : String(error)}`
+                    );
+                    // Continue with removal even if disconnection fails
+                }
+            }
+            this.clients.delete(name);
+            this.clearClientCache(name);
+            logger.info(`Removed client from manager: ${name}`);
+        }
+        // Also remove from failed connections if it was registered there before successful connection or if it failed.
+        if (this.connectionErrors[name]) {
+            delete this.connectionErrors[name];
+            logger.info(`Cleared connection error for removed client: ${name}`);
+        }
+    }
+
+    /**
      * Disconnect all clients and clear caches
      */
     async disconnectAll(): Promise<void> {

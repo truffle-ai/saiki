@@ -7,8 +7,10 @@ import { ConfigManager } from '../../config/manager.js';
 import { EventEmitter } from 'events';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
-import { McpServerConfig } from '../../config/schemas.js';
+import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
+import { createLLMService } from '../llm/services/factory.js';
+import { LLMRouter } from '../llm/types.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
@@ -34,9 +36,9 @@ export class SaikiAgent {
      * This gives users the option to use methods of the services directly if they know what they are doing
      * But the main recommended entry points/functions would still be the wrapper methods we define below
      */
+    private _llmService: ILLMService;
     public readonly clientManager: MCPClientManager;
     public readonly promptManager: PromptManager;
-    public readonly llmService: ILLMService;
     public readonly agentEventBus: EventEmitter;
     public readonly messageManager: MessageManager;
     public readonly configManager: ConfigManager;
@@ -51,12 +53,20 @@ export class SaikiAgent {
 
         this.clientManager = services.clientManager;
         this.promptManager = services.promptManager;
-        this.llmService = services.llmService;
+        this._llmService = services.llmService;
         this.agentEventBus = services.agentEventBus;
         this.messageManager = services.messageManager;
         this.configManager = services.configManager;
 
         logger.info('SaikiAgent initialized.');
+    }
+
+    /**
+     * Gets the LLM service instance.
+     * @returns The current LLM service.
+     */
+    public getLLMService(): ILLMService {
+        return this._llmService;
     }
 
     /**
@@ -71,7 +81,7 @@ export class SaikiAgent {
         imageDataInput?: { image: string; mimeType: string }
     ): Promise<string | null> {
         try {
-            const llmResponse = await this.llmService.completeTask(userInput, imageDataInput);
+            const llmResponse = await this._llmService.completeTask(userInput, imageDataInput);
 
             // If llmResponse is an empty string, treat it as no significant response.
             if (llmResponse && llmResponse.trim() !== '') {
@@ -91,7 +101,7 @@ export class SaikiAgent {
      */
     public resetConversation(): void {
         try {
-            this.llmService.resetConversation();
+            this._llmService.resetConversation();
             logger.info('SaikiAgent conversation reset.');
             this.agentEventBus.emit('saiki:conversationReset');
         } catch (error) {
@@ -122,6 +132,58 @@ export class SaikiAgent {
             });
             throw error;
         }
+    }
+
+    /**
+     * Gets the current LLM configuration and status.
+     * @returns Current LLM service configuration (read-only copy).
+     */
+    public getCurrentLLMConfig() {
+        // Return a copy to prevent direct mutation
+        return { ...this.configManager.getConfig().llm };
+    }
+
+    /**
+     * Switches the LLM service while preserving conversation history.
+     * @param newLLMConfig The new LLM configuration.
+     * @param router The LLM router to use ('vercel' or 'in-built').
+     */
+    public switchLLM(newLLMConfig: LLMConfig, router: LLMRouter = 'in-built'): void {
+        try {
+            // Create new LLM service with the same dependencies but new config
+            const newLLMService = createLLMService(
+                newLLMConfig,
+                router,
+                this.clientManager,
+                this.agentEventBus,
+                this.messageManager // This preserves the conversation history
+            );
+
+            // Replace the LLM service using the private setter
+            this._setLLMService(newLLMService);
+
+            // Update the agent's config using the safe helper method
+            this.configManager.updateLLMConfig(newLLMConfig);
+
+            logger.info(
+                `SaikiAgent LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}`
+            );
+            this.agentEventBus.emit('saiki:llmSwitched', {
+                newConfig: newLLMConfig,
+                historyRetained: true,
+            });
+        } catch (error) {
+            logger.error('Error during SaikiAgent.switchLLM:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Private setter method to safely update the LLM service.
+     * @param newLLMService The new LLM service instance.
+     */
+    private _setLLMService(newLLMService: ILLMService): void {
+        this._llmService = newLLMService;
     }
 
     // Future methods could encapsulate more complex agent behaviors:

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Saiki Builder",
-  description: "Build your AI agents with Saiki",
+  title: "Saiki",
+  description: "Interactive playground for testing MCP tools and talking to AI agents",
 };
 
 export default function RootLayout({

@@ -3,18 +3,63 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
-import { Paperclip, SendHorizontal, X } from 'lucide-react';
-import { Card } from './ui/card';
+import { Badge } from './ui/badge';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import { Paperclip, SendHorizontal, X, Loader2, Bot, ChevronDown } from 'lucide-react';
 
 interface InputAreaProps {
   onSend: (content: string, imageData?: { base64: string; mimeType: string }) => void;
+  isSending?: boolean;
 }
 
-export default function InputArea({ onSend }: InputAreaProps) {
+export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [imageData, setImageData] = useState<{ base64: string; mimeType: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // LLM selector state
+  const [currentModel, setCurrentModel] = useState('Loading...');
+  const [isLoadingModel, setIsLoadingModel] = useState(false);
+  
+  // TODO: Populate using LLM_REGISTRY by exposing an API endpoint
+  const coreModels = [
+    { name: 'Claude 4 Sonnet', provider: 'anthropic', model: 'claude-4-sonnet-20240229' },
+    { name: 'GPT-4o', provider: 'openai', model: 'gpt-4o' },
+    { name: 'GPT-4.1 Mini', provider: 'openai', model: 'gpt-4.1-mini' },
+    { name: 'Gemini 2.5 Pro', provider: 'google', model: 'gemini-2.5-pro-exp-03-25' },
+  ];
+
+  // Fetch current LLM configuration
+  useEffect(() => {
+    const fetchCurrentModel = async () => {
+      try {
+        const response = await fetch('/api/llm/current');
+        if (response.ok) {
+          const config = await response.json();
+          // Try to match with core models first
+          const matchedModel = coreModels.find(m => m.model === config.config.model);
+          if (matchedModel) {
+            setCurrentModel(matchedModel.name);
+          } else {
+            // Fallback to provider/model display
+            setCurrentModel(`${config.config.provider}/${config.config.model}`);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch current model:', error);
+        setCurrentModel('Unknown');
+      }
+    };
+
+    fetchCurrentModel();
+  }, []);
 
   const adjustTextareaHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -91,10 +136,35 @@ export default function InputArea({ onSend }: InputAreaProps) {
 
   const triggerFileInput = () => fileInputRef.current?.click();
 
+  const handleModelSwitch = async (model: { name: string; provider: string; model: string }) => {
+    setIsLoadingModel(true);
+    try {
+      const response = await fetch('/api/llm/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: model.provider,
+          model: model.model,
+          router: 'vercel'
+        })
+      });
+      
+      if (response.ok) {
+        setCurrentModel(model.name);
+      }
+    } catch (error) {
+      console.error('Failed to switch model:', error);
+    } finally {
+      setIsLoadingModel(false);
+    }
+  };
+
+  const showClearButton = text.length > 0 || !!imageData;
+
   return (
     <div
       id="input-area"
-      className="flex items-end gap-2 w-full p-2 bg-background"
+      className="flex items-end gap-2 w-full"
     >
       <Button 
         variant="outline" 
@@ -133,15 +203,56 @@ export default function InputArea({ onSend }: InputAreaProps) {
             </Button>
           </div>
         )}
-        <Textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask Saiki anything..."
-          rows={1}
-          className="resize-none min-h-[42px] w-full border-input bg-transparent focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 rounded-lg p-2.5 text-sm"
-        />
+        
+        <div className="relative">
+          <Textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask Saiki anything..."
+            rows={1}
+            className="resize-none min-h-[42px] w-full border-input bg-transparent focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 rounded-lg p-2.5 pr-24 text-sm"
+          />
+          
+          {/* Model Selector - Inline in input */}
+          <div className="absolute bottom-1.5 right-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  disabled={isLoadingModel}
+                >
+                  <Bot className="h-3 w-3 mr-1" />
+                  <span className="hidden sm:inline">
+                    {isLoadingModel ? '...' : currentModel}
+                  </span>
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {coreModels.map((model) => (
+                  <DropdownMenuItem 
+                    key={model.model}
+                    onClick={() => handleModelSwitch(model)}
+                  >
+                    <Bot className="h-4 w-4 mr-2" />
+                    {model.name}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => {
+                  // TODO: Implement proper model viewer UI
+                  console.log('View all models clicked');
+                }}>
+                  View all models
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
       </div>
 
       <Button 
@@ -154,6 +265,31 @@ export default function InputArea({ onSend }: InputAreaProps) {
       >
         <SendHorizontal className="h-5 w-5" />
       </Button>
+
+      {showClearButton && !isSending && (
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => { 
+            setText(''); 
+            setImageData(null); 
+            if (textareaRef.current) {
+              textareaRef.current.style.height = 'auto';
+              textareaRef.current.style.overflowY = 'hidden';
+            }
+          }}
+          className="flex-shrink-0 text-muted-foreground hover:text-destructive rounded-full p-2 ml-1"
+          aria-label="Clear input"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      )}
+
+      {isSending && (
+         <div className="flex-shrink-0 p-2 ml-1">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+         </div>
+      )}
     </div>
   );
 } 

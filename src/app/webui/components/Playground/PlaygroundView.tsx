@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, ChangeEvent, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, XCircle, Copy, Share2, AlertTriangle } from 'lucide-react';
 import ConnectServerModal from '../ConnectServerModal';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { JsonSchemaProperty, McpServer, McpTool, ToolResult } from '@/types';
 
 export default function PlaygroundView() {
@@ -26,6 +28,62 @@ export default function PlaygroundView() {
   const [currentError, setCurrentError] = useState<string | null>(null); // General error display
   const [inputErrors, setInputErrors] = useState<Record<string, string>>({});
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const [clipboardNotification, setClipboardNotification] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
+
+  // Enhanced features
+  const [executionHistory, setExecutionHistory] = useState<Array<{
+    id: string;
+    toolName: string;
+    timestamp: Date;
+    success: boolean;
+    duration?: number;
+  }>>([]);
+  const [sessionStartTime] = useState(Date.now());
+  const [toolTemplates] = useState([
+    {
+      name: "Quick Test",
+      description: "Fill with test values",
+      apply: (tool: McpTool) => {
+        const defaults: Record<string, any> = {};
+        if (tool.inputSchema?.properties) {
+          Object.entries(tool.inputSchema.properties).forEach(([key, prop]) => {
+            if (prop.type === 'string') defaults[key] = `test-${key}`;
+            else if (prop.type === 'number') defaults[key] = 42;
+            else if (prop.type === 'boolean') defaults[key] = true;
+            else if (prop.type === 'object') defaults[key] = '{"example": "value"}';
+            else if (prop.type === 'array') defaults[key] = '["example"]';
+          });
+        }
+        return defaults;
+      }
+    },
+    {
+      name: "Empty Form", 
+      description: "Clear all fields",
+      apply: () => ({})
+    },
+    {
+      name: "Required Only",
+      description: "Fill only required fields",
+      apply: (tool: McpTool) => {
+        const defaults: Record<string, any> = {};
+        if (tool.inputSchema?.properties && tool.inputSchema?.required) {
+          tool.inputSchema.required.forEach(key => {
+            const prop = tool.inputSchema!.properties![key];
+            if (prop.type === 'string') defaults[key] = '';
+            else if (prop.type === 'number') defaults[key] = '';
+            else if (prop.type === 'boolean') defaults[key] = false;
+            else if (prop.type === 'object') defaults[key] = '{}';
+            else if (prop.type === 'array') defaults[key] = '[]';
+          });
+        }
+        return defaults;
+      }
+    }
+  ]);
 
   const API_BASE_URL = '/api'; // Assuming Next.js API routes are under /api
 
@@ -220,6 +278,9 @@ export default function PlaygroundView() {
       return;
     }
 
+    const executionStart = Date.now();
+    const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     setIsLoading(true);
     try {
       const processedInputs: Record<string, any> = {};
@@ -282,14 +343,42 @@ export default function PlaygroundView() {
       if (!response.ok) {
         throw new Error(resultData.error || `Tool Execution (${selectedTool.name}): ${response.statusText}`);
       }
+      
+      const duration = Date.now() - executionStart;
       setToolResult(resultData);
+      
+      // Track execution in history
+      setExecutionHistory(prev => [
+        {
+          id: executionId,
+          toolName: selectedTool.name,
+          timestamp: new Date(),
+          success: true,
+          duration
+        },
+        ...prev.slice(0, 9) // Keep last 10 executions
+      ]);
+      
     } catch (err: any) {
       if (err.name !== 'AbortError') {
+        const duration = Date.now() - executionStart;
         handleError(err.message, 'execution');
         // Ensure toolResult reflects the error for display, even if backend structure was unexpected
         if (err.message && (!toolResult || toolResult.success || toolResult.error !== err.message)) {
           setToolResult({ success: false, error: err.message });
         }
+        
+        // Track failed execution in history
+        setExecutionHistory(prev => [
+          {
+            id: executionId,
+            toolName: selectedTool?.name || 'Unknown',
+            timestamp: new Date(),
+            success: false,
+            duration
+          },
+          ...prev.slice(0, 9)
+        ]);
       }
     } finally {
       // Only clear loading if this request wasn't aborted
@@ -297,7 +386,7 @@ export default function PlaygroundView() {
         setIsLoading(false);
       }
     }
-  }, [selectedServer, selectedTool, toolInputs, validateInputs]);
+  }, [selectedServer, selectedTool, toolInputs, validateInputs, toolResult]);
 
   const renderFormInputs = () => {
     if (!selectedTool || !selectedTool.inputSchema || !selectedTool.inputSchema.properties) {
@@ -405,6 +494,71 @@ export default function PlaygroundView() {
     fetchServers(); // Refresh server list after modal closes
   };
 
+  // Copy functionality
+  const copyToClipboard = async (text: string, successMessage?: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setClipboardNotification({
+        message: successMessage || 'Copied to clipboard',
+        type: 'success'
+      });
+      // Auto-hide success notification after 3 seconds
+      setTimeout(() => setClipboardNotification(null), 3000);
+    } catch (err) {
+      setClipboardNotification({
+        message: 'Failed to copy to clipboard. Please check browser permissions.',
+        type: 'error'
+      });
+      // Auto-hide error notification after 5 seconds
+      setTimeout(() => setClipboardNotification(null), 5000);
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  const copyToolConfiguration = () => {
+    if (!selectedTool || !selectedServer) return;
+    
+    const config = {
+      server: selectedServer.name,
+      tool: selectedTool.name,
+      inputs: toolInputs,
+      timestamp: new Date().toISOString()
+    };
+    
+    copyToClipboard(JSON.stringify(config, null, 2), 'Tool configuration copied!');
+  };
+
+  const copyToolResult = () => {
+    if (!toolResult) return;
+    
+    const resultText = typeof toolResult.data === 'object' 
+      ? JSON.stringify(toolResult.data, null, 2)
+      : String(toolResult.data);
+    
+    copyToClipboard(resultText, 'Tool result copied!');
+  };
+
+  const shareToolConfig = () => {
+    if (!selectedTool || !selectedServer) return;
+    
+    const config = {
+      server: selectedServer.name,
+      tool: selectedTool.name,
+      inputs: toolInputs
+    };
+    
+    const shareText = `Check out this Saiki tool configuration:\n\nServer: ${selectedServer.name}\nTool: ${selectedTool.name}\nInputs: ${JSON.stringify(toolInputs, null, 2)}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: `Saiki Tool: ${selectedTool.name}`,
+        text: shareText
+      });
+    } else {
+      copyToClipboard(shareText, 'Tool configuration copied for sharing!');
+    }
+  };
+
   return (
     <div className="flex h-screen bg-muted/40 text-foreground antialiased">
       <aside className="w-72 flex-shrink-0 border-r border-border bg-background p-4 flex flex-col rounded-r-lg shadow-md">
@@ -490,20 +644,100 @@ export default function PlaygroundView() {
 
       <main className="flex-1 p-6 flex flex-col bg-zinc-50 dark:bg-zinc-900 overflow-y-auto">
         <div className="pb-3 mb-4 border-b border-border">
-            <h2 className="text-lg font-semibold text-foreground">Tool Runner</h2>
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Tool Runner</h2>
+              {executionHistory.length > 0 && (
+                <div className="flex items-center space-x-4 mt-2 text-sm text-muted-foreground">
+                  <div className="flex items-center space-x-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{executionHistory.length} executions this session</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
+                      <CheckCircle className="h-3 w-3 text-green-500" />
+                      <span>{executionHistory.filter(h => h.success).length}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <XCircle className="h-3 w-3 text-red-500" />
+                      <span>{executionHistory.filter(h => !h.success).length}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Recent executions */}
+            {executionHistory.length > 0 && (
+              <div className="hidden lg:block">
+                <p className="text-xs text-muted-foreground mb-2">Recent executions</p>
+                <div className="flex space-x-1">
+                  {executionHistory.slice(0, 5).map((exec) => (
+                    <Badge 
+                      key={exec.id} 
+                      variant={exec.success ? "secondary" : "destructive"}
+                      className="text-xs px-2 py-1 truncate max-w-24"
+                      title={`${exec.toolName} - ${exec.success ? 'Success' : 'Failed'} (${exec.duration}ms)`}
+                    >
+                      {exec.toolName.slice(0, 8)}
+                      {exec.toolName.length > 8 && '...'}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+        
         {currentError && selectedTool && (!toolResult || !toolResult.success) && 
           <div className="mb-4 p-3 border border-destructive/50 bg-destructive/10 rounded-md text-destructive text-sm">
             <p className="font-medium">Error:</p>
             <p>{currentError}</p>
           </div>}
         
-        {!selectedTool && <p className="text-muted-foreground text-sm text-center py-10">Select a tool to run from the list.</p>}
+        {/* Clipboard notification */}
+        {clipboardNotification && (
+          <Alert 
+            variant={clipboardNotification.type === 'error' ? "destructive" : "default"}
+            className={`mb-4 ${clipboardNotification.type === 'success' 
+              ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-400' 
+              : ''}`}
+          >
+            {clipboardNotification.type === 'error' && <AlertTriangle className="h-4 w-4" />}
+            {clipboardNotification.type === 'success' && <CheckCircle className="h-4 w-4" />}
+            <AlertDescription>{clipboardNotification.message}</AlertDescription>
+          </Alert>
+        )}
+        
+        {!selectedTool && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center max-w-md">
+              <div className="mb-4">
+                <ArrowLeft className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Select a Tool</h3>
+              <p className="text-muted-foreground">
+                Choose a tool from the left panel to start testing and experimenting with MCP capabilities.
+              </p>
+            </div>
+          </div>
+        )}
+        
         {selectedTool && (
           <div className="space-y-6">
             <div className="p-4 border border-border rounded-lg bg-card shadow-sm">
-              <h3 className="text-base font-semibold text-primary mb-1">{selectedTool.name}</h3>
-              {selectedTool.description && <p className="text-sm text-muted-foreground">{selectedTool.description}</p>}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-base font-semibold text-primary mb-1">{selectedTool.name}</h3>
+                  {selectedTool.description && <p className="text-sm text-muted-foreground">{selectedTool.description}</p>}
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <p>Server: {selectedServer?.name}</p>
+                  {executionHistory.filter(h => h.toolName === selectedTool.name).length > 0 && (
+                    <p>Runs: {executionHistory.filter(h => h.toolName === selectedTool.name).length}</p>
+                  )}
+                </div>
+              </div>
             </div>
             
             <form 
@@ -513,6 +747,32 @@ export default function PlaygroundView() {
               }}
               className="space-y-5 p-4 border border-border rounded-lg bg-card shadow-sm"
             >
+              {/* Tool Templates */}
+              {selectedTool && selectedTool.inputSchema?.properties && Object.keys(selectedTool.inputSchema.properties).length > 0 && (
+                <div className="border-b border-border pb-4">
+                  <h4 className="text-sm font-medium mb-2 text-muted-foreground">Quick Fill Templates</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {toolTemplates.map((template, index) => (
+                      <Button
+                        key={index}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newInputs = template.apply(selectedTool);
+                          setToolInputs(newInputs);
+                          setInputErrors({});
+                        }}
+                        className="text-xs"
+                        title={template.description}
+                      >
+                        {template.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {renderFormInputs()}
               
               {selectedTool && (
@@ -523,11 +783,51 @@ export default function PlaygroundView() {
                   {isLoading ? 'Executing...' : 'Run Tool'}
                 </Button>
               )}
+
+              {/* Configuration Actions */}
+              {selectedTool && Object.keys(toolInputs).length > 0 && (
+                <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={copyToolConfiguration}
+                    className="flex items-center gap-2"
+                  >
+                    <Copy className="h-3 w-3" />
+                    Copy Config
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={shareToolConfig}
+                    className="flex items-center gap-2"
+                  >
+                    <Share2 className="h-3 w-3" />
+                    Share
+                  </Button>
+                </div>
+              )}
             </form>
 
+            {/* Tool Result Display */}
             {toolResult && (
-              <div className="mt-6 p-4 border-t border-border bg-card rounded-lg shadow-sm">
-                <h4 className="font-semibold mb-3 text-base">Result:</h4>
+              <div className="mt-6 p-4 border border-border rounded-lg bg-muted/30">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Tool Result for <span className="font-bold text-primary">{selectedTool?.name}</span>
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyToolResult}
+                    className="flex items-center gap-2"
+                  >
+                    <Copy className="h-3 w-3" />
+                    Copy Result
+                  </Button>
+                </div>
                 {toolResult.success ? (
                   <div className="space-y-3 text-sm">
                     {(
@@ -598,9 +898,11 @@ export default function PlaygroundView() {
                     )}
                   </div>
                 ) : (
-                  <div className="text-destructive bg-destructive/10 p-3 rounded-md text-sm">
-                    <p className="font-medium mb-1">Execution Failed:</p>
-                    <p>{toolResult.error || 'An unknown error occurred.'}</p>
+                  <div className="p-3 bg-destructive/10 rounded-md">
+                    <p className="text-sm text-destructive font-semibold">Error executing tool:</p>
+                    <pre className="mt-1 text-xs text-destructive whitespace-pre-wrap break-all">
+                      {toolResult.error || 'Unknown error'}
+                    </pre>
                   </div>
                 )}
               </div>
