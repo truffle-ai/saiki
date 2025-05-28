@@ -78,23 +78,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
-    // Reset to default configuration
-    app.post('/api/configs/reset', express.json(), async (req, res) => {
-        logger.info('Received request via POST /api/configs/reset');
-        try {
-            // Simple conversation reset since AgentManager is removed
-            agent.resetConversation();
-
-            res.status(200).json({
-                status: 'conversation reset',
-                message: 'Agent conversation reset successfully',
-            });
-        } catch (error: any) {
-            logger.error(`Error handling POST /api/configs/reset: ${error.message}`);
-            res.status(500).json({ error: `Failed to reset conversation: ${error.message}` });
-        }
-    });
-
     app.post('/api/connect-server', express.json(), async (req, res) => {
         logger.info('Received request via POST /api/connect-server');
         const { name, config } = req.body;

@@ -122,10 +122,9 @@ export class ConfigManager {
         this.resolved.llm = { ...this.resolved.llm, ...newLLMConfig };
 
         // Update provenance for any fields that were changed
-        // Only update provenance for keys that are actually tracked in LLMProvenance
         Object.keys(newLLMConfig).forEach((key) => {
-            if (this.isTrackableKey(key)) {
-                this.provenance.llm[key] = 'runtime';
+            if (key in this.provenance.llm) {
+                this.provenance.llm[key as LLMOverrideKey] = 'runtime';
             }
         });
 
@@ -176,16 +175,6 @@ export class ConfigManager {
         for (const [field, src] of Object.entries(this.provenance?.llm ?? {})) {
             logger.info(`  • ${field}: ${src}`);
         }
-    }
-
-    /**
-     * Type guard to check if a key is trackable in LLM provenance.
-     * @param key The key to check.
-     * @returns True if the key is a valid LLMOverrideKey that can be tracked in provenance.
-     */
-    private isTrackableKey(key: string): key is LLMOverrideKey {
-        const trackableKeys: LLMOverrideKey[] = ['provider', 'model', 'router', 'apiKey'];
-        return trackableKeys.includes(key as LLMOverrideKey);
     }
 
     private printStateForError(contextMessage: string): void {
