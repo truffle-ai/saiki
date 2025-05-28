@@ -207,9 +207,25 @@ export default function MessageList({ messages }: MessageListProps) {
                 </div>
               </div>
               {!isSystem && !isToolRelated && (
-                <p className="text-xs text-muted-foreground mt-1 px-1">
-                  {timestampStr}
-                </p>
+                <div className="text-xs text-muted-foreground mt-1 px-1 flex items-center gap-2">
+                  <span>{timestampStr}</span>
+                  {isAi && msg.tokenCount && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                      {msg.tokenCount} tokens
+                    </span>
+                  )}
+                  {isAi && msg.model && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/30 text-xs">
+                      {msg.model}
+                    </span>
+                  )}
+                  {/* {msg.sessionId && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono bg-muted/20">
+                      {msg.sessionId.slice(0, 8)}
+                    </span>
+                  )} */}
+                </div>
               )}
             </div>
             {isUser && <AvatarComponent className="h-7 w-7 ml-2 mb-1 text-muted-foreground self-start flex-shrink-0" />}

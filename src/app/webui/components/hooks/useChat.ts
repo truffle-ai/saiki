@@ -12,7 +12,6 @@ export interface ImagePart {
     base64: string;
     mimeType: string;
 }
-
 // Extend core InternalMessage for WebUI
 export interface Message extends Omit<InternalMessage, 'content'> {
     id: string;
@@ -22,6 +21,9 @@ export interface Message extends Omit<InternalMessage, 'content'> {
     toolName?: string;
     toolArgs?: any;
     toolResult?: any;
+    tokenCount?: number;
+    model?: string;
+    sessionId?: string;
 }
 
 const generateUniqueId = () => `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -93,6 +95,12 @@ export function useChat(wsUrl: string) {
                 }
                 case 'response': {
                     const text = typeof payload.text === 'string' ? payload.text : '';
+                    const tokenCount =
+                        typeof payload.tokenCount === 'number' ? payload.tokenCount : undefined;
+                    const model = typeof payload.model === 'string' ? payload.model : undefined;
+                    const sessionId =
+                        typeof payload.sessionId === 'string' ? payload.sessionId : undefined;
+
                     setMessages((ms) => {
                         // Remove 'thinking' placeholders
                         const cleaned = ms.filter(
@@ -116,6 +124,9 @@ export function useChat(wsUrl: string) {
                             role: 'assistant',
                             content,
                             createdAt: Date.now(),
+                            tokenCount,
+                            model,
+                            sessionId,
                         };
                         // Clear ref for next response
                         lastImageUriRef.current = null;
