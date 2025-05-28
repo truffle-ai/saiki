@@ -134,11 +134,11 @@ export class WebSocketEventSubscriber implements EventSubscriber {
         });
     }
 
-    private broadcast(event: any): void {
-        const message = JSON.stringify(event);
+    private broadcast(message: { event: string; data?: Record<string, any> }): void {
+        const messageString = JSON.stringify(message);
         for (const client of this.connections) {
             if (client.readyState === WebSocket.OPEN) {
-                client.send(message);
+                client.send(messageString);
             } else {
                 this.connections.delete(client);
             }
