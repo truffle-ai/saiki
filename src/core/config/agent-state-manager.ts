@@ -178,7 +178,7 @@ export class AgentStateManager {
         if (!validation.isValid) {
             logger.warn('LLM update validation failed', {
                 sessionId,
-                errors: validation.errors,
+                errors: validation.errors.map((e) => e.message),
                 warnings: validation.warnings,
             });
             return validation; // Return validation result without making changes
@@ -295,7 +295,7 @@ export class AgentStateManager {
         if (!validation.isValid) {
             logger.warn('Runtime update validation failed', {
                 sessionId,
-                errors: validation.errors,
+                errors: validation.errors.map((e) => e.message),
                 warnings: validation.warnings,
             });
             return validation; // Return validation result without making changes

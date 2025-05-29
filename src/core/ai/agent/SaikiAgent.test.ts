@@ -119,34 +119,48 @@ describe('SaikiAgent.switchLLM', () => {
         });
 
         // Mock the validation function
-        mockValidationUtils.buildValidatedLLMConfig.mockImplementation(
-            async (updates, currentConfig, stateManager, sessionId) => {
-                return {
-                    config: {
-                        ...mockLLMConfig,
-                        ...updates, // Apply the updates so router is properly set
-                    },
-                    configWarnings: [],
-                };
-            }
-        );
+        mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, currentConfig) => {
+            return {
+                config: {
+                    ...mockLLMConfig,
+                    ...updates, // Apply the updates so router is properly set
+                },
+                isValid: true,
+                errors: [],
+                warnings: [],
+            };
+        });
     });
 
     describe('Basic Validation', () => {
         test('should require model or provider parameter', async () => {
-            await expect(agent.switchLLM({})).rejects.toThrow(
-                'At least model or provider must be specified'
-            );
+            const result = await agent.switchLLM({});
+
+            expect(result.success).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].type).toBe('general');
+            expect(result.errors[0].message).toBe('At least model or provider must be specified');
         });
 
-        test('should throw on validation failure', async () => {
-            mockValidationUtils.buildValidatedLLMConfig.mockRejectedValue(
-                new Error('LLM configuration validation failed: Invalid model')
-            );
+        test('should handle validation failure', async () => {
+            mockValidationUtils.buildLLMConfig.mockResolvedValue({
+                config: mockLLMConfig,
+                isValid: false,
+                errors: [
+                    {
+                        type: 'invalid_model',
+                        message: 'Invalid model',
+                    },
+                ],
+                warnings: [],
+            });
 
-            await expect(agent.switchLLM({ model: 'invalid-model' })).rejects.toThrow(
-                'LLM configuration validation failed: Invalid model'
-            );
+            const result = await agent.switchLLM({ model: 'invalid-model' });
+
+            expect(result.success).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].type).toBe('invalid_model');
+            expect(result.errors[0].message).toBe('Invalid model');
         });
     });
 
@@ -169,21 +183,21 @@ describe('SaikiAgent.switchLLM', () => {
         test('should use specified router', async () => {
             await agent.switchLLM({ model: 'gpt-4o', router: 'in-built' });
 
-            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o',
                     router: 'in-built',
                 }),
-                mockLLMConfig,
-                mockStateManager,
-                undefined
+                mockLLMConfig
             );
         });
 
         test('should include warnings in response', async () => {
-            mockValidationUtils.buildValidatedLLMConfig.mockResolvedValue({
+            mockValidationUtils.buildLLMConfig.mockResolvedValue({
                 config: { ...mockLLMConfig, model: 'gpt-4o' },
-                configWarnings: ['Config warning'],
+                isValid: true,
+                errors: [],
+                warnings: ['Config warning'],
             });
 
             mockSessionManager.switchLLMForDefaultSession.mockResolvedValue({
@@ -197,14 +211,14 @@ describe('SaikiAgent.switchLLM', () => {
         });
 
         test('should switch LLM for specific session', async () => {
-            const result = await agent.switchLLM({ model: 'gpt-4o' }, 'test-session');
+            const result = await agent.switchLLM({ model: 'gpt-4o' }, 'session1');
 
             expect(result.success).toBe(true);
             expect(mockSessionManager.switchLLMForSpecificSession).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o',
                 }),
-                'test-session'
+                'session1'
             );
         });
 
@@ -222,42 +236,36 @@ describe('SaikiAgent.switchLLM', () => {
         test('should handle provider and model together', async () => {
             await agent.switchLLM({ provider: 'anthropic', model: 'claude-4-sonnet-20250514' });
 
-            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({
                     provider: 'anthropic',
                     model: 'claude-4-sonnet-20250514',
                 }),
-                mockLLMConfig,
-                mockStateManager,
-                undefined
+                mockLLMConfig
             );
         });
 
         test('should handle API key in config', async () => {
             await agent.switchLLM({ model: 'gpt-4o', apiKey: 'new-key' });
 
-            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o',
                     apiKey: 'new-key',
                 }),
-                mockLLMConfig,
-                mockStateManager,
-                undefined
+                mockLLMConfig
             );
         });
 
         test('should handle baseURL in config', async () => {
             await agent.switchLLM({ model: 'gpt-4o', baseURL: 'https://api.example.com' });
 
-            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o',
                     baseURL: 'https://api.example.com',
                 }),
-                mockLLMConfig,
-                mockStateManager,
-                undefined
+                mockLLMConfig
             );
         });
     });
@@ -274,12 +282,15 @@ describe('SaikiAgent.switchLLM', () => {
             );
         });
 
-        test('should throw if session not found', async () => {
+        test('should handle session not found', async () => {
             mockSessionManager.getSession.mockReturnValue(null);
 
-            await expect(agent.switchLLM({ model: 'gpt-4o' }, 'nonexistent')).rejects.toThrow(
-                'Session nonexistent not found'
-            );
+            const result = await agent.switchLLM({ model: 'gpt-4o' }, 'nonexistent');
+
+            expect(result.success).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].type).toBe('general');
+            expect(result.errors[0].message).toBe('Session nonexistent not found');
         });
 
         test('should use session-specific state', async () => {
@@ -289,11 +300,9 @@ describe('SaikiAgent.switchLLM', () => {
             await agent.switchLLM({ model: 'gpt-4o' }, 'session1');
 
             expect(mockStateManager.getEffectiveState).toHaveBeenCalledWith('session1');
-            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({ model: 'gpt-4o' }),
-                sessionLLMConfig,
-                mockStateManager,
-                'session1'
+                sessionLLMConfig
             );
         });
     });
@@ -354,7 +363,7 @@ describe('SaikiAgent.switchLLM', () => {
                 baseURL: 'https://custom.api.com',
             });
 
-            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 {
                     provider: 'google',
                     model: 'gemini-2.5-pro-exp-03-25',
@@ -362,22 +371,18 @@ describe('SaikiAgent.switchLLM', () => {
                     router: 'vercel',
                     baseURL: 'https://custom.api.com',
                 },
-                mockLLMConfig,
-                mockStateManager,
-                undefined
+                mockLLMConfig
             );
         });
 
         test('should handle partial parameters', async () => {
             await agent.switchLLM({ model: 'gpt-4o-mini' });
 
-            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 {
                     model: 'gpt-4o-mini',
                 },
-                mockLLMConfig,
-                mockStateManager,
-                undefined
+                mockLLMConfig
             );
         });
 
@@ -394,9 +399,11 @@ describe('SaikiAgent.switchLLM', () => {
 
     describe('Warning Collection', () => {
         test('should collect and deduplicate warnings', async () => {
-            mockValidationUtils.buildValidatedLLMConfig.mockResolvedValue({
+            mockValidationUtils.buildLLMConfig.mockResolvedValue({
                 config: { ...mockLLMConfig, model: 'gpt-4o-mini' },
-                configWarnings: ['Config warning', 'Duplicate warning'],
+                isValid: true,
+                errors: [],
+                warnings: ['Config warning', 'Duplicate warning'],
             });
 
             mockSessionManager.switchLLMForDefaultSession.mockResolvedValue({
@@ -410,6 +417,7 @@ describe('SaikiAgent.switchLLM', () => {
                 'Config warning',
                 'Duplicate warning',
                 'Session warning',
+                'Duplicate warning',
             ]);
         });
 
@@ -421,27 +429,56 @@ describe('SaikiAgent.switchLLM', () => {
     });
 
     describe('Error Handling', () => {
-        test('should re-throw validation errors', async () => {
+        test('should handle validation exceptions', async () => {
             const validationError = new Error('Validation failed');
-            mockValidationUtils.buildValidatedLLMConfig.mockRejectedValue(validationError);
+            mockValidationUtils.buildLLMConfig.mockRejectedValue(validationError);
 
-            await expect(agent.switchLLM({ model: 'gpt-4o' })).rejects.toThrow('Validation failed');
+            const result = await agent.switchLLM({ model: 'gpt-4o' });
+
+            expect(result.success).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].type).toBe('general');
+            expect(result.errors[0].message).toBe('Validation failed');
         });
 
-        test('should handle state manager errors', async () => {
-            const stateError = new Error('State update failed');
-            mockValidationUtils.buildValidatedLLMConfig.mockRejectedValue(stateError);
+        test('should handle state manager validation errors', async () => {
+            mockValidationUtils.buildLLMConfig.mockResolvedValue({
+                config: mockLLMConfig,
+                isValid: true,
+                errors: [],
+                warnings: [],
+            });
 
-            await expect(agent.switchLLM({ model: 'gpt-4o' })).rejects.toThrow(
-                'State update failed'
-            );
+            mockStateManager.updateLLM.mockReturnValue({
+                isValid: false,
+                errors: [
+                    {
+                        type: 'missing_api_key',
+                        message: 'API key required',
+                        provider: 'openai',
+                    },
+                ],
+                warnings: [],
+            });
+
+            const result = await agent.switchLLM({ model: 'gpt-4o' });
+
+            expect(result.success).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].type).toBe('missing_api_key');
+            expect(result.errors[0].message).toBe('API key required');
         });
 
         test('should handle session manager errors', async () => {
             const sessionError = new Error('Session error');
             mockSessionManager.switchLLMForDefaultSession.mockRejectedValue(sessionError);
 
-            await expect(agent.switchLLM({ model: 'gpt-4o' })).rejects.toThrow('Session error');
+            const result = await agent.switchLLM({ model: 'gpt-4o' });
+
+            expect(result.success).toBe(false);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].type).toBe('general');
+            expect(result.errors[0].message).toBe('Session error');
         });
     });
 });

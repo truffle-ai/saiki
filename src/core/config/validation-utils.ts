@@ -17,11 +17,39 @@ import { resolveApiKeyForProvider } from '../utils/api-key-resolver.js';
 import { logger } from '../logger/index.js';
 
 /**
+ * Types of validation errors that can occur
+ */
+export type ValidationErrorType =
+    | 'missing_api_key'
+    | 'invalid_model'
+    | 'invalid_provider'
+    | 'incompatible_model_provider'
+    | 'unsupported_router'
+    | 'invalid_base_url'
+    | 'invalid_max_tokens'
+    | 'invalid_provider_options'
+    | 'schema_validation'
+    | 'general';
+
+/**
+ * Structured error information
+ */
+export interface ValidationError {
+    type: ValidationErrorType;
+    message: string;
+    field?: string;
+    provider?: string;
+    model?: string;
+    router?: string;
+    suggestedAction?: string;
+}
+
+/**
  * Result of configuration validation
  */
 export interface ValidationResult {
     isValid: boolean;
-    errors: string[];
+    errors: ValidationError[];
     warnings: string[];
 }
 
@@ -41,40 +69,58 @@ function validateLLMCore(config: {
     model?: string;
     router?: string;
     baseURL?: string;
-}): string[] {
-    const errors: string[] = [];
+}): ValidationError[] {
+    const errors: ValidationError[] = [];
     const { provider, model, router, baseURL } = config;
 
     // Validate provider
     if (provider && !isValidProvider(provider)) {
-        errors.push(`Unknown provider: ${provider}`);
+        errors.push({
+            type: 'invalid_provider',
+            message: `Unknown provider: ${provider}`,
+            provider,
+        });
         return errors; // Return early if provider doesn't exist
     }
 
     // Validate router
     if (router && !isValidRouter(router)) {
-        errors.push('Router must be either "vercel" or "in-built"');
+        errors.push({
+            type: 'unsupported_router',
+            message: 'Router must be either "vercel" or "in-built"',
+            router,
+        });
     }
 
     // Validate provider/model combination if both provided
     if (provider && model && !isValidProviderModel(provider, model)) {
         const supportedModels = getSupportedModels(provider);
-        errors.push(
-            `Model '${model}' is not supported for provider '${provider}'. Supported models: ${supportedModels.join(', ')}`
-        );
+        errors.push({
+            type: 'incompatible_model_provider',
+            message: `Model '${model}' is not supported for provider '${provider}'. Supported models: ${supportedModels.join(', ')}`,
+            provider,
+            model,
+        });
     }
 
     // Validate provider/router combination if both provided
     if (provider && router && !isRouterSupportedForProvider(provider, router)) {
         const supportedRouters = getSupportedRoutersForProvider(provider);
-        errors.push(
-            `Provider '${provider}' does not support '${router}' router. Supported routers: ${supportedRouters.join(', ')}`
-        );
+        errors.push({
+            type: 'unsupported_router',
+            message: `Provider '${provider}' does not support '${router}' router. Supported routers: ${supportedRouters.join(', ')}`,
+            provider,
+            router,
+        });
     }
 
     // Validate baseURL usage
     if (baseURL && provider && !supportsBaseURL(provider)) {
-        errors.push(`Custom baseURL is not supported for ${provider} provider`);
+        errors.push({
+            type: 'invalid_base_url',
+            message: `Custom baseURL is not supported for ${provider} provider`,
+            provider,
+        });
     }
 
     return errors;
@@ -88,12 +134,17 @@ export function validateLLMSwitchRequest(request: {
     model?: string;
     router?: string;
     baseURL?: string;
-}): string[] {
+}): ValidationError[] {
     const { provider, model } = request;
 
     // Check required fields
     if (!provider || !model) {
-        return ['Provider and model are required'];
+        return [
+            {
+                type: 'general',
+                message: 'Provider and model are required',
+            },
+        ];
     }
 
     return validateLLMCore(request);
@@ -105,16 +156,22 @@ export function validateLLMSwitchRequest(request: {
 export function validateRuntimeUpdate(
     update: Partial<AgentRuntimeState['runtime']>
 ): ValidationResult {
-    const errors: string[] = [];
+    const errors: ValidationError[] = [];
 
     if (update.debugMode !== undefined && typeof update.debugMode !== 'boolean') {
-        errors.push('debugMode must be a boolean');
+        errors.push({
+            type: 'general',
+            message: 'debugMode must be a boolean',
+        });
     }
 
     if (update.logLevel !== undefined) {
         const validLogLevels = ['error', 'warn', 'info', 'debug'];
         if (typeof update.logLevel !== 'string' || !validLogLevels.includes(update.logLevel)) {
-            errors.push(`logLevel must be one of: ${validLogLevels.join(', ')}`);
+            errors.push({
+                type: 'general',
+                message: `logLevel must be one of: ${validLogLevels.join(', ')}`,
+            });
         }
     }
 
@@ -129,7 +186,7 @@ export function validateRuntimeUpdate(
  * Validates an entire runtime state configuration
  */
 export function validateRuntimeState(state: AgentRuntimeState): ValidationResult {
-    const errors: string[] = [];
+    const errors: ValidationError[] = [];
     const warnings: string[] = [];
 
     // Validate LLM config using core validation
@@ -138,7 +195,10 @@ export function validateRuntimeState(state: AgentRuntimeState): ValidationResult
 
     // Additional LLM-specific validation
     if (!state.llm.provider || !state.llm.model) {
-        errors.push('Provider and model are required');
+        errors.push({
+            type: 'general',
+            message: 'Provider and model are required',
+        });
     }
 
     if (state.llm.apiKey && state.llm.apiKey.length < 10) {
@@ -146,7 +206,10 @@ export function validateRuntimeState(state: AgentRuntimeState): ValidationResult
     }
 
     if (state.llm.maxTokens !== undefined && state.llm.maxTokens <= 0) {
-        errors.push('maxTokens must be a positive number');
+        errors.push({
+            type: 'invalid_max_tokens',
+            message: 'maxTokens must be a positive number',
+        });
     }
 
     // Validate runtime settings
@@ -170,23 +233,47 @@ export async function buildValidatedLLMConfig(
     currentConfig: LLMConfig,
     stateManager: AgentStateManager,
     sessionId?: string
-): Promise<{ config: LLMConfig; configWarnings: string[] }> {
+): Promise<{
+    config: LLMConfig;
+    configWarnings: string[];
+    isValid: boolean;
+    errors: ValidationError[];
+}> {
     const result = await buildLLMConfig(updates, currentConfig);
 
     if (!result.isValid) {
-        throw new Error(`LLM configuration validation failed: ${result.errors.join('; ')}`);
+        return {
+            config: currentConfig,
+            configWarnings: result.warnings,
+            isValid: false,
+            errors: result.errors,
+        };
     }
 
     // Update state manager with the validated config
     const stateValidation = stateManager.updateLLM(result.config, sessionId);
     if (!stateValidation.isValid) {
-        throw new Error(`State manager validation failed: ${stateValidation.errors.join('; ')}`);
+        return {
+            config: currentConfig,
+            configWarnings: [...result.warnings, ...stateValidation.warnings],
+            isValid: false,
+            errors: stateValidation.errors,
+        };
     }
 
     return {
         config: result.config,
         configWarnings: [...result.warnings, ...stateValidation.warnings],
+        isValid: true,
+        errors: [],
     };
+}
+
+/**
+ * Helper function to convert ValidationError array to string array for backward compatibility
+ */
+export function validationErrorsToStrings(errors: ValidationError[]): string[] {
+    return errors.map((error) => error.message);
 }
 
 /**
@@ -197,7 +284,7 @@ export async function buildLLMConfig(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig
 ): Promise<LLMConfigResult> {
-    const errors: string[] = [];
+    const errors: ValidationError[] = [];
     const warnings: string[] = [];
 
     // Step 1: Determine model
@@ -252,9 +339,10 @@ export async function buildLLMConfig(
     // Step 7: Final schema validation
     const schemaValidation = LLMConfigSchema.safeParse(config);
     if (!schemaValidation.success) {
-        const schemaErrors = schemaValidation.error.errors.map(
-            (err) => `${err.path.join('.')}: ${err.message}`
-        );
+        const schemaErrors = schemaValidation.error.errors.map((err) => ({
+            type: 'schema_validation' as ValidationErrorType,
+            message: `${err.path.join('.')}: ${err.message}`,
+        }));
         errors.push(...schemaErrors);
         return { config: currentConfig, isValid: false, errors, warnings };
     }
@@ -276,11 +364,14 @@ export async function buildLLMConfig(
 function resolveModel(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
-    errors: string[]
+    errors: ValidationError[]
 ): string {
     if (updates.model !== undefined) {
         if (typeof updates.model !== 'string' || updates.model.trim() === '') {
-            errors.push('Model must be a non-empty string');
+            errors.push({
+                type: 'invalid_model',
+                message: 'Model must be a non-empty string',
+            });
             return '';
         }
         return updates.model.trim();
@@ -292,19 +383,26 @@ function resolveProvider(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
     model: string,
-    errors: string[],
+    errors: ValidationError[],
     warnings: string[]
 ): string {
     if (updates.provider !== undefined) {
         // Explicit provider provided
         if (typeof updates.provider !== 'string' || updates.provider.trim() === '') {
-            errors.push('Provider must be a non-empty string');
+            errors.push({
+                type: 'invalid_provider',
+                message: 'Provider must be a non-empty string',
+            });
             return '';
         }
 
         const providerName = updates.provider.trim();
         if (!isValidProvider(providerName)) {
-            errors.push(`Unknown provider: ${providerName}`);
+            errors.push({
+                type: 'invalid_provider',
+                message: `Unknown provider: ${providerName}`,
+                provider: providerName,
+            });
             return '';
         }
 
@@ -318,9 +416,10 @@ function resolveProvider(
             }
             return inferredProvider;
         } catch (error) {
-            errors.push(
-                `Could not infer provider from model '${model}'. Please specify provider explicitly.`
-            );
+            errors.push({
+                type: 'general',
+                message: `Could not infer provider from model '${model}'. Please specify provider explicitly.`,
+            });
             return '';
         }
     }
@@ -334,7 +433,7 @@ function resolveModelProviderCompatibility(
     provider: string,
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
-    errors: string[],
+    errors: ValidationError[],
     warnings: string[]
 ): { finalModel: string; finalProvider: string } {
     if (isValidProviderModel(provider, model)) {
@@ -355,9 +454,12 @@ function resolveModelProviderCompatibility(
 
     // Can't fix - this is an error
     const supportedModels = getSupportedModels(provider);
-    errors.push(
-        `Model '${model}' is not supported for provider '${provider}'. Supported models: ${supportedModels.join(', ')}`
-    );
+    errors.push({
+        type: 'incompatible_model_provider',
+        message: `Model '${model}' is not supported for provider '${provider}'. Supported models: ${supportedModels.join(', ')}`,
+        provider,
+        model,
+    });
     return { finalModel: model, finalProvider: provider };
 }
 
@@ -365,20 +467,27 @@ function resolveRouter(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
     provider: string,
-    errors: string[],
+    errors: ValidationError[],
     warnings: string[]
 ): 'vercel' | 'in-built' {
     if (updates.router !== undefined) {
         if (!isValidRouter(updates.router)) {
-            errors.push('Router must be either "vercel" or "in-built"');
+            errors.push({
+                type: 'unsupported_router',
+                message: 'Router must be either "vercel" or "in-built"',
+                router: updates.router,
+            });
             return 'vercel';
         }
 
         if (!isRouterSupportedForProvider(provider, updates.router)) {
             const supportedRouters = getSupportedRoutersForProvider(provider);
-            errors.push(
-                `Provider '${provider}' does not support '${updates.router}' router. Supported routers: ${supportedRouters.join(', ')}`
-            );
+            errors.push({
+                type: 'unsupported_router',
+                message: `Provider '${provider}' does not support '${updates.router}' router. Supported routers: ${supportedRouters.join(', ')}`,
+                provider,
+                router: updates.router,
+            });
             return 'vercel';
         }
 
@@ -393,7 +502,11 @@ function resolveRouter(
     // Current router not supported - find a compatible one
     const supportedRouters = getSupportedRoutersForProvider(provider);
     if (supportedRouters.length === 0) {
-        errors.push(`Provider '${provider}' is not supported by any router`);
+        errors.push({
+            type: 'unsupported_router',
+            message: `Provider '${provider}' is not supported by any router`,
+            provider,
+        });
         return 'vercel';
     }
 
@@ -415,7 +528,7 @@ async function resolveApiKey(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
     provider: string,
-    errors: string[],
+    errors: ValidationError[],
     warnings: string[]
 ): Promise<string> {
     const providerChanged = provider !== currentConfig.provider;
@@ -433,9 +546,11 @@ async function resolveApiKey(
             logger.info(`Resolved API key for provider '${provider}' from environment`);
             return resolvedApiKey;
         } else {
-            errors.push(
-                `No API key found for provider '${provider}'. Please set the appropriate environment variable or provide apiKey explicitly.`
-            );
+            errors.push({
+                type: 'missing_api_key',
+                message: `No API key found for provider '${provider}'. Please set the appropriate environment variable or provide apiKey explicitly.`,
+                provider,
+            });
             return '';
         }
     } else {
@@ -448,14 +563,18 @@ function buildFinalConfig(
     core: { provider: string; model: string; router: 'vercel' | 'in-built'; apiKey: string },
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
-    errors: string[],
+    errors: ValidationError[],
     warnings: string[]
 ): LLMConfig {
     // Base URL
     let baseURL: string | undefined;
     if (updates.baseURL !== undefined) {
         if (!supportsBaseURL(core.provider)) {
-            errors.push(`Custom baseURL is not supported for ${core.provider} provider`);
+            errors.push({
+                type: 'invalid_base_url',
+                message: `Custom baseURL is not supported for ${core.provider} provider`,
+                provider: core.provider,
+            });
         } else {
             baseURL = updates.baseURL;
         }
@@ -471,7 +590,10 @@ function buildFinalConfig(
     let maxTokens: number | undefined;
     if (updates.maxTokens !== undefined) {
         if (typeof updates.maxTokens !== 'number' || updates.maxTokens <= 0) {
-            errors.push('maxTokens must be a positive number');
+            errors.push({
+                type: 'invalid_max_tokens',
+                message: 'maxTokens must be a positive number',
+            });
         } else {
             maxTokens = updates.maxTokens;
         }
@@ -495,7 +617,10 @@ function buildFinalConfig(
     let providerOptions: Record<string, any> = {};
     if (updates.providerOptions !== undefined) {
         if (typeof updates.providerOptions !== 'object' || updates.providerOptions === null) {
-            errors.push('Provider options must be an object');
+            errors.push({
+                type: 'invalid_provider_options',
+                message: 'Provider options must be an object',
+            });
         } else {
             providerOptions = updates.providerOptions;
         }

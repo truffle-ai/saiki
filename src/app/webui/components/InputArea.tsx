@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Paperclip, SendHorizontal, X, Loader2, Bot, ChevronDown } from 'lucide-react';
+import { Paperclip, SendHorizontal, X, Loader2, Bot, ChevronDown, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from './ui/alert';
 
 interface InputAreaProps {
   onSend: (content: string, imageData?: { base64: string; mimeType: string }) => void;
@@ -27,6 +28,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   // LLM selector state
   const [currentModel, setCurrentModel] = useState('Loading...');
   const [isLoadingModel, setIsLoadingModel] = useState(false);
+  const [modelSwitchError, setModelSwitchError] = useState<string | null>(null);
   
   // TODO: Populate using LLM_REGISTRY by exposing an API endpoint
   const coreModels = [
@@ -138,6 +140,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
   const handleModelSwitch = async (model: { name: string; provider: string; model: string }) => {
     setIsLoadingModel(true);
+    setModelSwitchError(null); // Clear any previous errors
     try {
       const response = await fetch('/api/llm/switch', {
         method: 'POST',
@@ -149,147 +152,203 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         })
       });
       
-      if (response.ok) {
+      const result = await response.json();
+      
+      if (result.success) {
         setCurrentModel(model.name);
+        setModelSwitchError(null); // Clear any errors on success
+      } else {
+        // Handle new structured error format
+        let errorMessage = 'Failed to switch model';
+        if (result.errors && result.errors.length > 0) {
+          const primaryError = result.errors[0];
+          errorMessage = primaryError.message;
+          
+          // For API key errors, show the suggested action
+          if (primaryError.type === 'missing_api_key' && primaryError.suggestedAction) {
+            errorMessage += `. ${primaryError.suggestedAction}`;
+          }
+        } else if (result.error) {
+          // Fallback to old format
+          errorMessage = result.error;
+        }
+        
+        console.error('Failed to switch model:', errorMessage);
+        setModelSwitchError(errorMessage);
+        
+        // Auto-clear error after 10 seconds
+        setTimeout(() => setModelSwitchError(null), 10000);
       }
     } catch (error) {
-      console.error('Failed to switch model:', error);
+      console.error('Network error while switching model:', error);
+      const errorMessage = 'Network error while switching model';
+      setModelSwitchError(errorMessage);
+      
+      // Auto-clear error after 10 seconds
+      setTimeout(() => setModelSwitchError(null), 10000);
     } finally {
       setIsLoadingModel(false);
     }
   };
+
+  // Clear model switch error when user starts typing
+  useEffect(() => {
+    if (text && modelSwitchError) {
+      setModelSwitchError(null);
+    }
+  }, [text, modelSwitchError]);
 
   const showClearButton = text.length > 0 || !!imageData;
 
   return (
     <div
       id="input-area"
-      className="flex items-end gap-2 w-full"
+      className="flex flex-col gap-2 w-full"
     >
-      <Button 
-        variant="outline" 
-        size="icon" 
-        onClick={triggerFileInput} 
-        className="flex-shrink-0 text-muted-foreground hover:text-primary rounded-full p-2"
-        aria-label="Attach image"
-      >
-        <Paperclip className="h-8 w-8" />
-      </Button>
-      <input
-        ref={fileInputRef}
-        type="file"
-        id="image-upload"
-        accept="image/*"
-        className="hidden"
-        onChange={handleImageChange}
-      />
-
-      <div className="flex-1 flex flex-col w-full">
-        {imageData && (
-          <div className="relative mb-1.5 w-fit border border-border rounded-lg p-1 bg-muted/50 group">
-            <img
-              src={`data:${imageData.mimeType};base64,${imageData.base64}`}
-              alt="preview"
-              className="h-20 w-auto rounded-md"
-            />
+      {/* Model Switch Error Alert */}
+      {modelSwitchError && (
+        <Alert variant="destructive" className="mb-2">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{modelSwitchError}</span>
             <Button
-              variant="destructive"
-              size="icon"
-              onClick={removeImage}
-              className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-md"
-              aria-label="Remove image"
+              variant="ghost"
+              size="sm"
+              onClick={() => setModelSwitchError(null)}
+              className="h-auto p-1 ml-2"
             >
               <X className="h-3 w-3" />
             </Button>
-          </div>
-        )}
-        
-        <div className="relative">
-          <Textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask Saiki anything..."
-            rows={1}
-            className="resize-none min-h-[42px] w-full border-input bg-transparent focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 rounded-lg p-2.5 pr-24 text-sm"
-          />
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex items-end gap-2 w-full">
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={triggerFileInput} 
+          className="flex-shrink-0 text-muted-foreground hover:text-primary rounded-full p-2"
+          aria-label="Attach image"
+        >
+          <Paperclip className="h-8 w-8" />
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          id="image-upload"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageChange}
+        />
+
+        <div className="flex-1 flex flex-col w-full">
+          {imageData && (
+            <div className="relative mb-1.5 w-fit border border-border rounded-lg p-1 bg-muted/50 group">
+              <img
+                src={`data:${imageData.mimeType};base64,${imageData.base64}`}
+                alt="preview"
+                className="h-20 w-auto rounded-md"
+              />
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={removeImage}
+                className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-md"
+                aria-label="Remove image"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
           
-          {/* Model Selector - Inline in input */}
-          <div className="absolute bottom-1.5 right-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  disabled={isLoadingModel}
-                >
-                  <Bot className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">
-                    {isLoadingModel ? '...' : currentModel}
-                  </span>
-                  <ChevronDown className="h-3 w-3 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {coreModels.map((model) => (
-                  <DropdownMenuItem 
-                    key={model.model}
-                    onClick={() => handleModelSwitch(model)}
+          <div className="relative">
+            <Textarea
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask Saiki anything..."
+              rows={1}
+              className="resize-none min-h-[42px] w-full border-input bg-transparent focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 rounded-lg p-2.5 pr-24 text-sm"
+            />
+            
+            {/* Model Selector - Inline in input */}
+            <div className="absolute bottom-1.5 right-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    disabled={isLoadingModel}
                   >
-                    <Bot className="h-4 w-4 mr-2" />
-                    {model.name}
+                    <Bot className="h-3 w-3 mr-1" />
+                    <span className="hidden sm:inline">
+                      {isLoadingModel ? '...' : currentModel}
+                    </span>
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {coreModels.map((model) => (
+                    <DropdownMenuItem 
+                      key={model.model}
+                      onClick={() => handleModelSwitch(model)}
+                    >
+                      <Bot className="h-4 w-4 mr-2" />
+                      {model.name}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => {
+                    // TODO: Implement proper model viewer UI
+                    console.log('View all models clicked');
+                  }}>
+                    View all models
                   </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {
-                  // TODO: Implement proper model viewer UI
-                  console.log('View all models clicked');
-                }}>
-                  View all models
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
-      </div>
 
-      <Button 
-        type="submit" 
-        size="icon" 
-        onClick={handleSend} 
-        disabled={!text.trim() && !imageData} 
-        className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-2 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-70"
-        aria-label="Send message"
-      >
-        <SendHorizontal className="h-5 w-5" />
-      </Button>
-
-      {showClearButton && !isSending && (
         <Button 
-          variant="ghost" 
+          type="submit" 
           size="icon" 
-          onClick={() => { 
-            setText(''); 
-            setImageData(null); 
-            if (textareaRef.current) {
-              textareaRef.current.style.height = 'auto';
-              textareaRef.current.style.overflowY = 'hidden';
-            }
-          }}
-          className="flex-shrink-0 text-muted-foreground hover:text-destructive rounded-full p-2 ml-1"
-          aria-label="Clear input"
+          onClick={handleSend} 
+          disabled={!text.trim() && !imageData} 
+          className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-2 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-70"
+          aria-label="Send message"
         >
-          <X className="h-5 w-5" />
+          <SendHorizontal className="h-5 w-5" />
         </Button>
-      )}
 
-      {isSending && (
-         <div className="flex-shrink-0 p-2 ml-1">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-         </div>
-      )}
+        {showClearButton && !isSending && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => { 
+              setText(''); 
+              setImageData(null); 
+              if (textareaRef.current) {
+                textareaRef.current.style.height = 'auto';
+                textareaRef.current.style.overflowY = 'hidden';
+              }
+            }}
+            className="flex-shrink-0 text-muted-foreground hover:text-destructive rounded-full p-2 ml-1"
+            aria-label="Clear input"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
+
+        {isSending && (
+           <div className="flex-shrink-0 p-2 ml-1">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+           </div>
+        )}
+      </div>
     </div>
   );
 } 

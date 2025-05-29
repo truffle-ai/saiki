@@ -4,6 +4,7 @@ import {
     validateLLMSwitchRequest,
     validateRuntimeUpdate,
     validateRuntimeState,
+    validationErrorsToStrings,
 } from './validation-utils.js';
 import type { LLMConfig } from './schemas.js';
 import type { AgentRuntimeState } from './agent-state-manager.js';
@@ -112,9 +113,9 @@ describe('buildLLMConfig', () => {
         const result = await buildLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(
-            "No API key found for provider 'anthropic'. Please set the appropriate environment variable or provide apiKey explicitly."
-        );
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('missing_api_key');
+        expect(result.errors[0].message).toContain("No API key found for provider 'anthropic'");
     });
 
     it('should validate provider/model compatibility', async () => {
@@ -141,7 +142,11 @@ describe('buildLLMConfig', () => {
         const result = await buildLLMConfig({ provider: 'google', model: 'gpt-4o' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors[0]).toContain("Model 'gpt-4o' is not supported for provider 'google'");
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('incompatible_model_provider');
+        expect(result.errors[0].message).toContain(
+            "Model 'gpt-4o' is not supported for provider 'google'"
+        );
     });
 
     it('should switch to supported router when provider changes', async () => {
@@ -180,7 +185,9 @@ describe('buildLLMConfig', () => {
         );
 
         expect(result.isValid).toBe(false);
-        expect(result.errors[0]).toContain(
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('invalid_base_url');
+        expect(result.errors[0].message).toContain(
             'Custom baseURL is not supported for anthropic provider'
         );
     });
@@ -196,42 +203,54 @@ describe('buildLLMConfig', () => {
         const result = await buildLLMConfig({ model: '' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Model must be a non-empty string');
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('invalid_model');
+        expect(result.errors[0].message).toBe('Model must be a non-empty string');
     });
 
     it('should validate empty provider', async () => {
         const result = await buildLLMConfig({ provider: '' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Provider must be a non-empty string');
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('invalid_provider');
+        expect(result.errors[0].message).toBe('Provider must be a non-empty string');
     });
 
     it('should validate unknown provider', async () => {
         const result = await buildLLMConfig({ provider: 'unknown' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Unknown provider: unknown');
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('invalid_provider');
+        expect(result.errors[0].message).toBe('Unknown provider: unknown');
     });
 
     it('should validate negative maxTokens', async () => {
         const result = await buildLLMConfig({ maxTokens: -100 }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('maxTokens must be a positive number');
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('invalid_max_tokens');
+        expect(result.errors[0].message).toBe('maxTokens must be a positive number');
     });
 
     it('should validate invalid router', async () => {
         const result = await buildLLMConfig({ router: 'invalid' as any }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Router must be either "vercel" or "in-built"');
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('unsupported_router');
+        expect(result.errors[0].message).toBe('Router must be either "vercel" or "in-built"');
     });
 
     it('should validate invalid providerOptions', async () => {
         const result = await buildLLMConfig({ providerOptions: 'invalid' as any }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('Provider options must be an object');
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('invalid_provider_options');
+        expect(result.errors[0].message).toBe('Provider options must be an object');
     });
 
     it('should handle maxIterations update', async () => {
@@ -288,9 +307,9 @@ describe('buildLLMConfig', () => {
         const result = await buildLLMConfig({ model: 'claude-4-sonnet-20250514' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false); // Will fail due to missing API key
-        expect(result.errors).toContain(
-            "No API key found for provider 'anthropic'. Please set the appropriate environment variable or provide apiKey explicitly."
-        );
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('missing_api_key');
+        expect(result.errors[0].message).toContain("No API key found for provider 'anthropic'");
     });
 });
 
@@ -309,7 +328,9 @@ describe('validateLLMSwitchRequest', () => {
     test('should require provider and model', () => {
         const errors = validateLLMSwitchRequest({});
 
-        expect(errors).toContain('Provider and model are required');
+        expect(errors).toHaveLength(1);
+        expect(errors[0].type).toBe('general');
+        expect(errors[0].message).toBe('Provider and model are required');
     });
 
     test('should validate router', () => {
@@ -319,7 +340,11 @@ describe('validateLLMSwitchRequest', () => {
             router: 'invalid',
         });
 
-        expect(errors).toContain('Router must be either "vercel" or "in-built"');
+        // Should have 1 error for the invalid router
+        expect(errors.length).toBeGreaterThan(0);
+        const routerError = errors.find((e) => e.type === 'unsupported_router');
+        expect(routerError).toBeDefined();
+        expect(routerError.message).toBe('Router must be either "vercel" or "in-built"');
     });
 });
 
@@ -340,7 +365,9 @@ describe('validateRuntimeUpdate', () => {
         });
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('debugMode must be a boolean');
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('general');
+        expect(result.errors[0].message).toBe('debugMode must be a boolean');
     });
 
     test('should error on invalid logLevel', () => {
@@ -349,6 +376,8 @@ describe('validateRuntimeUpdate', () => {
         });
 
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain('logLevel must be one of: error, warn, info, debug');
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('general');
+        expect(result.errors[0].message).toBe('logLevel must be one of: error, warn, info, debug');
     });
 });

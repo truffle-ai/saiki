@@ -13,7 +13,7 @@ import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 import { AgentEventBus } from '../../events/index.js';
 import { LLMConfigSchema } from '../../config/schemas.js';
-import { buildValidatedLLMConfig } from '../../config/validation-utils.js';
+import { buildLLMConfig, type ValidationError } from '../../config/validation-utils.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
@@ -154,39 +154,6 @@ export class SaikiAgent {
         }
     }
 
-    /**
-     * Resets the conversation history for a specific session or the default session.
-     * @param sessionId Optional session ID. If not provided, resets the default session.
-     */
-    public async resetConversation(sessionId?: string): Promise<void> {
-        try {
-            let session: ChatSession;
-
-            if (sessionId) {
-                session = this.sessionManager.getSession(sessionId);
-                if (!session) {
-                    throw new Error(`Session '${sessionId}' not found`);
-                }
-            } else {
-                // Use default session for backward compatibility
-                if (!this.defaultSession) {
-                    this.defaultSession = this.sessionManager.createSession('default');
-                }
-                session = this.defaultSession;
-            }
-
-            await session.reset();
-            logger.info(`SaikiAgent conversation reset for session: ${sessionId || 'default'}`);
-            this.agentEventBus.emit('saiki:conversationReset', {
-                sessionId: session.id,
-            });
-        } catch (error) {
-            logger.error('Error during SaikiAgent.resetConversation:', error);
-            // Re-throw the error to allow the caller to handle it.
-            throw error;
-        }
-    }
-
     // ============= SESSION MANAGEMENT =============
 
     /**
@@ -250,6 +217,39 @@ export class SaikiAgent {
         return await session.getHistory();
     }
 
+    /**
+     * Resets the conversation history for a specific session or the default session.
+     * @param sessionId Optional session ID. If not provided, resets the default session.
+     */
+    public async resetConversation(sessionId?: string): Promise<void> {
+        try {
+            let session: ChatSession;
+
+            if (sessionId) {
+                session = this.sessionManager.getSession(sessionId);
+                if (!session) {
+                    throw new Error(`Session '${sessionId}' not found`);
+                }
+            } else {
+                // Use default session for backward compatibility
+                if (!this.defaultSession) {
+                    this.defaultSession = this.sessionManager.createSession('default');
+                }
+                session = this.defaultSession;
+            }
+
+            await session.reset();
+            logger.info(`SaikiAgent conversation reset for session: ${sessionId || 'default'}`);
+            this.agentEventBus.emit('saiki:conversationReset', {
+                sessionId: session.id,
+            });
+        } catch (error) {
+            logger.error('Error during SaikiAgent.resetConversation:', error);
+            // Re-throw the error to allow the caller to handle it.
+            throw error;
+        }
+    }
+
     // ============= LLM MANAGEMENT =============
 
     /**
@@ -297,72 +297,161 @@ export class SaikiAgent {
         llmUpdates: Partial<LLMConfig>,
         sessionId?: string
     ): Promise<{
-        success: true;
-        config: LLMConfig;
-        message: string;
+        success: boolean;
+        config?: LLMConfig;
+        message?: string;
         warnings?: string[];
+        errors?: Array<{
+            type: string;
+            message: string;
+            provider?: string;
+            model?: string;
+            router?: string;
+            suggestedAction?: string;
+        }>;
     }> {
+        // Basic validation
+        if (!llmUpdates.model && !llmUpdates.provider) {
+            return {
+                success: false,
+                errors: [
+                    {
+                        type: 'general',
+                        message: 'At least model or provider must be specified',
+                    },
+                ],
+            };
+        }
+
         try {
-            if (!llmUpdates.model && !llmUpdates.provider) {
-                throw new Error('At least model or provider must be specified');
+            // Get current config for the session
+            const currentLLMConfig = sessionId
+                ? this.stateManager.getEffectiveState(sessionId).llm
+                : this.stateManager.getEffectiveState().llm;
+
+            // Build and validate the new configuration
+            const result = await buildLLMConfig(llmUpdates, currentLLMConfig);
+
+            if (!result.isValid) {
+                // Return structured errors for UI consumption
+                return {
+                    success: false,
+                    errors: result.errors.map((err) => ({
+                        type: err.type,
+                        message: err.message,
+                        provider: err.provider,
+                        model: err.model,
+                        router: err.router,
+                        suggestedAction:
+                            err.type === 'missing_api_key'
+                                ? `Please set the ${err.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
+                                : err.suggestedAction,
+                    })),
+                    warnings: result.warnings,
+                };
             }
 
-            // Get current config for merging
-            const currentConfig = sessionId
-                ? this.stateManager.getEffectiveState(sessionId).llm
-                : this.stateManager.getRuntimeState().llm;
-
-            // Build and validate LLM configuration using utility function
-            const { config: newLLMConfig, configWarnings } = await buildValidatedLLMConfig(
-                llmUpdates,
-                currentConfig,
-                this.stateManager,
-                sessionId
-            );
-
-            // Perform the actual switch based on session scope
-            const { message, warnings: sessionWarnings } = await this.performLLMSwitch(
-                newLLMConfig,
-                sessionId
-            );
-
-            // Collect all warnings
-            const allWarnings = this.collectWarnings(configWarnings, sessionWarnings);
-
+            // Perform the actual LLM switch with validated config
+            return await this.performLLMSwitch(result.config, sessionId, result.warnings);
+        } catch (error) {
+            logger.error('Error switching LLM', {
+                error: error.message,
+                config: llmUpdates,
+                sessionScope: sessionId,
+            });
             return {
-                success: true,
-                config: newLLMConfig,
-                message,
-                warnings: allWarnings.length > 0 ? allWarnings : undefined,
+                success: false,
+                errors: [
+                    {
+                        type: 'general',
+                        message: error.message,
+                    },
+                ],
             };
-        } catch (error: any) {
-            logger.error('Failed to switch LLM:', error.message);
-            throw error;
         }
     }
 
     /**
-     * Perform the actual LLM switch based on session scope
+     * Performs the actual LLM switch with a validated configuration.
+     * This is a helper method that handles state management and session switching.
+     *
+     * @param validatedConfig - The validated LLM configuration to apply
+     * @param sessionScope - Session ID, '*' for all sessions, or undefined for default session
+     * @param configWarnings - Warnings from the validation process
+     * @returns Promise resolving to switch result
      */
     private async performLLMSwitch(
-        newLLMConfig: LLMConfig,
-        sessionId?: string
-    ): Promise<{ message: string; warnings: string[] }> {
-        if (sessionId === '*') {
-            return this.sessionManager.switchLLMForAllSessions(newLLMConfig);
-        } else if (sessionId) {
-            return this.sessionManager.switchLLMForSpecificSession(newLLMConfig, sessionId);
-        } else {
-            return this.sessionManager.switchLLMForDefaultSession(newLLMConfig);
+        validatedConfig: LLMConfig,
+        sessionScope?: string,
+        configWarnings: string[] = []
+    ): Promise<{
+        success: boolean;
+        config?: LLMConfig;
+        message?: string;
+        warnings?: string[];
+        errors?: Array<{
+            type: string;
+            message: string;
+            provider?: string;
+            model?: string;
+            router?: string;
+            suggestedAction?: string;
+        }>;
+    }> {
+        // Update state manager
+        const stateValidation = this.stateManager.updateLLM(validatedConfig, sessionScope);
+        if (!stateValidation.isValid) {
+            return {
+                success: false,
+                errors: stateValidation.errors.map((err) => ({
+                    type: err.type,
+                    message: err.message,
+                    provider: err.provider,
+                    model: err.model,
+                    router: err.router,
+                    suggestedAction: err.suggestedAction,
+                })),
+            };
         }
-    }
 
-    /**
-     * Collect and deduplicate warnings from different sources
-     */
-    private collectWarnings(...warningArrays: string[][]): string[] {
-        const allWarnings = warningArrays.flat().filter(Boolean);
-        return Array.from(new Set(allWarnings)); // Deduplicate
+        // Switch LLM in session(s)
+        let switchResult;
+        if (sessionScope === '*') {
+            switchResult = await this.sessionManager.switchLLMForAllSessions(validatedConfig);
+        } else if (sessionScope) {
+            // Verify session exists
+            if (!this.sessionManager.getSession(sessionScope)) {
+                return {
+                    success: false,
+                    errors: [
+                        {
+                            type: 'general',
+                            message: `Session ${sessionScope} not found`,
+                        },
+                    ],
+                };
+            }
+            switchResult = await this.sessionManager.switchLLMForSpecificSession(
+                validatedConfig,
+                sessionScope
+            );
+        } else {
+            switchResult = await this.sessionManager.switchLLMForDefaultSession(validatedConfig);
+        }
+
+        // Collect warnings
+        const allWarnings = [
+            ...configWarnings,
+            ...(stateValidation.warnings || []),
+            ...(switchResult.warnings || []),
+        ];
+
+        return {
+            success: true,
+            config: validatedConfig,
+            message: switchResult.message,
+            warnings: allWarnings.length > 0 ? allWarnings : undefined,
+        };
     }
 
     // ============= MCP SERVER MANAGEMENT =============
