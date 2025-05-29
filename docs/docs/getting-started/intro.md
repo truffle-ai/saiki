@@ -23,6 +23,9 @@ Saiki is the missing natural language layer across your stack. Its powerful in-b
 ## Ready to Start?
 
 **[Get started with Saiki in 5 minutes →](./quick-start)**
+## Ready to Start?
+
+**[Get started with Saiki in 5 minutes →](./quick-start)**
 
 ## Learn More
 
@@ -104,4 +107,5 @@ saiki "what can you help with?"
 
 ---
 
+Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation!
 Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation!
