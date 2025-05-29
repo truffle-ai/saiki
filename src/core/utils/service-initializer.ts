@@ -43,7 +43,6 @@ export type AgentServices = {
     clientManager: MCPClientManager;
     promptManager: PromptManager;
     agentEventBus: AgentEventBus;
-    configManager: StaticConfigManager;
     stateManager: AgentStateManager;
     sessionManager: SessionManager;
 };
@@ -80,7 +79,7 @@ export type InitializeServicesOptions = {
  * @param agentConfig The agent configuration object
  * @param cliArgs Optional overrides from the CLI
  * @param overrides Optional service overrides for testing or advanced scenarios
- * @returns All the initialized services and the config manager
+ * @returns All the initialized services required for a Saiki agent
  */
 export async function createAgentServices(
     agentConfig: AgentConfig,
@@ -144,7 +143,6 @@ export async function createAgentServices(
         clientManager,
         promptManager,
         agentEventBus,
-        configManager,
         stateManager,
         sessionManager,
     };

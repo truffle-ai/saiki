@@ -246,7 +246,7 @@ program
                     agent,
                     apiPort,
                     true,
-                    agent.configManager.getConfig().agentCard || {}
+                    agent.stateManager.getEffectiveConfig().agentCard || {}
                 );
 
                 // Start Next.js web server
@@ -278,7 +278,7 @@ program
             case 'mcp': {
                 // Start API server only
                 const webPort = parseInt(opts.webPort, 10);
-                const agentCard = agent.configManager.getConfig().agentCard ?? {};
+                const agentCard = agent.stateManager.getEffectiveConfig().agentCard ?? {};
                 const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
                 const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 

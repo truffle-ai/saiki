@@ -159,6 +159,21 @@ export class SessionManager {
     }
 
     /**
+     * Increments the message count for a session and updates activity.
+     * This should be called whenever a message is sent in the session.
+     */
+    public incrementMessageCount(sessionId: string): void {
+        const metadata = this.sessionMetadata.get(sessionId);
+        if (metadata) {
+            metadata.messageCount += 1;
+            metadata.lastActivity = new Date();
+            logger.debug(
+                `Session ${sessionId}: Message count incremented to ${metadata.messageCount}`
+            );
+        }
+    }
+
+    /**
      * Cleans up expired sessions based on TTL.
      */
     private cleanupExpiredSessions(): void {

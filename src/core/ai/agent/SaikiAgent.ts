@@ -8,8 +8,6 @@ import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
-import { createLLMService } from '../llm/services/factory.js';
-import { LLMRouter } from '../llm/types.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
@@ -23,7 +21,7 @@ const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
     'promptManager',
     'agentEventBus',
-    'configManager',
+    'stateManager',
     'sessionManager',
 ];
 
@@ -32,6 +30,7 @@ const requiredServices: (keyof AgentServices)[] = [
  * SaikiAgent is an abstraction layer on top of the internal services that saiki has.
  * You can use the SaikiAgent class in applications to build AI Agents.
  * By design, most of the methods in this class are thin wrappers around the internal services, exposing functionality that we might want to use in applications.
+ * Most APIs designed for Saiki agents should use functions of this class - you can think of this class as the primary API/User facing class.
  */
 export class SaikiAgent {
     /**
@@ -42,7 +41,6 @@ export class SaikiAgent {
     public readonly clientManager: MCPClientManager;
     public readonly promptManager: PromptManager;
     public readonly agentEventBus: AgentEventBus;
-    public readonly configManager: StaticConfigManager;
     public readonly stateManager: AgentStateManager;
     public readonly sessionManager: SessionManager;
     public readonly services: AgentServices;
@@ -61,7 +59,6 @@ export class SaikiAgent {
         this.clientManager = services.clientManager;
         this.promptManager = services.promptManager;
         this.agentEventBus = services.agentEventBus;
-        this.configManager = services.configManager;
         this.stateManager = services.stateManager;
         this.sessionManager = services.sessionManager;
         this.services = services;
@@ -98,23 +95,40 @@ export class SaikiAgent {
      * For backward compatibility, this creates/uses a default session.
      * @param userInput The input from the user.
      * @param imageDataInput Optional image data with MIME type for multimodal processing.
+     * @param sessionId Optional session ID. If not provided, uses the default session.
      * @returns The agent's response.
      */
     public async run(
         userInput: string,
-        imageDataInput?: { image: string; mimeType: string }
+        imageDataInput?: { image: string; mimeType: string },
+        sessionId?: string
     ): Promise<string | null> {
         try {
-            // Ensure we have a default session for backward compatibility
-            if (!this.defaultSession) {
-                this.defaultSession = this.sessionManager.createSession('default');
-                logger.debug(`SaikiAgent.run: created default session ${this.defaultSession.id}`);
+            let session: ChatSession;
+
+            if (sessionId) {
+                // Use specific session or create it if it doesn't exist
+                session =
+                    this.sessionManager.getSession(sessionId) ||
+                    this.sessionManager.createSession(sessionId);
+            } else {
+                // Use default session for backward compatibility
+                if (!this.defaultSession) {
+                    this.defaultSession = this.sessionManager.createSession('default');
+                    logger.debug(
+                        `SaikiAgent.run: created default session ${this.defaultSession.id}`
+                    );
+                }
+                session = this.defaultSession;
             }
 
             logger.debug(
-                `SaikiAgent.run: userInput: ${userInput} and imageDataInput: ${imageDataInput}`
+                `SaikiAgent.run: userInput: ${userInput}, imageDataInput: ${imageDataInput}, sessionId: ${sessionId || 'default'}`
             );
-            const response = await this.defaultSession.run(userInput, imageDataInput);
+            const response = await session.run(userInput, imageDataInput);
+
+            // Increment message count for this session (user message + assistant response = 2 messages)
+            this.sessionManager.incrementMessageCount(session.id);
 
             // If response is an empty string, treat it as no significant response.
             if (response && response.trim() !== '') {
@@ -130,19 +144,30 @@ export class SaikiAgent {
     }
 
     /**
-     * Resets the conversation history for the default session.
-     * For backward compatibility.
+     * Resets the conversation history for a specific session or the default session.
+     * @param sessionId Optional session ID. If not provided, resets the default session.
      */
-    public async resetConversation(): Promise<void> {
+    public async resetConversation(sessionId?: string): Promise<void> {
         try {
-            if (!this.defaultSession) {
-                this.defaultSession = this.sessionManager.createSession('default');
+            let session: ChatSession;
+
+            if (sessionId) {
+                session = this.sessionManager.getSession(sessionId);
+                if (!session) {
+                    throw new Error(`Session '${sessionId}' not found`);
+                }
+            } else {
+                // Use default session for backward compatibility
+                if (!this.defaultSession) {
+                    this.defaultSession = this.sessionManager.createSession('default');
+                }
+                session = this.defaultSession;
             }
 
-            await this.defaultSession.reset();
-            logger.info('SaikiAgent conversation reset.');
+            await session.reset();
+            logger.info(`SaikiAgent conversation reset for session: ${sessionId || 'default'}`);
             this.agentEventBus.emit('saiki:conversationReset', {
-                sessionId: this.defaultSession.id,
+                sessionId: session.id,
             });
         } catch (error) {
             logger.error('Error during SaikiAgent.resetConversation:', error);

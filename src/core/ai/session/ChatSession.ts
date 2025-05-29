@@ -6,11 +6,9 @@ import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
 import { getEffectiveMaxTokens } from '../llm/registry.js';
 import type { MessageManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
-import type { IMessageFormatter } from '../llm/messages/formatters/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { MCPClientManager } from '../../client/manager.js';
 import type { LLMConfig } from '../../config/schemas.js';
-import type { LLMRouter } from '../llm/types.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
 import {
     SessionEventBus,

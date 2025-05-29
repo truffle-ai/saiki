@@ -44,8 +44,9 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             return res.status(400).send({ error: 'Missing message content' });
         }
         try {
-            agent.run(req.body.message);
-            res.status(202).send({ status: 'processing' });
+            const sessionId = req.body.sessionId as string | undefined;
+            await agent.run(req.body.message, undefined, sessionId);
+            res.status(202).send({ status: 'processing', sessionId });
         } catch (error) {
             logger.error(`Error handling POST /api/message: ${error.message}`);
             res.status(500).send({ error: 'Internal server error' });
@@ -63,8 +64,9 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
             : undefined;
         try {
-            const responseText = await agent.run(req.body.message, imageDataInput);
-            res.status(200).send({ response: responseText });
+            const sessionId = req.body.sessionId as string | undefined;
+            const responseText = await agent.run(req.body.message, imageDataInput, sessionId);
+            res.status(200).send({ response: responseText, sessionId });
         } catch (error) {
             logger.error(`Error handling POST /api/message-sync: ${error.message}`);
             res.status(500).send({ error: 'Internal server error' });
@@ -74,8 +76,9 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.post('/api/reset', express.json(), async (req, res) => {
         logger.info('Received request via POST /api/reset');
         try {
-            await agent.resetConversation();
-            res.status(200).send({ status: 'reset initiated' });
+            const sessionId = req.body.sessionId as string | undefined;
+            await agent.resetConversation(sessionId);
+            res.status(200).send({ status: 'reset initiated', sessionId });
         } catch (error) {
             logger.error(`Error handling POST /api/reset: ${error.message}`);
             res.status(500).send({ error: 'Internal server error' });
@@ -232,11 +235,16 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     const imageDataInput = data.imageData
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
+                    const sessionId = data.sessionId as string | undefined;
                     if (imageDataInput) logger.info('Image data included in message.');
-                    await agent.run(data.content, imageDataInput);
+                    if (sessionId) logger.info(`Message for session: ${sessionId}`);
+                    await agent.run(data.content, imageDataInput, sessionId);
                 } else if (data.type === 'reset') {
-                    logger.info('Processing reset command from WebSocket.');
-                    await agent.resetConversation();
+                    const sessionId = data.sessionId as string | undefined;
+                    logger.info(
+                        `Processing reset command from WebSocket${sessionId ? ` for session: ${sessionId}` : ''}.`
+                    );
+                    await agent.resetConversation(sessionId);
                 } else {
                     logger.warn(`Received unknown WebSocket message type: ${data.type}`);
                     ws.send(
@@ -302,13 +310,20 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Export current AgentConfig as YAML, omitting sensitive fields
     app.get('/api/config.yaml', async (req, res) => {
         try {
+            // Get session ID from query parameter if provided
+            const sessionId = req.query.sessionId as string | undefined;
+
             // Deep clone and sanitize the current effective configuration
-            const rawConfig = agent.stateManager.getEffectiveConfig();
+            const rawConfig = sessionId
+                ? agent.stateManager.getEffectiveConfig(sessionId)
+                : agent.stateManager.getEffectiveConfig();
             const exportConfig = JSON.parse(JSON.stringify(rawConfig));
+
             // Remove sensitive API key
             if (exportConfig.llm && 'apiKey' in exportConfig.llm) {
                 exportConfig.llm.apiKey = 'SET_YOUR_API_KEY_HERE';
             }
+
             // Serialize YAML
             const yamlText = yamlStringify(exportConfig);
             res.setHeader('Content-Type', 'application/x-yaml');
@@ -391,6 +406,128 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 success: false,
                 error: error.message,
             });
+        }
+    });
+
+    // Session Management APIs
+
+    // List all active sessions
+    app.get('/api/sessions', async (req, res) => {
+        try {
+            const sessionIds = agent.listSessions();
+            const sessions = sessionIds.map((id) => {
+                const metadata = agent.sessionManager.getSessionMetadata(id);
+                return {
+                    id,
+                    createdAt: metadata?.createdAt || null,
+                    lastActivity: metadata?.lastActivity || null,
+                    messageCount: metadata?.messageCount || 0,
+                };
+            });
+            res.json({ sessions });
+        } catch (error) {
+            logger.error(`Error listing sessions: ${error.message}`);
+            res.status(500).json({ error: 'Failed to list sessions' });
+        }
+    });
+
+    // Create a new session
+    app.post('/api/sessions', express.json(), async (req, res) => {
+        try {
+            const { sessionId } = req.body;
+            const session = agent.sessionManager.createSession(sessionId);
+            const metadata = agent.sessionManager.getSessionMetadata(session.id);
+            res.status(201).json({
+                session: {
+                    id: session.id,
+                    createdAt: metadata?.createdAt || null,
+                    lastActivity: metadata?.lastActivity || null,
+                    messageCount: metadata?.messageCount || 0,
+                },
+            });
+        } catch (error) {
+            logger.error(`Error creating session: ${error.message}`);
+            res.status(500).json({ error: 'Failed to create session' });
+        }
+    });
+
+    // Get session details
+    app.get('/api/sessions/:sessionId', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const session = agent.sessionManager.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            const metadata = agent.sessionManager.getSessionMetadata(sessionId);
+            const history = await session.getHistory();
+
+            res.json({
+                session: {
+                    id: sessionId,
+                    createdAt: metadata?.createdAt || null,
+                    lastActivity: metadata?.lastActivity || null,
+                    messageCount: metadata?.messageCount || 0,
+                    history: history.length,
+                },
+            });
+        } catch (error) {
+            logger.error(`Error getting session ${req.params.sessionId}: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get session details' });
+        }
+    });
+
+    // Get session conversation history
+    app.get('/api/sessions/:sessionId/history', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const session = agent.sessionManager.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            const history = await session.getHistory();
+            res.json({ history });
+        } catch (error) {
+            logger.error(
+                `Error getting session history for ${req.params.sessionId}: ${error.message}`
+            );
+            res.status(500).json({ error: 'Failed to get session history' });
+        }
+    });
+
+    // Delete a session
+    app.delete('/api/sessions/:sessionId', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const session = agent.sessionManager.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            await agent.sessionManager.endSession(sessionId);
+            res.json({ status: 'deleted', sessionId });
+        } catch (error) {
+            logger.error(`Error deleting session ${req.params.sessionId}: ${error.message}`);
+            res.status(500).json({ error: 'Failed to delete session' });
+        }
+    });
+
+    // Reset session conversation
+    app.post('/api/sessions/:sessionId/reset', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const session = agent.sessionManager.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            await session.reset();
+            res.json({ status: 'reset', sessionId });
+        } catch (error) {
+            logger.error(`Error resetting session ${req.params.sessionId}: ${error.message}`);
+            res.status(500).json({ error: 'Failed to reset session' });
         }
     });
 
