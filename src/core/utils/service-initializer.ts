@@ -115,7 +115,7 @@ export async function createAgentServices(
     const promptManager = new PromptManager(config.llm.systemPrompt);
 
     // 5. Initialize state manager for runtime state tracking
-    const stateManager = new AgentStateManager(config);
+    const stateManager = new AgentStateManager(config, agentEventBus);
     logger.debug('Agent state manager initialized');
 
     // 6. Initialize session manager

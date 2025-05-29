@@ -1,6 +1,6 @@
-import { EventEmitter } from 'events';
 import { logger } from '../logger/index.js';
 import type { AgentConfig, LLMConfig, McpServerConfig } from './schemas.js';
+import type { AgentEventBus } from '../events/index.js';
 import {
     validateLLMUpdate,
     validateRuntimeUpdate,
@@ -43,28 +43,6 @@ export interface SessionOverride {
 }
 
 /**
- * Events emitted by the agent state manager
- */
-export interface AgentStateEvents {
-    'state:changed': {
-        field: keyof AgentRuntimeState;
-        oldValue: any;
-        newValue: any;
-        sessionId?: string;
-    };
-    'state:exported': {
-        config: AgentConfig;
-        runtimeSettings: AgentRuntimeState['runtime'];
-    };
-    'state:reset': { toConfig: AgentConfig };
-    'session:override-set': { sessionId: string; override: SessionOverride };
-    'session:override-cleared': { sessionId: string };
-    'mcpServer:added': { serverName: string; config: McpServerConfig };
-    'mcpServer:removed': { serverName: string };
-    'mcpServer:updated': { serverName: string; config: McpServerConfig };
-}
-
-/**
  * Manages the runtime state of the agent.
  *
  * This class handles dynamic configuration changes that occur during agent execution,
@@ -78,7 +56,7 @@ export interface AgentStateEvents {
  * 5. Provide change tracking and validation capabilities
  * 6. Maintain effective configuration for each session
  */
-export class AgentStateManager extends EventEmitter {
+export class AgentStateManager {
     private runtimeState: AgentRuntimeState;
     private readonly baselineConfig: AgentConfig;
     private sessionOverrides: Map<string, SessionOverride> = new Map();
@@ -87,13 +65,14 @@ export class AgentStateManager extends EventEmitter {
      * Initialize AgentStateManager from a processed static configuration.
      *
      * @param staticConfig The processed configuration from StaticConfigManager
+     * @param agentEventBus The agent event bus for emitting state change events
      * @param initialSettings Optional runtime settings to apply immediately
      */
     constructor(
         staticConfig: AgentConfig,
+        private agentEventBus: AgentEventBus,
         initialSettings?: Partial<AgentRuntimeState['runtime']>
     ) {
-        super();
         this.baselineConfig = structuredClone(staticConfig);
 
         // Initialize runtime state from static config baseline
@@ -210,7 +189,7 @@ export class AgentStateManager extends EventEmitter {
             this.runtimeState.lastModified = new Date();
         }
 
-        this.emit('state:changed', {
+        this.agentEventBus.emit('saiki:stateChanged', {
             field: 'llm',
             oldValue,
             newValue: sessionId ? this.getEffectiveState(sessionId).llm : this.runtimeState.llm,
@@ -242,10 +221,10 @@ export class AgentStateManager extends EventEmitter {
         this.runtimeState.mcpServers[serverName] = serverConfig;
         this.runtimeState.lastModified = new Date();
 
-        const eventName = isUpdate ? 'mcpServer:updated' : 'mcpServer:added';
-        this.emit(eventName, { serverName, config: serverConfig });
+        const eventName = isUpdate ? 'saiki:mcpServerUpdated' : 'saiki:mcpServerAdded';
+        this.agentEventBus.emit(eventName, { serverName, config: serverConfig });
 
-        this.emit('state:changed', {
+        this.agentEventBus.emit('saiki:stateChanged', {
             field: 'mcpServers',
             oldValue: isUpdate ? 'updated' : 'added',
             newValue: serverConfig,
@@ -267,8 +246,8 @@ export class AgentStateManager extends EventEmitter {
             delete this.runtimeState.mcpServers[serverName];
             this.runtimeState.lastModified = new Date();
 
-            this.emit('mcpServer:removed', { serverName });
-            this.emit('state:changed', {
+            this.agentEventBus.emit('saiki:mcpServerRemoved', { serverName });
+            this.agentEventBus.emit('saiki:stateChanged', {
                 field: 'mcpServers',
                 oldValue: 'removed',
                 newValue: undefined,
@@ -329,7 +308,7 @@ export class AgentStateManager extends EventEmitter {
             this.runtimeState.lastModified = new Date();
         }
 
-        this.emit('state:changed', {
+        this.agentEventBus.emit('saiki:stateChanged', {
             field: 'runtime',
             oldValue,
             newValue: sessionId
@@ -364,7 +343,10 @@ export class AgentStateManager extends EventEmitter {
         };
 
         this.sessionOverrides.set(sessionId, override);
-        this.emit('session:override-set', { sessionId, override: structuredClone(override) });
+        this.agentEventBus.emit('saiki:sessionOverrideSet', {
+            sessionId,
+            override: structuredClone(override),
+        });
     }
 
     /**
@@ -382,7 +364,7 @@ export class AgentStateManager extends EventEmitter {
         this.sessionOverrides.delete(sessionId);
 
         if (hadOverride) {
-            this.emit('session:override-cleared', { sessionId });
+            this.agentEventBus.emit('saiki:sessionOverrideCleared', { sessionId });
             logger.info('Session override cleared', { sessionId });
         }
     }
@@ -395,7 +377,7 @@ export class AgentStateManager extends EventEmitter {
         this.sessionOverrides.clear();
 
         sessionIds.forEach((sessionId) => {
-            this.emit('session:override-cleared', { sessionId });
+            this.agentEventBus.emit('saiki:sessionOverrideCleared', { sessionId });
         });
 
         if (sessionIds.length > 0) {
@@ -424,7 +406,7 @@ export class AgentStateManager extends EventEmitter {
             runtimeSettings: structuredClone(this.runtimeState.runtime),
         };
 
-        this.emit('state:exported', result);
+        this.agentEventBus.emit('saiki:stateExported', result);
 
         logger.info('Runtime state exported as config', {
             hasChanges: this.hasChangesFromBaseline(),
@@ -449,7 +431,7 @@ export class AgentStateManager extends EventEmitter {
         };
 
         this.clearAllSessionOverrides();
-        this.emit('state:reset', { toConfig: this.baselineConfig });
+        this.agentEventBus.emit('saiki:stateReset', { toConfig: this.baselineConfig });
 
         logger.info('Runtime state reset to baseline config');
     }

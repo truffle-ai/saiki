@@ -8,6 +8,15 @@ export const AGENT_EVENT_NAMES = [
     'saiki:mcpServerConnected',
     'saiki:availableToolsUpdated',
     'saiki:llmSwitched',
+    // Agent state manager events
+    'saiki:stateChanged',
+    'saiki:stateExported',
+    'saiki:stateReset',
+    'saiki:sessionOverrideSet',
+    'saiki:sessionOverrideCleared',
+    'saiki:mcpServerAdded',
+    'saiki:mcpServerRemoved',
+    'saiki:mcpServerUpdated',
 ] as const;
 
 /**
@@ -121,6 +130,54 @@ export interface AgentEventMap {
         router?: string;
         historyRetained?: boolean;
         sessionId?: string;
+    };
+
+    // Agent state manager events
+    /** Fired when agent runtime state changes */
+    'saiki:stateChanged': {
+        field: string; // keyof AgentRuntimeState
+        oldValue: any;
+        newValue: any;
+        sessionId?: string;
+    };
+
+    /** Fired when agent state is exported as config */
+    'saiki:stateExported': {
+        config: any; // AgentConfig type
+        runtimeSettings: any;
+    };
+
+    /** Fired when agent state is reset to baseline */
+    'saiki:stateReset': {
+        toConfig: any; // AgentConfig type
+    };
+
+    /** Fired when session override is set */
+    'saiki:sessionOverrideSet': {
+        sessionId: string;
+        override: any; // SessionOverride type
+    };
+
+    /** Fired when session override is cleared */
+    'saiki:sessionOverrideCleared': {
+        sessionId: string;
+    };
+
+    /** Fired when MCP server is added to runtime state */
+    'saiki:mcpServerAdded': {
+        serverName: string;
+        config: any; // McpServerConfig type
+    };
+
+    /** Fired when MCP server is removed from runtime state */
+    'saiki:mcpServerRemoved': {
+        serverName: string;
+    };
+
+    /** Fired when MCP server is updated in runtime state */
+    'saiki:mcpServerUpdated': {
+        serverName: string;
+        config: any; // McpServerConfig type
     };
 }
 
