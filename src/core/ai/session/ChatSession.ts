@@ -6,6 +6,8 @@ import type { ILLMService } from '../llm/services/types.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { MCPClientManager } from '../../client/manager.js';
+import type { LLMConfig } from '../../config/schemas.js';
+import type { LLMRouter } from '../llm/types.js';
 import {
     SessionEventBus,
     AgentEventBus,
@@ -301,6 +303,56 @@ export class ChatSession {
      */
     public getLLMService(): ILLMService {
         return this.llmService;
+    }
+
+    /**
+     * Switches the LLM service for this session while preserving conversation history.
+     *
+     * This method creates a new LLM service with the specified configuration and router,
+     * while maintaining the existing MessageManager and conversation history. This allows
+     * users to change AI models mid-conversation without losing context.
+     *
+     * @param newLLMConfig The new LLM configuration to use
+     * @param router The LLM router to use ('vercel' or 'in-built')
+     *
+     * @example
+     * ```typescript
+     * // Switch from Claude to GPT-4 while keeping conversation history
+     * session.switchLLM({
+     *   provider: 'openai',
+     *   model: 'gpt-4',
+     *   apiKey: process.env.OPENAI_API_KEY
+     * }, 'in-built');
+     * ```
+     */
+    public switchLLM(newLLMConfig: LLMConfig, router: LLMRouter = 'in-built'): void {
+        try {
+            // Create new LLM service with the same dependencies but new config
+            const newLLMService = createLLMService(
+                newLLMConfig,
+                router,
+                this.services.clientManager,
+                this.eventBus, // Use session event bus
+                this.messageManager // This preserves the conversation history
+            );
+
+            // Replace the LLM service
+            this.llmService = newLLMService;
+
+            logger.info(
+                `ChatSession ${this.id}: LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}`
+            );
+
+            // Emit session-level event
+            this.eventBus.emit('llmservice:switched', {
+                newConfig: newLLMConfig,
+                router,
+                historyRetained: true,
+            });
+        } catch (error) {
+            logger.error(`Error during ChatSession.switchLLM for session ${this.id}:`, error);
+            throw error;
+        }
     }
 
     /**

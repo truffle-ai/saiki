@@ -15,6 +15,12 @@ import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
 import { resolvePackagePath } from '@core/index.js';
+import {
+    LLM_REGISTRY,
+    getSupportedRoutersForProvider,
+    supportsBaseURL,
+    validateLLMSwitchRequest,
+} from '@core/ai/llm/registry.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -85,9 +91,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             await agent.connectMcpServer(name, config);
             // Add dynamic server config to in-memory AgentConfig
             try {
-                const cfg = agent.configManager.getConfig();
-                if (!cfg.mcpServers) cfg.mcpServers = {} as any;
-                cfg.mcpServers[name] = config;
+                agent.configManager.addMcpServer(name, config);
             } catch (error) {
                 // Log the error but don't fail the connection since it succeeded
                 logger.warn(
@@ -144,6 +148,39 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         } catch (error: any) {
             logger.error(`Error fetching tools for server '${serverId}': ${error.message}`);
             res.status(500).json({ error: 'Failed to fetch tools for server' });
+        }
+    });
+
+    // Endpoint to remove/disconnect an MCP server
+    app.delete('/api/mcp/servers/:serverId', async (req, res) => {
+        const { serverId } = req.params;
+        logger.info(`Received request to DELETE /api/mcp/servers/${serverId}`);
+
+        try {
+            // Check if server exists before attempting to disconnect
+            const clientExists =
+                agent.clientManager.getClients().has(serverId) ||
+                agent.clientManager.getFailedConnections()[serverId];
+            if (!clientExists) {
+                logger.warn(`Attempted to delete non-existent server: ${serverId}`);
+                return res.status(404).json({ error: `Server '${serverId}' not found.` });
+            }
+
+            // Use the new removeClient method in MCPClientManager
+            await agent.clientManager.removeClient(serverId);
+            logger.info(
+                `Successfully processed removal for client: ${serverId} via MCPClientManager.`
+            );
+
+            // Remove from in-memory config - this is still important for the agent's own configuration
+            agent.configManager.removeMcpServer(serverId);
+
+            res.status(200).json({ status: 'disconnected', id: serverId });
+        } catch (error: any) {
+            logger.error(`Error deleting server '${serverId}': ${error.message}`);
+            res.status(500).json({
+                error: `Failed to delete server '${serverId}': ${error.message}`,
+            });
         }
     });
 
@@ -274,9 +311,93 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             res.send(yamlText);
         } catch (err) {
             logger.error(
-                `Error exporting config YAML: ${err instanceof Error ? err.message : err}`
+                `Error exporting config YAML: ${err instanceof Error ? err.message : String(err)}`
             );
             res.status(500).send('Failed to export configuration');
+        }
+    });
+
+    // Get current LLM configuration
+    app.get('/api/llm/current', async (req, res) => {
+        try {
+            const currentConfig = agent.getCurrentLLMConfig();
+            res.json({ config: currentConfig });
+        } catch (error: any) {
+            logger.error(`Error getting current LLM config: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get current LLM configuration' });
+        }
+    });
+
+    // Get available LLM providers and models
+    app.get('/api/llm/providers', async (req, res) => {
+        try {
+            // Build providers object from the LLM registry
+            const providers: Record<
+                string,
+                {
+                    name: string;
+                    models: string[];
+                    supportedRouters: string[];
+                    supportsBaseURL: boolean;
+                }
+            > = {};
+
+            for (const [providerKey, providerInfo] of Object.entries(LLM_REGISTRY)) {
+                // Convert provider key to display name
+                const displayName = providerKey.charAt(0).toUpperCase() + providerKey.slice(1);
+
+                providers[providerKey] = {
+                    name: displayName,
+                    models: providerInfo.models.map((model) => model.name),
+                    supportedRouters: getSupportedRoutersForProvider(providerKey),
+                    supportsBaseURL: supportsBaseURL(providerKey),
+                };
+            }
+
+            res.json({ providers });
+        } catch (error: any) {
+            logger.error(`Error getting LLM providers: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get LLM providers' });
+        }
+    });
+
+    // Switch LLM configuration
+    app.post('/api/llm/switch', express.json(), async (req, res) => {
+        try {
+            const { provider, model, apiKey, router, baseURL } = req.body;
+
+            // Validate the request using core validation
+            const validationErrors = validateLLMSwitchRequest({ provider, model, router, baseURL });
+            if (validationErrors.length > 0) {
+                return res.status(400).json({ error: validationErrors[0] }); // Return first error
+            }
+
+            const selectedRouter = router || 'vercel'; // Default to vercel if not specified
+
+            // Get current config to preserve other settings
+            const currentConfig = agent.configManager.getConfig().llm;
+
+            const newLLMConfig = {
+                ...currentConfig,
+                provider,
+                model,
+                ...(apiKey && { apiKey }), // Only include apiKey if provided
+                ...(baseURL && { baseURL }), // Only include baseURL if provided
+            };
+
+            await agent.switchLLM(newLLMConfig, selectedRouter);
+
+            res.json({
+                success: true,
+                message: `Successfully switched to ${provider}/${model} using ${selectedRouter} router`,
+                config: agent.getCurrentLLMConfig(),
+            });
+        } catch (error: any) {
+            logger.error(`Error switching LLM: ${error.message}`);
+            res.status(500).json({
+                success: false,
+                error: `Failed to switch LLM: ${error.message}`,
+            });
         }
     });
 

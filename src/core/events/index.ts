@@ -7,6 +7,7 @@ export const AGENT_EVENT_NAMES = [
     'saiki:conversationReset',
     'saiki:mcpServerConnected',
     'saiki:availableToolsUpdated',
+    'saiki:llmSwitched',
 ] as const;
 
 /**
@@ -20,6 +21,7 @@ export const SESSION_EVENT_NAMES = [
     'llmservice:toolCall',
     'llmservice:toolResult',
     'llmservice:error',
+    'llmservice:switched',
 ] as const;
 
 /**
@@ -51,6 +53,15 @@ export interface AgentEventMap {
         tools: string[];
         source: 'mcp' | 'builtin';
         sessionId?: string;
+    };
+
+    /** Fired when LLM service switched */
+    'saiki:llmSwitched': {
+        newConfig: any; // LLMConfig type
+        router?: string;
+        historyRetained?: boolean;
+        sessionId?: string;
+        sessionIds?: string[];
     };
 
     // Session events forwarded to agent bus (with sessionId added)
@@ -103,6 +114,14 @@ export interface AgentEventMap {
         recoverable?: boolean;
         sessionId?: string;
     };
+
+    /** LLM service switched */
+    'llmservice:switched': {
+        newConfig: any; // LLMConfig type
+        router?: string;
+        historyRetained?: boolean;
+        sessionId?: string;
+    };
 }
 
 /**
@@ -149,6 +168,13 @@ export interface SessionEventMap {
         error: Error;
         context?: string;
         recoverable?: boolean;
+    };
+
+    /** LLM service switched */
+    'llmservice:switched': {
+        newConfig: any; // LLMConfig type
+        router?: string;
+        historyRetained?: boolean;
     };
 }
 

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from "@/lib/utils";
 import { Message, TextPart, ImagePart } from './hooks/useChat';
-import { User, Bot, ChevronsRight, ChevronUp, Loader2, CheckCircle, ChevronRight, Wrench } from 'lucide-react';
+import { User, Bot, ChevronsRight, ChevronUp, Loader2, CheckCircle, ChevronRight, Wrench, AlertTriangle, Image as ImageIcon, Info } from 'lucide-react';
 
 interface MessageListProps {
   messages: Message[];
@@ -24,19 +24,17 @@ function isValidDataUri(src: string): boolean {
 export default function MessageList({ messages }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const [manuallyExpanded, setManuallyExpanded] = useState<Record<string, boolean>>({});
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
   }, [messages]);
 
-  if (messages.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-4">
-        <ChevronsRight className="w-16 h-16 mb-4 text-primary" />
-        <p className="text-lg font-medium">Start a conversation</p>
-        <p className="text-sm">Send a message to begin interacting with the AI.</p>
-      </div>
-    );
+  if (!messages || messages.length === 0) {
+    return null;
   }
 
   return (

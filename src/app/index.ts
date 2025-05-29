@@ -276,8 +276,23 @@ program
                 }
                 break;
 
+            case 'mcp': {
+                // Start API server only
+                const webPort = parseInt(opts.webPort, 10);
+                const agentCard = agent.configManager.getConfig().agentCard ?? {};
+                const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
+                const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+
+                logger.info('Starting API server...', null, 'cyanBright');
+                await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
+                logger.info(`API endpoints available at ${apiUrl}`, null, 'magenta');
+                break;
+            }
+
             default:
-                logger.error(`Unknown mode '${opts.mode}'. Use cli, web, discord, or telegram.`);
+                logger.error(
+                    `Unknown mode '${opts.mode}'. Use cli, web, discord, telegram, or mcp.`
+                );
                 process.exit(1);
         }
     });
