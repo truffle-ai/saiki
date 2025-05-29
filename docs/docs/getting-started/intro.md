@@ -27,7 +27,7 @@ Saiki is the missing natural language layer across your stack. Its powerful in-b
 ## Learn More
 
 - **New to AI Agents?** Start with [Basics of AI Agents](../learn/what-is-an-ai-agent.md) to learn the fundamentals
-- **Building Applications?** See the [Building with Saiki Guide](../user-guide/development.md) for patterns and examples
+- **Building Applications?** See the [Building with Saiki Guide](../building-with-saiki/) for patterns and examples
 - **LLM Configuration:** Check out [LLM Providers & Setup Guide](../configuring-saiki/llm/providers) for all supported models
 - **Adding Tools:** Learn about [MCP Server Configuration](../configuring-saiki/mcpServers.md) to enhance your agents
 - **Core Configuration:** Understand [Configuration](../configuring-saiki/configuration.md) for complete setup

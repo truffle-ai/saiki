@@ -34,7 +34,7 @@ OPENAI_API_KEY=your_key_here
 ```
 
 :::tip
-Don't have an OpenAI key? You can also use [other providers](../../configuring-saiki/llm/providers) like Anthropic, Google, or even local models.
+Don't have an OpenAI key? You can also use [other providers](../configuring-saiki/llm/providers) like Anthropic, Google, or even local models.
 :::
 
 ### Step 3: Run Your First Agent
@@ -131,9 +131,9 @@ npm install -g ts-node
 ### Getting Help
 
 If you run into issues:
-1. Check the [troubleshooting section](../../configuring-saiki/llm/providers#troubleshooting) in the providers guide
+1. Check the [troubleshooting section](../configuring-saiki/llm/providers#troubleshooting) in the providers guide
 2. Join our [Discord community](https://discord.gg/GFzWFAAZcm) for help
-3. Look at the [examples repository](../../getting-started/examples-demos) for working code
+3. Look at the [examples repository](../getting-started/examples-demos) for working code
 
 ## What You've Learned
 
@@ -148,7 +148,7 @@ In just 5 minutes, you've:
 Ready to build something more interesting?
 
 - **Build real applications**: Check out [Building Applications](./building-applications) for practical examples
-- **Customize your agent**: Learn about [LLM configuration](../../configuring-saiki/llm/) to change models and behavior
-- **Add more tools**: Explore [MCP servers](../../configuring-saiki/mcpServers) to give your agent new capabilities
+- **Customize your agent**: Learn about [LLM configuration](../configuring-saiki/llm/) to change models and behavior
+- **Add more tools**: Explore [MCP servers](../configuring-saiki/mcpServers) to give your agent new capabilities
 
 The foundation is set - now let's build something amazing! 🚀 

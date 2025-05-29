@@ -856,4 +856,4 @@ When reporting errors, include:
 
 - **Back to basics?** Review [Authentication](./authentication) and [REST API](./rest-api)
 - **Need examples?** Check out [SDKs & Examples](./sdks-examples)
-- **Ready to build?** Head to [Building with Saiki](../../building-with-saiki/) 
+- **Ready to build?** Head to [Building with Saiki](../building-with-saiki/) 
