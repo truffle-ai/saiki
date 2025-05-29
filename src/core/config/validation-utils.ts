@@ -1,7 +1,7 @@
 import {
-    validateLLMSwitchRequest as coreValidateLLMSwitchRequest,
     isValidProvider,
     isValidProviderModel,
+    isValidRouter,
     getSupportedModels,
     getSupportedRoutersForProvider,
     isRouterSupportedForProvider,
@@ -20,8 +20,65 @@ export interface LLMValidationResult {
 }
 
 /**
+ * Validates an LLM switch request and returns validation errors if any.
+ * Moved from registry.ts to be part of validation layer.
+ * @param request The LLM switch request parameters.
+ * @returns An array of validation error messages. Empty array if valid.
+ */
+export function validateLLMSwitchRequest(request: {
+    provider?: string;
+    model?: string;
+    router?: string;
+    baseURL?: string;
+}): string[] {
+    const errors: string[] = [];
+    const { provider, model, router, baseURL } = request;
+
+    // Check required fields
+    if (!provider || !model) {
+        errors.push('Provider and model are required');
+        return errors; // Return early if basic requirements aren't met
+    }
+
+    // Validate router if provided
+    if (router && !isValidRouter(router)) {
+        errors.push('Router must be either "vercel" or "in-built"');
+    }
+
+    // Validate provider exists
+    if (!isValidProvider(provider)) {
+        errors.push(`Unknown provider: ${provider}`);
+        return errors; // Return early if provider doesn't exist
+    }
+
+    // Validate provider/model combination
+    if (!isValidProviderModel(provider, model)) {
+        const supportedModels = getSupportedModels(provider);
+        errors.push(
+            `Model '${model}' is not supported for provider '${provider}'. Supported models: ${supportedModels.join(', ')}`
+        );
+    }
+
+    // Validate provider/router combination
+    const selectedRouter = router || 'vercel';
+    if (!isRouterSupportedForProvider(provider, selectedRouter)) {
+        const supportedRouters = getSupportedRoutersForProvider(provider);
+        errors.push(
+            `Provider '${provider}' does not support '${selectedRouter}' router. Supported routers: ${supportedRouters.join(', ')}`
+        );
+    }
+
+    // Validate baseURL usage
+    if (baseURL && !supportsBaseURL(provider)) {
+        errors.push(`Custom baseURL is not supported for ${provider} provider`);
+    }
+
+    return errors;
+}
+
+/**
  * Validates a partial LLM configuration for runtime updates.
- * This builds on top of the core validateLLMSwitchRequest but adds context
+ * This builds on top of validateLLMSwitchRequest but adds context
  * about the current state and runtime-specific validation.
  */
 export function validateLLMUpdate(
@@ -43,7 +100,7 @@ export function validateLLMUpdate(
         : update;
 
     // Use core validation for basic checks
-    const coreErrors = coreValidateLLMSwitchRequest({
+    const coreErrors = validateLLMSwitchRequest({
         provider: effectiveConfig.provider,
         model: effectiveConfig.model,
         router: effectiveConfig.router,
@@ -150,43 +207,3 @@ export function validateRuntimeState(state: AgentRuntimeState): LLMValidationRes
     result.isValid = result.errors.length === 0;
     return result;
 }
-
-/**
- * Quick validation functions for common use cases
- */
-export const quickValidations = {
-    /**
-     * Check if a provider/model combination is valid
-     */
-    isValidProviderModel(provider: string, model: string): boolean {
-        return isValidProvider(provider) && isValidProviderModel(provider, model);
-    },
-
-    /**
-     * Check if a router is supported for a provider
-     */
-    isValidProviderRouter(provider: string, router: string): boolean {
-        return isValidProvider(provider) && isRouterSupportedForProvider(provider, router);
-    },
-
-    /**
-     * Get available models for a provider
-     */
-    getModelsForProvider(provider: string): string[] {
-        return isValidProvider(provider) ? getSupportedModels(provider) : [];
-    },
-
-    /**
-     * Get available routers for a provider
-     */
-    getRoutersForProvider(provider: string): string[] {
-        return isValidProvider(provider) ? getSupportedRoutersForProvider(provider) : [];
-    },
-
-    /**
-     * Check if provider supports custom base URL
-     */
-    providerSupportsBaseURL(provider: string): boolean {
-        return isValidProvider(provider) && supportsBaseURL(provider);
-    },
-};

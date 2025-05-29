@@ -1,5 +1,5 @@
 import express from 'express';
-import type { Express } from 'express';
+import type { Express, Request, Response } from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
@@ -17,10 +17,14 @@ import os from 'os';
 import { resolvePackagePath } from '@core/index.js';
 import {
     LLM_REGISTRY,
+    getSupportedModels,
+    getSupportedProviders,
     getSupportedRoutersForProvider,
     supportsBaseURL,
-    validateLLMSwitchRequest,
+    isValidProvider,
+    getEffectiveMaxTokens,
 } from '@core/ai/llm/registry.js';
+import { validateLLMSwitchRequest } from '@core/index.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -89,13 +93,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
         try {
             await agent.connectMcpServer(name, config);
-            // Add dynamic server config to in-memory AgentConfig
+            // Add dynamic server config to in-memory runtime state
             try {
-                agent.configManager.addMcpServer(name, config);
+                agent.stateManager.addMcpServer(name, config);
             } catch (error) {
                 // Log the error but don't fail the connection since it succeeded
                 logger.warn(
-                    `Failed to update in-memory config for server '${name}': ${error instanceof Error ? error.message : String(error)}`
+                    `Failed to update runtime state for server '${name}': ${error instanceof Error ? error.message : String(error)}`
                 );
             }
             logger.info(`Successfully connected to new server '${name}' via API request.`);
@@ -172,8 +176,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 `Successfully processed removal for client: ${serverId} via MCPClientManager.`
             );
 
-            // Remove from in-memory config - this is still important for the agent's own configuration
-            agent.configManager.removeMcpServer(serverId);
+            // Remove from runtime state - this is still important for the agent's own configuration
+            agent.stateManager.removeMcpServer(serverId);
 
             res.status(200).json({ status: 'disconnected', id: serverId });
         } catch (error: any) {
@@ -298,8 +302,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Export current AgentConfig as YAML, omitting sensitive fields
     app.get('/api/config.yaml', async (req, res) => {
         try {
-            // Deep clone and sanitize
-            const rawConfig = agent.configManager.getConfig();
+            // Deep clone and sanitize the current effective configuration
+            const rawConfig = agent.stateManager.getEffectiveConfig();
             const exportConfig = JSON.parse(JSON.stringify(rawConfig));
             // Remove sensitive API key
             if (exportConfig.llm && 'apiKey' in exportConfig.llm) {
@@ -375,7 +379,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const selectedRouter = router || 'vercel'; // Default to vercel if not specified
 
             // Get current config to preserve other settings
-            const currentConfig = agent.configManager.getConfig().llm;
+            const currentConfig = agent.stateManager.getLLMConfig();
 
             const newLLMConfig = {
                 ...currentConfig,

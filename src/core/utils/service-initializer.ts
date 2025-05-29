@@ -88,10 +88,7 @@ export async function createAgentServices(
     overrides?: InitializeServicesOptions
 ): Promise<AgentServices> {
     // 1. Initialize config manager and apply CLI overrides (if provided), then validate
-    const configManager = new StaticConfigManager(agentConfig);
-    if (cliArgs) {
-        configManager.overrideCLI(cliArgs);
-    }
+    const configManager = new StaticConfigManager(agentConfig, cliArgs);
     configManager.validate();
     const config = configManager.getConfig();
 

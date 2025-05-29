@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import { logger } from '../logger/index.js';
 import { AgentConfigSchema } from './schemas.js';
-import type { AgentConfig } from './schemas.js';
+import type { AgentConfig, LLMConfig } from './schemas.js';
 import type { CLIConfigOverrides, LLMProvenance, LLMOverrideKey } from './types.js';
-import { loadConfigFile } from './loader.js';
 
 declare function structuredClone<T>(value: T): T;
 
@@ -14,11 +13,10 @@ declare function structuredClone<T>(value: T): T;
  * It tracks provenance (source) of each configuration field and applies CLI overrides.
  *
  * **What this handles (Static Operations):**
- * - Loading configuration from files (YAML/JSON)
+ * - Loading configuration from files (handled by caller, this class processes the loaded config)
  * - Applying CLI argument overrides once during initialization
  * - Provenance tracking (file, cli, default sources)
  * - Configuration validation
- * - Hot reloading from config files
  * - Read-only access to processed configuration
  *
  * **What this does NOT handle (Runtime Operations - use AgentStateManager):**
@@ -26,6 +24,7 @@ declare function structuredClone<T>(value: T): T;
  * - Dynamic MCP server management (addMcpServer, removeMcpServer)
  * - Session-specific overrides
  * - Runtime state changes during agent execution
+ * - Hot reloading (config loading is handled by caller)
  *
  * **Provenance Tracking:**
  * Tracks the source of each configuration field:
@@ -35,57 +34,37 @@ declare function structuredClone<T>(value: T): T;
  * - 'runtime': Value was changed during runtime (handled by AgentStateManager)
  */
 export class StaticConfigManager {
-    private resolved!: AgentConfig;
-    private provenance!: { llm: LLMProvenance };
+    private resolved: AgentConfig;
+    private provenance: { llm: LLMProvenance };
+    private originalConfig: AgentConfig; // Store the original config file before processing
 
-    constructor(fileConfig: AgentConfig) {
-        this.initFromConfig(fileConfig);
-    }
+    constructor(fileConfig: AgentConfig, cliOverrides?: CLIConfigOverrides) {
+        logger.debug('Loading agent configuration...');
 
-    /**
-     * Initializes the agent configuration from a configuration object.
-     * This will re-validate the entire configuration and apply Zod schema defaults.
-     * Existing CLI overrides are NOT automatically re-applied.
-     * Call overrideCLI separately after loading if CLI overrides should persist.
-     *
-     * @param newFileConfig The new configuration object (typically from a config file).
-     */
-    public initFromConfig(newFileConfig: AgentConfig): void {
-        logger.debug('Loading new agent configuration...');
+        // Store the original config for reference (deep clone to prevent mutations)
+        this.originalConfig =
+            typeof globalThis.structuredClone === 'function'
+                ? structuredClone(fileConfig)
+                : JSON.parse(JSON.stringify(fileConfig));
 
         // Use native structuredClone when available, else fall back to JSON parse/stringify for deep cloning.
         // This fallback is generally fine for config objects but has limitations (e.g., Date objects, functions, undefined values).
         this.resolved =
             typeof globalThis.structuredClone === 'function'
-                ? structuredClone(newFileConfig)
-                : JSON.parse(JSON.stringify(newFileConfig));
+                ? structuredClone(fileConfig)
+                : JSON.parse(JSON.stringify(fileConfig));
 
-        // Reset provenance to the initial state, as if loading from a file for the first time.
-        // This assumes CLI overrides will be applied separately by calling overrideCLI if needed.
+        // Initialize provenance to track where each config value came from
         this.provenance = {
             llm: { provider: 'file', model: 'file', router: 'default', apiKey: 'file' },
         };
 
         this.validate(); // Parse, validate, and apply Zod defaults to this.resolved.
-        logger.info('New agent configuration loaded and validated.');
-    }
+        logger.info('Agent configuration loaded and validated.');
 
-    /**
-     * Reloads the agent configuration directly from a config file.
-     * This effectively hot reloads the configuration.
-     *
-     * @param configPath The path to the configuration file.
-     */
-    public async hotReloadFromFile(configPath: string): Promise<void> {
-        logger.debug(`Attempting to hot reload configuration from: ${configPath}`);
-        try {
-            const newFileConfig: AgentConfig = await loadConfigFile(configPath);
-            this.initFromConfig(newFileConfig); // Use the existing initFromConfig to update the instance state
-            logger.info(`Successfully hot reloaded configuration from: ${configPath}`);
-        } catch (error: any) {
-            logger.error(`Failed to hot reload configuration from ${configPath}: ${error.message}`);
-            // Re-throw or handle as appropriate for your application
-            throw error;
+        // Apply CLI overrides automatically if provided
+        if (cliOverrides) {
+            this.overrideCLI(cliOverrides);
         }
     }
 
@@ -139,6 +118,17 @@ export class StaticConfigManager {
     }
 
     /**
+     * Returns the original config file before any processing or CLI overrides (read-only).
+     * This is useful for debugging, provenance tracking, and comparing with the resolved config.
+     */
+    public getOriginalConfig(): Readonly<AgentConfig> {
+        // Return a deep clone to prevent external modifications
+        return typeof globalThis.structuredClone === 'function'
+            ? structuredClone(this.originalConfig)
+            : JSON.parse(JSON.stringify(this.originalConfig));
+    }
+
+    /**
      * Returns the provenance map for LLM settings.
      * This shows where each LLM configuration field came from (file, cli, default).
      */
@@ -181,15 +171,58 @@ export class StaticConfigManager {
     }
 
     /**
-     * Pretty-print the resolved config and provenance for debugging.
+     * Get a summary of changes between original config and resolved config.
+     * This includes both schema defaults that were applied and CLI overrides.
+     *
+     * @returns Object describing what changed from original to resolved
      */
-    public print(): void {
-        logger.info('Resolved configuration (current state):');
-        logger.info(JSON.stringify(this.resolved, null, 2));
-        logger.info('Configuration sources (LLM):');
-        for (const [field, src] of Object.entries(this.provenance?.llm ?? {})) {
-            logger.info(`  • ${field}: ${src}`);
+    public getConfigChanges(): {
+        hasChanges: boolean;
+        llmChanges: Array<{
+            field: keyof LLMConfig;
+            original: LLMConfig[keyof LLMConfig];
+            resolved: LLMConfig[keyof LLMConfig];
+            source: string;
+        }>;
+        addedDefaults: Array<keyof LLMConfig>;
+    } {
+        const llmChanges: Array<{
+            field: keyof LLMConfig;
+            original: LLMConfig[keyof LLMConfig];
+            resolved: LLMConfig[keyof LLMConfig];
+            source: string;
+        }> = [];
+        const addedDefaults: Array<keyof LLMConfig> = [];
+
+        // Compare LLM configs
+        const originalLLM = this.originalConfig.llm || {};
+        const resolvedLLM = this.resolved.llm || {};
+
+        // Iterate through resolved LLM config fields with proper typing
+        for (const field of Object.keys(resolvedLLM) as Array<keyof LLMConfig>) {
+            const originalValue = originalLLM[field];
+            const resolvedValue = resolvedLLM[field];
+            const source = this.provenance.llm[field as LLMOverrideKey] || 'unknown';
+
+            if (originalValue !== resolvedValue) {
+                if (originalValue === undefined) {
+                    addedDefaults.push(field);
+                } else {
+                    llmChanges.push({
+                        field,
+                        original: originalValue,
+                        resolved: resolvedValue,
+                        source,
+                    });
+                }
+            }
         }
+
+        return {
+            hasChanges: llmChanges.length > 0 || addedDefaults.length > 0,
+            llmChanges,
+            addedDefaults,
+        };
     }
 
     /**
