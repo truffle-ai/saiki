@@ -1,7 +1,8 @@
 // src/ai/agent/SaikiAgent.ts
 import { MCPClientManager } from '../../client/manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
-import { ConfigManager } from '../../config/manager.js';
+import { StaticConfigManager } from '../../config/static-config-manager.js';
+import { AgentStateManager } from '../../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
@@ -39,7 +40,8 @@ export class SaikiAgent {
     public readonly clientManager: MCPClientManager;
     public readonly promptManager: PromptManager;
     public readonly agentEventBus: AgentEventBus;
-    public readonly configManager: ConfigManager;
+    public readonly configManager: StaticConfigManager;
+    public readonly stateManager: AgentStateManager;
     public readonly sessionManager: SessionManager;
     public readonly services: AgentServices;
 
@@ -58,6 +60,7 @@ export class SaikiAgent {
         this.promptManager = services.promptManager;
         this.agentEventBus = services.agentEventBus;
         this.configManager = services.configManager;
+        this.stateManager = services.stateManager;
         this.sessionManager = services.sessionManager;
         this.services = services;
 
@@ -223,12 +226,12 @@ export class SaikiAgent {
     }
 
     /**
-     * Gets the current LLM configuration and status.
-     * @returns Current LLM service configuration (read-only copy).
+     * Gets the current LLM configuration.
+     *
+     * @returns Current LLM configuration
      */
-    public getCurrentLLMConfig() {
-        // Return a copy to prevent direct mutation
-        return { ...this.configManager.getConfig().llm };
+    public getCurrentLLMConfig(): LLMConfig {
+        return structuredClone(this.stateManager.getRuntimeState().llm);
     }
 
     /**
@@ -245,7 +248,7 @@ export class SaikiAgent {
      * // Switch LLM for default session AND update agent defaults
      * agent.switchLLM(newConfig);
      *
-     * // Switch LLM for specific session only (doesn't affect agent defaults)
+     * // Switch LLM for specific session only (no agent defaults update)
      * agent.switchLLM(newConfig, 'in-built', 'user-123');
      *
      * // Switch LLM for all sessions AND update agent defaults
@@ -258,92 +261,102 @@ export class SaikiAgent {
         sessionId?: string
     ): void {
         try {
-            // Handle switching for all sessions (agent-level change)
             if (sessionId === '*') {
-                this.switchLLMForAllSessions(newLLMConfig, router);
-                return;
-            }
+                // Switch for all sessions AND update agent defaults
+                const sessionIds = this.sessionManager.listSessions();
 
-            // Handle switching for specific session only (session-level change)
-            if (sessionId && sessionId !== 'default') {
-                const session = this.sessionManager.getSession(sessionId);
-                if (!session) {
-                    throw new Error(`Session with ID '${sessionId}' not found`);
+                for (const sId of sessionIds) {
+                    const session = this.sessionManager.getSession(sId);
+                    if (session) {
+                        // Use state manager for validation and state tracking
+                        const validation = this.stateManager.updateLLM(
+                            { ...newLLMConfig, router },
+                            sId
+                        );
+
+                        if (validation.isValid) {
+                            session.switchLLM(newLLMConfig, router);
+                        } else {
+                            logger.warn(
+                                `Failed to switch LLM for session ${sId}:`,
+                                validation.errors
+                            );
+                        }
+                    }
                 }
 
-                // Only switch LLM for this session, don't update agent config
-                session.switchLLM(newLLMConfig, router);
+                // Update agent defaults using state manager (no configManager.updateLLMConfig needed)
+                const agentValidation = this.stateManager.updateLLM({ ...newLLMConfig, router });
+                if (!agentValidation.isValid) {
+                    throw new Error(
+                        `Agent LLM switch validation failed: ${agentValidation.errors.join(', ')}`
+                    );
+                }
 
-                logger.info(
-                    `SaikiAgent LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model} for session ${sessionId} (session-specific)`
-                );
                 this.agentEventBus.emit('saiki:llmSwitched', {
                     newConfig: newLLMConfig,
-                    sessionId,
+                    router,
                     historyRetained: true,
+                    sessionIds: sessionIds,
                 });
-                return;
-            }
-
-            // Handle switching for default session (agent-level change)
-            // This updates both the default session AND the agent's default config
-            // Ensure we have a default session
-            if (!this.defaultSession) {
-                this.defaultSession = this.sessionManager.createSession('default');
-            }
-
-            // Switch LLM for the default session
-            this.defaultSession.switchLLM(newLLMConfig, router);
-
-            // Update the agent's config since this is an agent-level change
-            this.configManager.updateLLMConfig(newLLMConfig);
-
-            logger.info(
-                `SaikiAgent LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model} for default session (agent-level)`
-            );
-            this.agentEventBus.emit('saiki:llmSwitched', {
-                newConfig: newLLMConfig,
-                sessionId: this.defaultSession.id,
-                historyRetained: true,
-            });
-        } catch (error) {
-            logger.error('Error during SaikiAgent.switchLLM:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Switches the LLM service for all active sessions.
-     * This is a convenience method equivalent to calling switchLLM(config, router, '*').
-     * This is an agent-level change that updates both all active sessions AND the agent's default config.
-     * New sessions created after this call will use the new LLM configuration.
-     * @param newLLMConfig The new LLM configuration.
-     * @param router The LLM router to use ('vercel' or 'in-built').
-     */
-    public switchLLMForAllSessions(newLLMConfig: LLMConfig, router: LLMRouter = 'in-built'): void {
-        try {
-            const sessionIds = this.sessionManager.listSessions();
-
-            for (const sessionId of sessionIds) {
+            } else if (sessionId) {
+                // Switch for specific session only
                 const session = this.sessionManager.getSession(sessionId);
-                if (session) {
-                    session.switchLLM(newLLMConfig, router);
+                if (!session) {
+                    throw new Error(`Session ${sessionId} not found`);
                 }
+
+                // Use state manager for validation and session-specific state
+                const validation = this.stateManager.updateLLM(
+                    { ...newLLMConfig, router },
+                    sessionId
+                );
+
+                if (!validation.isValid) {
+                    throw new Error(
+                        `Session LLM switch validation failed: ${validation.errors.join(', ')}`
+                    );
+                }
+
+                session.switchLLM(newLLMConfig, router);
+
+                this.agentEventBus.emit('saiki:llmSwitched', {
+                    newConfig: newLLMConfig,
+                    router,
+                    historyRetained: true,
+                    sessionId: sessionId,
+                });
+            } else {
+                // Switch for default session AND update agent defaults
+                const defaultSession = this.sessionManager.getDefaultSession();
+
+                // Update agent defaults using state manager (no configManager.updateLLMConfig needed)
+                const agentValidation = this.stateManager.updateLLM({ ...newLLMConfig, router });
+                if (!agentValidation.isValid) {
+                    throw new Error(
+                        `Agent LLM switch validation failed: ${agentValidation.errors.join(', ')}`
+                    );
+                }
+
+                defaultSession.switchLLM(newLLMConfig, router);
+
+                this.agentEventBus.emit('saiki:llmSwitched', {
+                    newConfig: newLLMConfig,
+                    router,
+                    historyRetained: true,
+                    sessionId: defaultSession.id,
+                });
             }
 
-            // Update the agent's config since this is an agent-level change
-            this.configManager.updateLLMConfig(newLLMConfig);
-
-            logger.info(
-                `SaikiAgent LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model} for ${sessionIds.length} sessions (agent-level)`
-            );
-            this.agentEventBus.emit('saiki:llmSwitched', {
-                newConfig: newLLMConfig,
-                sessionIds,
-                historyRetained: true,
+            logger.info('LLM switched successfully', {
+                provider: newLLMConfig.provider,
+                model: newLLMConfig.model,
+                router,
+                sessionId,
+                isGlobalChange: !sessionId || sessionId === '*',
             });
-        } catch (error) {
-            logger.error('Error during SaikiAgent.switchLLMForAllSessions:', error);
+        } catch (error: any) {
+            logger.error('Failed to switch LLM:', error.message);
             throw error;
         }
     }

@@ -28,7 +28,8 @@
 import { MCPClientManager } from '../client/manager.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
-import { ConfigManager } from '../config/manager.js';
+import { StaticConfigManager } from '../config/static-config-manager.js';
+import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager } from '../ai/session/SessionManager.js';
 import { logger } from '../logger/index.js';
 import type { CLIConfigOverrides } from '../config/types.js';
@@ -42,7 +43,8 @@ export type AgentServices = {
     clientManager: MCPClientManager;
     promptManager: PromptManager;
     agentEventBus: AgentEventBus;
-    configManager: ConfigManager;
+    configManager: StaticConfigManager;
+    stateManager: AgentStateManager;
     sessionManager: SessionManager;
 };
 
@@ -86,7 +88,7 @@ export async function createAgentServices(
     overrides?: InitializeServicesOptions
 ): Promise<AgentServices> {
     // 1. Initialize config manager and apply CLI overrides (if provided), then validate
-    const configManager = new ConfigManager(agentConfig);
+    const configManager = new StaticConfigManager(agentConfig);
     if (cliArgs) {
         configManager.overrideCLI(cliArgs);
     }
@@ -115,12 +117,16 @@ export async function createAgentServices(
     // 4. Initialize prompt manager
     const promptManager = new PromptManager(config.llm.systemPrompt);
 
-    // 5. Initialize session manager
+    // 5. Initialize state manager for runtime state tracking
+    const stateManager = new AgentStateManager(config);
+    logger.debug('Agent state manager initialized');
+
+    // 6. Initialize session manager
     const sessionManager =
         overrides?.sessionManager ??
         new SessionManager(
             {
-                configManager,
+                stateManager,
                 promptManager,
                 clientManager,
                 agentEventBus,
@@ -136,12 +142,13 @@ export async function createAgentServices(
             : 'Session manager initialized'
     );
 
-    // 6. Return the core services
+    // 7. Return the core services
     return {
         clientManager,
         promptManager,
         agentEventBus,
         configManager,
+        stateManager,
         sessionManager,
     };
 }

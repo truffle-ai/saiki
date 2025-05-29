@@ -1,10 +1,10 @@
 import { randomUUID } from 'crypto';
 import { ChatSession } from './ChatSession.js';
-import { ConfigManager } from '../../config/manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
 import { MCPClientManager } from '../../client/manager.js';
 import { AgentEventBus } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
+import type { AgentStateManager } from '../../config/agent-state-manager.js';
 
 export interface SessionMetadata {
     createdAt: Date;
@@ -29,7 +29,7 @@ export class SessionManager {
 
     constructor(
         private services: {
-            configManager: ConfigManager;
+            stateManager: AgentStateManager;
             promptManager: PromptManager;
             clientManager: MCPClientManager;
             agentEventBus: AgentEventBus;
@@ -75,6 +75,23 @@ export class SessionManager {
 
         logger.debug(`Created new session: ${id}`);
         return session;
+    }
+
+    /**
+     * Gets or creates the default session.
+     * This is used for backward compatibility with single-session operations.
+     *
+     * @returns The default ChatSession (creates one if it doesn't exist)
+     */
+    public getDefaultSession(): ChatSession {
+        const defaultSessionId = 'default';
+
+        if (!this.sessions.has(defaultSessionId)) {
+            return this.createSession(defaultSessionId);
+        }
+
+        this.updateSessionActivity(defaultSessionId);
+        return this.sessions.get(defaultSessionId)!;
     }
 
     /**

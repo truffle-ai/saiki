@@ -3,11 +3,11 @@ import { createMessageManager } from '../llm/messages/factory.js';
 import { createLLMService } from '../llm/services/factory.js';
 import type { MessageManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
-import type { ConfigManager } from '../../config/manager.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { MCPClientManager } from '../../client/manager.js';
 import type { LLMConfig } from '../../config/schemas.js';
 import type { LLMRouter } from '../llm/types.js';
+import type { AgentStateManager } from '../../config/agent-state-manager.js';
 import {
     SessionEventBus,
     AgentEventBus,
@@ -106,12 +106,12 @@ export class ChatSession {
      * - LLMService (with session-specific message manager and event bus)
      * - SessionEventBus (session-local event handling with forwarding)
      *
-     * @param services - The shared services from the agent (config, prompt, client managers, etc.)
+     * @param services - The shared services from the agent (state manager, prompt, client managers, etc.)
      * @param id - Unique identifier for this session
      */
     constructor(
         private services: {
-            configManager: ConfigManager;
+            stateManager: AgentStateManager;
             promptManager: PromptManager;
             clientManager: MCPClientManager;
             agentEventBus: AgentEventBus;
@@ -164,15 +164,23 @@ export class ChatSession {
      * Initializes session-specific services.
      */
     private initializeServices(): void {
-        const config = this.services.configManager.getConfig();
+        // Get current effective configuration for this session from state manager
+        // Approach 1: Specific getters for individual config sections (most efficient)
+        const llmConfig = this.services.stateManager.getLLMConfig(this.id);
+        const storageConfig = this.services.stateManager.getStorageConfig();
+
+        // Alternative approach: Get complete config if you need multiple sections
+        // const fullConfig = this.services.stateManager.getEffectiveConfig(this.id);
+        // const llmConfig = fullConfig.llm;
+        // const storageConfig = fullConfig.storage;
 
         // Create session-specific history provider
-        const historyProvider = createHistoryProvider(config.storage.history);
+        const historyProvider = createHistoryProvider(storageConfig.history);
 
         // Create session-specific message manager
         this.messageManager = createMessageManager(
-            config.llm,
-            config.llm.router,
+            llmConfig,
+            llmConfig.router,
             this.services.promptManager,
             this.eventBus, // Use session event bus
             historyProvider,
@@ -181,8 +189,8 @@ export class ChatSession {
 
         // Create session-specific LLM service
         this.llmService = createLLMService(
-            config.llm,
-            config.llm.router,
+            llmConfig,
+            llmConfig.router,
             this.services.clientManager,
             this.eventBus, // Use session event bus
             this.messageManager
