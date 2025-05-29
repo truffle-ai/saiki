@@ -1,8 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-    mergeValidatedLLMConfig,
+    buildLLMConfig,
     validateLLMSwitchRequest,
-    validateLLMUpdate,
     validateRuntimeUpdate,
     validateRuntimeState,
 } from './validation-utils.js';
@@ -12,7 +11,7 @@ import type { AgentRuntimeState } from './agent-state-manager.js';
 // Only mock logger since it has side effects
 vi.mock('../logger/index.js');
 
-describe('mergeValidatedLLMConfig', () => {
+describe('buildLLMConfig', () => {
     const baseLLMConfig: LLMConfig = {
         provider: 'openai',
         model: 'gpt-4o',
@@ -32,7 +31,7 @@ describe('mergeValidatedLLMConfig', () => {
     });
 
     it('should return valid config when no updates provided', async () => {
-        const result = await mergeValidatedLLMConfig({}, baseLLMConfig);
+        const result = await buildLLMConfig({}, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.errors).toHaveLength(0);
@@ -46,7 +45,7 @@ describe('mergeValidatedLLMConfig', () => {
     });
 
     it('should update model successfully', async () => {
-        const result = await mergeValidatedLLMConfig({ model: 'gpt-4o-mini' }, baseLLMConfig);
+        const result = await buildLLMConfig({ model: 'gpt-4o-mini' }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.config.model).toBe('gpt-4o-mini');
@@ -57,7 +56,7 @@ describe('mergeValidatedLLMConfig', () => {
         // Set API key for the test to succeed
         process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key-123456789';
 
-        const result = await mergeValidatedLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
+        const result = await buildLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.config.provider).toBe('anthropic');
@@ -68,17 +67,14 @@ describe('mergeValidatedLLMConfig', () => {
     });
 
     it('should update API key', async () => {
-        const result = await mergeValidatedLLMConfig(
-            { apiKey: 'new-api-key-12345' },
-            baseLLMConfig
-        );
+        const result = await buildLLMConfig({ apiKey: 'new-api-key-12345' }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.config.apiKey).toBe('new-api-key-12345');
     });
 
     it('should update router', async () => {
-        const result = await mergeValidatedLLMConfig({ router: 'in-built' }, baseLLMConfig);
+        const result = await buildLLMConfig({ router: 'in-built' }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.config.router).toBe('in-built');
@@ -88,7 +84,7 @@ describe('mergeValidatedLLMConfig', () => {
         // Set API key for the test to succeed
         process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key-123456789';
 
-        const result = await mergeValidatedLLMConfig(
+        const result = await buildLLMConfig(
             {
                 provider: 'anthropic',
                 model: 'claude-4-sonnet-20250514',
@@ -106,14 +102,14 @@ describe('mergeValidatedLLMConfig', () => {
     it('should resolve API key from environment when provider changes', async () => {
         process.env.ANTHROPIC_API_KEY = 'sk-ant-api-key-123';
 
-        const result = await mergeValidatedLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
+        const result = await buildLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.config.apiKey).toBe('sk-ant-api-key-123');
     });
 
     it('should fail when provider changes but no API key available', async () => {
-        const result = await mergeValidatedLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
+        const result = await buildLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toContain(
@@ -125,7 +121,7 @@ describe('mergeValidatedLLMConfig', () => {
         // Provide Google API key to test model compatibility logic
         process.env.GOOGLE_API_KEY = 'test-google-api-key-123456789';
 
-        const result = await mergeValidatedLLMConfig({ provider: 'google' }, baseLLMConfig);
+        const result = await buildLLMConfig({ provider: 'google' }, baseLLMConfig);
 
         // Since only provider is changed (not model), function should switch to default Google model
         expect(result.isValid).toBe(true);
@@ -142,30 +138,27 @@ describe('mergeValidatedLLMConfig', () => {
         process.env.GOOGLE_API_KEY = 'test-google-api-key-123456789';
 
         // Explicitly provide both incompatible model and provider
-        const result = await mergeValidatedLLMConfig(
-            { provider: 'google', model: 'gpt-4o' },
-            baseLLMConfig
-        );
+        const result = await buildLLMConfig({ provider: 'google', model: 'gpt-4o' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
         expect(result.errors[0]).toContain("Model 'gpt-4o' is not supported for provider 'google'");
     });
 
     it('should switch to supported router when provider changes', async () => {
-        const result = await mergeValidatedLLMConfig({ provider: 'google' }, baseLLMConfig);
+        const result = await buildLLMConfig({ provider: 'google' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false); // Will fail due to model incompatibility, but shows router logic
     });
 
     it('should warn about short API key', async () => {
-        const result = await mergeValidatedLLMConfig({ apiKey: 'short' }, baseLLMConfig);
+        const result = await buildLLMConfig({ apiKey: 'short' }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.warnings).toContain('API key seems too short - please verify it is correct');
     });
 
     it('should handle baseURL updates', async () => {
-        const result = await mergeValidatedLLMConfig(
+        const result = await buildLLMConfig(
             { baseURL: 'https://custom.openai.com' },
             baseLLMConfig
         );
@@ -178,7 +171,7 @@ describe('mergeValidatedLLMConfig', () => {
         // Provide Anthropic API key so we can reach the baseURL validation
         process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key-123456789';
 
-        const result = await mergeValidatedLLMConfig(
+        const result = await buildLLMConfig(
             {
                 provider: 'anthropic',
                 baseURL: 'https://custom.anthropic.com',
@@ -193,73 +186,70 @@ describe('mergeValidatedLLMConfig', () => {
     });
 
     it('should handle maxTokens updates', async () => {
-        const result = await mergeValidatedLLMConfig({ maxTokens: 2000 }, baseLLMConfig);
+        const result = await buildLLMConfig({ maxTokens: 2000 }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.config.maxTokens).toBe(2000);
     });
 
     it('should validate empty model', async () => {
-        const result = await mergeValidatedLLMConfig({ model: '' }, baseLLMConfig);
+        const result = await buildLLMConfig({ model: '' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toContain('Model must be a non-empty string');
     });
 
     it('should validate empty provider', async () => {
-        const result = await mergeValidatedLLMConfig({ provider: '' }, baseLLMConfig);
+        const result = await buildLLMConfig({ provider: '' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toContain('Provider must be a non-empty string');
     });
 
     it('should validate unknown provider', async () => {
-        const result = await mergeValidatedLLMConfig({ provider: 'unknown' }, baseLLMConfig);
+        const result = await buildLLMConfig({ provider: 'unknown' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toContain('Unknown provider: unknown');
     });
 
     it('should validate negative maxTokens', async () => {
-        const result = await mergeValidatedLLMConfig({ maxTokens: -100 }, baseLLMConfig);
+        const result = await buildLLMConfig({ maxTokens: -100 }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toContain('maxTokens must be a positive number');
     });
 
     it('should validate invalid router', async () => {
-        const result = await mergeValidatedLLMConfig({ router: 'invalid' as any }, baseLLMConfig);
+        const result = await buildLLMConfig({ router: 'invalid' as any }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toContain('Router must be either "vercel" or "in-built"');
     });
 
     it('should validate invalid providerOptions', async () => {
-        const result = await mergeValidatedLLMConfig(
-            { providerOptions: 'invalid' as any },
-            baseLLMConfig
-        );
+        const result = await buildLLMConfig({ providerOptions: 'invalid' as any }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toContain('Provider options must be an object');
     });
 
     it('should handle maxIterations update', async () => {
-        const result = await mergeValidatedLLMConfig({ maxIterations: 100 }, baseLLMConfig);
+        const result = await buildLLMConfig({ maxIterations: 100 }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.config.maxIterations).toBe(100);
     });
 
     it('should update maxTokens when model changes', async () => {
-        const result = await mergeValidatedLLMConfig({ model: 'gpt-4o-mini' }, baseLLMConfig);
+        const result = await buildLLMConfig({ model: 'gpt-4o-mini' }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.config.maxTokens).toBeDefined();
     });
 
     it('should handle high maxTokens without error', async () => {
-        const result = await mergeValidatedLLMConfig({ maxTokens: 50000 }, baseLLMConfig);
+        const result = await buildLLMConfig({ maxTokens: 50000 }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
         expect(result.config.maxTokens).toBe(50000);
@@ -271,7 +261,7 @@ describe('mergeValidatedLLMConfig', () => {
             baseURL: 'https://custom.openai.com',
         };
 
-        const result = await mergeValidatedLLMConfig({ model: 'gpt-4o-mini' }, configWithBaseURL);
+        const result = await buildLLMConfig({ model: 'gpt-4o-mini' }, configWithBaseURL);
 
         expect(result.isValid).toBe(true);
         expect(result.config.baseURL).toBe('https://custom.openai.com');
@@ -285,7 +275,7 @@ describe('mergeValidatedLLMConfig', () => {
             baseURL: 'https://custom.openai.com',
         };
 
-        const result = await mergeValidatedLLMConfig({ provider: 'anthropic' }, configWithBaseURL);
+        const result = await buildLLMConfig({ provider: 'anthropic' }, configWithBaseURL);
 
         expect(result.isValid).toBe(true);
         expect(result.config.baseURL).toBeUndefined();
@@ -295,10 +285,7 @@ describe('mergeValidatedLLMConfig', () => {
     });
 
     it('should handle provider inference from model', async () => {
-        const result = await mergeValidatedLLMConfig(
-            { model: 'claude-4-sonnet-20250514' },
-            baseLLMConfig
-        );
+        const result = await buildLLMConfig({ model: 'claude-4-sonnet-20250514' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false); // Will fail due to missing API key
         expect(result.errors).toContain(

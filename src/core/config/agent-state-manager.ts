@@ -2,9 +2,9 @@ import { logger } from '../logger/index.js';
 import type { AgentConfig, LLMConfig, McpServerConfig } from './schemas.js';
 import type { AgentEventBus } from '../events/index.js';
 import {
-    validateLLMUpdate,
     validateRuntimeUpdate,
-    type LLMValidationResult,
+    validateRuntimeState,
+    type ValidationResult,
 } from './validation-utils.js';
 
 /**
@@ -164,10 +164,16 @@ export class AgentStateManager {
     /**
      * Update the LLM configuration (globally or for a specific session)
      */
-    public updateLLM(newConfig: Partial<LLMConfig>, sessionId?: string): LLMValidationResult {
-        // Validate the update first
+    public updateLLM(newConfig: Partial<LLMConfig>, sessionId?: string): ValidationResult {
+        // Build the new effective state for validation
         const currentState = sessionId ? this.getEffectiveState(sessionId) : this.runtimeState;
-        const validation = validateLLMUpdate(newConfig, currentState);
+        const updatedState: AgentRuntimeState = {
+            ...currentState,
+            llm: { ...currentState.llm, ...newConfig },
+        };
+
+        // Validate the complete state
+        const validation = validateRuntimeState(updatedState);
 
         if (!validation.isValid) {
             logger.warn('LLM update validation failed', {
@@ -282,7 +288,7 @@ export class AgentStateManager {
     public updateRuntime(
         settings: Partial<AgentRuntimeState['runtime']>,
         sessionId?: string
-    ): LLMValidationResult {
+    ): ValidationResult {
         // Validate the update first
         const validation = validateRuntimeUpdate(settings);
 
@@ -522,18 +528,14 @@ export class AgentStateManager {
     /**
      * Quickly switch LLM model (keeping other LLM settings)
      */
-    public switchModel(model: string, sessionId?: string): LLMValidationResult {
+    public switchModel(model: string, sessionId?: string): ValidationResult {
         return this.updateLLM({ model }, sessionId);
     }
 
     /**
      * Quickly switch LLM provider (will also need to update model)
      */
-    public switchProvider(
-        provider: string,
-        model: string,
-        sessionId?: string
-    ): LLMValidationResult {
+    public switchProvider(provider: string, model: string, sessionId?: string): ValidationResult {
         return this.updateLLM({ provider, model }, sessionId);
     }
 
@@ -543,14 +545,14 @@ export class AgentStateManager {
     public updateSystemPrompt(
         systemPrompt: LLMConfig['systemPrompt'],
         sessionId?: string
-    ): LLMValidationResult {
+    ): ValidationResult {
         return this.updateLLM({ systemPrompt }, sessionId);
     }
 
     /**
      * Quickly switch router
      */
-    public switchRouter(router: LLMConfig['router'], sessionId?: string): LLMValidationResult {
+    public switchRouter(router: LLMConfig['router'], sessionId?: string): ValidationResult {
         return this.updateLLM({ router }, sessionId);
     }
 

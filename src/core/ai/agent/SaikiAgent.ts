@@ -12,8 +12,6 @@ import type { AgentConfig } from '../../config/schemas.js';
 import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 import { AgentEventBus } from '../../events/index.js';
-import type { ILLMService } from '../llm/services/types.js';
-import type { MessageManager } from '../llm/messages/manager.js';
 import { LLMConfigSchema } from '../../config/schemas.js';
 import { buildValidatedLLMConfig } from '../../config/validation-utils.js';
 
@@ -26,11 +24,45 @@ const requiredServices: (keyof AgentServices)[] = [
 ];
 
 /**
- * The main entry point into Saiki's core.
- * SaikiAgent is an abstraction layer on top of the internal services that saiki has.
- * You can use the SaikiAgent class in applications to build AI Agents.
- * By design, most of the methods in this class are thin wrappers around the internal services, exposing functionality that we might want to use in applications.
- * Most APIs designed for Saiki agents should use functions of this class - you can think of this class as the primary API/User facing class.
+ * The main entry point into Saiki's core functionality.
+ *
+ * SaikiAgent is a high-level abstraction layer that provides a clean, user-facing API
+ * for building AI agents. It coordinates multiple internal services to deliver core
+ * capabilities including conversation management, LLM switching, MCP server integration,
+ * and multi-session support.
+ *
+ * Key Features:
+ * - **Conversation Management**: Process user messages and maintain conversation state
+ * - **Multi-Session Support**: Create and manage multiple independent chat sessions
+ * - **Dynamic LLM Switching**: Change language models while preserving conversation history
+ * - **MCP Server Integration**: Connect to and manage Model Context Protocol servers
+ * - **Tool Execution**: Execute tools from connected MCP servers
+ * - **Event System**: Emit events for integration with external systems
+ *
+ * Design Principles:
+ * - Thin wrapper around internal services with high-level methods
+ * - Primary API for applications building on Saiki
+ * - Internal services exposed as public readonly properties for advanced usage
+ * - Backward compatibility through default session management
+ *
+ * @example
+ * ```typescript
+ * // Create agent
+ * const agent = await createSaikiAgent(config);
+ *
+ * // Process user messages
+ * const response = await agent.run("Hello, how are you?");
+ *
+ * // Switch LLM models
+ * await agent.switchLLM({ model: 'gpt-4o', provider: 'openai' });
+ *
+ * // Manage sessions
+ * const session = agent.createSession('user-123');
+ * const response = await agent.run("Hello", undefined, 'user-123');
+ *
+ * // Connect MCP servers
+ * await agent.addMcpServer('filesystem', { command: 'mcp-filesystem' });
+ * ```
  */
 export class SaikiAgent {
     /**
@@ -66,37 +98,16 @@ export class SaikiAgent {
         logger.info('SaikiAgent initialized.');
     }
 
-    /**
-     * Gets the LLM service instance from the default session.
-     * For backward compatibility with the LLM switching feature.
-     * @returns The current LLM service from the default session.
-     */
-    public getLLMService(): ILLMService {
-        if (!this.defaultSession) {
-            this.defaultSession = this.sessionManager.createSession('default');
-        }
-        return this.defaultSession.getLLMService();
-    }
-
-    /**
-     * Gets the MessageManager instance from the default session.
-     * For backward compatibility with the LLM switching feature.
-     * @returns The MessageManager from the default session.
-     */
-    public getMessageManager(): MessageManager {
-        if (!this.defaultSession) {
-            this.defaultSession = this.sessionManager.createSession('default');
-        }
-        return this.defaultSession.getMessageManager();
-    }
+    // ============= CORE AGENT FUNCTIONALITY =============
 
     /**
      * Processes a single turn of interaction with the user.
-     * For backward compatibility, this creates/uses a default session.
+     * This is the primary method for conversing with the agent.
+     *
      * @param userInput The input from the user.
      * @param imageDataInput Optional image data with MIME type for multimodal processing.
      * @param sessionId Optional session ID. If not provided, uses the default session.
-     * @returns The agent's response.
+     * @returns The agent's response, or null if no significant response.
      */
     public async run(
         userInput: string,
@@ -176,34 +187,7 @@ export class SaikiAgent {
         }
     }
 
-    /**
-     * Connects a new MCP server dynamically.
-     * @param name The name of the server to connect.
-     * @param config The configuration object for the server.
-     */
-    public async connectMcpServer(name: string, config: McpServerConfig): Promise<void> {
-        try {
-            await this.clientManager.connectServer(name, config);
-            this.agentEventBus.emit('saiki:mcpServerConnected', {
-                name,
-                success: true,
-            });
-            this.agentEventBus.emit('saiki:availableToolsUpdated', {
-                tools: Object.keys(await this.clientManager.getAllTools()),
-                source: 'mcp',
-            });
-            logger.info(`SaikiAgent: Successfully connected to MCP server '${name}'.`);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error(`SaikiAgent: Failed to connect to MCP server '${name}': ${errorMessage}`);
-            this.agentEventBus.emit('saiki:mcpServerConnected', {
-                name,
-                success: false,
-                error: errorMessage,
-            });
-            throw error;
-        }
-    }
+    // ============= SESSION MANAGEMENT =============
 
     /**
      * Creates a new chat session or returns an existing one.
@@ -266,22 +250,10 @@ export class SaikiAgent {
         return await session.getHistory();
     }
 
-    /**
-     * Resets the conversation history for a specific session.
-     * @param sessionId The session ID to reset
-     * @throws Error if session doesn't exist
-     */
-    public async resetSession(sessionId: string): Promise<void> {
-        const session = this.sessionManager.getSession(sessionId);
-        if (!session) {
-            throw new Error(`Session '${sessionId}' not found`);
-        }
-        await session.reset();
-    }
+    // ============= LLM MANAGEMENT =============
 
     /**
      * Gets the current LLM configuration.
-     *
      * @returns Current LLM configuration
      */
     public getCurrentLLMConfig(): LLMConfig {
@@ -396,7 +368,38 @@ export class SaikiAgent {
     // ============= MCP SERVER MANAGEMENT =============
 
     /**
+     * Connects a new MCP server dynamically.
+     * This is a lower-level method; consider using addMcpServer() instead.
+     * @param name The name of the server to connect.
+     * @param config The configuration object for the server.
+     */
+    public async connectMcpServer(name: string, config: McpServerConfig): Promise<void> {
+        try {
+            await this.clientManager.connectServer(name, config);
+            this.agentEventBus.emit('saiki:mcpServerConnected', {
+                name,
+                success: true,
+            });
+            this.agentEventBus.emit('saiki:availableToolsUpdated', {
+                tools: Object.keys(await this.clientManager.getAllTools()),
+                source: 'mcp',
+            });
+            logger.info(`SaikiAgent: Successfully connected to MCP server '${name}'.`);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error(`SaikiAgent: Failed to connect to MCP server '${name}': ${errorMessage}`);
+            this.agentEventBus.emit('saiki:mcpServerConnected', {
+                name,
+                success: false,
+                error: errorMessage,
+            });
+            throw error;
+        }
+    }
+
+    /**
      * Connects a new MCP server and adds it to the runtime configuration.
+     * This is the recommended method for adding MCP servers.
      * @param name The name of the server to connect.
      * @param config The configuration object for the server.
      */
@@ -421,23 +424,8 @@ export class SaikiAgent {
     }
 
     /**
-     * Gets all connected MCP clients.
-     * @returns Map of client names to client instances
-     */
-    public getMcpClients(): Map<string, any> {
-        return this.clientManager.getClients();
-    }
-
-    /**
-     * Gets all failed MCP connections.
-     * @returns Record of failed connection names to error messages
-     */
-    public getMcpFailedConnections(): Record<string, string> {
-        return this.clientManager.getFailedConnections();
-    }
-
-    /**
      * Executes a tool on a connected MCP server.
+     * Useful for users to experiment with tools directly.
      * @param toolName The name of the tool to execute
      * @param args The arguments to pass to the tool
      * @returns The result of the tool execution
@@ -448,10 +436,29 @@ export class SaikiAgent {
 
     /**
      * Gets all available tools from all connected MCP servers.
+     * Useful for users to discover what tools are available.
      * @returns Promise resolving to a map of tool names to tool definitions
      */
     public async getAllMcpTools(): Promise<any> {
         return await this.clientManager.getAllTools();
+    }
+
+    /**
+     * Gets all connected MCP clients.
+     * Used by the API layer to inspect client status.
+     * @returns Map of client names to client instances
+     */
+    public getMcpClients(): Map<string, any> {
+        return this.clientManager.getClients();
+    }
+
+    /**
+     * Gets all failed MCP connections.
+     * Used by the API layer to report connection errors.
+     * @returns Record of failed connection names to error messages
+     */
+    public getMcpFailedConnections(): Record<string, string> {
+        return this.clientManager.getFailedConnections();
     }
 
     // ============= CONFIGURATION ACCESS =============

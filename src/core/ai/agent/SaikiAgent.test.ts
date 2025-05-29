@@ -37,6 +37,7 @@ describe('SaikiAgent.switchLLM', () => {
         mockStateManager = {
             getRuntimeState: vi.fn().mockReturnValue({
                 llm: mockLLMConfig,
+                mcpServers: {},
                 runtime: { debugMode: false, logLevel: 'info' },
             }),
             getEffectiveState: vi.fn().mockReturnValue({
@@ -44,7 +45,6 @@ describe('SaikiAgent.switchLLM', () => {
             }),
             updateLLM: vi.fn().mockReturnValue({ isValid: true, errors: [], warnings: [] }),
             updateLLMConfig: vi.fn().mockResolvedValue(undefined),
-            validateLLMUpdate: vi.fn().mockReturnValue({ isValid: true, errors: [] }),
         };
 
         mockSessionManager = {
@@ -114,7 +114,6 @@ describe('SaikiAgent.switchLLM', () => {
             clientManager: mockClientManager,
             promptManager: mockPromptManager,
             agentEventBus: mockEventBus,
-            configManager: mockConfigManager,
             stateManager: mockStateManager,
             sessionManager: mockSessionManager,
         });
