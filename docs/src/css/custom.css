@@ -9,13 +9,13 @@
 /* Color palette - Professional tech theme */
 :root {
   /* Primary brand colors */
-  --ifm-color-primary: #6366f1;
-  --ifm-color-primary-dark: #4f46e5;
-  --ifm-color-primary-darker: #4338ca;
-  --ifm-color-primary-darkest: #3730a3;
-  --ifm-color-primary-light: #8b5cf6;
-  --ifm-color-primary-lighter: #a78bfa;
-  --ifm-color-primary-lightest: #c4b5fd;
+  --ifm-color-primary: #14b8a6;
+  --ifm-color-primary-dark: #0d9488;
+  --ifm-color-primary-darker: #0f766e;
+  --ifm-color-primary-darkest: #134e4a;
+  --ifm-color-primary-light: #5eead4;
+  --ifm-color-primary-lighter: #99f6e4;
+  --ifm-color-primary-lightest: #ccfbf1;
 
   /* Neutral colors */
   --ifm-color-gray-0: #ffffff;
@@ -57,7 +57,7 @@
   --ifm-code-padding-vertical: 0.125rem;
 
   /* Syntax highlighting */
-  --docusaurus-highlighted-code-line-bg: rgba(99, 102, 241, 0.1);
+  --docusaurus-highlighted-code-line-bg: rgba(20, 184, 166, 0.1);
 
   /* Navbar */
   --ifm-navbar-background-color: var(--ifm-color-gray-0);
@@ -81,13 +81,13 @@
 /* Dark mode colors */
 [data-theme='dark'] {
   /* Primary colors for dark mode */
-  --ifm-color-primary: #8b5cf6;
-  --ifm-color-primary-dark: #7c3aed;
-  --ifm-color-primary-darker: #6d28d9;
-  --ifm-color-primary-darkest: #5b21b6;
-  --ifm-color-primary-light: #a78bfa;
-  --ifm-color-primary-lighter: #c4b5fd;
-  --ifm-color-primary-lightest: #ddd6fe;
+  --ifm-color-primary: #5eead4;
+  --ifm-color-primary-dark: #14b8a6;
+  --ifm-color-primary-darker: #0d9488;
+  --ifm-color-primary-darkest: #0f766e;
+  --ifm-color-primary-light: #99f6e4;
+  --ifm-color-primary-lighter: #ccfbf1;
+  --ifm-color-primary-lightest: #f0fdfa;
 
   /* Dark backgrounds */
   --ifm-background-color: #0f172a;
@@ -96,7 +96,7 @@
   /* Code styling for dark mode */
   --ifm-code-background: rgba(100, 116, 139, 0.2);
   --ifm-code-color: #e2e8f0;
-  --docusaurus-highlighted-code-line-bg: rgba(139, 92, 246, 0.2);
+  --docusaurus-highlighted-code-line-bg: rgba(94, 234, 212, 0.2);
 
   /* Navbar dark */
   --ifm-navbar-background-color: #1e293b;
@@ -239,6 +239,10 @@ code {
   background-color: var(--ifm-color-primary);
   color: white;
   font-weight: 600;
+}
+
+[data-theme='light'] .menu__link--active {
+  color: var(--ifm-color-gray-900);
 }
 
 /* Enhanced content area */

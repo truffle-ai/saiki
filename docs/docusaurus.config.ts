@@ -41,7 +41,11 @@ const config: Config = {
                     showLastUpdateAuthor: true,
                     showLastUpdateTime: true,
                     breadcrumbs: true,
+                    remarkPlugins: [],
+                    rehypePlugins: [],
                 },
+                // BLOG DISABLED: To re-enable, uncomment the section below and related links in navbar/footer.
+                /*
                 blog: {
                     showReadingTime: true,
                     feedOptions: {
@@ -53,16 +57,23 @@ const config: Config = {
                     onInlineAuthors: 'warn',
                     onUntruncatedBlogPosts: 'warn',
                 },
+                */
                 theme: {
                     customCss: './src/css/custom.css',
                 },
-                gtag: {
-                    trackingID: 'G-XXXXXXXXXX', // Replace with your Google Analytics ID
-                    anonymizeIP: true,
-                },
+                // gtag: {
+                //     trackingID: 'G-XXXXXXXXXX', // Replace with your Google Analytics ID
+                //     anonymizeIP: true,
+                // },
             } satisfies Preset.Options,
         ],
     ],
+
+    themes: ['@docusaurus/theme-mermaid'],
+
+    markdown: {
+        mermaid: true,
+    },
 
     themeConfig: {
         // Replace with your project's social card
@@ -94,15 +105,13 @@ const config: Config = {
                     position: 'left',
                     label: 'Docs',
                 },
+                /*
                 {
                     to: '/blog',
                     label: 'Blog',
                     position: 'left',
                 },
-                {
-                    type: 'search',
-                    position: 'right',
-                },
+                */
                 {
                     href: 'https://discord.gg/GFzWFAAZcm',
                     position: 'right',
@@ -114,11 +123,6 @@ const config: Config = {
                     position: 'right',
                     className: 'header-github-link',
                     'aria-label': 'GitHub repository',
-                },
-                {
-                    type: 'html',
-                    position: 'right',
-                    value: '<iframe src="https://ghbtns.com/github-btn.html?user=truffle-ai&repo=saiki&type=star&count=true&size=large" frameborder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe>',
                 },
             ],
         },
@@ -132,17 +136,19 @@ const config: Config = {
                             label: 'Getting Started',
                             to: '/docs/getting-started/intro',
                         },
+                        // Note: User updated this link, ensure it's correct after folder moves
                         {
                             label: 'Building with Saiki',
-                            to: '/docs/user-guide/development',
+                            to: '/docs/building-with-saiki',
                         },
                         {
                             label: 'LLM Providers',
-                            to: '/docs/configuring-saiki/llm-providers',
+                            to: '/docs/configuring-saiki/llm/providers',
                         },
+                        // Note: This link will need to be updated after folder moves
                         {
                             label: 'API Reference',
-                            to: '/docs/user-guide/api',
+                            to: '/docs/api',
                         },
                     ],
                 },
@@ -170,10 +176,12 @@ const config: Config = {
                 {
                     title: 'Resources',
                     items: [
+                        /*
                         {
                             label: 'Blog',
                             to: '/blog',
                         },
+                        */
                         {
                             label: 'Examples',
                             to: '/docs/getting-started/examples-demos',
@@ -228,14 +236,8 @@ const config: Config = {
                 'docker',
             ],
         },
-        algolia: {
-            // Replace with your Algolia config when ready
-            appId: 'YOUR_APP_ID',
-            apiKey: 'YOUR_SEARCH_API_KEY',
-            indexName: 'saiki-docs',
-            contextualSearch: true,
-            searchParameters: {},
-            searchPagePath: 'search',
+        mermaid: {
+            theme: { light: 'neutral', dark: 'dark' },
         },
         announcementBar: {
             id: 'support_us',
