@@ -85,8 +85,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Dynamic MCP server connection endpoint (legacy)
     app.post('/api/connect-server', express.json(), async (req, res) => {
-        logger.info('Received request via POST /api/connect-server');
         const { name, config } = req.body;
         if (!name || typeof name !== 'string' || name.trim() === '') {
             return res.status(400).send({ error: 'Missing or invalid server name' });
@@ -95,16 +95,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             return res.status(400).send({ error: 'Missing or invalid server config object' });
         }
         try {
-            await agent.connectMcpServer(name, config);
-            // Add dynamic server config to in-memory runtime state
-            try {
-                agent.stateManager.addMcpServer(name, config);
-            } catch (error) {
-                // Log the error but don't fail the connection since it succeeded
-                logger.warn(
-                    `Failed to update runtime state for server '${name}': ${error instanceof Error ? error.message : String(error)}`
-                );
-            }
+            await agent.addMcpServer(name, config);
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
         } catch (error) {
@@ -117,11 +108,26 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Add a new MCP server
+    app.post('/api/mcp/servers', express.json(), async (req, res) => {
+        const { name, config } = req.body;
+        if (!name || !config) {
+            return res.status(400).json({ error: 'Missing name or config' });
+        }
+        try {
+            await agent.addMcpServer(name, config);
+            res.status(201).json({ status: 'connected', name });
+        } catch (error: any) {
+            logger.error(`Error connecting MCP server '${name}': ${error.message}`);
+            res.status(500).json({ error: `Failed to connect server: ${error.message}` });
+        }
+    });
+
     // Add MCP servers listing endpoint
     app.get('/api/mcp/servers', async (req, res) => {
         try {
-            const clientsMap = agent.clientManager.getClients();
-            const failedConnections = agent.clientManager.getFailedConnections();
+            const clientsMap = agent.getMcpClients();
+            const failedConnections = agent.getMcpFailedConnections();
             const servers: Array<{ id: string; name: string; status: string }> = [];
             for (const name of clientsMap.keys()) {
                 servers.push({ id: name, name, status: 'connected' });
@@ -139,7 +145,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Add MCP server tools listing endpoint
     app.get('/api/mcp/servers/:serverId/tools', async (req, res) => {
         const serverId = req.params.serverId;
-        const client = agent.clientManager.getClients().get(serverId);
+        const client = agent.getMcpClients().get(serverId);
         if (!client) {
             return res.status(404).json({ error: `Server '${serverId}' not found` });
         }
@@ -166,22 +172,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             // Check if server exists before attempting to disconnect
             const clientExists =
-                agent.clientManager.getClients().has(serverId) ||
-                agent.clientManager.getFailedConnections()[serverId];
+                agent.getMcpClients().has(serverId) || agent.getMcpFailedConnections()[serverId];
             if (!clientExists) {
                 logger.warn(`Attempted to delete non-existent server: ${serverId}`);
                 return res.status(404).json({ error: `Server '${serverId}' not found.` });
             }
 
-            // Use the new removeClient method in MCPClientManager
-            await agent.clientManager.removeClient(serverId);
-            logger.info(
-                `Successfully processed removal for client: ${serverId} via MCPClientManager.`
-            );
-
-            // Remove from runtime state - this is still important for the agent's own configuration
-            agent.stateManager.removeMcpServer(serverId);
-
+            await agent.removeMcpServer(serverId);
             res.status(200).json({ status: 'disconnected', id: serverId });
         } catch (error: any) {
             logger.error(`Error deleting server '${serverId}': ${error.message}`);
@@ -198,15 +195,15 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         async (req, res) => {
             const { serverId, toolName } = req.params;
             // Verify server exists
-            const client = agent.clientManager.getClients().get(serverId);
+            const client = agent.getMcpClients().get(serverId);
             if (!client) {
                 return res
                     .status(404)
                     .json({ success: false, error: `Server '${serverId}' not found` });
             }
             try {
-                // Execute tool through the agent's client manager
-                const rawResult = await agent.clientManager.executeTool(toolName, req.body);
+                // Execute tool through the agent's wrapper method
+                const rawResult = await agent.executeMcpTool(toolName, req.body);
                 // Return standardized result shape
                 res.json({ success: true, data: rawResult });
             } catch (error: any) {
@@ -307,32 +304,45 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         mcpTransport
     );
 
-    // Export current AgentConfig as YAML, omitting sensitive fields
+    // Configuration export endpoint
     app.get('/api/config.yaml', async (req, res) => {
         try {
-            // Get session ID from query parameter if provided
             const sessionId = req.query.sessionId as string | undefined;
+            const config = agent.getEffectiveConfig(sessionId);
 
-            // Deep clone and sanitize the current effective configuration
-            const rawConfig = sessionId
-                ? agent.stateManager.getEffectiveConfig(sessionId)
-                : agent.stateManager.getEffectiveConfig();
-            const exportConfig = JSON.parse(JSON.stringify(rawConfig));
+            // Export config as YAML, masking sensitive data
+            const maskedConfig = {
+                ...config,
+                llm: {
+                    ...config.llm,
+                    apiKey: config.llm.apiKey ? '[REDACTED]' : undefined,
+                },
+                mcpServers: Object.fromEntries(
+                    Object.entries(config.mcpServers).map(([name, serverConfig]: [string, any]) => [
+                        name,
+                        {
+                            ...serverConfig,
+                            env: serverConfig.env
+                                ? Object.fromEntries(
+                                      Object.entries(serverConfig.env).map(([key, value]) => [
+                                          key,
+                                          value && typeof value === 'string' && value.length > 0
+                                              ? '[REDACTED]'
+                                              : value,
+                                      ])
+                                  )
+                                : undefined,
+                        },
+                    ])
+                ),
+            };
 
-            // Remove sensitive API key
-            if (exportConfig.llm && 'apiKey' in exportConfig.llm) {
-                exportConfig.llm.apiKey = 'SET_YOUR_API_KEY_HERE';
-            }
-
-            // Serialize YAML
-            const yamlText = yamlStringify(exportConfig);
-            res.setHeader('Content-Type', 'application/x-yaml');
-            res.send(yamlText);
-        } catch (err) {
-            logger.error(
-                `Error exporting config YAML: ${err instanceof Error ? err.message : String(err)}`
-            );
-            res.status(500).send('Failed to export configuration');
+            const yamlStr = yamlStringify(maskedConfig);
+            res.set('Content-Type', 'application/x-yaml');
+            res.send(yamlStr);
+        } catch (error: any) {
+            logger.error(`Error exporting config: ${error.message}`);
+            res.status(500).json({ error: 'Failed to export configuration' });
         }
     });
 
@@ -416,7 +426,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             const sessionIds = agent.listSessions();
             const sessions = sessionIds.map((id) => {
-                const metadata = agent.sessionManager.getSessionMetadata(id);
+                const metadata = agent.getSessionMetadata(id);
                 return {
                     id,
                     createdAt: metadata?.createdAt || null,
@@ -435,8 +445,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.post('/api/sessions', express.json(), async (req, res) => {
         try {
             const { sessionId } = req.body;
-            const session = agent.sessionManager.createSession(sessionId);
-            const metadata = agent.sessionManager.getSessionMetadata(session.id);
+            const session = agent.createSession(sessionId);
+            const metadata = agent.getSessionMetadata(session.id);
             res.status(201).json({
                 session: {
                     id: session.id,
@@ -455,13 +465,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.get('/api/sessions/:sessionId', async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const session = agent.sessionManager.getSession(sessionId);
+            const session = agent.getSession(sessionId);
             if (!session) {
                 return res.status(404).json({ error: 'Session not found' });
             }
 
-            const metadata = agent.sessionManager.getSessionMetadata(sessionId);
-            const history = await session.getHistory();
+            const metadata = agent.getSessionMetadata(sessionId);
+            const history = await agent.getSessionHistory(sessionId);
 
             res.json({
                 session: {
@@ -482,12 +492,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.get('/api/sessions/:sessionId/history', async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const session = agent.sessionManager.getSession(sessionId);
+            const session = agent.getSession(sessionId);
             if (!session) {
                 return res.status(404).json({ error: 'Session not found' });
             }
 
-            const history = await session.getHistory();
+            const history = await agent.getSessionHistory(sessionId);
             res.json({ history });
         } catch (error) {
             logger.error(
@@ -501,12 +511,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.delete('/api/sessions/:sessionId', async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const session = agent.sessionManager.getSession(sessionId);
+            const session = agent.getSession(sessionId);
             if (!session) {
                 return res.status(404).json({ error: 'Session not found' });
             }
 
-            await agent.sessionManager.endSession(sessionId);
+            await agent.endSession(sessionId);
             res.json({ status: 'deleted', sessionId });
         } catch (error) {
             logger.error(`Error deleting session ${req.params.sessionId}: ${error.message}`);
@@ -518,12 +528,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.post('/api/sessions/:sessionId/reset', async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const session = agent.sessionManager.getSession(sessionId);
+            const session = agent.getSession(sessionId);
             if (!session) {
                 return res.status(404).json({ error: 'Session not found' });
             }
 
-            await session.reset();
+            await agent.resetSession(sessionId);
             res.json({ status: 'reset', sessionId });
         } catch (error) {
             logger.error(`Error resetting session ${req.params.sessionId}: ${error.message}`);

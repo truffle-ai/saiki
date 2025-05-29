@@ -246,10 +246,37 @@ export class SaikiAgent {
     /**
      * Gets metadata for a specific session.
      * @param sessionId The session ID
-     * @returns Session metadata if found, undefined otherwise
+     * @returns The session metadata or undefined if session doesn't exist
      */
     public getSessionMetadata(sessionId: string): SessionMetadata | undefined {
         return this.sessionManager.getSessionMetadata(sessionId);
+    }
+
+    /**
+     * Gets the conversation history for a specific session.
+     * @param sessionId The session ID
+     * @returns Promise that resolves to the session's conversation history
+     * @throws Error if session doesn't exist
+     */
+    public async getSessionHistory(sessionId: string) {
+        const session = this.sessionManager.getSession(sessionId);
+        if (!session) {
+            throw new Error(`Session '${sessionId}' not found`);
+        }
+        return await session.getHistory();
+    }
+
+    /**
+     * Resets the conversation history for a specific session.
+     * @param sessionId The session ID to reset
+     * @throws Error if session doesn't exist
+     */
+    public async resetSession(sessionId: string): Promise<void> {
+        const session = this.sessionManager.getSession(sessionId);
+        if (!session) {
+            throw new Error(`Session '${sessionId}' not found`);
+        }
+        await session.reset();
     }
 
     /**
@@ -364,6 +391,80 @@ export class SaikiAgent {
     private collectWarnings(...warningArrays: string[][]): string[] {
         const allWarnings = warningArrays.flat().filter(Boolean);
         return Array.from(new Set(allWarnings)); // Deduplicate
+    }
+
+    // ============= MCP SERVER MANAGEMENT =============
+
+    /**
+     * Connects a new MCP server and adds it to the runtime configuration.
+     * @param name The name of the server to connect.
+     * @param config The configuration object for the server.
+     */
+    public async addMcpServer(name: string, config: McpServerConfig): Promise<void> {
+        // Add to runtime state first
+        this.stateManager.addMcpServer(name, config);
+
+        // Then connect the server
+        await this.connectMcpServer(name, config);
+    }
+
+    /**
+     * Removes and disconnects an MCP server.
+     * @param name The name of the server to remove.
+     */
+    public async removeMcpServer(name: string): Promise<void> {
+        // Disconnect the client first
+        await this.clientManager.removeClient(name);
+
+        // Then remove from runtime state
+        this.stateManager.removeMcpServer(name);
+    }
+
+    /**
+     * Gets all connected MCP clients.
+     * @returns Map of client names to client instances
+     */
+    public getMcpClients(): Map<string, any> {
+        return this.clientManager.getClients();
+    }
+
+    /**
+     * Gets all failed MCP connections.
+     * @returns Record of failed connection names to error messages
+     */
+    public getMcpFailedConnections(): Record<string, string> {
+        return this.clientManager.getFailedConnections();
+    }
+
+    /**
+     * Executes a tool on a connected MCP server.
+     * @param toolName The name of the tool to execute
+     * @param args The arguments to pass to the tool
+     * @returns The result of the tool execution
+     */
+    public async executeMcpTool(toolName: string, args: any): Promise<any> {
+        return await this.clientManager.executeTool(toolName, args);
+    }
+
+    /**
+     * Gets all available tools from all connected MCP servers.
+     * @returns Promise resolving to a map of tool names to tool definitions
+     */
+    public async getAllMcpTools(): Promise<any> {
+        return await this.clientManager.getAllTools();
+    }
+
+    // ============= CONFIGURATION ACCESS =============
+
+    /**
+     * Gets the effective configuration for a session or the default configuration.
+     * @param sessionId Optional session ID. If not provided, returns default config.
+     * @returns The effective configuration object
+     */
+    public getEffectiveConfig(sessionId?: string): any {
+        return sessionId
+            ? this.stateManager.getEffectiveConfig(sessionId)
+            : this.stateManager.getEffectiveConfig();
     }
 
     // Future methods could encapsulate more complex agent behaviors:
