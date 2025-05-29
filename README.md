@@ -87,6 +87,14 @@ saiki --mode telegram
 ```
 Make sure you have `TELEGRAM_BOT_TOKEN` set in your environment. See [here](app/telegram/README.md) for more details.
 
+### MCP Server Mode
+
+Spin up an agent that acts as an MCP server
+
+```bash
+saiki --mode mcp
+```
+
 ## Overview
 
 Saiki is an open, modular and extensible AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly, whether that means running a shell command, summarizing a webpage, or calling an API.
@@ -202,54 +210,131 @@ llm:
   apiKey: $OPENAI_API_KEY
 ```
 
-## Discovering & Connecting MCP Servers
+## LLM Providers & Setup
 
-Saiki communicates with your tools via Model Context Protocol (MCP) servers. You can discover and connect to MCP servers in several ways:
+Saiki supports multiple LLM providers out of the box, plus any OpenAI SDK-compatible provider.
 
-1. Browse pre-built servers:
-   - Model Context Protocol reference servers: https://github.com/modelcontextprotocol/reference-servers
-   - Smithery.ai catalog: https://smithery.ai/tools
-   - Composio MCP registry: https://mcp.composio.dev/
+### Built-in Providers
 
-2. Search on npm:
-```bash
-npm search @modelcontextprotocol/server
+- **OpenAI**: `gpt-4.1-mini`, `gpt-4o`, `o3`, `o1` and more
+- **Anthropic**: `claude-3-7-sonnet-20250219`, `claude-3-5-sonnet-20240620` and more  
+- **Google**: `gemini-2.5-pro-exp-03-25`, `gemini-2.0-flash` and more
+- **Groq**: `llama-3.3-70b-versatile`, `gemma-2-9b-it`
+
+You will need to set your provider specific API keys accordingly.
+
+### Custom/OpenAI-Compatible Providers
+
+Use any provider implementing the OpenAI SDK interface:
+
+```yaml
+llm:
+  provider: openai
+  model: your-custom-model
+  apiKey: $YOUR_API_KEY
+  baseURL: https://api.your-provider.com/v1
+  maxTokens: 100000
 ```
-3. Add servers to your `configuration/saiki.yml` under the `mcpServers` key (see the snippet above).
 
-4. Create custom servers:
-   - Use the MCP TypeScript SDK: https://github.com/modelcontextprotocol/typescript-sdk
-   - Follow the MCP spec: https://modelcontextprotocol.io/introduction
+**Compatible providers**: Local models (Ollama), Azure OpenAI, OpenRouter, Together.ai, Anyscale, Perplexity, and more.
+
+### Quick Setup
+
+Set your API key and run:
+```bash
+# OpenAI (default)
+export OPENAI_API_KEY=your_key
+saiki
+
+# Switch providers via CLI
+saiki -m claude-3-5-sonnet-20240620
+saiki -m gemini-2.0-flash
+```
+
+For comprehensive setup instructions, all supported models, advanced configuration, and troubleshooting, see our **[LLM Providers Guide](docs/llm-providers.md)**.
+
+## Discovering & Connecting MCP Servers
+Saiki uses Model Context Protocol (MCP) servers to connect with tools. Find servers through:
+
+1. Pre-built catalogs:
+   - [MCP Reference Servers](https://github.com/modelcontextprotocol/reference-servers)
+   - [Smithery.ai Tools](https://smithery.ai/tools)
+   - [Composio Registry](https://mcp.composio.dev/)
+
+2. npm: `npm search @modelcontextprotocol/server`
+
+3. Add to `configuration/saiki.yml` under `mcpServers`
+
+4. Build custom servers using the [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) and [spec](https://modelcontextprotocol.io/introduction)
+
+
+## Building with Saiki
+
+Saiki can be easily integrated into your applications as a powerful AI agent library. Here's a simple example to get you started:
+
+### Quick Start: Programmatic Usage
+
+```typescript
+import 'dotenv/config';
+import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+
+// Load your agent configuration
+const config = await loadConfigFile('./saiki.yml');
+const agent = await createSaikiAgent(config);
+
+// Use the agent for single tasks
+const result = await agent.run("Analyze the files in this directory and create a summary");
+console.log(result);
+
+// Or have conversations
+const response1 = await agent.run("What files are in the current directory?");
+const response2 = await agent.run("Create a README for the main.py file");
+
+// Reset conversation when needed
+agent.resetConversation();
+```
+
+### Embedding Saiki in Your Applications Via Backend APIs
+
+When Saiki runs in `web` mode (`saiki --mode web`), it exposes a comprehensive REST API and a WebSocket interface, allowing you to control and interact with the agent programmatically. This is ideal for building custom front-ends, backend integrations, or embedding Saiki into existing platforms.
+
+For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](docs/api_and_websockets.md).
+
+### Learn More
+
+For comprehensive guides on building different types of applications with Saiki, including:
+- **Web backends and APIs**
+- **Discord/Telegram bots** 
+- **Advanced patterns and best practices**
+
+See our **[Building with Saiki Developer Guide](docs/building-with-saiki.md)**.
 
 
 ## Advanced Usage
 
 Saiki is designed to be a flexible component in your AI and automation workflows. Beyond the CLI and Web UI, you can integrate Saiki's core agent capabilities into your own applications or have it communicate with other AI agents.
 
-### Embedding Saiki in Your Applications
-
-When Saiki runs in `web` mode (`saiki --mode web`), it exposes a comprehensive REST API and a WebSocket interface, allowing you to control and interact with the agent programmatically. This is ideal for building custom front-ends, backend integrations, or embedding Saiki into existing platforms.
-
-For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](docs/api_and_websockets.md).
-
 ### Inter-Agent Communication with MCP
 
 Saiki embraces the Model Context Protocol (MCP) not just for connecting to tools, but also for **Agent-to-Agent communication**. This means Saiki can:
 
 1.  **Act as an MCP Client**: Connect to other AI agents that expose an MCP server interface, allowing Saiki to delegate tasks or query other agents as if they were any other tool.
-2.  **Act as an MCP Server**: Saiki itself exposes an MCP server interface (see `src/app/api/mcp_handler.ts` and `src/app/api/a2a.ts`). This makes Saiki discoverable and usable by other MCP-compatible agents or systems. Another agent could connect to Saiki and utilize its configured tools and LLM capabilities.
+2.  **Act as an MCP Server**: Saiki itself exposes an MCP server interface using `saiki --mode mcp`. This makes Saiki discoverable and usable by other MCP-compatible agents or systems. Another agent could connect to Saiki and utilize its configured tools and LLM capabilities by talking to it as a user.
 
 This framework-agnostic approach allows Saiki to participate in a broader ecosystem of AI agents, regardless of their underlying implementation. By defining an `AgentCard` (a standardized metadata file, based on A2A protocol, describing an agent's capabilities and MCP endpoint), Saiki can be discovered and interact with other agents seamlessly. *(We also plan to integrate support for the A2A protocol soon)*
 
 This powerful A2A capability opens up possibilities for creating sophisticated multi-agent systems where different specialized agents collaborate to achieve complex goals.
 
+
 ## Documentation
 
 Find detailed guides, architecture, and API reference in the `docs/` folder:
 
+- [Building with Saiki Developer Guide](docs/building-with-saiki.md) - Comprehensive guide for developers
+- [LLM Providers Guide](docs/llm-providers.md) - Complete LLM setup and configuration
 - [High-level design](docs/architecture.md)
-- [Docker usage](README.Docker.md)
 - [API Endpoints](docs/api_and_websockets.md)
+- [Docker usage](README.Docker.md)
 
 ## Contributing
 We welcome contributions! Refer [here](CONTRIBUTING.md) for more details.
