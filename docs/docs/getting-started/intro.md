@@ -23,9 +23,6 @@ Saiki is the missing natural language layer across your stack. Its powerful in-b
 ## Ready to Start?
 
 **[Get started with Saiki in 5 minutes →](./quick-start)**
-## Ready to Start?
-
-**[Get started with Saiki in 5 minutes →](./quick-start)**
 
 ## Learn More
 
