@@ -58,6 +58,7 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     google: {
         models: [
             { name: 'gemini-2.5-pro-exp-03-25', maxTokens: 1048576, default: true },
+            { name: 'gemini-2.5-flash-preview-05-20', maxTokens: 1048576 },
             { name: 'gemini-2.0-flash', maxTokens: 1048576 },
             { name: 'gemini-2.0-flash-lite', maxTokens: 1048576 },
             { name: 'gemini-1.5-pro-latest', maxTokens: 1048576 },
