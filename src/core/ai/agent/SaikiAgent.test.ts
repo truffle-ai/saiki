@@ -9,6 +9,7 @@ vi.mock('../../logger/index.js');
 
 const mockValidationUtils = vi.mocked(validationUtils);
 
+//TODO: potentially reducing mocking and have real tests
 describe('SaikiAgent.switchLLM', () => {
     let agent: SaikiAgent;
     let mockStateManager: any;
@@ -71,7 +72,24 @@ describe('SaikiAgent.switchLLM', () => {
             listSessions: vi.fn().mockReturnValue(['session1', 'session2']),
             endSession: vi.fn(),
             getSessionMetadata: vi.fn(),
-            switchLLM: vi.fn().mockResolvedValue({ success: true, warnings: [] }),
+            switchLLMForDefaultSession: vi.fn().mockResolvedValue({
+                message: 'Successfully switched to openai/gpt-4o using vercel router',
+                warnings: [],
+            }),
+            switchLLMForSpecificSession: vi.fn().mockImplementation((config, sessionId) => {
+                if (sessionId === 'nonexistent') {
+                    return Promise.reject(new Error(`Session ${sessionId} not found`));
+                }
+                return Promise.resolve({
+                    message: `Successfully switched to openai/gpt-4o using vercel router for session ${sessionId}`,
+                    warnings: [],
+                });
+            }),
+            switchLLMForAllSessions: vi.fn().mockResolvedValue({
+                message:
+                    'Successfully switched to openai/gpt-4o using vercel router for all sessions',
+                warnings: [],
+            }),
         };
 
         mockEventBus = {
@@ -102,311 +120,274 @@ describe('SaikiAgent.switchLLM', () => {
         });
 
         // Mock the validation function
-        mockValidationUtils.updateAndValidateLLMConfig.mockImplementation(
-            async (updates, currentConfig) => {
+        mockValidationUtils.buildValidatedLLMConfig.mockImplementation(
+            async (updates, currentConfig, stateManager, sessionId) => {
                 return {
                     config: {
                         ...mockLLMConfig,
                         ...updates, // Apply the updates so router is properly set
                     },
-                    isValid: true,
-                    errors: [],
-                    warnings: [],
+                    configWarnings: [],
                 };
             }
         );
     });
 
     describe('Basic Validation', () => {
-        test('should require model parameter', async () => {
-            await expect(agent.switchLLM()).rejects.toThrow('Model must be specified');
-        });
-
-        test('should throw on validation failure', async () => {
-            mockValidationUtils.updateAndValidateLLMConfig.mockResolvedValue({
-                isValid: false,
-                config: mockLLMConfig,
-                errors: ['Invalid model'],
-                warnings: [],
-            });
-
-            await expect(agent.switchLLM('openai', 'invalid-model')).rejects.toThrow(
-                'LLM configuration validation failed: Invalid model'
+        test('should require model or provider parameter', async () => {
+            await expect(agent.switchLLM({})).rejects.toThrow(
+                'At least model or provider must be specified'
             );
         });
 
-        test('should throw on state manager validation failure', async () => {
-            mockStateManager.updateLLM.mockReturnValue({
-                isValid: false,
-                errors: ['State update failed'],
-                warnings: [],
-            });
+        test('should throw on validation failure', async () => {
+            mockValidationUtils.buildValidatedLLMConfig.mockRejectedValue(
+                new Error('LLM configuration validation failed: Invalid model')
+            );
 
-            await expect(agent.switchLLM('openai', 'gpt-4')).rejects.toThrow(
-                'State manager validation failed: State update failed'
+            await expect(agent.switchLLM({ model: 'invalid-model' })).rejects.toThrow(
+                'LLM configuration validation failed: Invalid model'
             );
         });
     });
 
     describe('Default Session Switch', () => {
         test('should switch LLM for default session', async () => {
-            const result = await agent.switchLLM('openai', 'gpt-3.5-turbo');
+            const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
             expect(result.success).toBe(true);
-            expect(result.config.model).toBe('gpt-3.5-turbo');
-            expect(result.message).toContain('Successfully switched to openai/gpt-3.5-turbo');
-            expect(mockSessionManager.getDefaultSession().switchLLM).toHaveBeenCalledWith(
+            expect(result.config.model).toBe('gpt-4o-mini');
+            expect(result.message).toContain(
+                'Successfully switched to openai/gpt-4o using vercel router'
+            );
+            expect(mockSessionManager.switchLLMForDefaultSession).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    model: 'gpt-3.5-turbo',
-                    router: 'vercel',
+                    model: 'gpt-4o-mini',
                 })
             );
-            expect(mockEventBus.emit).toHaveBeenCalledWith('saiki:llmSwitched', {
-                newConfig: expect.objectContaining({ model: 'gpt-3.5-turbo' }),
-                router: 'vercel',
-                historyRetained: true,
-                sessionId: 'default',
-            });
         });
 
         test('should use specified router', async () => {
-            await agent.switchLLM('openai', 'gpt-4', undefined, 'in-built');
+            await agent.switchLLM({ model: 'gpt-4o', router: 'in-built' });
 
-            expect(mockSessionManager.getDefaultSession().switchLLM).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    model: 'gpt-4',
+                    model: 'gpt-4o',
                     router: 'in-built',
-                })
+                }),
+                mockLLMConfig,
+                mockStateManager,
+                undefined
             );
         });
 
         test('should include warnings in response', async () => {
-            mockValidationUtils.updateAndValidateLLMConfig.mockResolvedValue({
+            mockValidationUtils.buildValidatedLLMConfig.mockResolvedValue({
                 config: { ...mockLLMConfig, model: 'gpt-4o' },
-                isValid: true,
-                errors: [],
-                warnings: ['Config warning'],
+                configWarnings: ['Config warning'],
             });
 
-            mockStateManager.updateLLM.mockReturnValue({
-                isValid: true,
-                errors: [],
-                warnings: ['State warning'],
+            mockSessionManager.switchLLMForDefaultSession.mockResolvedValue({
+                message: 'Success',
+                warnings: ['Session warning'],
             });
 
-            const result = await agent.switchLLM('openai', 'gpt-3.5-turbo');
+            const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
-            expect(result.warnings).toEqual(['Config warning', 'State warning']);
+            expect(result.warnings).toEqual(['Config warning', 'Session warning']);
+        });
+
+        test('should switch LLM for specific session', async () => {
+            const result = await agent.switchLLM({ model: 'gpt-4o' }, 'test-session');
+
+            expect(result.success).toBe(true);
+            expect(mockSessionManager.switchLLMForSpecificSession).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    model: 'gpt-4o',
+                }),
+                'test-session'
+            );
+        });
+
+        test('should switch LLM for all sessions', async () => {
+            const result = await agent.switchLLM({ model: 'gpt-4o' }, '*');
+
+            expect(result.success).toBe(true);
+            expect(mockSessionManager.switchLLMForAllSessions).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    model: 'gpt-4o',
+                })
+            );
+        });
+
+        test('should handle provider and model together', async () => {
+            await agent.switchLLM({ provider: 'anthropic', model: 'claude-4-sonnet-20250514' });
+
+            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    provider: 'anthropic',
+                    model: 'claude-4-sonnet-20250514',
+                }),
+                mockLLMConfig,
+                mockStateManager,
+                undefined
+            );
+        });
+
+        test('should handle API key in config', async () => {
+            await agent.switchLLM({ model: 'gpt-4o', apiKey: 'new-key' });
+
+            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    model: 'gpt-4o',
+                    apiKey: 'new-key',
+                }),
+                mockLLMConfig,
+                mockStateManager,
+                undefined
+            );
+        });
+
+        test('should handle baseURL in config', async () => {
+            await agent.switchLLM({ model: 'gpt-4o', baseURL: 'https://api.example.com' });
+
+            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    model: 'gpt-4o',
+                    baseURL: 'https://api.example.com',
+                }),
+                mockLLMConfig,
+                mockStateManager,
+                undefined
+            );
         });
     });
 
     describe('Specific Session Switch', () => {
         test('should switch LLM for specific session', async () => {
-            const result = await agent.switchLLM(
-                'openai',
-                'gpt-3.5-turbo',
-                undefined,
-                undefined,
-                undefined,
-                'session1'
-            );
+            const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, 'session1');
 
             expect(result.success).toBe(true);
             expect(result.message).toContain('for session session1');
-            expect(mockSessionManager.getSession).toHaveBeenCalledWith('session1');
-            expect(mockEventBus.emit).toHaveBeenCalledWith('saiki:llmSwitched', {
-                newConfig: expect.objectContaining({ model: 'gpt-3.5-turbo' }),
-                router: 'vercel',
-                historyRetained: true,
-                sessionId: 'session1',
-            });
+            expect(mockSessionManager.switchLLMForSpecificSession).toHaveBeenCalledWith(
+                expect.objectContaining({ model: 'gpt-4o-mini' }),
+                'session1'
+            );
         });
 
         test('should throw if session not found', async () => {
             mockSessionManager.getSession.mockReturnValue(null);
 
-            await expect(
-                agent.switchLLM('openai', 'gpt-4', undefined, undefined, undefined, 'nonexistent')
-            ).rejects.toThrow('Session nonexistent not found');
+            await expect(agent.switchLLM({ model: 'gpt-4o' }, 'nonexistent')).rejects.toThrow(
+                'Session nonexistent not found'
+            );
         });
 
         test('should use session-specific state', async () => {
             const sessionLLMConfig = { ...mockLLMConfig, model: 'session-model' };
             mockStateManager.getEffectiveState.mockReturnValue({ llm: sessionLLMConfig });
 
-            await agent.switchLLM('openai', 'gpt-4', undefined, undefined, undefined, 'session1');
+            await agent.switchLLM({ model: 'gpt-4o' }, 'session1');
 
             expect(mockStateManager.getEffectiveState).toHaveBeenCalledWith('session1');
-            expect(mockValidationUtils.updateAndValidateLLMConfig).toHaveBeenCalledWith(
-                expect.objectContaining({ provider: 'openai', model: 'gpt-4' }),
-                sessionLLMConfig
+            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
+                expect.objectContaining({ model: 'gpt-4o' }),
+                sessionLLMConfig,
+                mockStateManager,
+                'session1'
             );
         });
     });
 
     describe('All Sessions Switch', () => {
         test('should switch LLM for all sessions successfully', async () => {
-            const mockSession1 = { id: 'session1', switchLLM: vi.fn() };
-            const mockSession2 = { id: 'session2', switchLLM: vi.fn() };
-
-            mockSessionManager.getSession
-                .mockReturnValueOnce(mockSession1)
-                .mockReturnValueOnce(mockSession2);
-
-            const result = await agent.switchLLM(
-                'openai',
-                'gpt-3.5-turbo',
-                undefined,
-                undefined,
-                undefined,
-                '*'
-            );
+            const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, '*');
 
             expect(result.success).toBe(true);
-            expect(mockSession1.switchLLM).toHaveBeenCalled();
-            expect(mockSession2.switchLLM).toHaveBeenCalled();
-            expect(mockEventBus.emit).toHaveBeenCalledWith('saiki:llmSwitched', {
-                newConfig: expect.objectContaining({ model: 'gpt-3.5-turbo' }),
-                router: 'vercel',
-                historyRetained: true,
-                sessionIds: ['session1', 'session2'],
-            });
+            expect(mockSessionManager.switchLLMForAllSessions).toHaveBeenCalledWith(
+                expect.objectContaining({ model: 'gpt-4o-mini' })
+            );
         });
 
         test('should handle failed sessions gracefully', async () => {
-            const mockSession1 = { id: 'session1', switchLLM: vi.fn() };
-            const mockSession2 = { id: 'session2', switchLLM: vi.fn() };
+            mockSessionManager.switchLLMForAllSessions.mockResolvedValue({
+                message:
+                    'Successfully switched to openai/gpt-4o using vercel router for 1 sessions, 1 sessions failed',
+                warnings: ['Failed to switch LLM for sessions: session2'],
+            });
 
-            mockSessionManager.getSession
-                .mockReturnValueOnce(mockSession1)
-                .mockReturnValueOnce(mockSession2);
-
-            // Make session2 fail validation
-            mockStateManager.updateLLM
-                .mockReturnValueOnce({ isValid: true, errors: [], warnings: [] }) // for default session
-                .mockReturnValueOnce({ isValid: true, errors: [], warnings: [] }) // for session1
-                .mockReturnValueOnce({ isValid: false, errors: ['Session2 failed'], warnings: [] }); // for session2
-
-            const result = await agent.switchLLM(
-                'openai',
-                'gpt-3.5-turbo',
-                undefined,
-                undefined,
-                undefined,
-                '*'
-            );
+            const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, '*');
 
             expect(result.success).toBe(true);
             expect(result.message).toContain('1 sessions failed');
             expect(result.warnings).toContain('Failed to switch LLM for sessions: session2');
-            expect(mockEventBus.emit).toHaveBeenCalledWith('saiki:llmSwitched', {
-                newConfig: expect.objectContaining({ model: 'gpt-3.5-turbo' }),
-                router: 'vercel',
-                historyRetained: true,
-                sessionIds: ['session1'],
-            });
         });
 
         test('should handle session validation failures', async () => {
-            const mockSession1 = { id: 'session1', switchLLM: vi.fn() };
-            const mockSession2 = { id: 'session2', switchLLM: vi.fn() };
+            mockSessionManager.switchLLMForAllSessions.mockResolvedValue({
+                message: 'Successfully switched',
+                warnings: ['Failed to switch LLM for sessions: session2'],
+            });
 
-            // Reset the mock and set up specific return values
-            mockSessionManager.getSession.mockReset();
-            mockSessionManager.getSession
-                .mockReturnValueOnce(mockSession1)
-                .mockReturnValueOnce(mockSession2);
-
-            // Reset the updateLLM mock and set up specific return values
-            mockStateManager.updateLLM.mockReset();
-            mockStateManager.updateLLM
-                .mockReturnValueOnce({ isValid: true, errors: [], warnings: [] }) // for default session
-                .mockReturnValueOnce({ isValid: true, errors: [], warnings: [] }) // for session1
-                .mockReturnValueOnce({
-                    isValid: false,
-                    errors: ['Validation failed'],
-                    warnings: [],
-                }); // for session2
-
-            const result = await agent.switchLLM(
-                'openai',
-                'gpt-3.5-turbo',
-                undefined,
-                undefined,
-                undefined,
-                '*'
-            );
+            const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, '*');
 
             expect(result.success).toBe(true);
             expect(result.warnings).toEqual(['Failed to switch LLM for sessions: session2']);
-            expect(mockSession1.switchLLM).toHaveBeenCalled();
-            expect(mockSession2.switchLLM).not.toHaveBeenCalled();
         });
 
         test('should handle missing sessions', async () => {
-            // Reset the mocks and make them return empty/null values
-            mockSessionManager.getSession.mockReset();
-            mockSessionManager.getSession.mockReturnValue(null);
-            mockSessionManager.listSessions.mockReturnValue([]); // No sessions exist
-
-            const result = await agent.switchLLM(
-                'openai',
-                'gpt-3.5-turbo',
-                undefined,
-                undefined,
-                undefined,
-                '*'
-            );
+            const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, '*');
 
             expect(result.success).toBe(true);
-            expect(mockEventBus.emit).toHaveBeenCalledWith('saiki:llmSwitched', {
-                newConfig: expect.objectContaining({ model: 'gpt-3.5-turbo' }),
-                router: 'vercel',
-                historyRetained: true,
-                sessionIds: [],
-            });
+            expect(mockSessionManager.switchLLMForAllSessions).toHaveBeenCalledWith(
+                expect.objectContaining({ model: 'gpt-4o-mini' })
+            );
         });
     });
 
     describe('Parameter Handling', () => {
         test('should pass all parameters to validation', async () => {
-            await agent.switchLLM(
-                'google',
-                'gemini-pro',
-                'custom-key',
-                'in-built',
-                'https://custom.api.com'
-            );
+            await agent.switchLLM({
+                provider: 'google',
+                model: 'gemini-2.5-pro-exp-03-25',
+                apiKey: 'custom-key',
+                router: 'vercel',
+                baseURL: 'https://custom.api.com',
+            });
 
-            expect(mockValidationUtils.updateAndValidateLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
                 {
                     provider: 'google',
-                    model: 'gemini-pro',
+                    model: 'gemini-2.5-pro-exp-03-25',
                     apiKey: 'custom-key',
-                    router: 'in-built',
+                    router: 'vercel',
                     baseURL: 'https://custom.api.com',
                 },
-                mockLLMConfig
+                mockLLMConfig,
+                mockStateManager,
+                undefined
             );
         });
 
         test('should handle partial parameters', async () => {
-            await agent.switchLLM(undefined, 'gpt-3.5-turbo');
+            await agent.switchLLM({ model: 'gpt-4o-mini' });
 
-            expect(mockValidationUtils.updateAndValidateLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidationUtils.buildValidatedLLMConfig).toHaveBeenCalledWith(
                 {
-                    model: 'gpt-3.5-turbo',
+                    model: 'gpt-4o-mini',
                 },
-                mockLLMConfig
+                mockLLMConfig,
+                mockStateManager,
+                undefined
             );
         });
 
         test('should use default router when not specified', async () => {
-            await agent.switchLLM('openai', 'gpt-4');
+            await agent.switchLLM({ model: 'gpt-4o' });
 
-            expect(mockSessionManager.getDefaultSession().switchLLM).toHaveBeenCalledWith(
+            expect(mockSessionManager.switchLLMForDefaultSession).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    router: 'vercel', // Default router
+                    router: 'vercel',
                 })
             );
         });
@@ -414,30 +395,27 @@ describe('SaikiAgent.switchLLM', () => {
 
     describe('Warning Collection', () => {
         test('should collect and deduplicate warnings', async () => {
-            mockValidationUtils.updateAndValidateLLMConfig.mockResolvedValue({
-                isValid: true,
-                config: { ...mockLLMConfig, model: 'gpt-3.5-turbo' },
-                errors: [],
-                warnings: ['Config warning', 'Duplicate warning'],
+            mockValidationUtils.buildValidatedLLMConfig.mockResolvedValue({
+                config: { ...mockLLMConfig, model: 'gpt-4o-mini' },
+                configWarnings: ['Config warning', 'Duplicate warning'],
             });
 
-            mockStateManager.updateLLM.mockReturnValue({
-                isValid: true,
-                errors: [],
-                warnings: ['State warning', 'Duplicate warning'], // Duplicate should be removed
+            mockSessionManager.switchLLMForDefaultSession.mockResolvedValue({
+                message: 'Success',
+                warnings: ['Session warning', 'Duplicate warning'],
             });
 
-            const result = await agent.switchLLM('openai', 'gpt-3.5-turbo');
+            const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
             expect(result.warnings).toEqual([
                 'Config warning',
                 'Duplicate warning',
-                'State warning',
+                'Session warning',
             ]);
         });
 
         test('should return undefined warnings when none exist', async () => {
-            const result = await agent.switchLLM('openai', 'gpt-3.5-turbo');
+            const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
             expect(result.warnings).toBeUndefined();
         });
@@ -446,27 +424,25 @@ describe('SaikiAgent.switchLLM', () => {
     describe('Error Handling', () => {
         test('should re-throw validation errors', async () => {
             const validationError = new Error('Validation failed');
-            mockValidationUtils.updateAndValidateLLMConfig.mockRejectedValue(validationError);
+            mockValidationUtils.buildValidatedLLMConfig.mockRejectedValue(validationError);
 
-            await expect(agent.switchLLM('openai', 'gpt-4')).rejects.toThrow('Validation failed');
+            await expect(agent.switchLLM({ model: 'gpt-4o' })).rejects.toThrow('Validation failed');
         });
 
         test('should handle state manager errors', async () => {
             const stateError = new Error('State update failed');
-            mockStateManager.updateLLM.mockImplementation(() => {
-                throw stateError;
-            });
+            mockValidationUtils.buildValidatedLLMConfig.mockRejectedValue(stateError);
 
-            await expect(agent.switchLLM('openai', 'gpt-4')).rejects.toThrow('State update failed');
+            await expect(agent.switchLLM({ model: 'gpt-4o' })).rejects.toThrow(
+                'State update failed'
+            );
         });
 
         test('should handle session manager errors', async () => {
             const sessionError = new Error('Session error');
-            mockSessionManager.getDefaultSession.mockImplementation(() => {
-                throw sessionError;
-            });
+            mockSessionManager.switchLLMForDefaultSession.mockRejectedValue(sessionError);
 
-            await expect(agent.switchLLM('openai', 'gpt-4')).rejects.toThrow('Session error');
+            await expect(agent.switchLLM({ model: 'gpt-4o' })).rejects.toThrow('Session error');
         });
     });
 });

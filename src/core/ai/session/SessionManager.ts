@@ -5,6 +5,7 @@ import { MCPClientManager } from '../../client/manager.js';
 import { AgentEventBus } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
+import type { LLMConfig } from '../../config/schemas.js';
 
 export interface SessionMetadata {
     createdAt: Date;
@@ -169,5 +170,114 @@ export class SessionManager {
                 );
             }
         }
+    }
+
+    /**
+     * Switch LLM for all sessions.
+     * @param newLLMConfig The new LLM configuration to apply
+     * @returns Result object with success message and any warnings
+     */
+    public async switchLLMForAllSessions(
+        newLLMConfig: LLMConfig
+    ): Promise<{ message: string; warnings: string[] }> {
+        const sessionIds = this.listSessions();
+        const failedSessions: string[] = [];
+
+        for (const sId of sessionIds) {
+            const session = this.getSession(sId);
+            if (session) {
+                try {
+                    // Validate for this specific session
+                    const sessionValidation = this.services.stateManager.updateLLM(
+                        newLLMConfig,
+                        sId
+                    );
+                    if (sessionValidation.isValid) {
+                        await session.switchLLM(newLLMConfig);
+                    } else {
+                        failedSessions.push(sId);
+                        logger.warn(
+                            `Failed to switch LLM for session ${sId}:`,
+                            sessionValidation.errors
+                        );
+                    }
+                } catch (error) {
+                    failedSessions.push(sId);
+                    logger.warn(`Error switching LLM for session ${sId}:`, error);
+                }
+            }
+        }
+
+        this.services.agentEventBus.emit('saiki:llmSwitched', {
+            newConfig: newLLMConfig,
+            router: newLLMConfig.router,
+            historyRetained: true,
+            sessionIds: sessionIds.filter((id) => !failedSessions.includes(id)),
+        });
+
+        const message =
+            failedSessions.length > 0
+                ? `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router (${failedSessions.length} sessions failed)`
+                : `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router for all sessions`;
+
+        const warnings =
+            failedSessions.length > 0
+                ? [`Failed to switch LLM for sessions: ${failedSessions.join(', ')}`]
+                : [];
+
+        return { message, warnings };
+    }
+
+    /**
+     * Switch LLM for a specific session.
+     * @param newLLMConfig The new LLM configuration to apply
+     * @param sessionId The session ID to switch LLM for
+     * @returns Result object with success message and any warnings
+     */
+    public async switchLLMForSpecificSession(
+        newLLMConfig: LLMConfig,
+        sessionId: string
+    ): Promise<{ message: string; warnings: string[] }> {
+        const session = this.getSession(sessionId);
+        if (!session) {
+            throw new Error(`Session ${sessionId} not found`);
+        }
+
+        await session.switchLLM(newLLMConfig);
+
+        this.services.agentEventBus.emit('saiki:llmSwitched', {
+            newConfig: newLLMConfig,
+            router: newLLMConfig.router,
+            historyRetained: true,
+            sessionId: sessionId,
+        });
+
+        const message = `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router for session ${sessionId}`;
+
+        return { message, warnings: [] };
+    }
+
+    /**
+     * Switch LLM for the default session.
+     * @param newLLMConfig The new LLM configuration to apply
+     * @returns Result object with success message and any warnings
+     */
+    public async switchLLMForDefaultSession(
+        newLLMConfig: LLMConfig
+    ): Promise<{ message: string; warnings: string[] }> {
+        const defaultSession = this.getDefaultSession();
+
+        await defaultSession.switchLLM(newLLMConfig);
+
+        this.services.agentEventBus.emit('saiki:llmSwitched', {
+            newConfig: newLLMConfig,
+            router: newLLMConfig.router,
+            historyRetained: true,
+            sessionId: defaultSession.id,
+        });
+
+        const message = `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router`;
+
+        return { message, warnings: [] };
     }
 }

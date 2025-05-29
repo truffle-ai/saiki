@@ -368,16 +368,22 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Switch LLM configuration
     app.post('/api/llm/switch', express.json(), async (req, res) => {
         try {
-            // Thin wrapper - extract parameters and pass as individual arguments
-            const { provider, model, apiKey, router, baseURL, sessionId } = req.body;
-            const result = await agent.switchLLM(
-                provider,
-                model,
-                apiKey,
-                router,
-                baseURL,
-                sessionId
-            );
+            // Thin wrapper - build LLMConfig object from request body
+            const { provider, model, apiKey, router, baseURL, sessionId, ...otherFields } =
+                req.body;
+
+            // Build the LLMConfig object from the request parameters
+            const llmConfig: Partial<LLMConfig> = {};
+            if (provider !== undefined) llmConfig.provider = provider;
+            if (model !== undefined) llmConfig.model = model;
+            if (apiKey !== undefined) llmConfig.apiKey = apiKey;
+            if (router !== undefined) llmConfig.router = router;
+            if (baseURL !== undefined) llmConfig.baseURL = baseURL;
+
+            // Include any other LLMConfig fields that might be in the request
+            Object.assign(llmConfig, otherFields);
+
+            const result = await agent.switchLLM(llmConfig, sessionId);
             res.json(result);
         } catch (error: any) {
             logger.error(`Error switching LLM: ${error.message}`);

@@ -12,7 +12,7 @@ import {
 } from '../ai/llm/registry.js';
 import type { LLMConfig } from './schemas.js';
 import { LLMConfigSchema } from './schemas.js';
-import type { AgentRuntimeState } from './agent-state-manager.js';
+import type { AgentRuntimeState, AgentStateManager } from './agent-state-manager.js';
 import { resolveApiKeyForProvider } from '../utils/api-key-resolver.js';
 import { logger } from '../logger/index.js';
 
@@ -215,10 +215,51 @@ export function validateRuntimeState(state: AgentRuntimeState): LLMValidationRes
 }
 
 /**
+ * Builds and validates a new LLM configuration from partial updates.
+ * This function handles provider inference, API key resolution, smart defaults,
+ * and comprehensive validation. Moved from SaikiAgent to keep the API layer thin.
+ *
+ * @param updates Partial LLM configuration updates
+ * @param currentConfig Current LLM configuration to use as fallback
+ * @param stateManager AgentStateManager instance for state validation
+ * @param sessionId Optional session ID for session-specific validation
+ * @returns Object containing the validated config and warnings
+ */
+export async function buildValidatedLLMConfig(
+    updates: Partial<LLMConfig>,
+    currentConfig: LLMConfig,
+    stateManager: AgentStateManager,
+    sessionId?: string
+): Promise<{ config: LLMConfig; configWarnings: string[] }> {
+    // Update and validate LLM configuration (handles all validation internally)
+    const result = await mergeValidatedLLMConfig(updates, currentConfig);
+
+    if (!result.isValid) {
+        throw new Error(`LLM configuration validation failed: ${result.errors.join('; ')}`);
+    }
+
+    const newLLMConfig = result.config;
+    const configWarnings = result.warnings;
+
+    // Update state manager with the validated config
+    const stateValidation = stateManager.updateLLM(newLLMConfig, sessionId);
+    if (!stateValidation.isValid) {
+        throw new Error(`State manager validation failed: ${stateValidation.errors.join('; ')}`);
+    }
+
+    return {
+        config: newLLMConfig,
+        configWarnings: [...configWarnings, ...stateValidation.warnings],
+    };
+}
+
+/**
  * Updates and validates LLM configuration by intelligently building a new config step-by-step.
  * This function handles all the complex logic for provider inference, API key resolution,
  * smart defaults, AND comprehensive validation. It builds the config progressively to avoid
  * carrying forward incompatible values from the current config.
+ *
+ * Renamed from updateAndValidateLLMConfig to have a clearer distinction from buildValidatedLLMConfig.
  *
  * Each section has explicit pre/post-conditions to ensure robust logic.
  *
@@ -226,7 +267,7 @@ export function validateRuntimeState(state: AgentRuntimeState): LLMValidationRes
  * @param currentConfig Current LLM configuration to use as fallback for unchanged fields
  * @returns Object containing the updated config, validation results, and any warnings
  */
-export async function updateAndValidateLLMConfig(
+export async function mergeValidatedLLMConfig(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig
 ): Promise<{
@@ -283,8 +324,8 @@ export async function updateAndValidateLLMConfig(
 
         provider = providerName;
         logger.debug(`Using explicit provider: '${provider}'`);
-    } else {
-        // No explicit provider - infer from model
+    } else if (updates.model !== undefined && model !== currentConfig.model) {
+        // Model was updated but provider wasn't - try to infer provider from new model
         try {
             provider = getProviderFromModel(model);
             if (provider !== currentConfig.provider) {
@@ -298,6 +339,10 @@ export async function updateAndValidateLLMConfig(
             );
             return { config: currentConfig, isValid: false, errors, warnings };
         }
+    } else {
+        // No provider update and no model change - keep current provider
+        provider = currentConfig.provider;
+        logger.debug(`No provider or model updates - keeping current provider: '${provider}'`);
     }
     // Post-condition: provider is set to a valid provider string
 

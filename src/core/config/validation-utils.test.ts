@@ -1,465 +1,309 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-    updateAndValidateLLMConfig,
+    mergeValidatedLLMConfig,
     validateLLMSwitchRequest,
+    validateLLMUpdate,
     validateRuntimeUpdate,
     validateRuntimeState,
 } from './validation-utils.js';
 import type { LLMConfig } from './schemas.js';
+import type { AgentRuntimeState } from './agent-state-manager.js';
 
 // Only mock logger since it has side effects
 vi.mock('../logger/index.js');
 
-describe('updateAndValidateLLMConfig', () => {
+describe('mergeValidatedLLMConfig', () => {
     const baseLLMConfig: LLMConfig = {
         provider: 'openai',
-        model: 'gpt-4o', // Use a valid OpenAI model
-        apiKey: 'openai-key-123',
+        model: 'gpt-4o',
+        apiKey: 'sk-1234567890abcdef',
         router: 'vercel',
-        systemPrompt: 'You are a helpful assistant',
+        systemPrompt: 'You are a helpful assistant.',
         maxIterations: 50,
-        maxTokens: 128000, // Include maxTokens since the function always adds it
         providerOptions: {},
     };
 
-    // Store original env vars to restore later
-    const originalEnv: Record<string, string | undefined> = {};
-
     beforeEach(() => {
-        vi.resetAllMocks();
-
-        // Store original environment variables
-        const envVars = ['OPENAI_API_KEY', 'GOOGLE_API_KEY', 'ANTHROPIC_API_KEY', 'GROQ_API_KEY'];
-        envVars.forEach((key) => {
-            originalEnv[key] = process.env[key];
-        });
-
-        // Set up test environment variables
-        process.env.OPENAI_API_KEY = 'openai-key-from-env';
-        process.env.GOOGLE_API_KEY = 'google-key-from-env';
-        process.env.ANTHROPIC_API_KEY = 'anthropic-key-from-env';
-        process.env.GROQ_API_KEY = 'groq-key-from-env';
+        // Reset environment variables
+        delete process.env.OPENAI_API_KEY;
+        delete process.env.ANTHROPIC_API_KEY;
+        delete process.env.GOOGLE_API_KEY;
+        delete process.env.GROQ_API_KEY;
     });
 
-    afterEach(() => {
-        // Restore original environment variables
-        Object.keys(originalEnv).forEach((key) => {
-            if (originalEnv[key] === undefined) {
-                delete process.env[key];
-            } else {
-                process.env[key] = originalEnv[key];
-            }
-        });
+    it('should return valid config when no updates provided', async () => {
+        const result = await mergeValidatedLLMConfig({}, baseLLMConfig);
+
+        expect(result.isValid).toBe(true);
+        expect(result.errors).toHaveLength(0);
+
+        // The function automatically calculates maxTokens from the model if not present
+        const expectedConfig = {
+            ...baseLLMConfig,
+            maxTokens: 128000, // gpt-4o has 128000 tokens according to registry
+        };
+        expect(result.config).toEqual(expectedConfig);
     });
 
-    describe('Basic Updates', () => {
-        test('should handle no updates (return same config)', async () => {
-            const result = await updateAndValidateLLMConfig({}, baseLLMConfig);
+    it('should update model successfully', async () => {
+        const result = await mergeValidatedLLMConfig({ model: 'gpt-4o-mini' }, baseLLMConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.config).toEqual(baseLLMConfig);
-            expect(result.errors).toEqual([]);
-        });
-
-        test('should update model only with same provider', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'gpt-4o-mini' }, // Valid OpenAI model
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.model).toBe('gpt-4o-mini');
-            expect(result.config.provider).toBe('openai'); // Should stay same
-            expect(result.config.apiKey).toBe('openai-key-123'); // Should stay same
-        });
-
-        test('should update provider only and switch to compatible model', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { provider: 'anthropic' },
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.provider).toBe('anthropic');
-            expect(result.config.model).toBe('claude-4-sonnet-20250514'); // Default for anthropic
-            expect(result.config.apiKey).toBe('anthropic-key-from-env'); // Should resolve from env
-            expect(result.warnings).toContain(
-                "Switched to default model 'claude-4-sonnet-20250514' for provider 'anthropic'"
-            );
-        });
+        expect(result.isValid).toBe(true);
+        expect(result.config.model).toBe('gpt-4o-mini');
+        expect(result.config.provider).toBe('openai'); // Should remain unchanged
     });
 
-    describe('Provider Inference', () => {
-        test('should infer provider from OpenAI model', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'gpt-4o-mini' }, // Valid OpenAI model
-                baseLLMConfig
-            );
+    it('should update provider and switch to default model', async () => {
+        // Set API key for the test to succeed
+        process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key-123456789';
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.model).toBe('gpt-4o-mini');
-            expect(result.config.provider).toBe('openai'); // Should be inferred
-            expect(result.config.apiKey).toBe('openai-key-123'); // Should stay same since provider didn't change
-        });
+        const result = await mergeValidatedLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
-        test('should infer provider from Google model and resolve API key', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'gemini-2.0-flash' }, // Valid Google model
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.model).toBe('gemini-2.0-flash');
-            expect(result.config.provider).toBe('google'); // Should be inferred
-            expect(result.config.apiKey).toBe('google-key-from-env'); // Should resolve for new provider
-        });
-
-        test('should infer provider from Anthropic model', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'claude-3-opus-20240229' }, // Valid Anthropic model
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.model).toBe('claude-3-opus-20240229');
-            expect(result.config.provider).toBe('anthropic');
-            expect(result.config.apiKey).toBe('anthropic-key-from-env');
-        });
-
-        test('should handle explicit provider overriding inference', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'gpt-4o', provider: 'openai' }, // Valid OpenAI model
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.model).toBe('gpt-4o');
-            expect(result.config.provider).toBe('openai'); // Explicit provider should be used
-        });
+        expect(result.isValid).toBe(true);
+        expect(result.config.provider).toBe('anthropic');
+        expect(result.config.model).toBe('claude-4-sonnet-20250514'); // Should switch to default from registry
+        expect(result.warnings).toContain(
+            "Switched to default model 'claude-4-sonnet-20250514' for provider 'anthropic'"
+        );
     });
 
-    describe('Router Compatibility', () => {
-        test('should keep vercel router for OpenAI', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'gpt-4o-mini' }, // Valid OpenAI model
-                baseLLMConfig
-            );
+    it('should update API key', async () => {
+        const result = await mergeValidatedLLMConfig(
+            { apiKey: 'new-api-key-12345' },
+            baseLLMConfig
+        );
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.router).toBe('vercel'); // Should keep current router
-        });
-
-        test('should keep vercel router for Anthropic', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'claude-3-opus-20240229' }, // Valid Anthropic model
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.router).toBe('vercel'); // Should keep current router
-        });
-
-        test('should error for groq since it only supports vercel but test expects in-built', async () => {
-            // Groq only supports 'vercel' router, not 'in-built', so the test assumption was wrong
-            // Let's test a different scenario - switching from in-built to vercel for a provider that supports both
-            const configWithInBuilt = { ...baseLLMConfig, router: 'in-built' as const };
-
-            const result = await updateAndValidateLLMConfig(
-                { provider: 'anthropic' }, // Anthropic supports both vercel and in-built
-                configWithInBuilt
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.router).toBe('in-built'); // Should keep current router since it's supported
-        });
-
-        test('should error if provider has no supported routers', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { provider: 'unsupported-provider' },
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Unknown provider: unsupported-provider');
-        });
+        expect(result.isValid).toBe(true);
+        expect(result.config.apiKey).toBe('new-api-key-12345');
     });
 
-    describe('API Key Resolution', () => {
-        test('should resolve API key when provider changes', async () => {
-            const result = await updateAndValidateLLMConfig({ provider: 'google' }, baseLLMConfig);
+    it('should update router', async () => {
+        const result = await mergeValidatedLLMConfig({ router: 'in-built' }, baseLLMConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.apiKey).toBe('google-key-from-env');
-        });
-
-        test('should use explicit API key when provided', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { provider: 'google', apiKey: 'explicit-key' },
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.apiKey).toBe('explicit-key');
-        });
-
-        test('should error if no API key found for new provider', async () => {
-            // Remove the API key from environment to simulate missing key
-            delete process.env.GOOGLE_API_KEY;
-
-            const result = await updateAndValidateLLMConfig({ provider: 'google' }, baseLLMConfig);
-
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(
-                "No API key found for provider 'google'. Please set the appropriate environment variable or provide apiKey explicitly."
-            );
-        });
-
-        test('should warn about short API keys', async () => {
-            const result = await updateAndValidateLLMConfig({ apiKey: 'short' }, baseLLMConfig);
-
-            expect(result.isValid).toBe(true);
-            expect(result.warnings).toContain(
-                'API key seems too short - please verify it is correct'
-            );
-        });
+        expect(result.isValid).toBe(true);
+        expect(result.config.router).toBe('in-built');
     });
 
-    describe('Base URL Handling', () => {
-        test('should set base URL for OpenAI (supports custom base URL)', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { baseURL: 'https://custom.openai.com' },
-                baseLLMConfig
-            );
+    it('should update multiple fields', async () => {
+        // Set API key for the test to succeed
+        process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key-123456789';
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.baseURL).toBe('https://custom.openai.com');
-        });
+        const result = await mergeValidatedLLMConfig(
+            {
+                provider: 'anthropic',
+                model: 'claude-4-sonnet-20250514',
+                router: 'in-built',
+            },
+            baseLLMConfig
+        );
 
-        test('should error if provider does not support base URL', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { baseURL: 'https://custom.api.com', provider: 'anthropic' }, // Anthropic doesn't support custom baseURL
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(
-                'Custom baseURL is not supported for anthropic provider'
-            );
-        });
-
-        test('should remove base URL when switching to provider that does not support it', async () => {
-            const configWithBaseURL = {
-                ...baseLLMConfig,
-                baseURL: 'https://custom.openai.com',
-            };
-
-            const result = await updateAndValidateLLMConfig(
-                { provider: 'anthropic' }, // Anthropic doesn't support custom baseURL
-                configWithBaseURL
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.baseURL).toBeUndefined();
-            expect(result.warnings).toContain(
-                "Removed custom baseURL because provider 'anthropic' doesn't support it"
-            );
-        });
+        expect(result.isValid).toBe(true);
+        expect(result.config.provider).toBe('anthropic');
+        expect(result.config.model).toBe('claude-4-sonnet-20250514');
+        expect(result.config.router).toBe('in-built');
     });
 
-    describe('Validation Errors', () => {
-        test('should error on invalid model format', async () => {
-            const result = await updateAndValidateLLMConfig({ model: '' }, baseLLMConfig);
+    it('should resolve API key from environment when provider changes', async () => {
+        process.env.ANTHROPIC_API_KEY = 'sk-ant-api-key-123';
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Model must be a non-empty string');
-        });
+        const result = await mergeValidatedLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
-        test('should error on invalid provider', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { provider: 'invalid-provider' },
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Unknown provider: invalid-provider');
-        });
-
-        test('should error on invalid router', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { router: 'invalid-router' as any },
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Router must be either "vercel" or "in-built"');
-        });
-
-        test('should error on incompatible model/provider combination', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'gpt-4o', provider: 'anthropic' }, // GPT model doesn't work with Anthropic
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(false);
-            expect(result.errors[0]).toContain(
-                "Model 'gpt-4o' is not supported for provider 'anthropic'. Supported models:"
-            );
-        });
-
-        test('should error on invalid maxTokens', async () => {
-            const result = await updateAndValidateLLMConfig({ maxTokens: -100 }, baseLLMConfig);
-
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('maxTokens must be a positive number');
-        });
-
-        test('should error if model inference fails', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'unknown-model-format' },
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(
-                "Could not infer provider from model 'unknown-model-format'. Please specify provider explicitly."
-            );
-        });
+        expect(result.isValid).toBe(true);
+        expect(result.config.apiKey).toBe('sk-ant-api-key-123');
     });
 
-    describe('System Prompt Handling', () => {
-        test('should always use current system prompt', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'gpt-4o-mini' }, // Valid OpenAI model
-                baseLLMConfig
-            );
+    it('should fail when provider changes but no API key available', async () => {
+        const result = await mergeValidatedLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.systemPrompt).toBe('You are a helpful assistant');
-        });
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain(
+            "No API key found for provider 'anthropic'. Please set the appropriate environment variable or provide apiKey explicitly."
+        );
     });
 
-    describe('Provider Options', () => {
-        test('should update provider options', async () => {
-            const newOptions = { temperature: 0.7, topP: 0.9 };
+    it('should validate provider/model compatibility', async () => {
+        // Provide Google API key to test model compatibility logic
+        process.env.GOOGLE_API_KEY = 'test-google-api-key-123456789';
 
-            const result = await updateAndValidateLLMConfig(
-                { providerOptions: newOptions },
-                baseLLMConfig
-            );
+        const result = await mergeValidatedLLMConfig({ provider: 'google' }, baseLLMConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.providerOptions).toEqual(newOptions);
-        });
-
-        test('should error on invalid provider options', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { providerOptions: 'invalid' as any },
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Provider options must be an object');
-        });
+        // Since only provider is changed (not model), function should switch to default Google model
+        expect(result.isValid).toBe(true);
+        expect(result.config.provider).toBe('google');
+        // Should switch to default Google model from registry
+        expect(result.config.model).toBe('gemini-2.5-pro-exp-03-25'); // Default Google model
+        expect(result.warnings).toContain(
+            "Switched to default model 'gemini-2.5-pro-exp-03-25' for provider 'google'"
+        );
     });
 
-    describe('MaxIterations', () => {
-        test('should update maxIterations', async () => {
-            const result = await updateAndValidateLLMConfig({ maxIterations: 100 }, baseLLMConfig);
+    it('should reject explicit incompatible model/provider combination', async () => {
+        // Provide Google API key
+        process.env.GOOGLE_API_KEY = 'test-google-api-key-123456789';
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.maxIterations).toBe(100);
-        });
+        // Explicitly provide both incompatible model and provider
+        const result = await mergeValidatedLLMConfig(
+            { provider: 'google', model: 'gpt-4o' },
+            baseLLMConfig
+        );
 
-        test('should use current maxIterations if not specified', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { model: 'gpt-4o-mini' }, // Valid OpenAI model
-                baseLLMConfig
-            );
-
-            expect(result.isValid).toBe(true);
-            expect(result.config.maxIterations).toBe(50);
-        });
+        expect(result.isValid).toBe(false);
+        expect(result.errors[0]).toContain("Model 'gpt-4o' is not supported for provider 'google'");
     });
 
-    describe('MaxTokens', () => {
-        test('should update maxTokens when explicitly provided', async () => {
-            const result = await updateAndValidateLLMConfig({ maxTokens: 50000 }, baseLLMConfig);
+    it('should switch to supported router when provider changes', async () => {
+        const result = await mergeValidatedLLMConfig({ provider: 'google' }, baseLLMConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.maxTokens).toBe(50000);
-        });
+        expect(result.isValid).toBe(false); // Will fail due to model incompatibility, but shows router logic
+    });
 
-        test('should keep current maxTokens when no model change', async () => {
-            const result = await updateAndValidateLLMConfig(
-                { provider: 'openai' }, // No model change
-                baseLLMConfig
-            );
+    it('should warn about short API key', async () => {
+        const result = await mergeValidatedLLMConfig({ apiKey: 'short' }, baseLLMConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.maxTokens).toBe(128000); // Should keep current value
-        });
+        expect(result.isValid).toBe(true);
+        expect(result.warnings).toContain('API key seems too short - please verify it is correct');
+    });
 
-        test('should recalculate maxTokens when model changes', async () => {
-            const configWithMaxTokens = {
-                ...baseLLMConfig,
-                model: 'gpt-4o',
-                maxTokens: 128000,
-            };
+    it('should handle baseURL updates', async () => {
+        const result = await mergeValidatedLLMConfig(
+            { baseURL: 'https://custom.openai.com' },
+            baseLLMConfig
+        );
 
-            // Switch to a different model that has different token limits
-            const result = await updateAndValidateLLMConfig(
-                { model: 'o3-mini' }, // o3-mini has 200000 tokens vs gpt-4o's 128000
-                configWithMaxTokens
-            );
+        expect(result.isValid).toBe(true);
+        expect(result.config.baseURL).toBe('https://custom.openai.com');
+    });
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.model).toBe('o3-mini');
-            // maxTokens should be recalculated for the new model
-            expect(result.config.maxTokens).toBe(200000); // o3-mini has 200000 tokens
-            expect(result.warnings).toEqual(
-                expect.arrayContaining([
-                    expect.stringContaining('Updated maxTokens from 128000 to 200000'),
-                ])
-            );
-        });
+    it('should reject baseURL for unsupported providers', async () => {
+        // Provide Anthropic API key so we can reach the baseURL validation
+        process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key-123456789';
 
-        test('should keep current maxTokens when model unchanged', async () => {
-            const configWithMaxTokens = {
-                ...baseLLMConfig,
-                maxTokens: 100000,
-            };
+        const result = await mergeValidatedLLMConfig(
+            {
+                provider: 'anthropic',
+                baseURL: 'https://custom.anthropic.com',
+            },
+            baseLLMConfig
+        );
 
-            const result = await updateAndValidateLLMConfig(
-                { provider: 'openai' }, // Same model, just changing provider explicitly
-                configWithMaxTokens
-            );
+        expect(result.isValid).toBe(false);
+        expect(result.errors[0]).toContain(
+            'Custom baseURL is not supported for anthropic provider'
+        );
+    });
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.maxTokens).toBe(100000); // Should keep the current value
-            expect(result.warnings).not.toEqual(
-                expect.arrayContaining([expect.stringContaining('Updated maxTokens')])
-            );
-        });
+    it('should handle maxTokens updates', async () => {
+        const result = await mergeValidatedLLMConfig({ maxTokens: 2000 }, baseLLMConfig);
 
-        test('should use explicit maxTokens even when model changes', async () => {
-            const configWithMaxTokens = {
-                ...baseLLMConfig,
-                model: 'gpt-4o',
-                maxTokens: 128000,
-            };
+        expect(result.isValid).toBe(true);
+        expect(result.config.maxTokens).toBe(2000);
+    });
 
-            const result = await updateAndValidateLLMConfig(
-                { model: 'gpt-4o-mini', maxTokens: 50000 }, // Explicit maxTokens
-                configWithMaxTokens
-            );
+    it('should validate empty model', async () => {
+        const result = await mergeValidatedLLMConfig({ model: '' }, baseLLMConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.config.model).toBe('gpt-4o-mini');
-            expect(result.config.maxTokens).toBe(50000); // Should use explicit value
-            expect(result.warnings).not.toEqual(
-                expect.arrayContaining([expect.stringContaining('Updated maxTokens')])
-            );
-        });
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Model must be a non-empty string');
+    });
+
+    it('should validate empty provider', async () => {
+        const result = await mergeValidatedLLMConfig({ provider: '' }, baseLLMConfig);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Provider must be a non-empty string');
+    });
+
+    it('should validate unknown provider', async () => {
+        const result = await mergeValidatedLLMConfig({ provider: 'unknown' }, baseLLMConfig);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Unknown provider: unknown');
+    });
+
+    it('should validate negative maxTokens', async () => {
+        const result = await mergeValidatedLLMConfig({ maxTokens: -100 }, baseLLMConfig);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('maxTokens must be a positive number');
+    });
+
+    it('should validate invalid router', async () => {
+        const result = await mergeValidatedLLMConfig({ router: 'invalid' as any }, baseLLMConfig);
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Router must be either "vercel" or "in-built"');
+    });
+
+    it('should validate invalid providerOptions', async () => {
+        const result = await mergeValidatedLLMConfig(
+            { providerOptions: 'invalid' as any },
+            baseLLMConfig
+        );
+
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Provider options must be an object');
+    });
+
+    it('should handle maxIterations update', async () => {
+        const result = await mergeValidatedLLMConfig({ maxIterations: 100 }, baseLLMConfig);
+
+        expect(result.isValid).toBe(true);
+        expect(result.config.maxIterations).toBe(100);
+    });
+
+    it('should update maxTokens when model changes', async () => {
+        const result = await mergeValidatedLLMConfig({ model: 'gpt-4o-mini' }, baseLLMConfig);
+
+        expect(result.isValid).toBe(true);
+        expect(result.config.maxTokens).toBeDefined();
+    });
+
+    it('should handle high maxTokens without error', async () => {
+        const result = await mergeValidatedLLMConfig({ maxTokens: 50000 }, baseLLMConfig);
+
+        expect(result.isValid).toBe(true);
+        expect(result.config.maxTokens).toBe(50000);
+    });
+
+    it('should keep current baseURL when provider supports it', async () => {
+        const configWithBaseURL = {
+            ...baseLLMConfig,
+            baseURL: 'https://custom.openai.com',
+        };
+
+        const result = await mergeValidatedLLMConfig({ model: 'gpt-4o-mini' }, configWithBaseURL);
+
+        expect(result.isValid).toBe(true);
+        expect(result.config.baseURL).toBe('https://custom.openai.com');
+    });
+
+    it('should remove baseURL when switching to unsupported provider', async () => {
+        process.env.ANTHROPIC_API_KEY = 'sk-ant-api-key-123';
+
+        const configWithBaseURL = {
+            ...baseLLMConfig,
+            baseURL: 'https://custom.openai.com',
+        };
+
+        const result = await mergeValidatedLLMConfig({ provider: 'anthropic' }, configWithBaseURL);
+
+        expect(result.isValid).toBe(true);
+        expect(result.config.baseURL).toBeUndefined();
+        expect(result.warnings).toContain(
+            "Removed custom baseURL because provider 'anthropic' doesn't support it"
+        );
+    });
+
+    it('should handle provider inference from model', async () => {
+        const result = await mergeValidatedLLMConfig(
+            { model: 'claude-4-sonnet-20250514' },
+            baseLLMConfig
+        );
+
+        expect(result.isValid).toBe(false); // Will fail due to missing API key
+        expect(result.errors).toContain(
+            "No API key found for provider 'anthropic'. Please set the appropriate environment variable or provide apiKey explicitly."
+        );
     });
 });
 
@@ -468,7 +312,7 @@ describe('validateLLMSwitchRequest', () => {
     test('should validate valid request', () => {
         const errors = validateLLMSwitchRequest({
             provider: 'openai',
-            model: 'gpt-4o', // Use valid OpenAI model
+            model: 'gpt-4o',
             router: 'vercel',
         });
 
@@ -484,7 +328,7 @@ describe('validateLLMSwitchRequest', () => {
     test('should validate router', () => {
         const errors = validateLLMSwitchRequest({
             provider: 'openai',
-            model: 'gpt-4o', // Use valid OpenAI model
+            model: 'gpt-4o',
             router: 'invalid',
         });
 

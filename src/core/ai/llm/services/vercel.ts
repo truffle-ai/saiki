@@ -138,6 +138,11 @@ export class VercelLLMService implements ILLMService {
         let stepIteration = 0;
         let totalTokens = 0;
 
+        const estimatedTokens = Math.ceil(JSON.stringify(messages, null, 2).length / 4);
+        logger.debug(
+            `vercel generateText:Generating text with messages (${estimatedTokens} estimated tokens)`
+        );
+
         const response = await generateText({
             model: this.model,
             messages: messages,
