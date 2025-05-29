@@ -345,8 +345,8 @@ You now have three working applications that demonstrate:
 Ready to take it to the next level?
 
 - **Learn advanced patterns**: Check out [Advanced Patterns](./advanced-patterns) for production-ready techniques
-- **Add more tools**: Explore [MCP servers](../../configuring-saiki/mcpServers) for additional capabilities
-- **Deploy your service**: See the [deployment guide](../deployment) for production hosting
+- **Add more tools**: Explore [MCP servers](../configuring-saiki/mcpServers) for additional capabilities
+- **Deploy your service**: See the [deployment guide](../user-guide/deployment) for production hosting
 - **Join the community**: Share your creations in our [Discord](https://discord.gg/GFzWFAAZcm)
 
 You're well on your way to building amazing AI applications! 🎉 
