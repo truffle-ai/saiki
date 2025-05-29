@@ -1,8 +1,12 @@
 import { createHistoryProvider } from '../llm/messages/history/factory.js';
 import { createMessageManager } from '../llm/messages/factory.js';
 import { createLLMService } from '../llm/services/factory.js';
+import { createTokenizer } from '../llm/tokenizer/factory.js';
+import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
+import { getEffectiveMaxTokens } from '../llm/registry.js';
 import type { MessageManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
+import type { IMessageFormatter } from '../llm/messages/formatters/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { MCPClientManager } from '../../client/manager.js';
 import type { LLMConfig } from '../../config/schemas.js';
@@ -320,8 +324,7 @@ export class ChatSession {
      * while maintaining the existing MessageManager and conversation history. This allows
      * users to change AI models mid-conversation without losing context.
      *
-     * @param newLLMConfig The new LLM configuration to use
-     * @param router The LLM router to use ('vercel' or 'in-built')
+     * @param newLLMConfig The new LLM configuration to use (includes router)
      *
      * @example
      * ```typescript
@@ -329,12 +332,41 @@ export class ChatSession {
      * session.switchLLM({
      *   provider: 'openai',
      *   model: 'gpt-4',
-     *   apiKey: process.env.OPENAI_API_KEY
-     * }, 'in-built');
+     *   apiKey: process.env.OPENAI_API_KEY,
+     *   router: 'in-built'
+     * });
      * ```
      */
-    public switchLLM(newLLMConfig: LLMConfig, router: LLMRouter = 'in-built'): void {
+    public async switchLLM(newLLMConfig: LLMConfig): Promise<void> {
         try {
+            // Update MessageManager configuration first
+            // This fixes the issue where MessageManager has stale maxTokens after LLM switch
+            const provider = newLLMConfig.provider.toLowerCase();
+            const model = newLLMConfig.model.toLowerCase();
+            const router = newLLMConfig.router;
+
+            // Create new tokenizer and formatter if provider/router changed
+            const currentConfig = this.services.stateManager.getLLMConfig(this.id);
+            const providerChanged = provider !== currentConfig.provider.toLowerCase();
+            const routerChanged = router !== currentConfig.router;
+
+            let newTokenizer;
+            let newFormatter;
+
+            if (providerChanged) {
+                newTokenizer = createTokenizer(provider, model);
+            }
+
+            if (providerChanged || routerChanged) {
+                newFormatter = createMessageFormatter(provider, router);
+            }
+
+            // Get effective max tokens for the new config
+            const newMaxTokens = getEffectiveMaxTokens(newLLMConfig);
+
+            // Update MessageManager configuration
+            this.messageManager.updateConfig(newMaxTokens, newTokenizer, newFormatter);
+
             // Create new LLM service with the same dependencies but new config
             const newLLMService = createLLMService(
                 newLLMConfig,
@@ -348,7 +380,7 @@ export class ChatSession {
             this.llmService = newLLMService;
 
             logger.info(
-                `ChatSession ${this.id}: LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}`
+                `ChatSession ${this.id}: LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}, MessageManager updated with maxTokens: ${newMaxTokens}`
             );
 
             // Emit session-level event

@@ -75,6 +75,11 @@ export class OpenAIService implements ILLMService {
                     // Add assistant message to history
                     await this.messageManager.addAssistantMessage(responseText);
 
+                    // Update MessageManager with actual token count for hybrid approach
+                    if (totalTokens > 0) {
+                        this.messageManager.updateActualTokenCount(totalTokens);
+                    }
+
                     // Emit final response
                     this.sessionEventBus.emit('llmservice:response', {
                         content: responseText,
@@ -159,6 +164,11 @@ export class OpenAIService implements ILLMService {
             const finalResponse = 'Task completed but reached maximum tool call iterations.';
             await this.messageManager.addAssistantMessage(finalResponse);
 
+            // Update MessageManager with actual token count for hybrid approach
+            if (totalTokens > 0) {
+                this.messageManager.updateActualTokenCount(totalTokens);
+            }
+
             // Emit final response
             this.sessionEventBus.emit('llmservice:response', {
                 content: finalResponse,
@@ -232,18 +242,15 @@ export class OpenAIService implements ILLMService {
             attempts++;
 
             try {
-                // Get formatted messages from message manager
-                const formattedMessages = await this.messageManager.getFormattedMessages({
-                    clientManager: this.clientManager,
-                });
+                // Use the new method that implements proper flow: get system prompt, compress history, format messages
+                const context = { clientManager: this.clientManager };
+                const { formattedMessages, systemPrompt, tokensUsed } =
+                    await this.messageManager.getFormattedMessagesWithCompression(context);
 
                 logger.silly(
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`
                 );
-
-                // Directly count tokens and log
-                const currentTokens = await this.messageManager.getTokenCount();
-                logger.debug(`Estimated tokens being sent to OpenAI: ${currentTokens}`);
+                logger.debug(`Estimated tokens being sent to OpenAI: ${tokensUsed}`);
 
                 // Call OpenAI API
                 const response = await this.openai.chat.completions.create({

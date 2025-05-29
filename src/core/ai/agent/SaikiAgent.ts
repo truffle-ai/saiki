@@ -16,6 +16,8 @@ import type { InitializeServicesOptions } from '../../utils/service-initializer.
 import { AgentEventBus } from '../../events/index.js';
 import type { ILLMService } from '../llm/services/types.js';
 import type { MessageManager } from '../llm/messages/manager.js';
+import { LLMConfigSchema } from '../../config/schemas.js';
+import { updateAndValidateLLMConfig } from '../../config/validation-utils.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
@@ -236,129 +238,271 @@ export class SaikiAgent {
 
     /**
      * Switches the LLM service while preserving conversation history.
+     * This is a comprehensive method that handles ALL validation, configuration building, and switching internally.
      *
-     * @param newLLMConfig The new LLM configuration.
-     * @param router The LLM router to use ('vercel' or 'in-built').
-     * @param sessionId Optional session ID. If provided, switches LLM for that specific session.
-     *                  If not provided, switches LLM for the default session AND updates agent defaults.
-     *                  Use '*' to switch LLM for all active sessions AND update agent defaults.
+     * Key features:
+     * - Accepts explicit typed parameters
+     * - Extracts and validates parameters internally
+     * - Infers provider from model if not provided
+     * - Automatically resolves API keys from environment variables
+     * - Uses LLMConfigSchema for comprehensive validation
+     * - Prevents inconsistent partial updates
+     * - Smart defaults for missing configuration values
+     *
+     * @param provider The LLM provider (e.g., 'openai', 'anthropic', 'google', 'groq')
+     * @param model The specific model name for the selected provider
+     * @param apiKey API key for the LLM provider (if not provided, will try to resolve from environment)
+     * @param router LLM router to use ('vercel' or 'in-built'), defaults to 'vercel'
+     * @param baseURL Base URL for the LLM provider (only supported for some providers like OpenAI)
+     * @param sessionId Session ID to switch LLM for. If not provided, switches for default session. Use '*' for all sessions
+     * @returns Promise that resolves with the new configuration and validation results
+     * @throws Error if validation fails or switching fails
      *
      * @example
      * ```typescript
-     * // Switch LLM for default session AND update agent defaults
-     * agent.switchLLM(newConfig);
+     * // Switch to a different model (provider will be inferred, API key auto-resolved)
+     * await agent.switchLLM(undefined, 'gpt-4o');
      *
-     * // Switch LLM for specific session only (no agent defaults update)
-     * agent.switchLLM(newConfig, 'in-built', 'user-123');
+     * // Switch to a different provider with explicit API key
+     * await agent.switchLLM('anthropic', 'claude-4-sonnet-20250514', 'sk-ant-...');
      *
-     * // Switch LLM for all sessions AND update agent defaults
-     * agent.switchLLM(newConfig, 'in-built', '*');
+     * // Switch with router and session options
+     * await agent.switchLLM('anthropic', 'claude-4-sonnet-20250514', undefined, 'in-built', undefined, 'user-123');
+     *
+     * // Switch for all sessions
+     * await agent.switchLLM(undefined, 'gpt-4o', undefined, undefined, undefined, '*');
      * ```
      */
-    public switchLLM(
-        newLLMConfig: LLMConfig,
-        router: LLMRouter = 'in-built',
+    public async switchLLM(
+        provider?: string,
+        model?: string,
+        apiKey?: string,
+        router?: 'vercel' | 'in-built',
+        baseURL?: string,
         sessionId?: string
-    ): void {
+    ): Promise<{
+        success: true;
+        config: LLMConfig;
+        message: string;
+        warnings?: string[];
+    }> {
         try {
-            if (sessionId === '*') {
-                // Switch for all sessions AND update agent defaults
-                const sessionIds = this.sessionManager.listSessions();
-
-                for (const sId of sessionIds) {
-                    const session = this.sessionManager.getSession(sId);
-                    if (session) {
-                        // Use state manager for validation and state tracking
-                        const validation = this.stateManager.updateLLM(
-                            { ...newLLMConfig, router },
-                            sId
-                        );
-
-                        if (validation.isValid) {
-                            session.switchLLM(newLLMConfig, router);
-                        } else {
-                            logger.warn(
-                                `Failed to switch LLM for session ${sId}:`,
-                                validation.errors
-                            );
-                        }
-                    }
-                }
-
-                // Update agent defaults using state manager (no configManager.updateLLMConfig needed)
-                const agentValidation = this.stateManager.updateLLM({ ...newLLMConfig, router });
-                if (!agentValidation.isValid) {
-                    throw new Error(
-                        `Agent LLM switch validation failed: ${agentValidation.errors.join(', ')}`
-                    );
-                }
-
-                this.agentEventBus.emit('saiki:llmSwitched', {
-                    newConfig: newLLMConfig,
-                    router,
-                    historyRetained: true,
-                    sessionIds: sessionIds,
-                });
-            } else if (sessionId) {
-                // Switch for specific session only
-                const session = this.sessionManager.getSession(sessionId);
-                if (!session) {
-                    throw new Error(`Session ${sessionId} not found`);
-                }
-
-                // Use state manager for validation and session-specific state
-                const validation = this.stateManager.updateLLM(
-                    { ...newLLMConfig, router },
-                    sessionId
-                );
-
-                if (!validation.isValid) {
-                    throw new Error(
-                        `Session LLM switch validation failed: ${validation.errors.join(', ')}`
-                    );
-                }
-
-                session.switchLLM(newLLMConfig, router);
-
-                this.agentEventBus.emit('saiki:llmSwitched', {
-                    newConfig: newLLMConfig,
-                    router,
-                    historyRetained: true,
-                    sessionId: sessionId,
-                });
-            } else {
-                // Switch for default session AND update agent defaults
-                const defaultSession = this.sessionManager.getDefaultSession();
-
-                // Update agent defaults using state manager (no configManager.updateLLMConfig needed)
-                const agentValidation = this.stateManager.updateLLM({ ...newLLMConfig, router });
-                if (!agentValidation.isValid) {
-                    throw new Error(
-                        `Agent LLM switch validation failed: ${agentValidation.errors.join(', ')}`
-                    );
-                }
-
-                defaultSession.switchLLM(newLLMConfig, router);
-
-                this.agentEventBus.emit('saiki:llmSwitched', {
-                    newConfig: newLLMConfig,
-                    router,
-                    historyRetained: true,
-                    sessionId: defaultSession.id,
-                });
+            if (!model) {
+                throw new Error('Model must be specified');
             }
 
-            logger.info('LLM switched successfully', {
-                provider: newLLMConfig.provider,
-                model: newLLMConfig.model,
-                router,
-                sessionId,
-                isGlobalChange: !sessionId || sessionId === '*',
-            });
+            // Build and validate LLM configuration
+            const { config: newLLMConfig, configWarnings } = await this.buildAndValidateLLMConfig(
+                {
+                    provider,
+                    model,
+                    apiKey,
+                    baseURL,
+                    router,
+                },
+                sessionId
+            );
+
+            // Use default router if not specified
+            const effectiveRouter = router || 'vercel';
+
+            // Perform the actual switch based on session scope
+            const { message, warnings: sessionWarnings } = await this.performLLMSwitch(
+                newLLMConfig,
+                effectiveRouter,
+                sessionId
+            );
+
+            // Collect all warnings
+            const allWarnings = this.collectWarnings(configWarnings, sessionWarnings);
+
+            return {
+                success: true,
+                config: newLLMConfig,
+                message,
+                warnings: allWarnings.length > 0 ? allWarnings : undefined,
+            };
         } catch (error: any) {
             logger.error('Failed to switch LLM:', error.message);
             throw error;
         }
+    }
+
+    /**
+     * Build and validate LLM configuration from parameters
+     */
+    private async buildAndValidateLLMConfig(
+        updates: {
+            provider?: string;
+            model?: string;
+            apiKey?: string;
+            baseURL?: string;
+            router?: 'vercel' | 'in-built';
+        },
+        sessionId?: string
+    ): Promise<{ config: LLMConfig; configWarnings: string[] }> {
+        // Build update object from the parameters
+        const updateParams: Partial<LLMConfig> = {};
+        if (updates.provider) updateParams.provider = updates.provider;
+        if (updates.model) updateParams.model = updates.model;
+        if (updates.apiKey) updateParams.apiKey = updates.apiKey;
+        if (updates.baseURL) updateParams.baseURL = updates.baseURL;
+        if (updates.router) updateParams.router = updates.router;
+
+        // Get current config for merging
+        const currentConfig = sessionId
+            ? this.stateManager.getEffectiveState(sessionId).llm
+            : this.stateManager.getRuntimeState().llm;
+
+        // Update and validate LLM configuration (handles all validation internally)
+        const result = await updateAndValidateLLMConfig(updateParams, currentConfig);
+
+        if (!result.isValid) {
+            throw new Error(`LLM configuration validation failed: ${result.errors.join('; ')}`);
+        }
+
+        const newLLMConfig = result.config;
+        const configWarnings = result.warnings;
+
+        // Update state manager with the validated config
+        const stateValidation = this.stateManager.updateLLM(newLLMConfig, sessionId);
+        if (!stateValidation.isValid) {
+            throw new Error(
+                `State manager validation failed: ${stateValidation.errors.join('; ')}`
+            );
+        }
+
+        return {
+            config: newLLMConfig,
+            configWarnings: [...configWarnings, ...stateValidation.warnings],
+        };
+    }
+
+    /**
+     * Perform the actual LLM switch based on session scope
+     */
+    private async performLLMSwitch(
+        newLLMConfig: LLMConfig,
+        effectiveRouter: 'vercel' | 'in-built',
+        sessionId?: string
+    ): Promise<{ message: string; warnings: string[] }> {
+        if (sessionId === '*') {
+            return this.switchLLMForAllSessions(newLLMConfig, effectiveRouter);
+        } else if (sessionId) {
+            return this.switchLLMForSpecificSession(newLLMConfig, effectiveRouter, sessionId);
+        } else {
+            return this.switchLLMForDefaultSession(newLLMConfig, effectiveRouter);
+        }
+    }
+
+    /**
+     * Switch LLM for all sessions
+     */
+    private async switchLLMForAllSessions(
+        newLLMConfig: LLMConfig,
+        effectiveRouter: 'vercel' | 'in-built'
+    ): Promise<{ message: string; warnings: string[] }> {
+        const sessionIds = this.sessionManager.listSessions();
+        const failedSessions: string[] = [];
+
+        for (const sId of sessionIds) {
+            const session = this.sessionManager.getSession(sId);
+            if (session) {
+                try {
+                    // Validate for this specific session
+                    const sessionValidation = this.stateManager.updateLLM(newLLMConfig, sId);
+                    if (sessionValidation.isValid) {
+                        await session.switchLLM(newLLMConfig);
+                    } else {
+                        failedSessions.push(sId);
+                        logger.warn(
+                            `Failed to switch LLM for session ${sId}:`,
+                            sessionValidation.errors
+                        );
+                    }
+                } catch (error) {
+                    failedSessions.push(sId);
+                    logger.warn(`Error switching LLM for session ${sId}:`, error);
+                }
+            }
+        }
+
+        this.agentEventBus.emit('saiki:llmSwitched', {
+            newConfig: newLLMConfig,
+            router: newLLMConfig.router,
+            historyRetained: true,
+            sessionIds: sessionIds.filter((id) => !failedSessions.includes(id)),
+        });
+
+        const message =
+            failedSessions.length > 0
+                ? `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router (${failedSessions.length} sessions failed)`
+                : `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router for all sessions`;
+
+        const warnings =
+            failedSessions.length > 0
+                ? [`Failed to switch LLM for sessions: ${failedSessions.join(', ')}`]
+                : [];
+
+        return { message, warnings };
+    }
+
+    /**
+     * Switch LLM for a specific session
+     */
+    private async switchLLMForSpecificSession(
+        newLLMConfig: LLMConfig,
+        effectiveRouter: 'vercel' | 'in-built',
+        sessionId: string
+    ): Promise<{ message: string; warnings: string[] }> {
+        const session = this.sessionManager.getSession(sessionId);
+        if (!session) {
+            throw new Error(`Session ${sessionId} not found`);
+        }
+
+        await session.switchLLM(newLLMConfig);
+
+        this.agentEventBus.emit('saiki:llmSwitched', {
+            newConfig: newLLMConfig,
+            router: newLLMConfig.router,
+            historyRetained: true,
+            sessionId: sessionId,
+        });
+
+        const message = `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router for session ${sessionId}`;
+
+        return { message, warnings: [] };
+    }
+
+    /**
+     * Switch LLM for the default session
+     */
+    private async switchLLMForDefaultSession(
+        newLLMConfig: LLMConfig,
+        effectiveRouter: 'vercel' | 'in-built'
+    ): Promise<{ message: string; warnings: string[] }> {
+        const defaultSession = this.sessionManager.getDefaultSession();
+
+        await defaultSession.switchLLM(newLLMConfig);
+
+        this.agentEventBus.emit('saiki:llmSwitched', {
+            newConfig: newLLMConfig,
+            router: newLLMConfig.router,
+            historyRetained: true,
+            sessionId: defaultSession.id,
+        });
+
+        const message = `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router`;
+
+        return { message, warnings: [] };
+    }
+
+    /**
+     * Collect and deduplicate warnings from different sources
+     */
+    private collectWarnings(...warningArrays: string[][]): string[] {
+        const allWarnings = warningArrays.flat().filter(Boolean);
+        return Array.from(new Set(allWarnings)); // Deduplicate
     }
 
     // Future methods could encapsulate more complex agent behaviors:

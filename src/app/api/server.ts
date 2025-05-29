@@ -24,7 +24,7 @@ import {
     isValidProvider,
     getEffectiveMaxTokens,
 } from '@core/ai/llm/registry.js';
-import { validateLLMSwitchRequest } from '@core/index.js';
+import type { LLMConfig } from '@core/index.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -368,39 +368,22 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Switch LLM configuration
     app.post('/api/llm/switch', express.json(), async (req, res) => {
         try {
-            const { provider, model, apiKey, router, baseURL } = req.body;
-
-            // Validate the request using core validation
-            const validationErrors = validateLLMSwitchRequest({ provider, model, router, baseURL });
-            if (validationErrors.length > 0) {
-                return res.status(400).json({ error: validationErrors[0] }); // Return first error
-            }
-
-            const selectedRouter = router || 'vercel'; // Default to vercel if not specified
-
-            // Get current config to preserve other settings
-            const currentConfig = agent.stateManager.getLLMConfig();
-
-            const newLLMConfig = {
-                ...currentConfig,
+            // Thin wrapper - extract parameters and pass as individual arguments
+            const { provider, model, apiKey, router, baseURL, sessionId } = req.body;
+            const result = await agent.switchLLM(
                 provider,
                 model,
-                ...(apiKey && { apiKey }), // Only include apiKey if provided
-                ...(baseURL && { baseURL }), // Only include baseURL if provided
-            };
-
-            await agent.switchLLM(newLLMConfig, selectedRouter);
-
-            res.json({
-                success: true,
-                message: `Successfully switched to ${provider}/${model} using ${selectedRouter} router`,
-                config: agent.getCurrentLLMConfig(),
-            });
+                apiKey,
+                router,
+                baseURL,
+                sessionId
+            );
+            res.json(result);
         } catch (error: any) {
             logger.error(`Error switching LLM: ${error.message}`);
-            res.status(500).json({
+            res.status(400).json({
                 success: false,
-                error: `Failed to switch LLM: ${error.message}`,
+                error: error.message,
             });
         }
     });

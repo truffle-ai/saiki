@@ -45,18 +45,6 @@ export class MessageManager {
     private maxTokens: number;
 
     /**
-     * Actual token count from the last LLM response.
-     * Used for more accurate token estimation in hybrid approach.
-     */
-    private lastActualTokenCount: number = 0;
-
-    /**
-     * Compression threshold as a percentage of maxTokens.
-     * When estimated tokens exceed (maxTokens * threshold), compression is triggered.
-     */
-    private compressionThreshold: number = 0.8; // 80% threshold
-
-    /**
      * Tokenizer used for counting tokens and enabling compression (if specified)
      */
     private tokenizer: ITokenizer;
@@ -133,7 +121,7 @@ export class MessageManager {
      * Returns the total token count that will be sent to the LLM provider,
      * including system prompt, formatted messages, and provider-specific overhead.
      * This provides a more accurate estimate than getTokenCount() alone.
-     *
+     * 
      * @param context The DynamicContributorContext for system prompt contributors
      * @returns Promise that resolves to the total number of tokens that will be sent to the provider
      */
@@ -141,29 +129,27 @@ export class MessageManager {
         try {
             // Get system prompt
             const systemPrompt = await this.getSystemPrompt(context);
-
+            
             // Get history and apply compression (same logic as getFormattedMessages)
             let history = await this.historyProvider.getHistory(this.sessionId);
-
+            
             // Count system prompt tokens
             const systemPromptTokens = this.tokenizer.countTokens(systemPrompt);
-
+            
             // Apply compression with actual system prompt token count
             history = await this.compressHistoryIfNeeded(history, systemPromptTokens);
-
+            
             // Count history message tokens (after compression)
             const historyTokens = countMessagesTokens(history, this.tokenizer);
-
+            
             // Add a small overhead for provider-specific formatting
             // This accounts for any additional structure the formatter adds
             const formattingOverhead = Math.ceil((systemPromptTokens + historyTokens) * 0.05); // 5% overhead
-
+            
             const totalTokens = systemPromptTokens + historyTokens + formattingOverhead;
-
-            logger.debug(
-                `Token breakdown - System: ${systemPromptTokens}, History: ${historyTokens}, Overhead: ${formattingOverhead}, Total: ${totalTokens}`
-            );
-
+            
+            logger.debug(`Token breakdown - System: ${systemPromptTokens}, History: ${historyTokens}, Overhead: ${formattingOverhead}, Total: ${totalTokens}`);
+            
             return totalTokens;
         } catch (error) {
             logger.error('Error calculating total token count:', error);
@@ -177,62 +163,6 @@ export class MessageManager {
      */
     getMaxTokens(): number {
         return this.maxTokens;
-    }
-
-    /**
-     * Updates the MessageManager configuration when LLM config changes.
-     * This is called when SaikiAgent.switchLLM() updates the LLM configuration.
-     *
-     * @param newMaxTokens New maximum token limit
-     * @param newTokenizer Optional new tokenizer if provider changed
-     * @param newFormatter Optional new formatter if provider/router changed
-     */
-    updateConfig(
-        newMaxTokens: number,
-        newTokenizer?: ITokenizer,
-        newFormatter?: IMessageFormatter
-    ): void {
-        const oldMaxTokens = this.maxTokens;
-        this.maxTokens = newMaxTokens;
-
-        if (newTokenizer) {
-            this.tokenizer = newTokenizer;
-        }
-
-        if (newFormatter) {
-            this.formatter = newFormatter;
-        }
-
-        logger.debug(`MessageManager config updated: maxTokens ${oldMaxTokens} -> ${newMaxTokens}`);
-    }
-
-    /**
-     * Updates the actual token count from the last LLM response.
-     * This enables hybrid token counting for more accurate estimates.
-     *
-     * @param actualTokens The actual token count reported by the LLM provider
-     */
-    updateActualTokenCount(actualTokens: number): void {
-        this.lastActualTokenCount = actualTokens;
-        logger.debug(`Updated actual token count to: ${actualTokens}`);
-    }
-
-    /**
-     * Estimates if new input would trigger compression using hybrid approach.
-     * Combines actual tokens from last response with estimated tokens for new input.
-     *
-     * @param newInputTokens Estimated tokens for the new user input
-     * @returns True if compression should be triggered
-     */
-    shouldCompress(newInputTokens: number): boolean {
-        const estimatedTotal = this.lastActualTokenCount + newInputTokens;
-        const compressionTrigger = this.maxTokens * this.compressionThreshold;
-
-        logger.debug(
-            `Compression check: actual=${this.lastActualTokenCount}, newInput=${newInputTokens}, total=${estimatedTotal}, trigger=${compressionTrigger}`
-        );
-
-        return estimatedTotal > compressionTrigger;
     }
 
     /**
@@ -451,7 +381,7 @@ export class MessageManager {
         history?: InternalMessage[]
     ): Promise<any[]> {
         // Use provided history or fetch from provider
-        const messageHistory = history ?? (await this.historyProvider.getHistory(this.sessionId));
+        const messageHistory = history ?? await this.historyProvider.getHistory(this.sessionId);
 
         try {
             // Use pre-computed system prompt if provided
@@ -468,10 +398,10 @@ export class MessageManager {
     /**
      * Gets the conversation ready for LLM consumption with proper flow:
      * 1. Get system prompt
-     * 2. Get history and compress if needed
+     * 2. Get history and compress if needed  
      * 3. Format messages
      * This method implements the correct ordering to avoid circular dependencies.
-     *
+     * 
      * @param context The DynamicContributorContext for system prompt contributors and formatting
      * @returns Object containing formatted messages and system prompt
      */
@@ -484,31 +414,25 @@ export class MessageManager {
             // Step 1: Get system prompt
             const systemPrompt = await this.getSystemPrompt(context);
             const systemPromptTokens = this.tokenizer.countTokens(systemPrompt);
-
+            
             // Step 2: Get history and compress if needed
             let history = await this.historyProvider.getHistory(this.sessionId);
             history = await this.compressHistoryIfNeeded(history, systemPromptTokens);
-
+            
             // Step 3: Format messages with compressed history
-            const formattedMessages = await this.getFormattedMessages(
-                context,
-                systemPrompt,
-                history
-            );
-
+            const formattedMessages = await this.getFormattedMessages(context, systemPrompt, history);
+            
             // Calculate final token usage
             const historyTokens = countMessagesTokens(history, this.tokenizer);
             const formattingOverhead = Math.ceil((systemPromptTokens + historyTokens) * 0.05);
             const tokensUsed = systemPromptTokens + historyTokens + formattingOverhead;
-
-            logger.debug(
-                `Final token breakdown - System: ${systemPromptTokens}, History: ${historyTokens}, Overhead: ${formattingOverhead}, Total: ${tokensUsed}`
-            );
-
+            
+            logger.debug(`Final token breakdown - System: ${systemPromptTokens}, History: ${historyTokens}, Overhead: ${formattingOverhead}, Total: ${tokensUsed}`);
+            
             return {
                 formattedMessages,
                 systemPrompt,
-                tokensUsed,
+                tokensUsed
             };
         } catch (error) {
             logger.error('Error in getFormattedMessagesWithCompression:', error);
@@ -551,22 +475,17 @@ export class MessageManager {
 
     /**
      * Checks if history compression is needed based on token count and applies strategies.
-     *
+     * 
      * @param history The conversation history to potentially compress
      * @param systemPromptTokens The actual token count of the system prompt
      * @returns The potentially compressed history
      */
-    async compressHistoryIfNeeded(
-        history: InternalMessage[],
-        systemPromptTokens: number
-    ): Promise<InternalMessage[]> {
+    async compressHistoryIfNeeded(history: InternalMessage[], systemPromptTokens: number): Promise<InternalMessage[]> {
         let currentTotalTokens: number = countMessagesTokens(history, this.tokenizer);
         currentTotalTokens += systemPromptTokens;
-
+        
         logger.debug(`MessageManager: Checking if history compression is needed.`);
-        logger.debug(
-            `History tokens: ${countMessagesTokens(history, this.tokenizer)}, System prompt tokens: ${systemPromptTokens}, Total: ${currentTotalTokens}`
-        );
+        logger.debug(`History tokens: ${countMessagesTokens(history, this.tokenizer)}, System prompt tokens: ${systemPromptTokens}, Total: ${currentTotalTokens}`);
 
         // If counting failed or we are within limits, do nothing
         if (currentTotalTokens <= this.maxTokens) {
@@ -582,7 +501,7 @@ export class MessageManager {
 
         const initialLength = history.length;
         let workingHistory = [...history];
-
+        
         // Calculate target tokens for history (leave room for system prompt)
         const targetHistoryTokens = this.maxTokens - systemPromptTokens;
 

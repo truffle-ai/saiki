@@ -62,20 +62,21 @@ export class AnthropicService implements ILLMService {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
-                // Compute the system prompt and pass it to message manager to avoid duplicate computation
+                // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = { clientManager: this.clientManager };
+                const { formattedMessages, systemPrompt, tokensUsed } =
+                    await this.messageManager.getFormattedMessagesWithCompression(context);
+
+                // For Anthropic, we need to get the formatted system prompt separately
                 const formattedSystemPrompt =
                     await this.messageManager.getFormattedSystemPrompt(context);
-                const messages = await this.messageManager.getFormattedMessages(
-                    context,
-                    formattedSystemPrompt
-                );
 
-                logger.debug(`Messages: ${JSON.stringify(messages, null, 2)}`);
+                logger.debug(`Messages: ${JSON.stringify(formattedMessages, null, 2)}`);
+                logger.debug(`Estimated tokens being sent to Anthropic: ${tokensUsed}`);
 
                 const response = await this.anthropic.messages.create({
                     model: this.model,
-                    messages: messages,
+                    messages: formattedMessages,
                     system: formattedSystemPrompt,
                     tools: formattedTools,
                     max_tokens: 4096,
@@ -120,6 +121,12 @@ export class AnthropicService implements ILLMService {
                 // If no tools were used, we're done
                 if (toolUses.length === 0) {
                     fullResponse += textContent;
+
+                    // Update MessageManager with actual token count for hybrid approach
+                    if (totalTokens > 0) {
+                        this.messageManager.updateActualTokenCount(totalTokens);
+                    }
+
                     this.sessionEventBus.emit('llmservice:response', {
                         content: fullResponse,
                         model: this.model,
@@ -185,6 +192,12 @@ export class AnthropicService implements ILLMService {
 
             // If we reached max iterations
             logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
+
+            // Update MessageManager with actual token count for hybrid approach
+            if (totalTokens > 0) {
+                this.messageManager.updateActualTokenCount(totalTokens);
+            }
+
             this.sessionEventBus.emit('llmservice:response', {
                 content: fullResponse,
                 model: this.model,

@@ -189,11 +189,11 @@ export function getAllSupportedModels(): string[] {
 /**
  * Gets the supported routers for a given provider.
  * @param provider The name of the provider.
- * @returns An array of supported router names for the provider, or ['vercel'] as default if provider not found.
+ * @returns An array of supported router names for the provider
  */
 export function getSupportedRoutersForProvider(provider: string): string[] {
     const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
-    return providerInfo ? providerInfo.supportedRouters : ['vercel']; // Default to vercel for unknown providers
+    return providerInfo ? providerInfo.supportedRouters : [];
 }
 
 /**

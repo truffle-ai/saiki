@@ -15,6 +15,7 @@ import type { SessionEventBus } from '../../../events/index.js';
 
 /**
  * Vercel AI SDK implementation of LLMService
+ * TODO: improve token counting logic across all LLM services - approximation isn't matching vercel actual token count properly
  */
 export class VercelLLMService implements ILLMService {
     private model: LanguageModelV1;
@@ -89,29 +90,23 @@ export class VercelLLMService implements ILLMService {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
-                // Get formatted messages from message manager
-                const formattedMessages = await this.messageManager.getFormattedMessages({
-                    clientManager: this.clientManager,
-                });
+                // Use the new method that implements proper flow: get system prompt, compress history, format messages
+                const context = { clientManager: this.clientManager };
+                const { formattedMessages, systemPrompt, tokensUsed } =
+                    await this.messageManager.getFormattedMessagesWithCompression(context);
 
                 logger.debug(
                     `Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`
                 );
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
+                logger.debug(`Estimated tokens being sent to Vercel provider: ${tokensUsed}`);
 
-                // Estimate tokens before sending (optional)
-                const currentTokens = await this.messageManager.getTokenCount();
-                logger.debug(`Estimated tokens being sent to Vercel provider: ${currentTokens}`);
-
-                // Choose between generateText or processStream
-                // generateText waits for the full response, processStream handles chunks
+                // Call LLM with properly formatted and compressed messages
                 fullResponse = await this.generateText(
                     formattedMessages,
                     formattedTools,
                     this.maxIterations
                 );
-                // OR
-                // fullResponse = await this.processStream(formattedMessages, formattedTools, MAX_ITERATIONS);
             }
 
             return (
@@ -198,6 +193,12 @@ export class VercelLLMService implements ILLMService {
 
         // Parse and append each new InternalMessage from the formatter using MessageManager
         await this.messageManager.processLLMResponse(response);
+
+        // Update MessageManager with actual token count for hybrid approach
+        if (totalTokens > 0) {
+            this.messageManager.updateActualTokenCount(totalTokens);
+        }
+
         // Return the plain text of the response
         return response.text;
     }
