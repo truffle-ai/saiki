@@ -1,6 +1,8 @@
-# Saiki
+# Saiki Playground
 
-An interactive playground for testing MCP (Model Context Protocol) tools and talking to AI agents.
+This project is an interactive playground for testing MCP tools/servers tools and building your own AI agents.
+
+[MCP - Model Context Protocol]
 
 ## Features
 
@@ -9,14 +11,6 @@ An interactive playground for testing MCP (Model Context Protocol) tools and tal
 - **Server Management**: Easy connection and management of MCP servers
 - **Tool Discovery**: Explore available tools and their capabilities
 - **Configuration Export**: Export your tool setup for use with Claude Desktop or other MCP clients
-
-## Getting Started
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to start testing your tools.
 
 ## What is MCP?
 
@@ -35,3 +29,27 @@ The Model Context Protocol (MCP) allows AI models to securely connect to externa
 4. Export your configuration when ready
 
 This project is built with [Next.js](https://nextjs.org) and uses modern web technologies for a smooth development experience.
+
+## Developer guide
+
+Clear out ports 3000 (linux):
+```bash
+lsof -ti:3000-3001 | xargs kill -9   
+```
+
+Start one server for the API at the root directory of this project [port 3001]:
+```bash
+[  2:29PM ]  [ ~/Projects/saiki(storage✗) ]
+ $ npm run build && npm link && saiki --mode api
+ ```
+
+then start the npm dev server [port 3000]
+
+```bash
+[  2:31PM ]  [ karaj@MacBook-Pro:~/Projects/saiki/src/app/webui(storage✗) ]
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to start testing your tools.
+
+This is temporary because the application functionality uses Saiki APIs built in the same project

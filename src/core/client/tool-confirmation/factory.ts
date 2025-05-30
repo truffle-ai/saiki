@@ -15,19 +15,33 @@
 import { ToolConfirmationProvider } from './types.js';
 import { CLIConfirmationProvider } from './cli-confirmation-provider.js';
 import { NoOpConfirmationProvider } from './noop-confirmation-provider.js';
-// import { WebConfirmationProvider } from './web-confirmation-provider.js';
-// import { UIConfirmationProvider } from './ui-confirmation-provider.js';
+import {
+    createAllowedToolsProvider,
+    AllowedToolsConfig,
+} from './allowed-tools-provider/factory.js';
+import type { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
 
-export function createToolConfirmationProvider(
-    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp'
-): ToolConfirmationProvider {
+export function createToolConfirmationProvider(options: {
+    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp' | 'api';
+    allowedToolsProvider?: IAllowedToolsProvider;
+    allowedToolsConfig?: AllowedToolsConfig;
+}): ToolConfirmationProvider {
+    const { runMode, allowedToolsProvider, allowedToolsConfig } = options;
+
+    // Build allowedToolsProvider if config is provided and provider isn't
+    let toolsProvider = allowedToolsProvider;
+    if (!toolsProvider && allowedToolsConfig) {
+        toolsProvider = createAllowedToolsProvider(allowedToolsConfig);
+    }
+
     switch (runMode) {
         case 'cli':
-            return new CLIConfirmationProvider();
+            return new CLIConfirmationProvider(toolsProvider);
         case 'web':
         case 'discord':
         case 'telegram':
         case 'mcp':
+        case 'api':
             // Fallback: No-op provider for now. Replace with real provider when available.
             return new NoOpConfirmationProvider();
         default:

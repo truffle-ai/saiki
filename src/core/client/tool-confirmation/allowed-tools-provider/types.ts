@@ -15,7 +15,7 @@
  * - We can enforce this by having a separate env variable/feature-flag for multi-user and having
  *   strict check for the user id if the feature flag is set.
  */
-export interface AllowedToolsProvider {
+export interface IAllowedToolsProvider {
     allowTool(toolName: string, userId?: string): Promise<void>;
     disallowTool(toolName: string, userId?: string): Promise<void>;
     isToolAllowed(toolName: string, userId?: string): Promise<boolean>;

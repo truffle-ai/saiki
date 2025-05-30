@@ -20,6 +20,7 @@ mcpServers:
       - -y
       - "@llmindset/mcp-hfspace"
 
+
 # # describes the llm configuration
 llm:
   provider: openai
@@ -55,6 +56,17 @@ llm:
         priority: 10
         source: dateTime
         enabled: true
+
+
+# # Alternative: All file-based storage (persists across restarts)
+storage:
+  history:
+    type: file
+    format: jsonl  # or 'json'
+  sessions:
+    type: file
+  userInfo:
+    type: file
 
 ## To use Google Gemini, replace the LLM section with Google Gemini configuration below
 ## Similar for anthropic/groq/etc.

@@ -17,9 +17,9 @@ export function validateCliOptions(opts: any): void {
         configFile: z.string().nonempty('Config file path must not be empty'),
         strict: z.boolean().optional().default(false),
         verbose: z.boolean().optional().default(true),
-        mode: z.enum(['cli', 'web', 'discord', 'telegram', 'mcp'], {
+        mode: z.enum(['cli', 'web', 'discord', 'telegram', 'mcp', 'api'], {
             errorMap: () => ({
-                message: 'Mode must be one of "cli", "web", "discord", "telegram", or "mcp"',
+                message: 'Mode must be one of "cli", "web", "discord", "telegram", "mcp", or "api"',
             }),
         }),
         webPort: z.string().refine(

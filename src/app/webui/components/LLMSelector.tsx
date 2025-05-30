@@ -172,7 +172,7 @@ export default function LLMSelector() {
 
       const result = await response.json();
 
-      if (response.ok) {
+      if (result.success) {
         setCurrentConfig(result.config);
         setSuccess(result.message);
         setTimeout(() => {
@@ -180,7 +180,21 @@ export default function LLMSelector() {
           setSuccess(null);
         }, 1500);
       } else {
-        setError(result.error || 'Failed to switch LLM');
+        // Handle new structured error format
+        if (result.errors && result.errors.length > 0) {
+          const primaryError = result.errors[0];
+          let errorMessage = primaryError.message;
+          
+          // For API key errors, show the suggested action
+          if (primaryError.type === 'missing_api_key' && primaryError.suggestedAction) {
+            errorMessage += `. ${primaryError.suggestedAction}`;
+          }
+          
+          setError(errorMessage);
+        } else {
+          // Fallback to old format or generic error
+          setError(result.error || 'Failed to switch LLM');
+        }
       }
     } catch (err) {
       setError('Network error while switching LLM');

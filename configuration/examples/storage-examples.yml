@@ -1,0 +1,82 @@
+## This example shows how to define the 'storage' section of the saiki.yml file.
+# # Storage configuration - controls where conversation history, sessions, and user data are stored
+# storage:
+#   # Default: All in memory (data lost on restart)
+#   history:
+#     type: memory
+#   sessions:
+#     type: memory
+#   userInfo:
+#     type: memory
+
+# # Alternative: All file-based storage (persists across restarts)
+# storage:
+#   history:
+#     type: file
+#     format: jsonl  # or 'json'
+#   sessions:
+#     type: file
+#   userInfo:
+#     type: file
+
+# # Mixed storage: File-based history, memory sessions (common for development)
+# storage:
+#   history:
+#     type: file
+#     format: jsonl
+#   sessions:
+#     type: memory  # Session metadata isn't persisted
+#   userInfo:
+#     type: file
+
+# # SQLite storage (when implemented)
+# storage:
+#   history:
+#     type: sqlite
+#     table: messages
+#   sessions:
+#     type: sqlite
+#     table: sessions
+#   userInfo:
+#     type: sqlite
+#     table: user_info
+
+# # Database storage with PostgreSQL (when implemented)
+# storage:
+#   history:
+#     type: database
+#     url: postgresql://user:password@localhost:5432/saiki
+#     table: conversation_history
+#   sessions:
+#     type: database
+#     url: postgresql://user:password@localhost:5432/saiki
+#     table: chat_sessions
+#   userInfo:
+#     type: database
+#     url: postgresql://user:password@localhost:5432/saiki
+#     table: user_preferences
+
+# # Redis storage for sessions with file history (when implemented)
+# storage:
+#   history:
+#     type: file
+#     format: jsonl
+#   sessions:
+#     type: redis
+#     url: redis://localhost:6379
+#     ttl: 3600  # 1 hour session TTL
+#   userInfo:
+#     type: file
+
+# # S3 storage for history with local sessions (when implemented)
+# storage:
+#   history:
+#     type: s3
+#     bucket: my-saiki-history
+#     region: us-east-1
+#     accessKey: $AWS_ACCESS_KEY_ID
+#     secretKey: $AWS_SECRET_ACCESS_KEY
+#   sessions:
+#     type: file
+#   userInfo:
+#     type: file

@@ -36,7 +36,8 @@ Refer to the main project [README.md](../../../README.md) for more details on ge
 
 ## Technical Details
 
-*   **Message Handling:** The bot uses long polling to receive updates from Telegram. This is configured by setting `polling: true` when initializing the `node-telegram-bot-api` client.
+*   **Framework:** The bot now uses [grammY](https://grammy.dev), a modern, secure, and lightweight Telegram Bot framework with excellent TypeScript support.
+*   **Message Handling:** The bot uses long polling to receive updates from Telegram. grammY handles this automatically when `bot.start()` is called.
 *   **Tool Call Notifications:** The bot subscribes to `llmservice:toolCall` events on its `agentEventBus`. When a tool is about to be executed by the LLM service, a notification message (⚙️ Calling tool...) is sent to the Telegram chat where the command originated.
 *   **Image Attachments:** If a message includes a photo, the bot downloads the highest resolution version of the image, converts it to a base64 string, and passes it along with any caption text to the LLM service for processing.
 *   **Command Triggers & Interaction:**
@@ -44,4 +45,14 @@ Refer to the main project [README.md](../../../README.md) for more details on ge
     *   Button Callbacks: Handles actions from inline buttons (e.g., `reset`, `help`).
     *   `/ask <question>`: Specifically for group chats to direct a question to the bot.
     *   General Messages: In direct messages (DMs) or if no other command handler matches, the bot processes the text (and any attached image) as input for the LLM.
-    *   Inline Queries (@YourBotName): Supports Telegram inline queries, allowing users to get AI responses directly in any chat by typing the bot's username and their query. 
+    *   Inline Queries (@YourBotName): Supports Telegram inline queries, allowing users to get AI responses directly in any chat by typing the bot's username and their query.
+
+## Migration Notes
+
+This bot was recently migrated from `node-telegram-bot-api` to grammY to:
+- Fix security vulnerabilities in the deprecated `request` package
+- Improve performance and reduce dependencies
+- Provide better TypeScript support
+- Enable access to modern Telegram Bot API features
+
+All functionality remains the same, but the underlying implementation is now more secure and maintainable. 

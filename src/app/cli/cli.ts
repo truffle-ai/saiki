@@ -85,7 +85,7 @@ export async function startAiCli(agent: SaikiAgent) {
             });
         };
 
-        function handleCliCommand(input: string): boolean {
+        async function handleCliCommand(input: string): Promise<boolean> {
             const lowerInput = input.toLowerCase().trim();
 
             if (lowerInput === 'exit' || lowerInput === 'quit') {
@@ -95,7 +95,7 @@ export async function startAiCli(agent: SaikiAgent) {
             }
 
             if (lowerInput === 'clear') {
-                agent.resetConversation();
+                await agent.resetConversation();
                 logger.info('Conversation history cleared.');
                 return true;
             }
@@ -126,7 +126,7 @@ export async function startAiCli(agent: SaikiAgent) {
             while (true) {
                 const userInput = await promptUser();
 
-                if (handleCliCommand(userInput)) {
+                if (await handleCliCommand(userInput)) {
                     continue;
                 }
 
