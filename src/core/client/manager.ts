@@ -11,9 +11,14 @@ export class MCPClientManager {
     private clients: Map<string, IMCPClient> = new Map();
     private connectionErrors: { [key: string]: string } = {};
     private toolToClientMap: Map<string, IMCPClient> = new Map();
+    private serverToolsMap: Map<string, Map<string, IMCPClient>> = new Map();
+    private toolConflicts: Set<string> = new Set();
     private promptToClientMap: Map<string, IMCPClient> = new Map();
     private resourceToClientMap: Map<string, IMCPClient> = new Map();
     private confirmationProvider?: ToolConfirmationProvider;
+
+    // Use a distinctive delimiter that won't appear in normal server/tool names
+    private static readonly SERVER_DELIMITER = '__';
 
     constructor(confirmationProvider?: ToolConfirmationProvider) {
         // If a confirmation provider is passed, use it, otherwise use the default implementation
@@ -40,6 +45,9 @@ export class MCPClientManager {
         const client = this.clients.get(clientName);
         if (!client) return;
 
+        // Remove from server tools map
+        this.serverToolsMap.delete(clientName);
+
         [this.toolToClientMap, this.promptToClientMap, this.resourceToClientMap].forEach(
             (cacheMap) => {
                 for (const [key, mappedClient] of cacheMap.entries()) {
@@ -49,15 +57,65 @@ export class MCPClientManager {
                 }
             }
         );
+
+        // Rebuild conflict detection
+        this.rebuildToolConflicts();
         logger.debug(`Cleared cache for client: ${clientName}`);
     }
 
+    private rebuildToolConflicts(): void {
+        this.toolConflicts.clear();
+        const toolCounts = new Map<string, number>();
+
+        // Count tool occurrences across all servers
+        for (const serverTools of this.serverToolsMap.values()) {
+            for (const toolName of serverTools.keys()) {
+                toolCounts.set(toolName, (toolCounts.get(toolName) || 0) + 1);
+            }
+        }
+
+        // Identify conflicts and update main tool map
+        for (const [toolName, count] of toolCounts.entries()) {
+            if (count > 1) {
+                this.toolConflicts.add(toolName);
+                // Remove conflicted tools from main map - they'll be accessed via server prefix
+                this.toolToClientMap.delete(toolName);
+            }
+        }
+    }
+
+    /**
+     * Sanitize server name for use in tool prefixing.
+     * Ensures the name is safe for LLM provider tool naming constraints.
+     */
+    private sanitizeServerName(serverName: string): string {
+        return serverName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    }
+
     private async updateClientCache(clientName: string, client: IMCPClient): Promise<void> {
+        // Initialize server tools map
+        const serverTools = new Map<string, IMCPClient>();
+        this.serverToolsMap.set(clientName, serverTools);
+
         // Cache tools
         try {
             const tools = await client.getTools();
             for (const toolName in tools) {
-                this.toolToClientMap.set(toolName, client);
+                // Store in server-specific map
+                serverTools.set(toolName, client);
+
+                // Add to main map if no conflict, otherwise mark as conflicted
+                const existingClient = this.toolToClientMap.get(toolName);
+                if (existingClient && existingClient !== client) {
+                    // Conflict detected
+                    this.toolConflicts.add(toolName);
+                    this.toolToClientMap.delete(toolName);
+                    logger.warn(
+                        `Tool conflict detected for '${toolName}' - will use server prefix`
+                    );
+                } else if (!this.toolConflicts.has(toolName)) {
+                    this.toolToClientMap.set(toolName, client);
+                }
             }
             logger.debug(`Cached tools for client: ${clientName}`);
         } catch (error) {
@@ -89,34 +147,95 @@ export class MCPClientManager {
 
     /**
      * Get all available tools from all connected clients, updating the cache.
+     * Conflicted tools are prefixed with server name using distinctive delimiter.
      * @returns Promise resolving to a ToolSet mapping tool names to Tool definitions
      */
     async getAllTools(): Promise<ToolSet> {
         const allTools: ToolSet = {};
+
+        // Add non-conflicted tools directly
         for (const [toolName, client] of this.toolToClientMap.entries()) {
             const clientTools = await client.getTools();
-            // clientTools is itself a ToolSet, so extract the specific Tool
             const toolDef = clientTools[toolName];
             if (toolDef) {
                 allTools[toolName] = toolDef;
             }
         }
+
+        // Add conflicted tools with server prefix using distinctive delimiter
+        for (const [serverName, serverTools] of this.serverToolsMap.entries()) {
+            for (const [toolName, client] of serverTools.entries()) {
+                if (this.toolConflicts.has(toolName)) {
+                    const sanitizedServerName = this.sanitizeServerName(serverName);
+                    const qualifiedName = `${sanitizedServerName}${MCPClientManager.SERVER_DELIMITER}${toolName}`;
+
+                    const clientTools = await client.getTools();
+                    const toolDef = clientTools[toolName];
+                    if (toolDef) {
+                        allTools[qualifiedName] = {
+                            ...toolDef,
+                            description: toolDef.description
+                                ? `${toolDef.description} (via ${serverName})`
+                                : `Tool from ${serverName}`,
+                        };
+                    }
+                }
+            }
+        }
+
         logger.silly(`All tools: ${JSON.stringify(allTools, null, 2)}`);
         return allTools;
     }
 
     /**
+     * Parse a qualified tool name to extract server name and actual tool name.
+     * Uses distinctive delimiter to avoid ambiguity.
+     */
+    private parseQualifiedToolName(
+        toolName: string
+    ): { serverName: string; toolName: string } | null {
+        const delimiterIndex = toolName.indexOf(MCPClientManager.SERVER_DELIMITER);
+        if (delimiterIndex === -1) {
+            return null; // Not a qualified tool name
+        }
+
+        const serverPrefix = toolName.substring(0, delimiterIndex);
+        const actualToolName = toolName.substring(
+            delimiterIndex + MCPClientManager.SERVER_DELIMITER.length
+        );
+
+        // Find the original server name by matching sanitized names
+        for (const [originalServerName, serverTools] of this.serverToolsMap.entries()) {
+            const sanitizedName = this.sanitizeServerName(originalServerName);
+            if (sanitizedName === serverPrefix && serverTools.has(actualToolName)) {
+                return { serverName: originalServerName, toolName: actualToolName };
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Get client that provides a specific tool from the cache.
-     * @param toolName Name of the tool
+     * Handles both simple tool names and server-prefixed tool names.
+     * @param toolName Name of the tool (may include server prefix)
      * @returns The client that provides the tool, or undefined if not found
      */
     getToolClient(toolName: string): IMCPClient | undefined {
+        // First try to parse as qualified tool name
+        const parsed = this.parseQualifiedToolName(toolName);
+        if (parsed) {
+            const serverTools = this.serverToolsMap.get(parsed.serverName);
+            return serverTools?.get(parsed.toolName);
+        }
+
+        // Otherwise try as simple tool name
         return this.toolToClientMap.get(toolName);
     }
 
     /**
      * Execute a specific tool with the given arguments.
-     * @param toolName Name of the tool to execute
+     * @param toolName Name of the tool to execute (may include server prefix)
      * @param args Arguments to pass to the tool
      * @returns Promise resolving to the tool execution result
      */
@@ -125,11 +244,19 @@ export class MCPClientManager {
         if (!client) {
             throw new Error(`No client found for tool: ${toolName}`);
         }
-        const approved = await this.confirmationProvider.requestConfirmation({ toolName, args });
+
+        // Extract actual tool name (remove server prefix if present)
+        const parsed = this.parseQualifiedToolName(toolName);
+        const actualToolName = parsed ? parsed.toolName : toolName;
+
+        const approved = await this.confirmationProvider.requestConfirmation({
+            toolName: actualToolName,
+            args,
+        });
         if (!approved) {
             throw new Error(`Execution of tool '${toolName}' was denied`);
         }
-        return await client.callTool(toolName, args);
+        return await client.callTool(actualToolName, args);
     }
 
     /**
@@ -332,6 +459,8 @@ export class MCPClientManager {
         this.clients.clear();
         this.connectionErrors = {};
         this.toolToClientMap.clear();
+        this.serverToolsMap.clear();
+        this.toolConflicts.clear();
         this.promptToClientMap.clear();
         this.resourceToClientMap.clear();
         logger.info('Disconnected all clients and cleared caches.');
