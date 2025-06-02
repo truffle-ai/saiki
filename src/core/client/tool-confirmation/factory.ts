@@ -19,7 +19,7 @@ import { NoOpConfirmationProvider } from './noop-confirmation-provider.js';
 // import { UIConfirmationProvider } from './ui-confirmation-provider.js';
 
 export function createToolConfirmationProvider(
-    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp'
+    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp' | 'server'
 ): ToolConfirmationProvider {
     switch (runMode) {
         case 'cli':
@@ -28,6 +28,7 @@ export function createToolConfirmationProvider(
         case 'discord':
         case 'telegram':
         case 'mcp':
+        case 'server':
             // Fallback: No-op provider for now. Replace with real provider when available.
             return new NoOpConfirmationProvider();
         default:

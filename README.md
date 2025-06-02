@@ -87,11 +87,25 @@ saiki --mode telegram
 ```
 Make sure you have `TELEGRAM_BOT_TOKEN` set in your environment. See [here](app/telegram/README.md) for more details.
 
+### Server Mode (Recommended for Development)
+
+```bash
+saiki --mode server
+```
+
+This mode is perfect for:
+- Backend integrations 
+- Microservice architectures
+- Custom frontend development
+- API-only deployments
+
+The server exposes REST endpoints for messaging, MCP server management, and WebSocket support for real-time communication.
+
 ## Overview
 
 Saiki is an open, modular and extensible AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly, whether that means running a shell command, summarizing a webpage, or calling an API.
 
-Why developers choose Saiki:
+<details> <summary><strong>Why developers choose Saiki</strong></summary>
 
 1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP).
 2. **Config-Driven Agents**: Define & save your agent prompts, tools (via MCP), and model in YAML.
@@ -100,6 +114,7 @@ Why developers choose Saiki:
 5. **Interoperable**: Expose as an API or connect to other agents via MCP/A2A(soon).
 
 Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. Interact with Saiki via the command line or the new experimental web UI.
+</details><br>
 
 Ready to jump in? Follow the [Installation](#installation) guide or explore demos below.
 
@@ -112,7 +127,7 @@ Ready to jump in? Follow the [Installation](#installation) guide or explore demo
 saiki
 ```
 <a href="https://youtu.be/C-Z0aVbl4Ik">
-  <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" width="800"/>
+  <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" width="600"/>
 </a>
 
 ### 🎮 Create AI NPCs For Your Games
@@ -121,7 +136,7 @@ Spin up new agents out-of-the-box and use them to power AI NPCs in your game env
 
 *Example project repo coming soon...*
 
-<img src="https://github.com/user-attachments/assets/c1fc6b60-d85c-4920-84f9-918949ef1ddb" alt="AI NPC Example" width="800">
+<img src="https://github.com/user-attachments/assets/c1fc6b60-d85c-4920-84f9-918949ef1ddb" alt="AI NPC Example" width="600">
 
 
 ### 📧 Send Email Summaries to Slack
@@ -129,13 +144,13 @@ Spin up new agents out-of-the-box and use them to power AI NPCs in your game env
 ```bash
 saiki --config-file ./configuration/examples/email_slack.yml
 ```
-<img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="800">
+<img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="600">
 
 ### 📝 Use Notion As A Second Brain
 ```bash
 saiki --config-file ./configuration/examples/notion.yml #Requires setup
 ```
-<img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="800">
+<img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="600">
 
 
 ## CLI Reference
@@ -156,7 +171,7 @@ Options:
   -c, --config-file <path>  Path to config file (default: "configuration/saiki.yml")
   -s, --strict              Require all server connections to succeed
   --no-verbose              Disable verbose output
-  --mode <mode>             Run mode: cli, web, discord, or telegram (default: "cli")
+  --mode <mode>             Run mode: cli, web, server, discord, or telegram (default: "cli")
   --web-port <port>         Port for WebUI (default: "3000")
   -m, --model <model>       Specify the LLM model to use
   -r, --router <router>     Specify the LLM router to use (vercel or in-built)
