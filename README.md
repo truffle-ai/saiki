@@ -71,6 +71,21 @@ npm start -- --mode web
 
 Open http://localhost:3000 in your browser.
 
+### Server Mode
+
+Run Saiki as a server with just REST APIs and WebSockets:
+```bash
+saiki --mode server
+```
+
+This mode is perfect for:
+- Backend integrations 
+- Microservice architectures
+- Custom frontend development
+- API-only deployments
+
+The server exposes REST endpoints for messaging, MCP server management, and WebSocket support for real-time communication.
+
 ### Bot Modes
 
 Run Saiki as a Discord or Telegram bot.
@@ -87,25 +102,11 @@ saiki --mode telegram
 ```
 Make sure you have `TELEGRAM_BOT_TOKEN` set in your environment. See [here](app/telegram/README.md) for more details.
 
-### Server Mode (Recommended for Development)
-
-```bash
-saiki --mode server
-```
-
-This mode is perfect for:
-- Backend integrations 
-- Microservice architectures
-- Custom frontend development
-- API-only deployments
-
-The server exposes REST endpoints for messaging, MCP server management, and WebSocket support for real-time communication.
-
 ## Overview
 
 Saiki is an open, modular and extensible AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly, whether that means running a shell command, summarizing a webpage, or calling an API.
 
-<details> <summary><strong>Why developers choose Saiki</strong></summary>
+Why developers choose Saiki:
 
 1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP).
 2. **Config-Driven Agents**: Define & save your agent prompts, tools (via MCP), and model in YAML.
@@ -114,7 +115,6 @@ Saiki is an open, modular and extensible AI agent that lets you perform tasks ac
 5. **Interoperable**: Expose as an API or connect to other agents via MCP/A2A(soon).
 
 Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. Interact with Saiki via the command line or the new experimental web UI.
-</details><br>
 
 Ready to jump in? Follow the [Installation](#installation) guide or explore demos below.
 
