@@ -2,7 +2,7 @@ import { logger } from '@core/index.js';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import { EventSubscriber } from '../api/types.js';
-import { EventEmitter } from 'events';
+import { AgentEventBus } from '@core/events/index.js';
 
 /**
  * Wrapper class to store methods describing how the CLI should handle agent events
@@ -20,14 +20,18 @@ export class CLISubscriber implements EventSubscriber {
     private accumulatedResponse: string = '';
     private currentLines: number = 0;
 
-    subscribe(eventBus: EventEmitter): void {
+    subscribe(eventBus: AgentEventBus): void {
         eventBus.on('llmservice:thinking', this.onThinking.bind(this));
-        eventBus.on('llmservice:chunk', this.onChunk.bind(this));
-        eventBus.on('llmservice:toolCall', this.onToolCall.bind(this));
-        eventBus.on('llmservice:toolResult', this.onToolResult.bind(this));
-        eventBus.on('llmservice:response', this.onResponse.bind(this));
-        eventBus.on('llmservice:error', this.onError.bind(this));
-        eventBus.on('llmservice:conversationReset', this.onConversationReset.bind(this));
+        eventBus.on('llmservice:chunk', (payload) => this.onChunk(payload.content));
+        eventBus.on('llmservice:toolCall', (payload) =>
+            this.onToolCall(payload.toolName, payload.args)
+        );
+        eventBus.on('llmservice:toolResult', (payload) =>
+            this.onToolResult(payload.toolName, payload.result)
+        );
+        eventBus.on('llmservice:response', (payload) => this.onResponse(payload.content));
+        eventBus.on('llmservice:error', (payload) => this.onError(payload.error));
+        eventBus.on('messageManager:conversationReset', this.onConversationReset.bind(this));
     }
 
     onThinking(): void {

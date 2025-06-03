@@ -1,5 +1,4 @@
 import { LanguageModelV1 } from 'ai';
-import { EventEmitter } from 'events';
 import { ToolSet } from '../../types.js';
 import { ImageData } from '../messages/types.js';
 
@@ -17,9 +16,6 @@ export interface ILLMService {
      * @returns A promise that resolves with the final text response from the AI.
      */
     completeTask(userInput: string, imageData?: ImageData): Promise<string>;
-
-    // Clear conversation history
-    resetConversation(): void;
 
     // Get all available tools
     getAllTools(): Promise<ToolSet>;

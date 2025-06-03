@@ -9,16 +9,9 @@ import { createRequire } from 'module';
 import { findProjectRoot } from '../utils/path.js';
 import { getDefaultModelForProvider, LLMProvider, logger } from '@core/index.js';
 import { parseDocument } from 'yaml';
+import { PROVIDER_API_KEY_MAP, getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
 
 const require = createRequire(import.meta.url);
-
-// Map the provider to its corresponding API key name
-const providerToKeyMap: Record<string, string> = {
-    openai: 'OPENAI_API_KEY',
-    anthropic: 'ANTHROPIC_API_KEY',
-    google: 'GOOGLE_GENERATIVE_AI_API_KEY',
-    groq: 'GROQ_API_KEY',
-};
 
 /**
  * Get user preferences needed to initialize a Saiki app
@@ -253,7 +246,7 @@ export async function updateSaikiConfigFile(filepath: string, llmProvider: LLMPr
     const fileContent = await fs.readFile(filepath, 'utf8');
     const doc = parseDocument(fileContent);
     doc.setIn(['llm', 'provider'], llmProvider);
-    doc.setIn(['llm', 'apiKey'], '$' + providerToKeyMap[llmProvider]);
+    doc.setIn(['llm', 'apiKey'], '$' + getPrimaryApiKeyEnvVar(llmProvider));
     doc.setIn(['llm', 'model'], getDefaultModelForProvider(llmProvider));
     await fs.writeFile(filepath, doc.toString(), 'utf8');
 }
@@ -358,7 +351,7 @@ export async function updateEnvFile(
         }
     });
 
-    const passedKey = llmProvider ? providerToKeyMap[llmProvider] : undefined;
+    const passedKey = llmProvider ? getPrimaryApiKeyEnvVar(llmProvider) : undefined;
 
     // Prepare updated values for Saiki environment variables
     const updatedValues: Record<string, string> = {

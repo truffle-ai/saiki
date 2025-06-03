@@ -343,6 +343,69 @@ export const AgentConfigSchema = z
             'Configurations for MCP (Multi-Capability Peer) servers used by the agent'
         ),
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
+        storage: z
+            .object({
+                history: z
+                    .object({
+                        provider: z.enum(['memory', 'file']).default('memory'),
+                        options: z.record(z.any()).optional(),
+                    })
+                    .optional()
+                    .default({ provider: 'memory' }),
+                allowedTools: z
+                    .object({
+                        provider: z.enum(['memory']).default('memory'),
+                        options: z.record(z.any()).optional(),
+                    })
+                    .optional()
+                    .default({ provider: 'memory' }),
+                userInfo: z
+                    .object({
+                        provider: z.enum(['memory']).default('memory'),
+                        options: z.record(z.any()).optional(),
+                    })
+                    .optional()
+                    .default({ provider: 'memory' }),
+                toolCache: z
+                    .object({
+                        provider: z.enum(['memory']).default('memory'),
+                        options: z.record(z.any()).optional(),
+                    })
+                    .optional()
+                    .default({ provider: 'memory' }),
+            })
+            .optional()
+            .default({
+                history: { provider: 'memory' },
+                allowedTools: { provider: 'memory' },
+                userInfo: { provider: 'memory' },
+                toolCache: { provider: 'memory' },
+            }),
+        sessions: z
+            .object({
+                maxSessions: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .default(100)
+                    .describe('Maximum number of concurrent sessions allowed, defaults to 100'),
+                sessionTTL: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .default(3600000)
+                    .describe(
+                        'Session time-to-live in milliseconds, defaults to 3600000ms (1 hour)'
+                    ),
+            })
+            .optional()
+            .default({
+                maxSessions: 100,
+                sessionTTL: 3600000,
+            })
+            .describe('Session management configuration'),
     })
     .describe('Main configuration for an agent, including its LLM and server connections');
 
