@@ -17,6 +17,7 @@ import {
     loadConfigFile,
     createSaikiAgent,
 } from '@core/index.js';
+import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startApiAndLegacyWebUIServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
@@ -177,18 +178,16 @@ program
                 logger.error('Supported models: ' + getAllSupportedModels().join(', '));
                 process.exit(1);
             }
-            const envMap: Record<string, string> = {
-                openai: 'OPENAI_API_KEY',
-                anthropic: 'ANTHROPIC_API_KEY',
-                google: 'GOOGLE_GENERATIVE_AI_API_KEY',
-            };
-            const envVar = envMap[provider as keyof typeof envMap];
-            if (!process.env[envVar]) {
-                logger.error(`Missing ${envVar} for provider '${provider}'`);
+
+            const apiKey = resolveApiKeyForProvider(provider);
+            if (!apiKey) {
+                logger.error(
+                    `Missing API key for provider '${provider}' - please set the appropriate environment variable`
+                );
                 process.exit(1);
             }
             opts.provider = provider;
-            opts.apiKey = process.env[envVar];
+            opts.apiKey = apiKey;
         }
 
         try {
@@ -248,7 +247,7 @@ program
                     agent,
                     apiPort,
                     true,
-                    agent.configManager.getConfig().agentCard || {}
+                    agent.stateManager.getEffectiveConfig().agentCard || {}
                 );
 
                 // Start Next.js web server
@@ -280,7 +279,7 @@ program
             case 'mcp': {
                 // Start API server only
                 const webPort = parseInt(opts.webPort, 10);
-                const agentCard = agent.configManager.getConfig().agentCard ?? {};
+                const agentCard = agent.stateManager.getEffectiveConfig().agentCard ?? {};
                 const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
                 const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 

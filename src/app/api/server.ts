@@ -1,5 +1,5 @@
 import express from 'express';
-import type { Express } from 'express';
+import type { Express, Request, Response } from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
@@ -17,10 +17,14 @@ import os from 'os';
 import { resolvePackagePath } from '@core/index.js';
 import {
     LLM_REGISTRY,
+    getSupportedModels,
+    getSupportedProviders,
     getSupportedRoutersForProvider,
     supportsBaseURL,
-    validateLLMSwitchRequest,
+    isValidProvider,
+    getEffectiveMaxTokens,
 } from '@core/ai/llm/registry.js';
+import type { LLMConfig } from '@core/index.js';
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -40,8 +44,9 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             return res.status(400).send({ error: 'Missing message content' });
         }
         try {
-            agent.run(req.body.message);
-            res.status(202).send({ status: 'processing' });
+            const sessionId = req.body.sessionId as string | undefined;
+            await agent.run(req.body.message, undefined, sessionId);
+            res.status(202).send({ status: 'processing', sessionId });
         } catch (error) {
             logger.error(`Error handling POST /api/message: ${error.message}`);
             res.status(500).send({ error: 'Internal server error' });
@@ -59,8 +64,9 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
             : undefined;
         try {
-            const responseText = await agent.run(req.body.message, imageDataInput);
-            res.status(200).send({ response: responseText });
+            const sessionId = req.body.sessionId as string | undefined;
+            const responseText = await agent.run(req.body.message, imageDataInput, sessionId);
+            res.status(200).send({ response: responseText, sessionId });
         } catch (error) {
             logger.error(`Error handling POST /api/message-sync: ${error.message}`);
             res.status(500).send({ error: 'Internal server error' });
@@ -70,16 +76,17 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.post('/api/reset', express.json(), async (req, res) => {
         logger.info('Received request via POST /api/reset');
         try {
-            agent.resetConversation();
-            res.status(200).send({ status: 'reset initiated' });
+            const sessionId = req.body.sessionId as string | undefined;
+            await agent.resetConversation(sessionId);
+            res.status(200).send({ status: 'reset initiated', sessionId });
         } catch (error) {
             logger.error(`Error handling POST /api/reset: ${error.message}`);
             res.status(500).send({ error: 'Internal server error' });
         }
     });
 
+    // Dynamic MCP server connection endpoint (legacy)
     app.post('/api/connect-server', express.json(), async (req, res) => {
-        logger.info('Received request via POST /api/connect-server');
         const { name, config } = req.body;
         if (!name || typeof name !== 'string' || name.trim() === '') {
             return res.status(400).send({ error: 'Missing or invalid server name' });
@@ -88,16 +95,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             return res.status(400).send({ error: 'Missing or invalid server config object' });
         }
         try {
-            await agent.connectMcpServer(name, config);
-            // Add dynamic server config to in-memory AgentConfig
-            try {
-                agent.configManager.addMcpServer(name, config);
-            } catch (error) {
-                // Log the error but don't fail the connection since it succeeded
-                logger.warn(
-                    `Failed to update in-memory config for server '${name}': ${error instanceof Error ? error.message : String(error)}`
-                );
-            }
+            await agent.addMcpServer(name, config);
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
         } catch (error) {
@@ -110,11 +108,26 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Add a new MCP server
+    app.post('/api/mcp/servers', express.json(), async (req, res) => {
+        const { name, config } = req.body;
+        if (!name || !config) {
+            return res.status(400).json({ error: 'Missing name or config' });
+        }
+        try {
+            await agent.addMcpServer(name, config);
+            res.status(201).json({ status: 'connected', name });
+        } catch (error: any) {
+            logger.error(`Error connecting MCP server '${name}': ${error.message}`);
+            res.status(500).json({ error: `Failed to connect server: ${error.message}` });
+        }
+    });
+
     // Add MCP servers listing endpoint
     app.get('/api/mcp/servers', async (req, res) => {
         try {
-            const clientsMap = agent.clientManager.getClients();
-            const failedConnections = agent.clientManager.getFailedConnections();
+            const clientsMap = agent.getMcpClients();
+            const failedConnections = agent.getMcpFailedConnections();
             const servers: Array<{ id: string; name: string; status: string }> = [];
             for (const name of clientsMap.keys()) {
                 servers.push({ id: name, name, status: 'connected' });
@@ -132,7 +145,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Add MCP server tools listing endpoint
     app.get('/api/mcp/servers/:serverId/tools', async (req, res) => {
         const serverId = req.params.serverId;
-        const client = agent.clientManager.getClients().get(serverId);
+        const client = agent.getMcpClients().get(serverId);
         if (!client) {
             return res.status(404).json({ error: `Server '${serverId}' not found` });
         }
@@ -159,22 +172,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             // Check if server exists before attempting to disconnect
             const clientExists =
-                agent.clientManager.getClients().has(serverId) ||
-                agent.clientManager.getFailedConnections()[serverId];
+                agent.getMcpClients().has(serverId) || agent.getMcpFailedConnections()[serverId];
             if (!clientExists) {
                 logger.warn(`Attempted to delete non-existent server: ${serverId}`);
                 return res.status(404).json({ error: `Server '${serverId}' not found.` });
             }
 
-            // Use the new removeClient method in MCPClientManager
-            await agent.clientManager.removeClient(serverId);
-            logger.info(
-                `Successfully processed removal for client: ${serverId} via MCPClientManager.`
-            );
-
-            // Remove from in-memory config - this is still important for the agent's own configuration
-            agent.configManager.removeMcpServer(serverId);
-
+            await agent.removeMcpServer(serverId);
             res.status(200).json({ status: 'disconnected', id: serverId });
         } catch (error: any) {
             logger.error(`Error deleting server '${serverId}': ${error.message}`);
@@ -191,15 +195,15 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         async (req, res) => {
             const { serverId, toolName } = req.params;
             // Verify server exists
-            const client = agent.clientManager.getClients().get(serverId);
+            const client = agent.getMcpClients().get(serverId);
             if (!client) {
                 return res
                     .status(404)
                     .json({ success: false, error: `Server '${serverId}' not found` });
             }
             try {
-                // Execute tool through the agent's client manager
-                const rawResult = await agent.clientManager.executeTool(toolName, req.body);
+                // Execute tool through the agent's wrapper method
+                const rawResult = await agent.executeMcpTool(toolName, req.body);
                 // Return standardized result shape
                 res.json({ success: true, data: rawResult });
             } catch (error: any) {
@@ -228,11 +232,16 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     const imageDataInput = data.imageData
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
+                    const sessionId = data.sessionId as string | undefined;
                     if (imageDataInput) logger.info('Image data included in message.');
-                    await agent.run(data.content, imageDataInput);
+                    if (sessionId) logger.info(`Message for session: ${sessionId}`);
+                    await agent.run(data.content, imageDataInput, sessionId);
                 } else if (data.type === 'reset') {
-                    logger.info('Processing reset command from WebSocket.');
-                    agent.resetConversation();
+                    const sessionId = data.sessionId as string | undefined;
+                    logger.info(
+                        `Processing reset command from WebSocket${sessionId ? ` for session: ${sessionId}` : ''}.`
+                    );
+                    await agent.resetConversation(sessionId);
                 } else {
                     logger.warn(`Received unknown WebSocket message type: ${data.type}`);
                     ws.send(
@@ -295,25 +304,45 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         mcpTransport
     );
 
-    // Export current AgentConfig as YAML, omitting sensitive fields
+    // Configuration export endpoint
     app.get('/api/config.yaml', async (req, res) => {
         try {
-            // Deep clone and sanitize
-            const rawConfig = agent.configManager.getConfig();
-            const exportConfig = JSON.parse(JSON.stringify(rawConfig));
-            // Remove sensitive API key
-            if (exportConfig.llm && 'apiKey' in exportConfig.llm) {
-                exportConfig.llm.apiKey = 'SET_YOUR_API_KEY_HERE';
-            }
-            // Serialize YAML
-            const yamlText = yamlStringify(exportConfig);
-            res.setHeader('Content-Type', 'application/x-yaml');
-            res.send(yamlText);
-        } catch (err) {
-            logger.error(
-                `Error exporting config YAML: ${err instanceof Error ? err.message : String(err)}`
-            );
-            res.status(500).send('Failed to export configuration');
+            const sessionId = req.query.sessionId as string | undefined;
+            const config = agent.getEffectiveConfig(sessionId);
+
+            // Export config as YAML, masking sensitive data
+            const maskedConfig = {
+                ...config,
+                llm: {
+                    ...config.llm,
+                    apiKey: config.llm.apiKey ? '[REDACTED]' : undefined,
+                },
+                mcpServers: Object.fromEntries(
+                    Object.entries(config.mcpServers).map(([name, serverConfig]: [string, any]) => [
+                        name,
+                        {
+                            ...serverConfig,
+                            env: serverConfig.env
+                                ? Object.fromEntries(
+                                      Object.entries(serverConfig.env).map(([key, value]) => [
+                                          key,
+                                          value && typeof value === 'string' && value.length > 0
+                                              ? '[REDACTED]'
+                                              : value,
+                                      ])
+                                  )
+                                : undefined,
+                        },
+                    ])
+                ),
+            };
+
+            const yamlStr = yamlStringify(maskedConfig);
+            res.set('Content-Type', 'application/x-yaml');
+            res.send(yamlStr);
+        } catch (error: any) {
+            logger.error(`Error exporting config: ${error.message}`);
+            res.status(500).json({ error: 'Failed to export configuration' });
         }
     });
 
@@ -364,40 +393,151 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Switch LLM configuration
     app.post('/api/llm/switch', express.json(), async (req, res) => {
         try {
-            const { provider, model, apiKey, router, baseURL } = req.body;
+            // Thin wrapper - build LLMConfig object from request body
+            const { provider, model, apiKey, router, baseURL, sessionId, ...otherFields } =
+                req.body;
 
-            // Validate the request using core validation
-            const validationErrors = validateLLMSwitchRequest({ provider, model, router, baseURL });
-            if (validationErrors.length > 0) {
-                return res.status(400).json({ error: validationErrors[0] }); // Return first error
-            }
+            // Build the LLMConfig object from the request parameters
+            const llmConfig: Partial<LLMConfig> = {};
+            if (provider !== undefined) llmConfig.provider = provider;
+            if (model !== undefined) llmConfig.model = model;
+            if (apiKey !== undefined) llmConfig.apiKey = apiKey;
+            if (router !== undefined) llmConfig.router = router;
+            if (baseURL !== undefined) llmConfig.baseURL = baseURL;
 
-            const selectedRouter = router || 'vercel'; // Default to vercel if not specified
+            // Include any other LLMConfig fields that might be in the request
+            Object.assign(llmConfig, otherFields);
 
-            // Get current config to preserve other settings
-            const currentConfig = agent.configManager.getConfig().llm;
-
-            const newLLMConfig = {
-                ...currentConfig,
-                provider,
-                model,
-                ...(apiKey && { apiKey }), // Only include apiKey if provided
-                ...(baseURL && { baseURL }), // Only include baseURL if provided
-            };
-
-            await agent.switchLLM(newLLMConfig, selectedRouter);
-
-            res.json({
-                success: true,
-                message: `Successfully switched to ${provider}/${model} using ${selectedRouter} router`,
-                config: agent.getCurrentLLMConfig(),
-            });
+            const result = await agent.switchLLM(llmConfig, sessionId);
+            res.json(result);
         } catch (error: any) {
             logger.error(`Error switching LLM: ${error.message}`);
-            res.status(500).json({
+            res.status(400).json({
                 success: false,
-                error: `Failed to switch LLM: ${error.message}`,
+                error: error.message,
             });
+        }
+    });
+
+    // Session Management APIs
+
+    // List all active sessions
+    app.get('/api/sessions', async (req, res) => {
+        try {
+            const sessionIds = agent.listSessions();
+            const sessions = sessionIds.map((id) => {
+                const metadata = agent.getSessionMetadata(id);
+                return {
+                    id,
+                    createdAt: metadata?.createdAt || null,
+                    lastActivity: metadata?.lastActivity || null,
+                    messageCount: metadata?.messageCount || 0,
+                };
+            });
+            res.json({ sessions });
+        } catch (error) {
+            logger.error(`Error listing sessions: ${error.message}`);
+            res.status(500).json({ error: 'Failed to list sessions' });
+        }
+    });
+
+    // Create a new session
+    app.post('/api/sessions', express.json(), async (req, res) => {
+        try {
+            const { sessionId } = req.body;
+            const session = agent.createSession(sessionId);
+            const metadata = agent.getSessionMetadata(session.id);
+            res.status(201).json({
+                session: {
+                    id: session.id,
+                    createdAt: metadata?.createdAt || null,
+                    lastActivity: metadata?.lastActivity || null,
+                    messageCount: metadata?.messageCount || 0,
+                },
+            });
+        } catch (error) {
+            logger.error(`Error creating session: ${error.message}`);
+            res.status(500).json({ error: 'Failed to create session' });
+        }
+    });
+
+    // Get session details
+    app.get('/api/sessions/:sessionId', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const session = agent.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            const metadata = agent.getSessionMetadata(sessionId);
+            const history = await agent.getSessionHistory(sessionId);
+
+            res.json({
+                session: {
+                    id: sessionId,
+                    createdAt: metadata?.createdAt || null,
+                    lastActivity: metadata?.lastActivity || null,
+                    messageCount: metadata?.messageCount || 0,
+                    history: history.length,
+                },
+            });
+        } catch (error) {
+            logger.error(`Error getting session ${req.params.sessionId}: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get session details' });
+        }
+    });
+
+    // Get session conversation history
+    app.get('/api/sessions/:sessionId/history', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const session = agent.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            const history = await agent.getSessionHistory(sessionId);
+            res.json({ history });
+        } catch (error) {
+            logger.error(
+                `Error getting session history for ${req.params.sessionId}: ${error.message}`
+            );
+            res.status(500).json({ error: 'Failed to get session history' });
+        }
+    });
+
+    // Delete a session
+    app.delete('/api/sessions/:sessionId', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const session = agent.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            await agent.endSession(sessionId);
+            res.json({ status: 'deleted', sessionId });
+        } catch (error) {
+            logger.error(`Error deleting session ${req.params.sessionId}: ${error.message}`);
+            res.status(500).json({ error: 'Failed to delete session' });
+        }
+    });
+
+    // Reset session conversation
+    app.post('/api/sessions/:sessionId/reset', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+            const session = agent.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            await agent.resetSession(sessionId);
+            res.json({ status: 'reset', sessionId });
+        } catch (error) {
+            logger.error(`Error resetting session ${req.params.sessionId}: ${error.message}`);
+            res.status(500).json({ error: 'Failed to reset session' });
         }
     });
 

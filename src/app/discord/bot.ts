@@ -146,13 +146,15 @@ export function startDiscordBot(agent: SaikiAgent) {
             }
             if (!userText) return;
 
-            // Subscribe to toolCall events
-            const toolCallHandler = (toolName: string, args: any) => {
+            // Subscribe for toolCall events
+            const toolCallHandler = (payload: { toolName: string; args: any; callId?: string }) => {
                 message.channel
-                    .send(`⚙️ Calling tool **${toolName}** with args: ${JSON.stringify(args)}`)
+                    .send(
+                        `🔧 Calling tool **${payload.toolName}** with args: ${JSON.stringify(payload.args)}`
+                    )
                     .catch((error) => {
                         console.error(
-                            `Failed to send tool call notification for ${toolName} to channel ${message.channel.id}:`,
+                            `Failed to send tool call notification for ${payload.toolName} to channel ${message.channel.id}:`,
                             error
                         );
                     });

@@ -190,11 +190,11 @@ export function getAllSupportedModels(): string[] {
 /**
  * Gets the supported routers for a given provider.
  * @param provider The name of the provider.
- * @returns An array of supported router names for the provider, or ['vercel'] as default if provider not found.
+ * @returns An array of supported router names for the provider
  */
 export function getSupportedRoutersForProvider(provider: string): string[] {
     const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
-    return providerInfo ? providerInfo.supportedRouters : ['vercel']; // Default to vercel for unknown providers
+    return providerInfo ? providerInfo.supportedRouters : [];
 }
 
 /**
@@ -235,62 +235,6 @@ export function isValidProvider(provider: string): boolean {
 export function isRouterSupportedForProvider(provider: string, router: string): boolean {
     const supportedRouters = getSupportedRoutersForProvider(provider);
     return supportedRouters.includes(router);
-}
-
-/**
- * Validates an LLM switch request and returns validation errors if any.
- * @param request The LLM switch request parameters.
- * @returns An array of validation error messages. Empty array if valid.
- */
-export function validateLLMSwitchRequest(request: {
-    provider?: string;
-    model?: string;
-    router?: string;
-    baseURL?: string;
-}): string[] {
-    const errors: string[] = [];
-    const { provider, model, router, baseURL } = request;
-
-    // Check required fields
-    if (!provider || !model) {
-        errors.push('Provider and model are required');
-        return errors; // Return early if basic requirements aren't met
-    }
-
-    // Validate router if provided
-    if (router && !isValidRouter(router)) {
-        errors.push('Router must be either "vercel" or "in-built"');
-    }
-
-    // Validate provider exists
-    if (!isValidProvider(provider)) {
-        errors.push(`Unknown provider: ${provider}`);
-        return errors; // Return early if provider doesn't exist
-    }
-
-    // Validate provider/model combination
-    if (!isValidProviderModel(provider, model)) {
-        const supportedModels = getSupportedModels(provider);
-        errors.push(
-            `Model '${model}' is not supported for provider '${provider}'. Supported models: ${supportedModels.join(', ')}`
-        );
-    }
-
-    // Validate provider/router combination
-    const selectedRouter = router || 'vercel';
-    if (!isRouterSupportedForProvider(provider, selectedRouter)) {
-        const supportedRouters = getSupportedRoutersForProvider(provider);
-        errors.push(
-            `Provider '${provider}' does not support '${selectedRouter}' router. Supported routers: ${supportedRouters.join(', ')}`
-        );
-    }
-
-    // Validate baseURL usage
-    if (baseURL && !supportsBaseURL(provider)) {
-        errors.push(`Custom baseURL is not supported for ${provider} provider`);
-    }
-
-    return errors;
 }
 
 /**
