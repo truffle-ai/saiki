@@ -24,7 +24,7 @@ import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory
 // import { UIConfirmationProvider } from './ui-confirmation-provider.js';
 
 export function createToolConfirmationProvider(
-    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp',
+    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp' | 'server',
     allowedToolsCfg?: AllowedToolsConfig
 ): ToolConfirmationProvider {
     // Build allowedToolsProvider based on config or default
@@ -36,6 +36,7 @@ export function createToolConfirmationProvider(
         case 'discord':
         case 'telegram':
         case 'mcp':
+        case 'server':
             // Fallback: No-op provider for now. Replace with real provider when available.
             return new NoOpConfirmationProvider();
         default:
