@@ -22,6 +22,12 @@ We'll create two specialized agents:
 
 The Writer agent will be able to delegate research tasks to the Researcher agent using MCP tool calls.
 
+### Mode Selection Strategy
+- **`--mode mcp`**: Use for agents that primarily serve as MCP servers for other agents (like our Researcher)
+- **`--mode web`**: Use for agents that need web UI access for user interaction (like our Writer)
+
+Both modes expose the `/mcp` endpoint, but `mcp` mode is optimized for API-only usage.
+
 ## Step 1: Create the Project Structure
 
 ```bash
@@ -157,7 +163,7 @@ That's it! No custom code needed. Just run Saiki with different configs and port
 
 ### Terminal 1: Start the Researcher Agent
 ```bash
-saiki --mode web --web-port 3001 -c researcher.yml
+saiki --mode mcp --web-port 3001 -c researcher.yml
 ```
 
 ### Terminal 2: Start the Writer Agent  
@@ -179,8 +185,8 @@ curl -X POST http://localhost:3002/api/message-sync \
 ```
 
 You can also open the web interfaces:
-- **Researcher**: http://localhost:3001
-- **Writer**: http://localhost:3002
+- **Researcher**: http://localhost:3001 (API endpoints only)
+- **Writer**: http://localhost:3002 (Full web UI)
 
 ## How It Works
 
@@ -201,11 +207,11 @@ In the Writer's configuration, this section connects to the Researcher:
 ```yaml
 researcher:
   type: http                           # Use HTTP MCP connection
-  baseUrl: http://localhost:3001/mcp   # Researcher's MCP endpoint (auto-available in web mode)
+  baseUrl: http://localhost:3001/mcp   # Researcher's MCP endpoint (auto-available in mcp mode)
   timeout: 30000                       # 30-second timeout
 ```
 
-When Saiki runs in web mode, it automatically exposes an MCP endpoint at `/mcp` that other agents can connect to.
+When Saiki runs in `mcp` or `web` mode, it automatically exposes an MCP endpoint at `/mcp` that other agents can connect to. The `mcp` mode is specifically designed for agents that primarily serve as MCP servers for other agents.
 
 ### The Power of Configuration-First
 
@@ -237,16 +243,16 @@ mcpServers:
 
 Then run:
 ```bash
-# Terminal 1: Researcher
-saiki --mode web --web-port 3001 -c researcher.yml
+# Terminal 1: Researcher (MCP server mode)
+saiki --mode mcp --web-port 3001 -c researcher.yml
 
-# Terminal 2: Fact-checker
-saiki --mode web --web-port 3003 -c fact-checker.yml
+# Terminal 2: Fact-checker (MCP server mode)
+saiki --mode mcp --web-port 3003 -c fact-checker.yml
 
-# Terminal 3: Editor  
-saiki --mode web --web-port 3004 -c editor.yml
+# Terminal 3: Editor (MCP server mode)
+saiki --mode mcp --web-port 3004 -c editor.yml
 
-# Terminal 4: Writer (connects to all)
+# Terminal 4: Writer (Web UI for user interaction)
 saiki --mode web --web-port 3002 -c writer.yml
 ```
 
@@ -301,8 +307,14 @@ llm:
     When given a task, break it down and delegate to the appropriate agents.
 ```
 
-Run the coordinator:
+Run the system:
 ```bash
+# Start specialized agents (MCP servers)
+saiki --mode mcp --web-port 3001 -c researcher.yml
+saiki --mode mcp --web-port 3002 -c writer.yml  
+saiki --mode mcp --web-port 3003 -c reviewer.yml
+
+# Start coordinator (Web UI for user interaction)
 saiki --mode web --web-port 3000 -c coordinator.yml
 ```
 
@@ -322,7 +334,7 @@ module.exports = {
     {
       name: 'researcher-agent',
       script: 'saiki',
-      args: '--mode web --web-port 3001 -c researcher.yml'
+      args: '--mode mcp --web-port 3001 -c researcher.yml'
     },
     {
       name: 'writer-agent', 
@@ -360,7 +372,7 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - TAVILY_API_KEY=${TAVILY_API_KEY}
-    command: saiki --mode web --web-port 3000 -c researcher.yml
+    command: saiki --mode mcp --web-port 3000 -c researcher.yml
     
   writer:
     build: .

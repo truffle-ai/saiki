@@ -159,23 +159,36 @@ The `saiki` command supports several options to customize its behavior. Run `sai
 
 ```
 > saiki -h
-17:51:31 INFO: Log level set to: INFO
-Usage: saiki [options] [prompt...]
+Usage: saiki [options] [command] [prompt...]
 
-AI-powered CLI and WebUI for interacting with MCP servers
+Saiki CLI allows you to talk to Saiki, build custom AI Agents, build complex AI applications like Cursor, and more.
+
+Run saiki interactive CLI with `saiki` or run a one-shot prompt with `saiki <prompt>`
+Run saiki web UI with `saiki --mode web`
+Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`
+Run saiki as a discord bot with `saiki --mode discord`
+Run saiki as a telegram bot with `saiki --mode telegram`
+Run saiki as an MCP server with `saiki --mode mcp`
+
+Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples
 
 Arguments:
-  prompt                    Optional headless prompt for single command mode
+  prompt                    Natural-language prompt to run once. If not passed, saiki will start as an interactive CLI
 
 Options:
+  -v, --version             output the current version
   -c, --config-file <path>  Path to config file (default: "configuration/saiki.yml")
   -s, --strict              Require all server connections to succeed
   --no-verbose              Disable verbose output
-  --mode <mode>             Run mode: cli, web, server, discord, or telegram (default: "cli")
-  --web-port <port>         Port for WebUI (default: "3000")
-  -m, --model <model>       Specify the LLM model to use
+  -m, --model <model>       Specify the LLM model to use.
   -r, --router <router>     Specify the LLM router to use (vercel or in-built)
-  -V, --version             output the version number
+  --mode <mode>             The application in which saiki should talk to you - cli | web | server | discord | telegram | mcp (default: "cli")
+  --web-port <port>         optional port for the web UI (default: "3000")
+  -h, --help                display help for command
+
+Commands:
+  create-app                Scaffold a new Saiki Typescript app
+  init-app                  Initialize an existing Typescript app with Saiki
 ```
 
 **Common Examples:**
