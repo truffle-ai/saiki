@@ -10,6 +10,7 @@ export default defineConfig([
         shims: true,
         bundle: true,
         noExternal: ['chalk', 'boxen'],
+        external: ['better-sqlite3', 'pg', 'redis'],
     },
     // App entry: only ESM, no bundling needed
     {
@@ -17,5 +18,6 @@ export default defineConfig([
         format: ['esm'],
         outDir: 'dist/src/app',
         shims: true,
+        external: ['better-sqlite3', 'pg', 'redis'],
     },
 ]);

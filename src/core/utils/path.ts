@@ -143,7 +143,7 @@ export async function findSaikiProjectRoot(
  * @returns True if running globally, false if in Saiki project
  */
 export async function isGlobalInstall(): Promise<boolean> {
-    const isInSaikiProject = await isCurrentDirectorySaikiProject();
+    const isInSaikiProject = await isSaikiProject();
     return !isInSaikiProject;
 }
 
@@ -170,4 +170,57 @@ export function resolvePackagePath(targetPath: string, resolveFromPackageRoot: b
     }
     // User-specified relative path
     return path.resolve(process.cwd(), targetPath);
+}
+
+/**
+ * Check if a directory contains a Saiki configuration file
+ * @param dirPath Directory to check
+ * @returns True if the directory contains configuration/saiki.yml
+ */
+export function hasSaikiConfig(dirPath: string): boolean {
+    const configPath = path.join(dirPath, DEFAULT_CONFIG_PATH);
+    return existsSync(configPath);
+}
+
+/**
+ * Find Saiki project root by looking for configuration/saiki.yml
+ * @param startPath Starting directory path
+ * @returns The directory containing configuration/saiki.yml, or null if not found
+ */
+export function findSaikiProjectByConfig(startPath: string = process.cwd()): string | null {
+    return walkUpDirectories(startPath, hasSaikiConfig);
+}
+
+/**
+ * Enhanced Saiki project detection that checks both package.json and config file
+ * @param dirPath Directory to check (defaults to current working directory)
+ * @returns True if the directory is a Saiki project (by package name OR config file)
+ */
+export async function isSaikiProject(dirPath: string = process.cwd()): Promise<boolean> {
+    // Check for package.json with @truffle-ai/saiki name
+    const isPackage = await isDirectoryPackage(dirPath, '@truffle-ai/saiki');
+    if (isPackage) {
+        return true;
+    }
+
+    // Check for configuration/saiki.yml
+    return hasSaikiConfig(dirPath);
+}
+
+/**
+ * Enhanced Saiki project root finder that checks both package.json and config file
+ * @param startPath Starting directory path
+ * @returns The Saiki project root directory, or null if not found
+ */
+export async function findSaikiProjectRootEnhanced(
+    startPath: string = process.cwd()
+): Promise<string | null> {
+    // First try finding by package.json
+    const packageRoot = await findPackageByName('@truffle-ai/saiki', startPath);
+    if (packageRoot) {
+        return packageRoot;
+    }
+
+    // Then try finding by configuration file
+    return findSaikiProjectByConfig(startPath);
 }

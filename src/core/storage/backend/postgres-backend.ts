@@ -148,7 +148,7 @@ export class PostgresBackend implements DatabaseBackend {
         const client = await this.pool!.connect();
         try {
             const result = await client.query(
-                'SELECT item FROM lists WHERE key = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+                'SELECT item FROM lists WHERE key = $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3',
                 [key, count, start]
             );
             return result.rows.map((row) => JSON.parse(row.item));

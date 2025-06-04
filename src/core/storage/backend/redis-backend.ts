@@ -146,7 +146,7 @@ export class RedisBackend implements CacheBackend {
     // List operations (for compatibility with DatabaseBackend patterns)
     async append<T>(key: string, item: T): Promise<void> {
         this.checkConnection();
-        await this.redis!.lpush(key, JSON.stringify(item));
+        await this.redis!.rpush(key, JSON.stringify(item));
     }
 
     async getRange<T>(key: string, start: number, count: number): Promise<T[]> {

@@ -4,8 +4,8 @@ import { homedir } from 'os';
 import { logger } from '../logger/index.js';
 import { StorageContext } from './types.js';
 import {
-    isCurrentDirectorySaikiProject,
-    findSaikiProjectRoot,
+    isSaikiProject,
+    findSaikiProjectRootEnhanced,
     isGlobalInstall as utilsIsGlobalInstall,
 } from '../utils/path.js';
 
@@ -73,7 +73,7 @@ export class StoragePathResolver {
         let projectRoot: string | undefined;
 
         if (!options.forceGlobal) {
-            const rootResult = await findSaikiProjectRoot();
+            const rootResult = await findSaikiProjectRootEnhanced();
             projectRoot = rootResult || undefined;
         }
 
@@ -167,50 +167,5 @@ export class StoragePathResolver {
         } catch {
             await fs.mkdir(dirPath, { recursive: true });
         }
-    }
-
-    // The following methods are kept for backwards compatibility and testing
-    // but delegate to the consolidated path utilities
-
-    /**
-     * @deprecated Use path utilities directly from src/core/utils/path.js
-     */
-    static async isGlobalInstall(): Promise<boolean> {
-        return utilsIsGlobalInstall();
-    }
-
-    /**
-     * @deprecated Use path utilities directly from src/core/utils/path.js
-     */
-    static async isDirectorySaikiProject(dirPath: string): Promise<boolean> {
-        return isCurrentDirectorySaikiProject(dirPath);
-    }
-
-    /**
-     * @deprecated Use path utilities directly from src/core/utils/path.js
-     */
-    static async detectProjectRoot(startPath: string = process.cwd()): Promise<string | null> {
-        return findSaikiProjectRoot(startPath);
-    }
-
-    /**
-     * @deprecated Use path utilities directly from src/core/utils/path.js
-     */
-    static isSaikiProject(packageJson: any): boolean {
-        // Check if it's the main Saiki project
-        if (packageJson.name === '@truffle-ai/saiki') {
-            return true;
-        }
-
-        // Check for Saiki as a dependency
-        const deps = {
-            ...packageJson.dependencies,
-            ...packageJson.devDependencies,
-            ...packageJson.peerDependencies,
-        };
-
-        return Object.keys(deps).some(
-            (dep) => dep.includes('saiki') || dep.includes('@truffle-ai/saiki')
-        );
     }
 }

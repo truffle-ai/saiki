@@ -13,12 +13,12 @@ mcpServers:
     args:
       - -y
       - "@truffle-ai/puppeteer-server"
-  hf:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@llmindset/mcp-hfspace"
+  # hf:
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - -y
+  #     - "@llmindset/mcp-hfspace"
 
 
 # # describes the llm configuration

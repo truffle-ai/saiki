@@ -13,6 +13,7 @@ export interface DatabaseBackend {
 
     // List operations for message history
     append<T>(key: string, item: T): Promise<void>;
+    /** Get a range of items in chronological order (oldest first, matching insertion order) */
     getRange<T>(key: string, start: number, count: number): Promise<T[]>;
 
     // Connection management

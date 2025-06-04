@@ -16,16 +16,14 @@ export class DatabaseHistoryProvider implements IConversationHistoryProvider {
     async getHistory(): Promise<InternalMessage[]> {
         const key = this.getMessagesKey();
         try {
-            // Get all messages for this session (most recent first from append operations)
+            // Get all messages for this session in chronological order (oldest first)
             const messages = await this.database.getRange<InternalMessage>(key, 0, 1000);
-            // Reverse to get chronological order (oldest first)
-            const chronologicalMessages = messages.reverse();
 
             logger.debug(
-                `DatabaseHistoryProvider: Retrieved ${chronologicalMessages.length} messages for session ${this.sessionId}`
+                `DatabaseHistoryProvider: Retrieved ${messages.length} messages for session ${this.sessionId}`
             );
 
-            return chronologicalMessages;
+            return messages;
         } catch (error) {
             logger.error(
                 `DatabaseHistoryProvider: Error retrieving messages for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`

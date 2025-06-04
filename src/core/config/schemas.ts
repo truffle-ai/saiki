@@ -336,19 +336,8 @@ export const ServerConfigsSchema = z
 export type ServerConfigs = z.infer<typeof ServerConfigsSchema>;
 
 // ==== STORAGE CONFIGURATION ====
-// Backend configuration for storage system
-const BackendConfigSchema = z.object({
-    type: z.enum(['memory', 'redis', 'sqlite', 'postgres']).describe('Backend type'),
-    // Connection options
-    url: z.string().optional().describe('Connection URL (for redis/postgres)'),
-    path: z.string().optional().describe('File path (for sqlite)'),
-    connectionString: z.string().optional().describe('Database connection string'),
-    host: z.string().optional().describe('Database host'),
-    port: z.number().int().positive().optional().describe('Database port'),
-    password: z.string().optional().describe('Database password'),
-    database: z.number().int().nonnegative().optional().describe('Database number (for redis)'),
-
-    // Connection pool options
+// Base schema for common connection pool options
+const BaseBackendSchema = z.object({
     maxConnections: z.number().int().positive().optional().describe('Maximum connections'),
     idleTimeoutMillis: z
         .number()
@@ -362,10 +351,89 @@ const BackendConfigSchema = z.object({
         .positive()
         .optional()
         .describe('Connection timeout in milliseconds'),
-
-    // Additional options
     options: z.record(z.any()).optional().describe('Backend-specific options'),
 });
+
+// Memory backend - minimal configuration
+const MemoryBackendSchema = BaseBackendSchema.extend({
+    type: z.literal('memory'),
+    // Memory backend doesn't need connection options, but inherits pool options for consistency
+}).strict();
+
+// Redis backend configuration
+const RedisBackendSchema = BaseBackendSchema.extend({
+    type: z.literal('redis'),
+    url: z.string().optional().describe('Redis connection URL (redis://...)'),
+    host: z.string().optional().describe('Redis host'),
+    port: z.number().int().positive().optional().describe('Redis port'),
+    password: z.string().optional().describe('Redis password'),
+    database: z.number().int().nonnegative().optional().describe('Redis database number'),
+}).strict();
+
+// SQLite backend configuration
+const SqliteBackendSchema = BaseBackendSchema.extend({
+    type: z.literal('sqlite'),
+    path: z
+        .string()
+        .optional()
+        .describe(
+            'SQLite database file path (optional, will auto-detect using path resolver if not provided)'
+        ),
+    database: z.string().optional().describe('Database filename (default: saiki.db)'),
+}).strict();
+
+// PostgreSQL backend configuration
+const PostgresBackendSchema = BaseBackendSchema.extend({
+    type: z.literal('postgres'),
+    url: z.string().optional().describe('PostgreSQL connection URL (postgresql://...)'),
+    connectionString: z.string().optional().describe('PostgreSQL connection string'),
+    host: z.string().optional().describe('PostgreSQL host'),
+    port: z.number().int().positive().optional().describe('PostgreSQL port'),
+    database: z.string().optional().describe('PostgreSQL database name'),
+    password: z.string().optional().describe('PostgreSQL password'),
+}).strict();
+
+// Backend configuration using discriminated union
+const BackendConfigSchema = z
+    .discriminatedUnion(
+        'type',
+        [MemoryBackendSchema, RedisBackendSchema, SqliteBackendSchema, PostgresBackendSchema],
+        {
+            errorMap: (issue, ctx) => {
+                if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
+                    return {
+                        message: `Invalid backend type. Expected 'memory', 'redis', 'sqlite', or 'postgres'.`,
+                    };
+                }
+                return { message: ctx.defaultError };
+            },
+        }
+    )
+    .describe('Backend configuration for storage system')
+    .superRefine((data, ctx) => {
+        // Validate Redis backend requirements
+        if (data.type === 'redis') {
+            if (!data.url && !data.host) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Redis backend requires either 'url' or 'host' to be specified",
+                    path: ['url'],
+                });
+            }
+        }
+
+        // Validate PostgreSQL backend requirements
+        if (data.type === 'postgres') {
+            if (!data.url && !data.connectionString && !data.host) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                        "PostgreSQL backend requires one of 'url', 'connectionString', or 'host' to be specified",
+                    path: ['url'],
+                });
+            }
+        }
+    });
 
 // Storage configuration with cache and database backends
 export const StorageSchema = z

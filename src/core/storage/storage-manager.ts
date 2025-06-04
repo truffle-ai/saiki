@@ -5,6 +5,7 @@ import type {
     StorageBackendConfig,
 } from './backend/types.js';
 import { MemoryBackend } from './backend/memory-backend.js';
+import { logger } from '../logger/index.js';
 
 // Lazy imports for optional dependencies
 let SQLiteBackend: any;
@@ -148,7 +149,11 @@ export class StorageManager {
             console.log(`Using SQLite database at ${config.path}`);
             return new SQLiteBackend(config);
         } catch (error) {
-            console.warn('SQLite not available, falling back to memory database:', error);
+            logger.error(
+                `SQLite backend failed to load: ${error instanceof Error ? error.message : String(error)}`
+            );
+            logger.error(`Full error details: ${JSON.stringify(error)}`);
+            logger.warn('Falling back to memory database backend');
             return new MemoryBackend();
         }
     }

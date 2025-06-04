@@ -1,10 +1,15 @@
-import Database = require('better-sqlite3');
 import { dirname } from 'path';
 import { mkdirSync } from 'fs';
 import type { DatabaseBackend } from './database-backend.js';
 import { StoragePathResolver } from '../path-resolver.js';
 import { logger } from '../../logger/index.js';
 import type { BackendConfig } from './types.js';
+import { isSaikiProject } from '../../utils/path.js';
+import * as path from 'path';
+import { homedir } from 'os';
+
+// Dynamic import for better-sqlite3
+let Database: any;
 
 export interface SQLiteBackendConfig {
     type: 'sqlite';
@@ -22,94 +27,36 @@ export interface SQLiteBackendConfig {
  * Implements the DatabaseBackend interface with proper schema and connection handling.
  */
 export class SQLiteBackend implements DatabaseBackend {
-    private db: Database.Database;
+    private db: any; // Database.Database
     private dbPath: string;
+    private config: SQLiteBackendConfig;
 
     constructor(config: SQLiteBackendConfig) {
-        // Initialize database path - use sync resolution for constructor
-        this.dbPath = config.path || this.resolveDefaultPathSync(config.database || 'saiki.db');
-
-        // Ensure directory exists
-        const dir = dirname(this.dbPath);
-        try {
-            mkdirSync(dir, { recursive: true });
-        } catch (error) {
-            // Directory might already exist, that's fine
-        }
-
-        // Initialize SQLite database
-        this.db = new Database(this.dbPath, {
-            readonly: config.readonly || false,
-            fileMustExist: config.fileMustExist || false,
-            timeout: config.timeout || 5000,
-            verbose: config.verbose
-                ? (message?: unknown, ...additionalArgs: unknown[]) => {
-                      logger.debug(
-                          typeof message === 'string' || typeof message === 'object'
-                              ? message
-                              : String(message),
-                          ...additionalArgs
-                      );
-                  }
-                : undefined,
-        });
-
-        // Enable WAL mode for better concurrency
-        this.db.pragma('journal_mode = WAL');
-
-        // Create tables if they don't exist
-        this.initializeTables();
-
-        logger.debug(`SQLiteBackend initialized at: ${this.dbPath}`);
+        this.config = config;
+        // Path will be resolved in connect() method
+        this.dbPath = '';
     }
 
-    private resolveDefaultPathSync(dbName: string): string {
-        // For now, use a simple approach that works synchronously
-        // TODO: Consider making backend initialization async to support full path resolution
-        const homeDir = require('os').homedir();
-        const path = require('path');
+    private async resolveDefaultPath(dbName: string): Promise<string> {
+        // Use the enhanced path utilities for robust detection
+        const isInSaikiProject = await isSaikiProject();
 
-        // Check if we're in a Saiki project by looking for package.json or saiki.yml
-        const fs = require('fs');
-        let useLocal = false;
-
-        try {
-            // Look for indicators we're in a Saiki project
-            const cwd = process.cwd();
-            const packageJsonPath = path.join(cwd, 'package.json');
-            const saikiConfigPath = path.join(cwd, 'saiki.yml');
-
-            if (fs.existsSync(packageJsonPath)) {
-                const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-                // Check if this is a Saiki project
-                if (
-                    packageJson.name === '@truffle-ai/saiki' ||
-                    (packageJson.dependencies &&
-                        (packageJson.dependencies['@truffle-ai/saiki'] ||
-                            packageJson.dependencies['saiki'])) ||
-                    (packageJson.devDependencies &&
-                        (packageJson.devDependencies['@truffle-ai/saiki'] ||
-                            packageJson.devDependencies['saiki']))
-                ) {
-                    useLocal = true;
-                }
-            } else if (fs.existsSync(saikiConfigPath)) {
-                useLocal = true;
-            }
-        } catch (error) {
-            // If we can't determine, default to global
-            logger.debug('Could not determine project context, using global storage');
-        }
-
-        const storageDir = useLocal
+        const storageDir = isInSaikiProject
             ? path.join(process.cwd(), '.saiki', 'database')
-            : path.join(homeDir, '.saiki', 'database');
+            : path.join(homedir(), '.saiki', 'database');
 
-        logger.debug(`SQLite using ${useLocal ? 'local' : 'global'} storage: ${storageDir}`);
-        return path.join(storageDir, dbName);
+        const finalPath = path.join(storageDir, dbName);
+
+        logger.info(`SQLite auto-detected ${isInSaikiProject ? 'local' : 'global'} storage`);
+        logger.info(`SQLite storage directory: ${storageDir}`);
+        logger.debug(`SQLite database file: ${finalPath}`);
+
+        return finalPath;
     }
 
     private initializeTables(): void {
+        logger.debug('SQLite initializing database schema...');
+
         // Create key-value table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS kv_store (
@@ -137,10 +84,74 @@ export class SQLiteBackend implements DatabaseBackend {
             CREATE INDEX IF NOT EXISTS idx_list_store_key ON list_store(key);
             CREATE INDEX IF NOT EXISTS idx_list_store_sequence ON list_store(key, sequence);
         `);
+
+        logger.debug(
+            'SQLite database schema initialized: kv_store, list_store tables with indexes'
+        );
     }
 
     async connect(): Promise<void> {
-        // This method is now empty as the database is initialized in the constructor
+        // Dynamic import of better-sqlite3
+        if (!Database) {
+            try {
+                const module = await import('better-sqlite3');
+                Database = module.default;
+            } catch (error) {
+                throw new Error(
+                    `Failed to import better-sqlite3: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+        }
+
+        // Initialize database path - use custom path if provided, otherwise auto-detect
+        if (this.config.path) {
+            this.dbPath = this.config.path;
+            logger.info(`SQLite using custom path: ${this.dbPath}`);
+        } else {
+            this.dbPath = await this.resolveDefaultPath(this.config.database || 'saiki.db');
+        }
+
+        // Ensure directory exists
+        const dir = dirname(this.dbPath);
+        logger.debug(`SQLite ensuring directory exists: ${dir}`);
+        try {
+            mkdirSync(dir, { recursive: true });
+        } catch (error) {
+            // Directory might already exist, that's fine
+            logger.debug(`Directory creation result: ${error ? 'exists' : 'created'}`);
+        }
+
+        // Initialize SQLite database
+        logger.debug(`SQLite initializing database with config:`, {
+            readonly: this.config.readonly || false,
+            fileMustExist: this.config.fileMustExist || false,
+            timeout: this.config.timeout || 5000,
+        });
+
+        this.db = new Database(this.dbPath, {
+            readonly: this.config.readonly || false,
+            fileMustExist: this.config.fileMustExist || false,
+            timeout: this.config.timeout || 5000,
+            verbose: this.config.verbose
+                ? (message?: unknown, ...additionalArgs: unknown[]) => {
+                      logger.debug(
+                          typeof message === 'string' || typeof message === 'object'
+                              ? message
+                              : String(message),
+                          ...additionalArgs
+                      );
+                  }
+                : undefined,
+        });
+
+        // Enable WAL mode for better concurrency
+        this.db.pragma('journal_mode = WAL');
+        logger.debug('SQLite enabled WAL mode for better concurrency');
+
+        // Create tables if they don't exist
+        this.initializeTables();
+
+        logger.info(`✅ SQLite backend successfully connected to: ${this.dbPath}`);
     }
 
     async disconnect(): Promise<void> {
@@ -212,7 +223,7 @@ export class SQLiteBackend implements DatabaseBackend {
         this.checkConnection();
         const rows = this.db
             .prepare(
-                'SELECT value FROM list_store WHERE key = ? ORDER BY sequence DESC LIMIT ? OFFSET ?'
+                'SELECT value FROM list_store WHERE key = ? ORDER BY sequence ASC LIMIT ? OFFSET ?'
             )
             .all(key, count, start) as { value: string }[];
 
