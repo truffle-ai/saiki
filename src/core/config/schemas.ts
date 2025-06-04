@@ -72,6 +72,8 @@ export const AgentCardSchema = z
     })
     .strict();
 
+export type AgentCard = z.infer<typeof AgentCardSchema>;
+
 // Define a base schema for common fields
 const BaseContributorSchema = z
     .object({
@@ -330,57 +332,66 @@ export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
 export const ServerConfigsSchema = z
     .record(McpServerConfigSchema)
-    .refine((obj) => Object.keys(obj).length > 0, {
-        message: 'At least one MCP server configuration is required.',
-    })
     .describe('A dictionary of server configurations, keyed by server name');
 export type ServerConfigs = z.infer<typeof ServerConfigsSchema>;
+
+// ==== STORAGE CONFIGURATION ====
+// Backend configuration for storage system
+const BackendConfigSchema = z.object({
+    type: z.enum(['memory', 'redis', 'sqlite', 'postgres']).describe('Backend type'),
+    // Connection options
+    url: z.string().optional().describe('Connection URL (for redis/postgres)'),
+    path: z.string().optional().describe('File path (for sqlite)'),
+    connectionString: z.string().optional().describe('Database connection string'),
+    host: z.string().optional().describe('Database host'),
+    port: z.number().int().positive().optional().describe('Database port'),
+    password: z.string().optional().describe('Database password'),
+    database: z.number().int().nonnegative().optional().describe('Database number (for redis)'),
+
+    // Connection pool options
+    maxConnections: z.number().int().positive().optional().describe('Maximum connections'),
+    idleTimeoutMillis: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Idle timeout in milliseconds'),
+    connectionTimeoutMillis: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Connection timeout in milliseconds'),
+
+    // Additional options
+    options: z.record(z.any()).optional().describe('Backend-specific options'),
+});
+
+// Storage configuration with cache and database backends
+export const StorageSchema = z
+    .object({
+        cache: BackendConfigSchema.describe('Cache backend configuration (fast, ephemeral)'),
+        database: BackendConfigSchema.describe(
+            'Database backend configuration (persistent, reliable)'
+        ),
+    })
+    .describe('Storage configuration with cache and database backends');
+
+export type StorageConfig = z.infer<typeof StorageSchema>;
 
 export const AgentConfigSchema = z
     .object({
         agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
-        mcpServers: ServerConfigsSchema.describe(
-            'Configurations for MCP (Multi-Capability Peer) servers used by the agent'
-        ),
+        mcpServers: ServerConfigsSchema.optional()
+            .default({})
+            .describe('Configurations for MCP (Model Context Protocol) servers used by the agent'),
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
-        storage: z
-            .object({
-                history: z
-                    .object({
-                        provider: z.enum(['memory', 'file']).default('memory'),
-                        options: z.record(z.any()).optional(),
-                    })
-                    .optional()
-                    .default({ provider: 'memory' }),
-                allowedTools: z
-                    .object({
-                        provider: z.enum(['memory']).default('memory'),
-                        options: z.record(z.any()).optional(),
-                    })
-                    .optional()
-                    .default({ provider: 'memory' }),
-                userInfo: z
-                    .object({
-                        provider: z.enum(['memory']).default('memory'),
-                        options: z.record(z.any()).optional(),
-                    })
-                    .optional()
-                    .default({ provider: 'memory' }),
-                toolCache: z
-                    .object({
-                        provider: z.enum(['memory']).default('memory'),
-                        options: z.record(z.any()).optional(),
-                    })
-                    .optional()
-                    .default({ provider: 'memory' }),
-            })
-            .optional()
-            .default({
-                history: { provider: 'memory' },
-                allowedTools: { provider: 'memory' },
-                userInfo: { provider: 'memory' },
-                toolCache: { provider: 'memory' },
-            }),
+
+        // Storage configuration
+        storage: StorageSchema.optional().describe(
+            'Storage configuration for the agent using cache and database backends'
+        ),
+
         sessions: z
             .object({
                 maxSessions: z
@@ -408,5 +419,4 @@ export const AgentConfigSchema = z
             .describe('Session management configuration'),
     })
     .describe('Main configuration for an agent, including its LLM and server connections');
-
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;

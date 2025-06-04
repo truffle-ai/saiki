@@ -18,6 +18,7 @@ describe('SaikiAgent.switchLLM', () => {
     let mockClientManager: any;
     let mockPromptManager: any;
     let mockConfigManager: any;
+    let mockStorageManager: any;
 
     const mockLLMConfig: LLMConfig = {
         provider: 'openai',
@@ -109,6 +110,10 @@ describe('SaikiAgent.switchLLM', () => {
             // Add any methods that might be called
         };
 
+        mockStorageManager = {
+            // Add any methods that might be called
+        };
+
         // Create SaikiAgent with all required services
         agent = new SaikiAgent({
             clientManager: mockClientManager,
@@ -116,6 +121,7 @@ describe('SaikiAgent.switchLLM', () => {
             agentEventBus: mockEventBus,
             stateManager: mockStateManager,
             sessionManager: mockSessionManager,
+            storageManager: mockStorageManager,
         });
 
         // Mock the validation function
@@ -137,9 +143,10 @@ describe('SaikiAgent.switchLLM', () => {
             const result = await agent.switchLLM({});
 
             expect(result.success).toBe(false);
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors[0].type).toBe('general');
-            expect(result.errors[0].message).toBe('At least model or provider must be specified');
+            expect(result.errors).toBeDefined();
+            expect(result.errors!).toHaveLength(1);
+            expect(result.errors![0].type).toBe('general');
+            expect(result.errors![0].message).toBe('At least model or provider must be specified');
         });
 
         test('should handle validation failure', async () => {
@@ -158,9 +165,10 @@ describe('SaikiAgent.switchLLM', () => {
             const result = await agent.switchLLM({ model: 'invalid-model' });
 
             expect(result.success).toBe(false);
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors[0].type).toBe('invalid_model');
-            expect(result.errors[0].message).toBe('Invalid model');
+            expect(result.errors).toBeDefined();
+            expect(result.errors!).toHaveLength(1);
+            expect(result.errors![0].type).toBe('invalid_model');
+            expect(result.errors![0].message).toBe('Invalid model');
         });
     });
 
@@ -169,7 +177,8 @@ describe('SaikiAgent.switchLLM', () => {
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
             expect(result.success).toBe(true);
-            expect(result.config.model).toBe('gpt-4o-mini');
+            expect(result.config).toBeDefined();
+            expect(result.config!.model).toBe('gpt-4o-mini');
             expect(result.message).toContain(
                 'Successfully switched to openai/gpt-4o using vercel router'
             );
@@ -288,9 +297,10 @@ describe('SaikiAgent.switchLLM', () => {
             const result = await agent.switchLLM({ model: 'gpt-4o' }, 'nonexistent');
 
             expect(result.success).toBe(false);
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors[0].type).toBe('general');
-            expect(result.errors[0].message).toBe('Session nonexistent not found');
+            expect(result.errors).toBeDefined();
+            expect(result.errors!).toHaveLength(1);
+            expect(result.errors![0].type).toBe('general');
+            expect(result.errors![0].message).toBe('Session nonexistent not found');
         });
 
         test('should use session-specific state', async () => {
@@ -436,9 +446,10 @@ describe('SaikiAgent.switchLLM', () => {
             const result = await agent.switchLLM({ model: 'gpt-4o' });
 
             expect(result.success).toBe(false);
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors[0].type).toBe('general');
-            expect(result.errors[0].message).toBe('Validation failed');
+            expect(result.errors).toBeDefined();
+            expect(result.errors!).toHaveLength(1);
+            expect(result.errors![0].type).toBe('general');
+            expect(result.errors![0].message).toBe('Validation failed');
         });
 
         test('should handle state manager validation errors', async () => {

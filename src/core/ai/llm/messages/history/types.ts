@@ -1,12 +1,16 @@
 import { InternalMessage } from '../types.js';
 
-export interface ConversationHistoryProvider {
-    /** Load the full message history for a given session */
-    getHistory(sessionId: string): Promise<InternalMessage[]>;
+/**
+ * Session-scoped conversation history provider.
+ * Each instance is tied to a specific session and manages only that session's messages.
+ */
+export interface IConversationHistoryProvider {
+    /** Load the full message history for this session */
+    getHistory(): Promise<InternalMessage[]>;
 
-    /** Append a message to the session's history */
-    saveMessage(sessionId: string, message: InternalMessage): Promise<void>;
+    /** Append a message to this session's history */
+    saveMessage(message: InternalMessage): Promise<void>;
 
-    /** Clear all messages for the given session */
-    clearHistory(sessionId: string): Promise<void>;
+    /** Clear all messages for this session */
+    clearHistory(): Promise<void>;
 }

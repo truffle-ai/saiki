@@ -31,7 +31,7 @@ export class CLISubscriber implements EventSubscriber {
         );
         eventBus.on('llmservice:response', (payload) => this.onResponse(payload.content));
         eventBus.on('llmservice:error', (payload) => this.onError(payload.error));
-        eventBus.on('messageManager:conversationReset', this.onConversationReset.bind(this));
+        eventBus.on('saiki:conversationReset', this.onConversationReset.bind(this));
     }
 
     onThinking(): void {

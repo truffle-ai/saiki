@@ -17,6 +17,7 @@ import {
     loadConfigFile,
     createSaikiAgent,
 } from '@core/index.js';
+import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startApiAndLegacyWebUIServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
@@ -55,7 +56,7 @@ program
     .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
     .option(
         '--mode <mode>',
-        'The application in which saiki should talk to you - cli | web | server | discord | telegram',
+        'The application in which saiki should talk to you - cli | web | discord | telegram | mcp | server',
         'cli'
     )
     .option('--web-port <port>', 'optional port for the web UI', '3000');
@@ -130,7 +131,7 @@ program
         }
     });
 
-// 4) Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
+// 4) Main saiki CLI - Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
 program
     .argument(
         '[prompt...]',
@@ -177,18 +178,16 @@ program
                 logger.error('Supported models: ' + getAllSupportedModels().join(', '));
                 process.exit(1);
             }
-            const envMap: Record<string, string> = {
-                openai: 'OPENAI_API_KEY',
-                anthropic: 'ANTHROPIC_API_KEY',
-                google: 'GOOGLE_GENERATIVE_AI_API_KEY',
-            };
-            const envVar = envMap[provider as keyof typeof envMap];
-            if (!process.env[envVar]) {
-                logger.error(`Missing ${envVar} for provider '${provider}'`);
+
+            const apiKey = resolveApiKeyForProvider(provider);
+            if (!apiKey) {
+                logger.error(
+                    `Missing API key for provider '${provider}' - please set the appropriate environment variable`
+                );
                 process.exit(1);
             }
             opts.provider = provider;
-            opts.apiKey = process.env[envVar];
+            opts.apiKey = apiKey;
         }
 
         try {
@@ -248,12 +247,32 @@ program
                     agent,
                     apiPort,
                     true,
-                    agent.getEffectiveConfig().agentCard || {}
+                    agent.stateManager.getEffectiveConfig().agentCard || {}
                 );
 
                 // Start Next.js web server
                 await startNextJsWebServer(apiUrl, frontPort, nextJSserverURL);
 
+                break;
+            }
+
+            // Start server with REST APIs and WebSockets
+            case 'server': {
+                // Start server with REST APIs and WebSockets only
+                const webPort = parseInt(opts.webPort, 10);
+                const agentCard = agent.stateManager.getEffectiveConfig().agentCard ?? {};
+                const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
+                const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+
+                logger.info('Starting server (REST APIs + WebSockets)...', null, 'cyanBright');
+                await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
+                logger.info(`Server running at ${apiUrl}`, null, 'green');
+                logger.info('Available endpoints:', null, 'cyan');
+                logger.info('  POST /api/message - Send async message', null, 'gray');
+                logger.info('  POST /api/message-sync - Send sync message', null, 'gray');
+                logger.info('  POST /api/reset - Reset conversation', null, 'gray');
+                logger.info('  GET  /api/mcp/servers - List MCP servers', null, 'gray');
+                logger.info('  WebSocket support available for real-time events', null, 'gray');
                 break;
             }
 
@@ -281,32 +300,13 @@ program
             case 'mcp': {
                 // Start API server only
                 const webPort = parseInt(opts.webPort, 10);
-                const agentCard = agent.getEffectiveConfig().agentCard ?? {};
+                const agentCard = agent.stateManager.getEffectiveConfig().agentCard ?? {};
                 const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
                 const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 
                 logger.info('Starting API server...', null, 'cyanBright');
                 await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
                 logger.info(`API endpoints available at ${apiUrl}`, null, 'magenta');
-                break;
-            }
-
-            case 'server': {
-                // Start server with REST APIs and WebSockets only
-                const webPort = parseInt(opts.webPort, 10);
-                const agentCard = agent.getEffectiveConfig().agentCard ?? {};
-                const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
-                const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
-
-                logger.info('Starting server (REST APIs + WebSockets)...', null, 'cyanBright');
-                await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
-                logger.info(`Server running at ${apiUrl}`, null, 'green');
-                logger.info('Available endpoints:', null, 'cyan');
-                logger.info('  POST /api/message - Send async message', null, 'gray');
-                logger.info('  POST /api/message-sync - Send sync message', null, 'gray');
-                logger.info('  POST /api/reset - Reset conversation', null, 'gray');
-                logger.info('  GET  /api/mcp/servers - List MCP servers', null, 'gray');
-                logger.info('  WebSocket support available for real-time events', null, 'gray');
                 break;
             }
 

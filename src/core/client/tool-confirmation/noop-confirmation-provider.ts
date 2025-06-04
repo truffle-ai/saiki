@@ -7,12 +7,12 @@
  * Uses InMemoryAllowedToolsProvider to satisfy the interface, but does not enforce any restrictions.
  */
 import { ToolConfirmationProvider } from './types.js';
-import { AllowedToolsProvider } from './allowed-tools-provider/types.js';
+import { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
 import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
 
 export class NoOpConfirmationProvider implements ToolConfirmationProvider {
-    public allowedToolsProvider: AllowedToolsProvider;
-    constructor(allowedToolsProvider?: AllowedToolsProvider) {
+    public allowedToolsProvider: IAllowedToolsProvider;
+    constructor(allowedToolsProvider?: IAllowedToolsProvider) {
         this.allowedToolsProvider = allowedToolsProvider ?? new InMemoryAllowedToolsProvider();
     }
 

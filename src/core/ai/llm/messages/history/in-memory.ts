@@ -1,7 +1,7 @@
-import { ConversationHistoryProvider } from './types.js';
+import { IConversationHistoryProvider } from './types.js';
 import { InternalMessage } from '../types.js';
 
-export class InMemoryHistoryProvider implements ConversationHistoryProvider {
+export class InMemoryHistoryProvider implements IConversationHistoryProvider {
     private store: Map<string, InternalMessage[]> = new Map();
 
     async getHistory(sessionId: string): Promise<InternalMessage[]> {

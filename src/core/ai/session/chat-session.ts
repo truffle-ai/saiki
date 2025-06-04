@@ -1,4 +1,4 @@
-import { createHistoryProvider } from '../llm/messages/history/factory.js';
+import { createDatabaseHistoryProvider } from '../llm/messages/history/factory.js';
 import { createMessageManager } from '../llm/messages/factory.js';
 import { createLLMService } from '../llm/services/factory.js';
 import { createTokenizer } from '../llm/tokenizer/factory.js';
@@ -6,10 +6,12 @@ import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
 import { getEffectiveMaxTokens } from '../llm/registry.js';
 import type { MessageManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
+import type { InternalMessage } from '../llm/messages/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { MCPClientManager } from '../../client/manager.js';
 import type { LLMConfig } from '../../config/schemas.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
+import type { StorageBackends } from '../../storage/backend/types.js';
 import {
     SessionEventBus,
     AgentEventBus,
@@ -37,7 +39,6 @@ import { logger } from '../../logger/index.js';
  *
  * Each session has its own event bus that emits standard Saiki events:
  * - `llmservice:*` events (thinking, toolCall, response, etc.)
- * - `messageManager:conversationReset` when conversation is reset
  *
  * Session events are forwarded to the global agent event bus with session prefixes.
  *
@@ -74,7 +75,6 @@ export class ChatSession {
      * - `llmservice:thinking` - AI model is processing
      * - `llmservice:toolCall` - Tool execution requested
      * - `llmservice:response` - Final response generated
-     * - `messageManager:conversationReset` - Conversation history cleared
      */
     public readonly eventBus: SessionEventBus;
 
@@ -117,6 +117,7 @@ export class ChatSession {
             promptManager: PromptManager;
             clientManager: MCPClientManager;
             agentEventBus: AgentEventBus;
+            storage: StorageBackends;
         },
         public readonly id: string
     ) {
@@ -126,8 +127,16 @@ export class ChatSession {
         // Set up event forwarding to agent's global bus
         this.setupEventForwarding();
 
-        // Create session-specific services
-        this.initializeServices();
+        // Services will be initialized in init() method due to async requirements
+        logger.debug(`ChatSession ${this.id}: Created, awaiting initialization`);
+    }
+
+    /**
+     * Initialize the session services asynchronously.
+     * This must be called after construction to set up the storage-backed services.
+     */
+    public async init(): Promise<void> {
+        await this.initializeServices();
     }
 
     /**
@@ -163,21 +172,17 @@ export class ChatSession {
     }
 
     /**
-     * Initializes session-specific services.
+     * Initializes session-specific services using the new simplified storage layer.
      */
-    private initializeServices(): void {
+    private async initializeServices(): Promise<void> {
         // Get current effective configuration for this session from state manager
-        // Approach 1: Specific getters for individual config sections (most efficient)
         const llmConfig = this.services.stateManager.getLLMConfig(this.id);
-        const storageConfig = this.services.stateManager.getStorageConfig();
 
-        // Alternative approach: Get complete config if you need multiple sections
-        // const fullConfig = this.services.stateManager.getEffectiveConfig(this.id);
-        // const llmConfig = fullConfig.llm;
-        // const storageConfig = fullConfig.storage;
-
-        // Create session-specific history provider
-        const historyProvider = createHistoryProvider(storageConfig.history);
+        // Create session-specific history provider directly with database backend
+        const historyProvider = createDatabaseHistoryProvider(
+            this.services.storage.database,
+            this.id
+        );
 
         // Create session-specific message manager
         this.messageManager = createMessageManager(
@@ -198,7 +203,7 @@ export class ChatSession {
             this.messageManager
         );
 
-        logger.debug(`ChatSession ${this.id}: Services initialized`);
+        logger.debug(`ChatSession ${this.id}: Services initialized with simplified storage`);
     }
 
     /**
@@ -263,13 +268,12 @@ export class ChatSession {
     }
 
     /**
-     * Resets the conversation history for this session.
+     * Reset the conversation history for this session.
      *
      * This method:
      * 1. Clears all messages from the session's conversation history
      * 2. Removes persisted history from the storage provider
-     * 3. Emits a `messageManager:conversationReset` event
-     * 4. Emits a `saiki:conversationReset` event with session context
+     * 3. Emits a `saiki:conversationReset` event with session context
      *
      * The system prompt and session configuration remain unchanged.
      * Only the conversation messages are cleared.
@@ -288,10 +292,7 @@ export class ChatSession {
         // Reset history via MessageManager
         await this.messageManager.resetConversation();
 
-        // Notify listeners of conversation reset (session-level)
-        this.eventBus.emit('messageManager:conversationReset');
-
-        // Also emit agent-level event with session context
+        // Emit agent-level event with session context
         this.services.agentEventBus.emit('saiki:conversationReset', {
             sessionId: this.id,
         });
@@ -371,7 +372,7 @@ export class ChatSession {
                 router,
                 this.services.clientManager,
                 this.eventBus, // Use session event bus
-                this.messageManager // This preserves the conversation history
+                this.messageManager
             );
 
             // Replace the LLM service
@@ -388,7 +389,30 @@ export class ChatSession {
                 historyRetained: true,
             });
         } catch (error) {
-            logger.error(`Error during ChatSession.switchLLM for session ${this.id}:`, error);
+            logger.error(
+                `Error during ChatSession.switchLLM for session ${this.id}: ${error instanceof Error ? error.message : String(error)}`
+            );
+            throw error;
+        }
+    }
+
+    /**
+     * Cleanup the session and its resources.
+     * This method should be called when the session is being ended.
+     */
+    public async cleanup(): Promise<void> {
+        try {
+            // Reset the conversation history to clean up any storage
+            await this.reset();
+
+            // Dispose of event listeners
+            this.dispose();
+
+            logger.debug(`ChatSession ${this.id}: Cleanup completed`);
+        } catch (error) {
+            logger.error(
+                `Error during ChatSession cleanup for session ${this.id}: ${error instanceof Error ? error.message : String(error)}`
+            );
             throw error;
         }
     }

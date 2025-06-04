@@ -1,14 +1,14 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { z } from 'zod';
-import type { ConversationHistoryProvider } from './types.js';
+import type { IConversationHistoryProvider } from './types.js';
 import type { InternalMessage } from '../types.js';
 import { logger } from '../../../../logger/index.js';
 
 // Zod schema for validating history data
 const HistorySchema = z.array(z.any()).catch([]);
 
-export class FileHistoryProvider implements ConversationHistoryProvider {
+export class FileHistoryProvider implements IConversationHistoryProvider {
     private dir: string;
     // Queue to serialize write operations and prevent concurrent corruption
     private writeQueue: Promise<void> = Promise.resolve();

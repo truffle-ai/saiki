@@ -8,6 +8,7 @@ import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
+import { loadConfigFile } from '../../config/loader.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
@@ -61,7 +62,7 @@ const requiredServices: (keyof AgentServices)[] = [
  * const response = await agent.run("Hello", undefined, 'user-123');
  *
  * // Connect MCP servers
- * await agent.addMcpServer('filesystem', { command: 'mcp-filesystem' });
+ * await agent.connectMcpServer('filesystem', { command: 'mcp-filesystem' });
  * ```
  */
 export class SaikiAgent {
@@ -101,13 +102,14 @@ export class SaikiAgent {
     // ============= CORE AGENT FUNCTIONALITY =============
 
     /**
-     * Processes a single turn of interaction with the user.
-     * This is the primary method for conversing with the agent.
+     * Main method for processing user input.
+     * Processes user input through the agent's LLM service and returns the response.
      *
-     * @param userInput The input from the user.
-     * @param imageDataInput Optional image data with MIME type for multimodal processing.
-     * @param sessionId Optional session ID. If not provided, uses the default session.
-     * @returns The agent's response, or null if no significant response.
+     * @param userInput - The user's message or query to process
+     * @param imageDataInput - Optional image data and MIME type for multimodal input
+     * @param sessionId - Optional session ID for multi-session scenarios
+     * @returns Promise that resolves to the AI's response text, or null if no significant response
+     * @throws Error if processing fails
      */
     public async run(
         userInput: string,
@@ -120,12 +122,12 @@ export class SaikiAgent {
             if (sessionId) {
                 // Use specific session or create it if it doesn't exist
                 session =
-                    this.sessionManager.getSession(sessionId) ||
-                    this.sessionManager.createSession(sessionId);
+                    (await this.sessionManager.getSession(sessionId)) ||
+                    (await this.sessionManager.createSession(sessionId));
             } else {
                 // Use default session for backward compatibility
                 if (!this.defaultSession) {
-                    this.defaultSession = this.sessionManager.createSession('default');
+                    this.defaultSession = await this.sessionManager.createSession('default');
                     logger.debug(
                         `SaikiAgent.run: created default session ${this.defaultSession.id}`
                     );
@@ -138,8 +140,8 @@ export class SaikiAgent {
             );
             const response = await session.run(userInput, imageDataInput);
 
-            // Increment message count for this session (user message + assistant response = 2 messages)
-            this.sessionManager.incrementMessageCount(session.id);
+            // Increment message count for this session (counts each)
+            await this.sessionManager.incrementMessageCount(session.id);
 
             // If response is an empty string, treat it as no significant response.
             if (response && response.trim() !== '') {
@@ -148,8 +150,9 @@ export class SaikiAgent {
             // Return null if the response is empty or just whitespace.
             return null;
         } catch (error) {
-            logger.error('Error during SaikiAgent.run:', error);
-            // Re-throw the error to allow the caller to handle it.
+            logger.error(
+                `Error during SaikiAgent.run: ${error instanceof Error ? error.message : String(error)}`
+            );
             throw error;
         }
     }
@@ -161,8 +164,8 @@ export class SaikiAgent {
      * @param sessionId Optional session ID. If not provided, a UUID will be generated.
      * @returns The created or existing ChatSession
      */
-    public createSession(sessionId?: string): ChatSession {
-        return this.sessionManager.createSession(sessionId);
+    public async createSession(sessionId?: string): Promise<ChatSession> {
+        return await this.sessionManager.createSession(sessionId);
     }
 
     /**
@@ -170,16 +173,16 @@ export class SaikiAgent {
      * @param sessionId The session ID to retrieve
      * @returns The ChatSession if found, undefined otherwise
      */
-    public getSession(sessionId: string): ChatSession | undefined {
-        return this.sessionManager.getSession(sessionId);
+    public async getSession(sessionId: string): Promise<ChatSession | undefined> {
+        return await this.sessionManager.getSession(sessionId);
     }
 
     /**
      * Lists all active session IDs.
      * @returns Array of session IDs
      */
-    public listSessions(): string[] {
-        return this.sessionManager.listSessions();
+    public async listSessions(): Promise<string[]> {
+        return await this.sessionManager.listSessions();
     }
 
     /**
@@ -199,8 +202,8 @@ export class SaikiAgent {
      * @param sessionId The session ID
      * @returns The session metadata or undefined if session doesn't exist
      */
-    public getSessionMetadata(sessionId: string): SessionMetadata | undefined {
-        return this.sessionManager.getSessionMetadata(sessionId);
+    public async getSessionMetadata(sessionId: string): Promise<SessionMetadata | undefined> {
+        return await this.sessionManager.getSessionMetadata(sessionId);
     }
 
     /**
@@ -210,7 +213,7 @@ export class SaikiAgent {
      * @throws Error if session doesn't exist
      */
     public async getSessionHistory(sessionId: string) {
-        const session = this.sessionManager.getSession(sessionId);
+        const session = await this.sessionManager.getSession(sessionId);
         if (!session) {
             throw new Error(`Session '${sessionId}' not found`);
         }
@@ -218,7 +221,8 @@ export class SaikiAgent {
     }
 
     /**
-     * Resets the conversation history for a specific session or the default session.
+     * Deletes the conversation history for a specific session or the default session.
+     * Keeps the session alive but the conversation history is deleted
      * @param sessionId Optional session ID. If not provided, resets the default session.
      */
     public async resetConversation(sessionId?: string): Promise<void> {
@@ -226,14 +230,14 @@ export class SaikiAgent {
             let session: ChatSession;
 
             if (sessionId) {
-                session = this.sessionManager.getSession(sessionId);
+                session = await this.sessionManager.getSession(sessionId);
                 if (!session) {
                     throw new Error(`Session '${sessionId}' not found`);
                 }
             } else {
                 // Use default session for backward compatibility
                 if (!this.defaultSession) {
-                    this.defaultSession = this.sessionManager.createSession('default');
+                    this.defaultSession = await this.sessionManager.createSession('default');
                 }
                 session = this.defaultSession;
             }
@@ -244,8 +248,9 @@ export class SaikiAgent {
                 sessionId: session.id,
             });
         } catch (error) {
-            logger.error('Error during SaikiAgent.resetConversation:', error);
-            // Re-throw the error to allow the caller to handle it.
+            logger.error(
+                `Error during SaikiAgent.resetConversation: ${error instanceof Error ? error.message : String(error)}`
+            );
             throw error;
         }
     }
@@ -420,7 +425,7 @@ export class SaikiAgent {
             switchResult = await this.sessionManager.switchLLMForAllSessions(validatedConfig);
         } else if (sessionScope) {
             // Verify session exists
-            if (!this.sessionManager.getSession(sessionScope)) {
+            if (!(await this.sessionManager.getSession(sessionScope))) {
                 return {
                     success: false,
                     errors: [
@@ -457,14 +462,24 @@ export class SaikiAgent {
     // ============= MCP SERVER MANAGEMENT =============
 
     /**
-     * Connects a new MCP server dynamically.
-     * This is a lower-level method; consider using addMcpServer() instead.
+     * Connects a new MCP server and adds it to the runtime configuration.
+     * This method handles both adding the server to runtime state and establishing the connection.
      * @param name The name of the server to connect.
      * @param config The configuration object for the server.
      */
     public async connectMcpServer(name: string, config: McpServerConfig): Promise<void> {
         try {
+            // Add to runtime state first with validation
+            const validation = this.stateManager.addMcpServer(name, config);
+
+            if (!validation.isValid) {
+                const errorMessages = validation.errors.map((e) => e.message).join(', ');
+                throw new Error(`Invalid MCP server configuration: ${errorMessages}`);
+            }
+
+            // Then connect the server
             await this.clientManager.connectServer(name, config);
+
             this.agentEventBus.emit('saiki:mcpServerConnected', {
                 name,
                 success: true,
@@ -473,10 +488,14 @@ export class SaikiAgent {
                 tools: Object.keys(await this.clientManager.getAllTools()),
                 source: 'mcp',
             });
-            logger.info(`SaikiAgent: Successfully connected to MCP server '${name}'.`);
+            logger.info(`SaikiAgent: Successfully added and connected to MCP server '${name}'.`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error(`SaikiAgent: Failed to connect to MCP server '${name}': ${errorMessage}`);
+            logger.error(`SaikiAgent: Failed to add MCP server '${name}': ${errorMessage}`);
+
+            // Clean up state if connection failed
+            this.stateManager.removeMcpServer(name);
+
             this.agentEventBus.emit('saiki:mcpServerConnected', {
                 name,
                 success: false,
@@ -484,20 +503,6 @@ export class SaikiAgent {
             });
             throw error;
         }
-    }
-
-    /**
-     * Connects a new MCP server and adds it to the runtime configuration.
-     * This is the recommended method for adding MCP servers.
-     * @param name The name of the server to connect.
-     * @param config The configuration object for the server.
-     */
-    public async addMcpServer(name: string, config: McpServerConfig): Promise<void> {
-        // Add to runtime state first
-        this.stateManager.addMcpServer(name, config);
-
-        // Then connect the server
-        await this.connectMcpServer(name, config);
     }
 
     /**
@@ -557,31 +562,60 @@ export class SaikiAgent {
      * @param sessionId Optional session ID. If not provided, returns default config.
      * @returns The effective configuration object
      */
-    public getEffectiveConfig(sessionId?: string): any {
+    public getEffectiveConfig(sessionId?: string): Readonly<AgentConfig> {
         return sessionId
             ? this.stateManager.getEffectiveConfig(sessionId)
             : this.stateManager.getEffectiveConfig();
     }
 
     // Future methods could encapsulate more complex agent behaviors:
-    // - public async startInteractiveCliSession() { /* ... */ }
-    // - public async executeHeadlessCommand(command: string) { /* ... */ }
-    // - public async specializedTask(params: any) { /* ... */ }
+    // - Multi-step task execution with progress tracking
+    // - Memory and context management across sessions
+    // - Tool chaining and workflow automation
+    // - Agent collaboration and delegation
 }
 
 /**
- * Factory function to create a SaikiAgent with all necessary services initialized.
- * This is the recommended way to create a SaikiAgent instance.
- * @param agentConfig The agent configuration
- * @param cliArgs Optional CLI argument overrides
- * @param overrides Optional service overrides for testing
- * @returns A fully initialized SaikiAgent
+ * Factory function to create a new SaikiAgent instance with properly initialized services.
+ * This is the recommended way to create new agent instances.
+ *
+ * @param config Agent configuration object or path to config file
+ * @param overrides Optional configuration overrides from CLI or other sources
+ * @param options Optional service initialization options
+ * @returns Promise that resolves to initialized SaikiAgent instance
+ * @throws Error if initialization fails
+ *
+ * @example
+ * ```typescript
+ * // Create agent with configuration file
+ * const agent = await createSaikiAgent('./saiki.yml');
+ *
+ * // Create agent with config object and CLI overrides
+ * const agent = await createSaikiAgent(configObject, { model: 'gpt-4o' });
+ *
+ * // Create agent with custom service options
+ * const agent = await createSaikiAgent(configObject, undefined, {
+ *   skipMcpConnections: true
+ * });
+ * ```
  */
 export async function createSaikiAgent(
-    agentConfig: AgentConfig,
-    cliArgs?: CLIConfigOverrides,
-    overrides?: InitializeServicesOptions
+    config: AgentConfig | string,
+    overrides?: CLIConfigOverrides,
+    options?: InitializeServicesOptions
 ): Promise<SaikiAgent> {
-    const services = await createAgentServices(agentConfig, cliArgs, overrides);
-    return new SaikiAgent(services);
+    try {
+        logger.info('Creating SaikiAgent...');
+
+        // Load config from file if string path is provided
+        const agentConfig = typeof config === 'string' ? await loadConfigFile(config) : config;
+
+        const services = await createAgentServices(agentConfig, overrides, options);
+        const agent = new SaikiAgent(services);
+        logger.info('SaikiAgent created successfully.');
+        return agent;
+    } catch (error) {
+        logger.error('Failed to create SaikiAgent', error);
+        throw error;
+    }
 }
