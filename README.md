@@ -256,7 +256,7 @@ saiki -m claude-3-5-sonnet-20240620
 saiki -m gemini-2.0-flash
 ```
 
-For comprehensive setup instructions, all supported models, advanced configuration, and troubleshooting, see our **[LLM Providers Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/llm/providers.md)**.
+For comprehensive setup instructions, all supported models, advanced configuration, and troubleshooting, see our **[LLM Providers Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/llm/providers)**.
 
 
 ## Building with Saiki
@@ -285,7 +285,7 @@ const response2 = await agent.run("Create a README for the main.py file");
 agent.resetConversation();
 ```
 
-For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](https://truffle-ai.github.io/saiki/docs/api/index.md).
+For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](https://truffle-ai.github.io/saiki/docs/api).
 
 ### Learn More
 
@@ -295,7 +295,7 @@ For comprehensive guides on building different types of applications with Saiki,
 - **Advanced patterns and best practices**
 - **Multi-agent systems**
 
-See our **[Building with Saiki Developer Guide](https://truffle-ai.github.io/saiki/docs/building-with-saiki/index.md)**.
+See our **[Building with Saiki Developer Guide](https://truffle-ai.github.io/saiki/docs/building-with-saiki)**.
 
 ## MCP Server Management
 
@@ -343,13 +343,13 @@ The MCPClientManager provides a simple, unified interface for connecting to and 
 
 ## Documentation & Learning Resources
 
-Find detailed guides, architecture, and API reference in our comprehensive [documentation](https://truffle-ai.github.io/saiki/docs/category/getting-started):
+Find detailed guides, architecture, and API reference in our comprehensive [documentation](https://truffle-ai.github.io/saiki/docs/getting-started):
 
 - **[Quick Start](https://truffle-ai.github.io/saiki/docs/getting-started/quick-start)** - Get up and running in minutes
 - **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/configuration)** - Configure agents, LLMs, and tools
-- **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/building-with-saiki/)** - Developer guide with examples and patterns
+- **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/building-with-saiki)** - Developer guide with examples and patterns
 - **[Multi-Agent Systems](https://truffle-ai.github.io/saiki/docs/building-with-saiki/multi-agent-systems)** - Agent collaboration patterns
-- **[API Reference](https://truffle-ai.github.io/saiki/docs/api/)** - REST APIs, WebSocket, and SDKs
+- **[API Reference](https://truffle-ai.github.io/saiki/docs/api)** - REST APIs, WebSocket, and SDKs
 - **[MCP Manager](https://truffle-ai.github.io/saiki/docs/mcp-manager)** - Standalone MCP server management
 - **[Architecture](https://truffle-ai.github.io/saiki/docs/architecture/overview)** - System design and concepts
 
@@ -360,7 +360,7 @@ Find detailed guides, architecture, and API reference in our comprehensive [docu
 - **[Examples & Demos](https://truffle-ai.github.io/saiki/docs/getting-started/examples-demos)** - See Saiki in action
 
 ## Contributing
-We welcome contributions! Refer to our [Contributing Guide](docs/docs/contribution-guide/overview.md) for more details.
+We welcome contributions! Refer to our [Contributing Guide](https://truffle-ai.github.io/saiki/docs/contribution-guide/overview) for more details.
 
 ## Community & Support
 
