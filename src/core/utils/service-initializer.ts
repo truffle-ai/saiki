@@ -41,8 +41,6 @@ import { logger } from '../logger/index.js';
 import type { CLIConfigOverrides, StorageConfig } from '../config/types.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { AgentEventBus } from '../events/index.js';
-// Remove the old storage context import since we're using the new system
-// import { createLocalStorageContextWithAutoDetection } from '../storage/index.js';
 
 /**
  * Type for the core agent services returned by createAgentServices
@@ -131,7 +129,7 @@ export async function createAgentServices(
     const agentEventBus: AgentEventBus = overrides?.agentEventBus ?? new AgentEventBus();
     logger.debug('Agent event bus initialized');
 
-    // 3. Initialize storage backends using the new storage system
+    // 3. Initialize storage backends
     logger.debug('Initializing storage backends');
     const storageConfig = getStorageConfig(config);
     const storage = overrides?.storage ?? (await initializeStorage(storageConfig));

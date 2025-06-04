@@ -172,7 +172,7 @@ export class ChatSession {
     }
 
     /**
-     * Initializes session-specific services using the new simplified storage layer.
+     * Initializes session-specific services.
      */
     private async initializeServices(): Promise<void> {
         // Get current effective configuration for this session from state manager
@@ -203,7 +203,7 @@ export class ChatSession {
             this.messageManager
         );
 
-        logger.debug(`ChatSession ${this.id}: Services initialized with simplified storage`);
+        logger.debug(`ChatSession ${this.id}: Services initialized with storage`);
     }
 
     /**

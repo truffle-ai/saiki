@@ -1,5 +1,5 @@
 import { InMemoryAllowedToolsProvider } from './in-memory.js';
-import type { IAllowedToolsProvider as IAllowedToolsProvider } from './types.js';
+import type { IAllowedToolsProvider } from './types.js';
 
 // TODO: Add proper storage backend for allowed tools persistence
 // This will require implementing a dedicated storage interface for tool permissions
