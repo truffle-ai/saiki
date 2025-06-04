@@ -58,15 +58,14 @@ llm:
         enabled: true
 
 
-# # Alternative: All file-based storage (persists across restarts)
+# Storage configuration - uses a two-tier architecture: cache (fast, ephemeral) and database (persistent, reliable)
+# Memory cache with file-based database (good for development with persistence)
 storage:
-  history:
-    type: file
-    format: jsonl  # or 'json'
-  sessions:
-    type: file
-  userInfo:
-    type: file
+  cache:
+    type: memory
+  database:
+    type: sqlite
+    # path: ./data/saiki.db
 
 ## To use Google Gemini, replace the LLM section with Google Gemini configuration below
 ## Similar for anthropic/groq/etc.

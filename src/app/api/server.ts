@@ -154,8 +154,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const tools = Object.entries(toolsMap).map(([toolName, toolDef]) => ({
                 id: toolName,
                 name: toolName,
-                description: (toolDef as any).description,
-                inputSchema: (toolDef as any).parameters,
+                description: toolDef.description || '',
+                inputSchema: toolDef.parameters,
             }));
             res.status(200).json({ tools });
         } catch (error: any) {

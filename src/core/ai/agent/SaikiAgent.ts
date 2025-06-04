@@ -15,6 +15,7 @@ import type { InitializeServicesOptions } from '../../utils/service-initializer.
 import { AgentEventBus } from '../../events/index.js';
 import { LLMConfigSchema } from '../../config/schemas.js';
 import { buildLLMConfig, type ValidationError } from '../../config/validation-utils.js';
+import type { IMCPClient } from '../../client/types.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'clientManager',
@@ -542,7 +543,7 @@ export class SaikiAgent {
      * Used by the API layer to inspect client status.
      * @returns Map of client names to client instances
      */
-    public getMcpClients(): Map<string, any> {
+    public getMcpClients(): Map<string, IMCPClient> {
         return this.clientManager.getClients();
     }
 
