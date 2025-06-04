@@ -518,7 +518,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 return res.status(404).json({ error: 'Session not found' });
             }
 
-            await agent.endSession(sessionId);
+            await agent.deleteSession(sessionId);
             res.json({ status: 'deleted', sessionId });
         } catch (error) {
             logger.error(`Error deleting session ${req.params.sessionId}: ${error.message}`);

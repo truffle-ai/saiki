@@ -209,30 +209,30 @@ export default function SessionPanel({
     
     setIsDeletingConversation(true);
     try {
-      const response = await fetch(`/api/sessions/${selectedSessionForAction}/reset`, {
-        method: 'POST',
+      const response = await fetch(`/api/sessions/${selectedSessionForAction}`, {
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to clear conversation');
+        throw new Error('Failed to delete conversation');
       }
 
-      // Refresh sessions to update message counts
-      await fetchSessions();
+      // Remove session from local state
+      setSessions(prev => prev.filter(s => s.id !== selectedSessionForAction));
       
-      // If we cleared the current session, refresh it
+      // If we deleted the current session, switch to default
       if (currentSessionId === selectedSessionForAction) {
-        onSessionChange(selectedSessionForAction);
+        onSessionChange('default');
       }
       
       setDeleteConversationDialogOpen(false);
       setSelectedSessionForAction(null);
     } catch (error) {
-      console.error('Error clearing conversation:', error);
-      setError(error instanceof Error ? error.message : 'Failed to clear conversation');
+      console.error('Error deleting conversation:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete conversation');
     } finally {
       setIsDeletingConversation(false);
     }

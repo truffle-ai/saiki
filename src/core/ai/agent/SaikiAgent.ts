@@ -187,15 +187,23 @@ export class SaikiAgent {
     }
 
     /**
-     * Ends a session and cleans up its resources.
-     * @param sessionId The session ID to end
+     * Deletes a session and cleans up its resources.
+     * @param sessionId The session ID to delete
      */
-    public async endSession(sessionId: string): Promise<void> {
-        // If ending the default session, clear our reference
+    public async deleteSession(sessionId: string): Promise<void> {
+        // If deleting the default session, clear our reference
         if (sessionId === 'default') {
             this.defaultSession = null;
         }
-        return this.sessionManager.endSession(sessionId);
+        return this.sessionManager.deleteSession(sessionId);
+    }
+
+    /**
+     * @deprecated Use deleteSession instead. This method will be removed in a future version.
+     */
+    public async endSession(sessionId: string): Promise<void> {
+        logger.warn('endSession is deprecated, use deleteSession instead');
+        return this.deleteSession(sessionId);
     }
 
     /**
@@ -222,31 +230,28 @@ export class SaikiAgent {
     }
 
     /**
-     * Deletes the conversation history for a specific session or the default session.
-     * Keeps the session alive but the conversation history is deleted
+     * Resets the conversation history for a specific session or the default session.
+     * Keeps the session alive but the conversation history is cleared.
      * @param sessionId Optional session ID. If not provided, resets the default session.
      */
     public async resetConversation(sessionId?: string): Promise<void> {
         try {
-            let session: ChatSession;
+            const targetSessionId = sessionId || 'default';
 
-            if (sessionId) {
-                session = await this.sessionManager.getSession(sessionId);
-                if (!session) {
-                    throw new Error(`Session '${sessionId}' not found`);
-                }
-            } else {
+            // Ensure session exists or create default session
+            if (!sessionId) {
                 // Use default session for backward compatibility
                 if (!this.defaultSession) {
                     this.defaultSession = await this.sessionManager.createSession('default');
                 }
-                session = this.defaultSession;
             }
 
-            await session.reset();
-            logger.info(`SaikiAgent conversation reset for session: ${sessionId || 'default'}`);
+            // Use SessionManager's resetSession method for better consistency
+            await this.sessionManager.resetSession(targetSessionId);
+
+            logger.info(`SaikiAgent conversation reset for session: ${targetSessionId}`);
             this.agentEventBus.emit('saiki:conversationReset', {
-                sessionId: session.id,
+                sessionId: targetSessionId,
             });
         } catch (error) {
             logger.error(

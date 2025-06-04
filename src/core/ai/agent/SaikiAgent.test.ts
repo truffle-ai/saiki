@@ -71,6 +71,7 @@ describe('SaikiAgent.switchLLM', () => {
                 return null;
             }),
             listSessions: vi.fn().mockReturnValue(['session1', 'session2']),
+            deleteSession: vi.fn(),
             endSession: vi.fn(),
             getSessionMetadata: vi.fn(),
             switchLLMForDefaultSession: vi.fn().mockResolvedValue({

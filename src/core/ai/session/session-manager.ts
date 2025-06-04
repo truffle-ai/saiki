@@ -239,11 +239,11 @@ export class SessionManager {
     }
 
     /**
-     * Ends a session and removes it from memory and storage.
+     * Deletes a session and removes it from memory and storage.
      *
-     * @param sessionId The session ID to end
+     * @param sessionId The session ID to delete
      */
-    public async endSession(sessionId: string): Promise<void> {
+    public async deleteSession(sessionId: string): Promise<void> {
         await this.ensureInitialized();
 
         // Remove from memory
@@ -258,7 +258,45 @@ export class SessionManager {
         await this.services.storage.database.delete(sessionKey);
         await this.services.storage.cache.delete(sessionKey);
 
-        logger.debug(`Ended session: ${sessionId}`);
+        logger.debug(`Deleted session: ${sessionId}`);
+    }
+
+    /**
+     * Resets the conversation history for a session while keeping the session alive.
+     *
+     * @param sessionId The session ID to reset
+     * @throws Error if session doesn't exist
+     */
+    public async resetSession(sessionId: string): Promise<void> {
+        await this.ensureInitialized();
+
+        const session = await this.getSession(sessionId);
+        if (!session) {
+            throw new Error(`Session '${sessionId}' not found`);
+        }
+
+        await session.reset();
+
+        // Reset message count in metadata
+        const sessionKey = `session:${sessionId}`;
+        const sessionData = await this.services.storage.database.get<SessionData>(sessionKey);
+        if (sessionData) {
+            sessionData.messageCount = 0;
+            sessionData.lastActivity = Date.now();
+            await this.services.storage.database.set(sessionKey, sessionData);
+            // Update cache as well
+            await this.services.storage.cache.set(sessionKey, sessionData, this.sessionTTL / 1000);
+        }
+
+        logger.debug(`Reset session conversation: ${sessionId}`);
+    }
+
+    /**
+     * @deprecated Use deleteSession instead. This method will be removed in a future version.
+     */
+    public async endSession(sessionId: string): Promise<void> {
+        logger.warn('endSession is deprecated, use deleteSession instead');
+        return this.deleteSession(sessionId);
     }
 
     /**
@@ -510,7 +548,7 @@ export class SessionManager {
         const sessionIds = Array.from(this.sessions.keys());
         for (const sessionId of sessionIds) {
             try {
-                await this.endSession(sessionId);
+                await this.deleteSession(sessionId);
             } catch (error) {
                 logger.error(
                     `Failed to cleanup session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`

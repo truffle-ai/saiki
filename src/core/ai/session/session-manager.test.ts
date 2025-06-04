@@ -421,15 +421,15 @@ describe('SessionManager', () => {
             // Create session first
             const session = await sessionManager.createSession(sessionId);
 
-            // End session
-            await sessionManager.endSession(sessionId);
+            // Delete session
+            await sessionManager.deleteSession(sessionId);
 
             expect(session.cleanup).toHaveBeenCalled();
             expect(mockStorageManager.database.delete).toHaveBeenCalledWith(`session:${sessionId}`);
         });
 
-        test('should handle ending non-existent sessions gracefully', async () => {
-            await expect(sessionManager.endSession('non-existent')).resolves.not.toThrow();
+        test('should handle deleting non-existent sessions gracefully', async () => {
+            await expect(sessionManager.deleteSession('non-existent')).resolves.not.toThrow();
             expect(mockStorageManager.database.delete).toHaveBeenCalledWith('session:non-existent');
         });
 
