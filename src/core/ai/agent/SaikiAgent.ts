@@ -123,7 +123,7 @@ export class SaikiAgent {
             if (sessionId) {
                 // Use specific session or create it if it doesn't exist
                 session =
-                    (await this.sessionManager.getSession(sessionId)) ||
+                    (await this.sessionManager.getSession(sessionId)) ??
                     (await this.sessionManager.createSession(sessionId));
             } else {
                 // Use default session for backward compatibility
@@ -601,17 +601,13 @@ export class SaikiAgent {
  * ```
  */
 export async function createSaikiAgent(
-    config: AgentConfig | string,
+    config: AgentConfig,
     overrides?: CLIConfigOverrides,
     options?: InitializeServicesOptions
 ): Promise<SaikiAgent> {
     try {
         logger.info('Creating SaikiAgent...');
-
-        // Load config from file if string path is provided
-        const agentConfig = typeof config === 'string' ? await loadConfigFile(config) : config;
-
-        const services = await createAgentServices(agentConfig, overrides, options);
+        const services = await createAgentServices(config, overrides, options);
         const agent = new SaikiAgent(services);
         logger.info('SaikiAgent created successfully.');
         return agent;
