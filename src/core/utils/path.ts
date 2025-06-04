@@ -2,6 +2,10 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import { promises as fsPromises } from 'fs';
+import { createRequire } from 'module';
+
+// Create require function for ES modules
+const require = createRequire(import.meta.url);
 
 /**
  * Default config file path (relative to package root)
@@ -158,15 +162,26 @@ export function resolvePackagePath(targetPath: string, resolveFromPackageRoot: b
         return targetPath;
     }
     if (resolveFromPackageRoot) {
-        // Resolve relative to the package root
-        // Find package root starting from current working directory
-        const packageRoot = findPackageRoot(process.cwd());
+        // For default config, we need to find the actual Saiki package installation root
+        try {
+            // First try to find the installed package using require.resolve
+            // This works for both global installs and local development
+            const packageJsonPath = require.resolve('@truffle-ai/saiki/package.json');
+            const packageRoot = path.dirname(packageJsonPath);
+            return path.resolve(packageRoot, targetPath);
+        } catch (err) {
+            // If require.resolve fails, fall back to the old method
+            // This should handle edge cases or development scenarios
+            const packageRoot = findPackageRoot(process.cwd());
 
-        if (!packageRoot) {
-            throw new Error(`Cannot find package root when resolving default path: ${targetPath}`);
+            if (!packageRoot) {
+                throw new Error(
+                    `Cannot find package root when resolving default path: ${targetPath}`
+                );
+            }
+
+            return path.resolve(packageRoot, targetPath);
         }
-
-        return path.resolve(packageRoot, targetPath);
     }
     // User-specified relative path
     return path.resolve(process.cwd(), targetPath);

@@ -22,7 +22,8 @@
         "./package.json": "./package.json"
     },
     "scripts": {
-        "clean": "npx rimraf dist build public coverage logs .saiki .eslintcache *.tsbuildinfo *.log test-temp && find . -name '*.log' -not -path './node_modules/*' -delete 2>/dev/null || true",
+        "clean": "npx rimraf dist build public coverage logs .eslintcache *.tsbuildinfo *.log test-temp && find . -name '*.log' -not -path './node_modules/*' -delete 2>/dev/null || true",
+        "clean:messages": "npx rimraf .saiki",
         "prebuild": "",
         "build": "npm run clean && npm run build-webui && tsup && npm run copy-webui-dist",
         "build:check": "npm run type-check && npm run build",
