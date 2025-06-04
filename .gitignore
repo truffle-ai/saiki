@@ -45,3 +45,6 @@ logs/
 # Test temporary files
 test-temp/
 
+# temporary storage
+.saiki/
+
