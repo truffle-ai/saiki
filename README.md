@@ -94,13 +94,13 @@ Run Saiki as a Discord or Telegram bot.
 ```bash
 saiki --mode discord
 ```
-Make sure you have `DISCORD_BOT_TOKEN` set in your environment. See [here](app/discord/README.md) for more details.
+Make sure you have `DISCORD_BOT_TOKEN` set in your environment. See [here](src/app/discord/README.md) for more details.
 
 **Telegram Bot:**
 ```bash
 saiki --mode telegram
 ```
-Make sure you have `TELEGRAM_BOT_TOKEN` set in your environment. See [here](app/telegram/README.md) for more details.
+Make sure you have `TELEGRAM_BOT_TOKEN` set in your environment. See [here](src/app/telegram/README.md) for more details.
 
 ### MCP Server Mode
 
@@ -137,14 +137,6 @@ saiki
 <a href="https://youtu.be/C-Z0aVbl4Ik">
   <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" width="600"/>
 </a>
-
-### 🎮 Create AI NPCs For Your Games
-
-Spin up new agents out-of-the-box and use them to power AI NPCs in your game environment. You can configure these agents to go beyond simple LLMs responses to take real actions in-game.
-
-*Example project repo coming soon...*
-
-<img src="https://github.com/user-attachments/assets/c1fc6b60-d85c-4920-84f9-918949ef1ddb" alt="AI NPC Example" width="600">
 
 
 ### 📧 Send Email Summaries to Slack
@@ -238,21 +230,6 @@ Saiki supports multiple LLM providers out of the box, plus any OpenAI SDK-compat
 
 You will need to set your provider specific API keys accordingly.
 
-### Custom/OpenAI-Compatible Providers
-
-Use any provider implementing the OpenAI SDK interface:
-
-```yaml
-llm:
-  provider: openai
-  model: your-custom-model
-  apiKey: $YOUR_API_KEY
-  baseURL: https://api.your-provider.com/v1
-  maxTokens: 100000
-```
-
-**Compatible providers**: Local models (Ollama), Azure OpenAI, OpenRouter, Together.ai, Anyscale, Perplexity, and more.
-
 ### Quick Setup
 
 Set your API key and run:
@@ -266,21 +243,7 @@ saiki -m claude-3-5-sonnet-20240620
 saiki -m gemini-2.0-flash
 ```
 
-For comprehensive setup instructions, all supported models, advanced configuration, and troubleshooting, see our **[LLM Providers Guide](docs/llm-providers.md)**.
-
-## Discovering & Connecting MCP Servers
-Saiki uses Model Context Protocol (MCP) servers to connect with tools. Find servers through:
-
-1. Pre-built catalogs:
-   - [MCP Reference Servers](https://github.com/modelcontextprotocol/reference-servers)
-   - [Smithery.ai Tools](https://smithery.ai/tools)
-   - [Composio Registry](https://mcp.composio.dev/)
-
-2. npm: `npm search @modelcontextprotocol/server`
-
-3. Add to `configuration/saiki.yml` under `mcpServers`
-
-4. Build custom servers using the [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) and [spec](https://modelcontextprotocol.io/introduction)
+For comprehensive setup instructions, all supported models, advanced configuration, and troubleshooting, see our **[LLM Providers Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/llm/providers.md)**.
 
 
 ## Building with Saiki
@@ -309,11 +272,7 @@ const response2 = await agent.run("Create a README for the main.py file");
 agent.resetConversation();
 ```
 
-### Embedding Saiki in Your Applications Via Backend APIs
-
-When Saiki runs in `web` mode (`saiki --mode web`), it exposes a comprehensive REST API and a WebSocket interface, allowing you to control and interact with the agent programmatically. This is ideal for building custom front-ends, backend integrations, or embedding Saiki into existing platforms.
-
-For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](docs/api_and_websockets.md).
+For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](https://truffle-ai.github.io/saiki/docs/api/index.md).
 
 ### Learn More
 
@@ -321,42 +280,78 @@ For comprehensive guides on building different types of applications with Saiki,
 - **Web backends and APIs**
 - **Discord/Telegram bots** 
 - **Advanced patterns and best practices**
+- **Multi-agent systems**
 
-See our **[Building with Saiki Developer Guide](docs/building-with-saiki.md)**.
+See our **[Building with Saiki Developer Guide](https://truffle-ai.github.io/saiki/docs/building-with-saiki/index.md)**.
 
+## MCP Server Management
 
-## Advanced Usage
+Saiki includes a powerful MCPClientManager that can be used as a standalone utility for managing MCP servers in your own applications. This is perfect for developers who need MCP server management without the full Saiki agent framework.
 
-Saiki is designed to be a flexible component in your AI and automation workflows. Beyond the CLI and Web UI, you can integrate Saiki's core agent capabilities into your own applications or have it communicate with other AI agents.
+### Quick Start: MCP Manager
 
-### Inter-Agent Communication with MCP
+```typescript
+import { MCPClientManager } from '@truffle-ai/saiki';
 
-Saiki embraces the Model Context Protocol (MCP) not just for connecting to tools, but also for **Agent-to-Agent communication**. This means Saiki can:
+// Create manager instance
+const manager = new MCPClientManager();
 
-1.  **Act as an MCP Client**: Connect to other AI agents that expose an MCP server interface, allowing Saiki to delegate tasks or query other agents as if they were any other tool.
-2.  **Act as an MCP Server**: Saiki itself exposes an MCP server interface using `saiki --mode mcp`. This makes Saiki discoverable and usable by other MCP-compatible agents or systems. Another agent could connect to Saiki and utilize its configured tools and LLM capabilities by talking to it as a user.
+// Connect to MCP servers
+await manager.connectServer('filesystem', {
+  type: 'stdio',
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
+});
 
-This framework-agnostic approach allows Saiki to participate in a broader ecosystem of AI agents, regardless of their underlying implementation. By defining an `AgentCard` (a standardized metadata file, based on A2A protocol, describing an agent's capabilities and MCP endpoint), Saiki can be discovered and interact with other agents seamlessly. *(We also plan to integrate support for the A2A protocol soon)*
+await manager.connectServer('web-search', {
+  type: 'stdio', 
+  command: 'npx',
+  args: ['-y', 'tavily-mcp@0.1.2'],
+  env: { TAVILY_API_KEY: process.env.TAVILY_API_KEY }
+});
 
-This powerful A2A capability opens up possibilities for creating sophisticated multi-agent systems where different specialized agents collaborate to achieve complex goals.
+// Get all available tools across servers
+const tools = await manager.getAllTools();
+console.log('Available tools:', Object.keys(tools));
 
+// Execute a tool
+const result = await manager.executeTool('readFile', { path: './README.md' });
+console.log('File contents:', result);
 
-## Documentation
+// List connected servers
+const clients = manager.getClients();
+console.log('Connected servers:', Array.from(clients.keys()));
 
-Find detailed guides, architecture, and API reference in the `docs/` folder:
+// Disconnect when done
+await manager.disconnectAll();
+```
 
-- [Building with Saiki Developer Guide](docs/building-with-saiki.md) - Comprehensive guide for developers
-- [LLM Providers Guide](docs/llm-providers.md) - Complete LLM setup and configuration
-- [High-level design](docs/architecture.md)
-- [API Endpoints](docs/api_and_websockets.md)
-- [Docker usage](README.Docker.md)
+The MCPClientManager provides a simple, unified interface for connecting to and managing multiple MCP servers simultaneously. See our **[MCP Manager Documentation](https://truffle-ai.github.io/saiki/docs/mcp-manager)** for complete API reference and advanced usage patterns.
+
+## Documentation & Learning Resources
+
+Find detailed guides, architecture, and API reference in our comprehensive [documentation](https://truffle-ai.github.io/saiki/docs/category/getting-started):
+
+- **[Quick Start](https://truffle-ai.github.io/saiki/docs/getting-started/quick-start)** - Get up and running in minutes
+- **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/configuration)** - Configure agents, LLMs, and tools
+- **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/building-with-saiki/)** - Developer guide with examples and patterns
+- **[Multi-Agent Systems](https://truffle-ai.github.io/saiki/docs/building-with-saiki/multi-agent-systems)** - Agent collaboration patterns
+- **[API Reference](https://truffle-ai.github.io/saiki/docs/api/)** - REST APIs, WebSocket, and SDKs
+- **[MCP Manager](https://truffle-ai.github.io/saiki/docs/mcp-manager)** - Standalone MCP server management
+- **[Architecture](https://truffle-ai.github.io/saiki/docs/architecture/overview)** - System design and concepts
+
+### Learning Resources
+
+- **[What is an AI Agent?](https://truffle-ai.github.io/saiki/docs/learn/what-is-an-ai-agent)** - Understanding AI agents
+- **[Model Context Protocol](https://truffle-ai.github.io/saiki/docs/learn/mcp)** - Learn about MCP
+- **[Examples & Demos](https://truffle-ai.github.io/saiki/docs/getting-started/examples-demos)** - See Saiki in action
 
 ## Contributing
-We welcome contributions! Refer [here](CONTRIBUTING.md) for more details.
+We welcome contributions! Refer to our [Contributing Guide](docs/docs/contribution-guide/overview.md) for more details.
 
 ## Community & Support
 
-Saiki was built by the team at [Truffle AI](www.trytruffle.ai).
+Saiki was built by the team at [Truffle AI](https://www.trytruffle.ai).
 
 Saiki is better with you! Join our Discord whether you want to say hello, share your projects, ask questions, or get help setting things up:
 

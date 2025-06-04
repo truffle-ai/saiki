@@ -31,6 +31,13 @@ Production-ready patterns and best practices:
 - Event-driven architecture
 - Performance optimization
 
+### [Multi-Agent Systems](./multi-agent-systems)
+Build collaborative systems where agents work together:
+- Inter-agent communication with MCP
+- Setting up multiple specialized agents
+- Agent orchestration patterns
+- Real-world multi-agent examples
+
 ### [What's Next](./whats-next)
 Resources and guidance for continued learning:
 - Next steps in your journey
@@ -84,5 +91,6 @@ Choose your path:
 - **🚀 New to Saiki?** Start with [Getting Started](./getting-started) for a quick introduction
 - **⚡ Want to build something now?** Jump to [Building Applications](./building-applications) for real examples
 - **🎯 Need production patterns?** Go straight to [Advanced Patterns](./advanced-patterns)
+- **🤖 Building multi-agent systems?** Check out [Multi-Agent Systems](./multi-agent-systems) for collaboration patterns
 
 Let's build something amazing! 🎉 
