@@ -4,8 +4,8 @@
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "esModuleInterop": true,
-        "resolveJsonModule": true,
         "allowSyntheticDefaultImports": true,
+        "downlevelIteration": true,
         "baseUrl": ".",
         "paths": {
             "@app/*": ["src/app/*"],
@@ -17,11 +17,14 @@
         "strict": false,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
         "types": ["node", "vitest/globals"],
         "lib": ["ES2022", "DOM"],
         "declaration": true,
-        "declarationMap": true
+        "declarationMap": true,
+        "allowImportingTsExtensions": false,
+        "noEmit": false
     },
     "include": ["src/**/*", "scripts/**/*", "**/*.test.ts", "**/*.spec.ts", "vitest.config.ts"],
-    "exclude": ["node_modules"]
+    "exclude": ["node_modules", "src/app/webui/**/*"]
 }

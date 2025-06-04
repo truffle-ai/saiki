@@ -19,16 +19,21 @@ import {
     createAllowedToolsProvider,
     AllowedToolsConfig,
 } from './allowed-tools-provider/factory.js';
-import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
-// import { WebConfirmationProvider } from './web-confirmation-provider.js';
-// import { UIConfirmationProvider } from './ui-confirmation-provider.js';
+import type { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
 
-export function createToolConfirmationProvider(
-    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp' | 'server',
-    allowedToolsCfg?: AllowedToolsConfig
-): ToolConfirmationProvider {
-    // Build allowedToolsProvider based on config or default
-    const toolsProvider = allowedToolsCfg ? createAllowedToolsProvider(allowedToolsCfg) : undefined;
+export function createToolConfirmationProvider(options: {
+    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp' | 'server';
+    allowedToolsProvider?: IAllowedToolsProvider;
+    allowedToolsConfig?: AllowedToolsConfig;
+}): ToolConfirmationProvider {
+    const { runMode, allowedToolsProvider, allowedToolsConfig } = options;
+
+    // Build allowedToolsProvider if config is provided and provider isn't
+    let toolsProvider = allowedToolsProvider;
+    if (!toolsProvider && allowedToolsConfig) {
+        toolsProvider = createAllowedToolsProvider(allowedToolsConfig);
+    }
+
     switch (runMode) {
         case 'cli':
             return new CLIConfirmationProvider(toolsProvider);

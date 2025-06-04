@@ -11,6 +11,7 @@ import type { SessionEventBus } from '../../../events/index.js';
 
 /**
  * Anthropic implementation of LLMService
+ * Not actively maintained, so might be buggy or outdated
  */
 export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;

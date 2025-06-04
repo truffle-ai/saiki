@@ -1,4 +1,4 @@
-import path from 'path';
+import * as path from 'path';
 import { resolvePackagePath, DEFAULT_CONFIG_PATH } from './path.js';
 import { describe, it, expect } from 'vitest';
 

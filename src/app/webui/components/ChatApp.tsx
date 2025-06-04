@@ -9,7 +9,7 @@ import ServerRegistryModal from './ServerRegistryModal';
 import ServersPanel from './ServersPanel';
 import SessionPanel from './SessionPanel';
 import { Button } from "./ui/button";
-import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare } from "lucide-react";
+import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2, RefreshCw } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
@@ -23,6 +23,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 
 export default function ChatApp() {
@@ -41,6 +42,12 @@ export default function ChatApp() {
   // Enhanced features
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Conversation management states
+  const [isResetDialogOpen, setResetDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (isExportOpen) {
@@ -147,6 +154,60 @@ export default function ChatApp() {
     }
   }, [switchSession]);
 
+  const handleResetConversation = useCallback(async () => {
+    if (!currentSessionId) return;
+    
+    setIsResetting(true);
+    try {
+      const response = await fetch(`/api/sessions/${currentSessionId}/reset`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reset conversation');
+      }
+
+      // Refresh the session to clear messages in the UI
+      await switchSession(currentSessionId);
+      setResetDialogOpen(false);
+    } catch (error) {
+      console.error('Error resetting conversation:', error);
+      // You might want to show a toast notification here
+    } finally {
+      setIsResetting(false);
+    }
+  }, [currentSessionId, switchSession]);
+
+  const handleDeleteConversation = useCallback(async () => {
+    if (!currentSessionId) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/sessions/${currentSessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete conversation');
+      }
+
+      // Switch to default session after deletion
+      await switchSession('default');
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      // You might want to show a toast notification here
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [currentSessionId, switchSession]);
+
   const quickActions = [
     {
       title: "What can you do?",
@@ -177,23 +238,23 @@ export default function ChatApp() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + J to toggle tools panel
+      // Ctrl/Cmd + J to toggle sessions panel
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
-        e.preventDefault();
-        setServersPanelOpen(prev => !prev);
-      }
-      // Ctrl/Cmd + Shift + J to open playground
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'j') {
-        e.preventDefault();
-        window.open('/playground', '_blank');
-      }
-      // Ctrl/Cmd + Shift + S to toggle sessions panel
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 's') {
         e.preventDefault();
         setSessionsPanelOpen(prev => !prev);
       }
+      // Ctrl/Cmd + K to toggle tools/servers panel
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'k') {
+        e.preventDefault();
+        setServersPanelOpen(prev => !prev);
+      }
+      // Ctrl/Cmd + L to open playground
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'l') {
+        e.preventDefault();
+        window.open('/playground', '_blank');
+      }
       // Ctrl/Cmd + Shift + E to export config
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'e') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
         e.preventDefault();
         setExportOpen(true);
       }
@@ -209,12 +270,14 @@ export default function ChatApp() {
         else if (isServerRegistryOpen) setServerRegistryOpen(false);
         else if (isExportOpen) setExportOpen(false);
         else if (showShortcuts) setShowShortcuts(false);
+        else if (isResetDialogOpen) setResetDialogOpen(false);
+        else if (isDeleteDialogOpen) setDeleteDialogOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isSessionsPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts]);
+  }, [isServersPanelOpen, isSessionsPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isResetDialogOpen, isDeleteDialogOpen]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -359,7 +422,7 @@ export default function ChatApp() {
                 
                   {/* Quick Tips */}
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧S</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧J</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧P</kbd> for playground</p>
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools/servers, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground</p>
                   </div>
                 </div>
               </div>
@@ -492,6 +555,75 @@ export default function ChatApp() {
           </DialogContent>
         </Dialog>
 
+        {/* Reset Conversation Confirmation Modal */}
+        <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <RefreshCw className="h-5 w-5" />
+                <span>Reset Conversation</span>
+              </DialogTitle>
+              <DialogDescription>
+                This will clear all messages in this conversation while keeping the session active.
+                {currentSessionId !== 'default' && (
+                  <span className="block mt-2 font-medium">
+                    Session: <span className="font-mono">{currentSessionId}</span>
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleResetConversation}
+                disabled={isResetting}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={cn("h-4 w-4", isResetting && "animate-spin")} />
+                <span>{isResetting ? 'Resetting...' : 'Reset Conversation'}</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Conversation Confirmation Modal */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <Trash2 className="h-5 w-5 text-destructive" />
+                <span>Delete Conversation</span>
+              </DialogTitle>
+              <DialogDescription>
+                This will permanently delete this conversation and all its messages. This action cannot be undone.
+                {currentSessionId !== 'default' && (
+                  <span className="block mt-2 font-medium">
+                    Session: <span className="font-mono">{currentSessionId}</span>
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteConversation}
+                disabled={isDeleting}
+                className="flex items-center space-x-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Conversation'}</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Shortcuts Modal */}
         <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
           <DialogContent className="sm:max-w-md">
@@ -504,11 +636,11 @@ export default function ChatApp() {
             
             <div className="space-y-3">
               {[
-                { key: '⌘ ⇧ S', desc: 'Toggle sessions panel' },
-                { key: '⌘ J', desc: 'Toggle tools panel' },
-                { key: '⌘ ⇧ J', desc: 'Open playground' },
-                { key: '⌘ ⇧ E', desc: 'Export config' },
-                { key: '⌘ /', desc: 'Show shortcuts' },
+                { key: '⌘J', desc: 'Toggle sessions panel' },
+                { key: '⌘K', desc: 'Toggle tools panel' },
+                { key: '⌘L', desc: 'Open playground' },
+                { key: '⌘⇧E', desc: 'Export config' },
+                { key: '⌘/', desc: 'Show shortcuts' },
                 { key: 'Esc', desc: 'Close panels' },
               ].map((shortcut, index) => (
                 <div key={index} className="flex justify-between items-center py-1">

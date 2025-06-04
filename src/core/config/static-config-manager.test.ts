@@ -67,10 +67,10 @@ describe('StaticConfigManager', () => {
         expect(() => cm.validate()).not.toThrow();
     });
 
-    it('throws when MCP server configs missing', () => {
-        const bad: AgentConfig = clone(baseConfig);
-        bad.mcpServers = {};
-        expect(() => new StaticConfigManager(bad)).toThrow();
+    it('allows empty MCP server configs since they are now optional', () => {
+        const configWithNoServers: AgentConfig = clone(baseConfig);
+        configWithNoServers.mcpServers = {};
+        expect(() => new StaticConfigManager(configWithNoServers)).not.toThrow();
     });
 
     it('throws when LLM config is missing', () => {

@@ -1,6 +1,6 @@
 import { MessageManager } from './manager.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
-import { ConversationHistoryProvider } from './history/types.js';
+import { IConversationHistoryProvider } from './history/types.js';
 import { LLMConfig } from '../../../config/schemas.js';
 import { LLMRouter } from '../types.js';
 import { createMessageFormatter } from './formatters/factory.js';
@@ -28,7 +28,7 @@ export function createMessageManager(
     router: LLMRouter,
     promptManager: PromptManager,
     sessionEventBus: SessionEventBus,
-    historyProvider: ConversationHistoryProvider,
+    historyProvider: IConversationHistoryProvider,
     sessionId: string
 ): MessageManager {
     const provider = config.provider.toLowerCase();

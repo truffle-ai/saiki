@@ -1,13 +1,11 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     buildLLMConfig,
     validateLLMSwitchRequest,
     validateRuntimeUpdate,
-    validateRuntimeState,
-    validationErrorsToStrings,
+    validateMcpServerConfig,
 } from './validation-utils.js';
-import type { LLMConfig } from './schemas.js';
-import type { AgentRuntimeState } from './agent-state-manager.js';
+import type { LLMConfig, McpServerConfig } from './schemas.js';
 
 // Only mock logger since it has side effects
 vi.mock('../logger/index.js');
@@ -379,5 +377,115 @@ describe('validateRuntimeUpdate', () => {
         expect(result.errors).toHaveLength(1);
         expect(result.errors[0].type).toBe('general');
         expect(result.errors[0].message).toBe('logLevel must be one of: error, warn, info, debug');
+    });
+});
+
+describe('validateMcpServerConfig', () => {
+    describe('valid configurations', () => {
+        test('should validate stdio server config', () => {
+            const serverConfig: McpServerConfig = {
+                type: 'stdio',
+                command: 'node',
+                args: ['server.js'],
+            };
+
+            const result = validateMcpServerConfig('test-server', serverConfig);
+
+            expect(result.isValid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+        });
+
+        test('should validate sse server config', () => {
+            const serverConfig: McpServerConfig = {
+                type: 'sse',
+                url: 'https://example.com/sse',
+            };
+
+            const result = validateMcpServerConfig('test-server', serverConfig);
+
+            expect(result.isValid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+        });
+
+        test('should validate http server config', () => {
+            const serverConfig: McpServerConfig = {
+                type: 'http',
+                baseUrl: 'https://api.example.com',
+            };
+
+            const result = validateMcpServerConfig('test-server', serverConfig);
+
+            expect(result.isValid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+        });
+    });
+
+    describe('validation errors', () => {
+        test('should reject empty server name', () => {
+            const serverConfig: McpServerConfig = {
+                type: 'stdio',
+                command: 'node',
+                args: ['server.js'],
+            };
+
+            const result = validateMcpServerConfig('', serverConfig);
+
+            expect(result.isValid).toBe(false);
+            expect(result.errors[0].message).toBe('Server name must be a non-empty string');
+        });
+
+        test('should reject empty stdio command', () => {
+            const serverConfig: McpServerConfig = {
+                type: 'stdio',
+                command: '',
+                args: ['server.js'],
+            };
+
+            const result = validateMcpServerConfig('test-server', serverConfig);
+
+            expect(result.isValid).toBe(false);
+            expect(result.errors[0].message).toBe('Stdio server requires a non-empty command');
+        });
+
+        test('should reject invalid sse url', () => {
+            const serverConfig: McpServerConfig = {
+                type: 'sse',
+                url: 'not-a-valid-url',
+            };
+
+            const result = validateMcpServerConfig('test-server', serverConfig);
+
+            expect(result.isValid).toBe(false);
+            expect(result.errors[0].message).toContain('Invalid server configuration');
+        });
+
+        test('should reject invalid http baseUrl', () => {
+            const serverConfig: McpServerConfig = {
+                type: 'http',
+                baseUrl: 'invalid-url',
+            };
+
+            const result = validateMcpServerConfig('test-server', serverConfig);
+
+            expect(result.isValid).toBe(false);
+            expect(result.errors[0].message).toContain('Invalid server configuration');
+        });
+    });
+
+    describe('warnings', () => {
+        test('should warn about case-insensitive duplicate names', () => {
+            const serverConfig: McpServerConfig = {
+                type: 'stdio',
+                command: 'node',
+                args: ['server.js'],
+            };
+            const existingNames = ['MyServer'];
+
+            const result = validateMcpServerConfig('myserver', serverConfig, existingNames);
+
+            expect(result.isValid).toBe(true);
+            expect(result.warnings).toHaveLength(1);
+            expect(result.warnings[0]).toContain('similar to existing server');
+        });
     });
 });

@@ -10,11 +10,12 @@ import {
     getDefaultModelForProvider,
     getEffectiveMaxTokens,
 } from '../ai/llm/registry.js';
-import type { LLMConfig } from './schemas.js';
-import { LLMConfigSchema } from './schemas.js';
+import type { LLMConfig, McpServerConfig } from './schemas.js';
+import { LLMConfigSchema, McpServerConfigSchema } from './schemas.js';
 import type { AgentRuntimeState, AgentStateManager } from './agent-state-manager.js';
 import { resolveApiKeyForProvider } from '../utils/api-key-resolver.js';
 import { logger } from '../logger/index.js';
+import { ZodError } from 'zod';
 
 /**
  * Types of validation errors that can occur
@@ -32,7 +33,7 @@ export type ValidationErrorType =
     | 'general';
 
 /**
- * Structured error information
+ * Structured validation error with context
  */
 export interface ValidationError {
     type: ValidationErrorType;
@@ -45,12 +46,13 @@ export interface ValidationError {
 }
 
 /**
- * Result of configuration validation
+ * Standard result type for validation operations
  */
 export interface ValidationResult {
     isValid: boolean;
     errors: ValidationError[];
     warnings: string[];
+    config?: LLMConfig; // Optional validated config for buildLLMConfig
 }
 
 /**
@@ -641,5 +643,92 @@ function buildFinalConfig(
         providerOptions,
         ...(baseURL && { baseURL }),
         ...(maxTokens && { maxTokens }),
+    };
+}
+
+/**
+ * Validate an MCP server configuration
+ */
+export function validateMcpServerConfig(
+    serverName: string,
+    serverConfig: McpServerConfig,
+    existingServerNames: string[] = []
+): ValidationResult {
+    const errors: ValidationError[] = [];
+    const warnings: string[] = [];
+
+    // Validate server name
+    if (!serverName || typeof serverName !== 'string' || serverName.trim() === '') {
+        errors.push({
+            type: 'schema_validation',
+            message: 'Server name must be a non-empty string',
+            field: 'serverName',
+            suggestedAction: 'Provide a valid server name',
+        });
+    }
+
+    // Validate server config using Zod schema
+    try {
+        McpServerConfigSchema.parse(serverConfig);
+    } catch (error) {
+        if (error instanceof ZodError) {
+            for (const issue of error.errors) {
+                errors.push({
+                    type: 'schema_validation',
+                    message: `Invalid server configuration: ${issue.message}`,
+                    field: issue.path.join('.'),
+                    suggestedAction: 'Check the server configuration format and required fields',
+                });
+            }
+        } else {
+            errors.push({
+                type: 'schema_validation',
+                message: `Invalid server configuration: ${error instanceof Error ? error.message : 'Unknown validation error'}`,
+                suggestedAction: 'Check the server configuration format and required fields',
+            });
+        }
+    }
+
+    // Additional business logic validation
+    if (errors.length === 0) {
+        // Check for duplicate server names (case-insensitive)
+        const duplicateName = existingServerNames.find(
+            (name) => name.toLowerCase() === serverName.toLowerCase() && name !== serverName
+        );
+        if (duplicateName) {
+            warnings.push(
+                `Server name '${serverName}' is similar to existing server '${duplicateName}' (case difference only)`
+            );
+        }
+
+        // Type-specific validation - we know it's valid McpServerConfig at this point
+        if (serverConfig.type === 'stdio') {
+            if (!serverConfig.command || serverConfig.command.trim() === '') {
+                errors.push({
+                    type: 'schema_validation',
+                    message: 'Stdio server requires a non-empty command',
+                    field: 'command',
+                    suggestedAction: 'Provide a valid command to execute',
+                });
+            }
+        } else if (serverConfig.type === 'sse' || serverConfig.type === 'http') {
+            const url = serverConfig.type === 'sse' ? serverConfig.url : serverConfig.baseUrl;
+            try {
+                new URL(url);
+            } catch {
+                errors.push({
+                    type: 'schema_validation',
+                    message: `Invalid URL format: ${url}`,
+                    field: serverConfig.type === 'sse' ? 'url' : 'baseUrl',
+                    suggestedAction: 'Provide a valid URL with protocol (http:// or https://)',
+                });
+            }
+        }
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors,
+        warnings,
     };
 }

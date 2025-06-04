@@ -1,0 +1,179 @@
+import { Redis } from 'ioredis';
+import type { CacheBackend } from './cache-backend.js';
+import type { BackendConfig } from './types.js';
+
+export interface RedisBackendConfig extends BackendConfig {
+    type: 'redis';
+    host: string;
+    port: number;
+    password?: string;
+    database?: number;
+    ipv6?: boolean;
+    timeout?: number;
+    options?: {
+        connectTimeout?: number;
+        commandTimeout?: number;
+        retryDelayOnFailover?: number;
+        maxRetriesPerRequest?: number;
+        family?: 4 | 6;
+    };
+}
+
+/**
+ * Redis storage backend for production cache operations.
+ * Implements the CacheBackend interface with connection pooling and optimizations.
+ */
+export class RedisBackend implements CacheBackend {
+    private redis: Redis | null = null;
+    private connected = false;
+
+    constructor(private config: RedisBackendConfig) {}
+
+    async connect(): Promise<void> {
+        if (this.connected) return;
+
+        this.redis = new Redis({
+            host: this.config.host,
+            port: this.config.port,
+            ...(this.config.password && { password: this.config.password }),
+            db: this.config.database || 0,
+            family: this.config.ipv6 ? 6 : 4,
+            connectTimeout: this.config.timeout,
+            commandTimeout: this.config.timeout,
+            retryDelayOnFailover: 100,
+            maxRetriesPerRequest: 3,
+            lazyConnect: true,
+            ...this.config.options,
+        });
+
+        // Set up error handling
+        this.redis.on('error', (error) => {
+            console.error('Redis connection error:', error);
+        });
+
+        this.redis.on('connect', () => {
+            this.connected = true;
+        });
+
+        this.redis.on('close', () => {
+            this.connected = false;
+        });
+
+        await this.redis.connect();
+    }
+
+    async disconnect(): Promise<void> {
+        if (this.redis) {
+            await this.redis.quit();
+            this.redis = null;
+        }
+        this.connected = false;
+    }
+
+    isConnected(): boolean {
+        return this.connected && this.redis?.status === 'ready';
+    }
+
+    getBackendType(): string {
+        return 'redis';
+    }
+
+    // Core operations
+    async get<T>(key: string): Promise<T | undefined> {
+        this.checkConnection();
+        const value = await this.redis!.get(key);
+        return value ? JSON.parse(value) : undefined;
+    }
+
+    async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+        this.checkConnection();
+        const serialized = JSON.stringify(value);
+
+        if (ttlSeconds) {
+            await this.redis!.setex(key, ttlSeconds, serialized);
+        } else {
+            await this.redis!.set(key, serialized);
+        }
+    }
+
+    async delete(key: string): Promise<void> {
+        this.checkConnection();
+        await this.redis!.del(key);
+    }
+
+    // Redis-specific optimizations
+    async mget<T>(keys: string[]): Promise<(T | undefined)[]> {
+        this.checkConnection();
+        if (keys.length === 0) return [];
+
+        const values = await this.redis!.mget(...keys);
+        return values.map((value) => (value ? JSON.parse(value) : undefined));
+    }
+
+    async mset<T>(entries: [string, T][]): Promise<void> {
+        this.checkConnection();
+        if (entries.length === 0) return;
+
+        const pipeline = this.redis!.pipeline();
+        for (const [key, value] of entries) {
+            pipeline.set(key, JSON.stringify(value));
+        }
+        await pipeline.exec();
+    }
+
+    async exists(key: string): Promise<boolean> {
+        this.checkConnection();
+        const result = await this.redis!.exists(key);
+        return result === 1;
+    }
+
+    async expire(key: string, ttlSeconds: number): Promise<void> {
+        this.checkConnection();
+        await this.redis!.expire(key, ttlSeconds);
+    }
+
+    // Cache-specific operations
+    async increment(key: string, by: number = 1): Promise<number> {
+        this.checkConnection();
+        return await this.redis!.incrby(key, by);
+    }
+
+    async decrement(key: string, by: number = 1): Promise<number> {
+        this.checkConnection();
+        return await this.redis!.decrby(key, by);
+    }
+
+    // List operations (for compatibility with DatabaseBackend patterns)
+    async append<T>(key: string, item: T): Promise<void> {
+        this.checkConnection();
+        await this.redis!.lpush(key, JSON.stringify(item));
+    }
+
+    async getRange<T>(key: string, start: number, count: number): Promise<T[]> {
+        this.checkConnection();
+        const items = await this.redis!.lrange(key, start, start + count - 1);
+        return items.map((item) => JSON.parse(item));
+    }
+
+    async list(prefix: string): Promise<string[]> {
+        this.checkConnection();
+        return await this.redis!.keys(`${prefix}*`);
+    }
+
+    private checkConnection(): void {
+        if (!this.connected || !this.redis || this.redis.status !== 'ready') {
+            throw new Error('RedisBackend not connected');
+        }
+    }
+
+    // Maintenance operations
+    async flushdb(): Promise<void> {
+        this.checkConnection();
+        await this.redis!.flushdb();
+    }
+
+    async info(): Promise<string> {
+        this.checkConnection();
+        return await this.redis!.info();
+    }
+}

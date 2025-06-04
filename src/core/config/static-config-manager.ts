@@ -230,16 +230,15 @@ export class StaticConfigManager {
      *
      * @param sanitize Whether to remove sensitive information like API keys
      */
-    public exportAsYaml(sanitize: boolean = true): string {
+    public async exportAsYaml(sanitize: boolean = true): Promise<string> {
         const exportConfig = this.getConfig() as AgentConfig;
 
         if (sanitize && exportConfig.llm && 'apiKey' in exportConfig.llm) {
             exportConfig.llm.apiKey = 'SET_YOUR_API_KEY_HERE';
         }
 
-        // Import YAML stringify dynamically since it might not be available in all environments
         try {
-            const { stringify } = require('yaml');
+            const { stringify } = await import('yaml');
             return stringify(exportConfig, { indent: 2 });
         } catch (error) {
             // Fallback to JSON if YAML is not available
@@ -268,7 +267,8 @@ export class StaticConfigManager {
     private printStateForError(contextMessage: string): void {
         logger.error(contextMessage);
         logger.error('Current configuration state before error:');
-        logger.error(JSON.stringify(this.resolved, null, 2));
+        // sanitize config and then print
+        logger.error(JSON.stringify(this.exportAsJson(true), null, 2));
         logger.error('LLM Provenance state:');
         if (this.provenance?.llm) {
             logger.error(JSON.stringify(this.provenance.llm, null, 2));

@@ -4,7 +4,9 @@ import type { AgentEventBus } from '../events/index.js';
 import {
     validateRuntimeUpdate,
     validateRuntimeState,
+    validateMcpServerConfig,
     type ValidationResult,
+    type ValidationError,
 } from './validation-utils.js';
 
 /**
@@ -219,9 +221,31 @@ export class AgentStateManager {
      *
      * @param serverName The name of the MCP server
      * @param serverConfig The server configuration
+     * @returns ValidationResult indicating success or failure
      */
-    public addMcpServer(serverName: string, serverConfig: McpServerConfig): void {
+    public addMcpServer(serverName: string, serverConfig: McpServerConfig): ValidationResult {
         logger.debug(`Adding/updating MCP server: ${serverName}`);
+
+        // Validate the server configuration
+        const existingServerNames = Object.keys(this.runtimeState.mcpServers);
+        const validation = validateMcpServerConfig(serverName, serverConfig, existingServerNames);
+
+        if (!validation.isValid) {
+            logger.warn('MCP server configuration validation failed', {
+                serverName,
+                errors: validation.errors.map((e) => e.message),
+                warnings: validation.warnings,
+            });
+            return validation; // Return validation result without making changes
+        }
+
+        // Log warnings if any
+        if (validation.warnings.length > 0) {
+            logger.warn('MCP server configuration warnings', {
+                serverName,
+                warnings: validation.warnings,
+            });
+        }
 
         const isUpdate = serverName in this.runtimeState.mcpServers;
         this.runtimeState.mcpServers[serverName] = serverConfig;
@@ -238,6 +262,8 @@ export class AgentStateManager {
         });
 
         logger.info(`MCP server '${serverName}' ${isUpdate ? 'updated' : 'added'} successfully`);
+
+        return validation;
     }
 
     /**

@@ -503,10 +503,8 @@ describe('Config Schemas', () => {
             expect(() => ServerConfigsSchema.parse(validRecord)).not.toThrow();
         });
 
-        it('rejects an empty object (due to refine)', () => {
-            expect(() => ServerConfigsSchema.parse({} as any)).toThrow(
-                /At least one MCP server configuration is required/
-            );
+        it('accepts an empty object (no refine validation)', () => {
+            expect(() => ServerConfigsSchema.parse({} as any)).not.toThrow();
         });
 
         it('rejects if any server config in the record is invalid', () => {

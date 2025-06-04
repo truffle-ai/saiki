@@ -27,7 +27,7 @@ export function countMessagesTokens(
     overheadPerMessage: number = DEFAULT_OVERHEAD_PER_MESSAGE
 ): number {
     let total = 0;
-    logger.debug(`Counting messages tokens: ${JSON.stringify(history, null, 2)}`);
+    logger.debug(`Counting tokens for ${history.length} messages`);
     try {
         for (const message of history) {
             if (message.content) {

@@ -11,6 +11,7 @@ import type { SessionEventBus } from '../../../events/index.js';
 
 /**
  * OpenAI implementation of LLMService
+ * Not actively maintained, so might be buggy or outdated
  */
 export class OpenAIService implements ILLMService {
     private openai: OpenAI;
