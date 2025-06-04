@@ -55,7 +55,7 @@ program
     .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
     .option(
         '--mode <mode>',
-        'The application in which saiki should talk to you - cli | web | discord | telegram',
+        'The application in which saiki should talk to you - cli | web | server | discord | telegram',
         'cli'
     )
     .option('--web-port <port>', 'optional port for the web UI', '3000');
@@ -143,6 +143,7 @@ program
             // TODO: Add `saiki tell me about your cli` starter prompt
             'Run saiki interactive CLI with `saiki` or run a one-shot prompt with `saiki <prompt>`\n' +
             'Run saiki web UI with `saiki --mode web`\n' +
+            'Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`\n' +
             'Run saiki as a discord bot with `saiki --mode discord`\n' +
             'Run saiki as a telegram bot with `saiki --mode telegram`\n\n' +
             'Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples'
@@ -247,7 +248,7 @@ program
                     agent,
                     apiPort,
                     true,
-                    agent.configManager.getConfig().agentCard || {}
+                    agent.getEffectiveConfig().agentCard || {}
                 );
 
                 // Start Next.js web server
@@ -276,10 +277,11 @@ program
                 }
                 break;
 
+            // TODO: Remove is server mode is stable and supports mcp
             case 'mcp': {
                 // Start API server only
                 const webPort = parseInt(opts.webPort, 10);
-                const agentCard = agent.configManager.getConfig().agentCard ?? {};
+                const agentCard = agent.getEffectiveConfig().agentCard ?? {};
                 const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
                 const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 
@@ -289,9 +291,28 @@ program
                 break;
             }
 
+            case 'server': {
+                // Start server with REST APIs and WebSockets only
+                const webPort = parseInt(opts.webPort, 10);
+                const agentCard = agent.getEffectiveConfig().agentCard ?? {};
+                const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
+                const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+
+                logger.info('Starting server (REST APIs + WebSockets)...', null, 'cyanBright');
+                await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
+                logger.info(`Server running at ${apiUrl}`, null, 'green');
+                logger.info('Available endpoints:', null, 'cyan');
+                logger.info('  POST /api/message - Send async message', null, 'gray');
+                logger.info('  POST /api/message-sync - Send sync message', null, 'gray');
+                logger.info('  POST /api/reset - Reset conversation', null, 'gray');
+                logger.info('  GET  /api/mcp/servers - List MCP servers', null, 'gray');
+                logger.info('  WebSocket support available for real-time events', null, 'gray');
+                break;
+            }
+
             default:
                 logger.error(
-                    `Unknown mode '${opts.mode}'. Use cli, web, discord, telegram, or mcp.`
+                    `Unknown mode '${opts.mode}'. Use cli, web, server, discord, telegram, or mcp.`
                 );
                 process.exit(1);
         }

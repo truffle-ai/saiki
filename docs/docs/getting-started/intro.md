@@ -20,61 +20,89 @@ Why developers choose Saiki:
 
 Saiki is the missing natural language layer across your stack. Its powerful in-built features and high customizability means that whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. 
 
-## Getting Started
+## Ready to Start?
 
-- **Install globally:**
-  ```bash
-  npm install -g @truffle-ai/saiki
-  ```
-- **Run the interactive CLI:**
-  ```bash
-  saiki
-  ```
-- **Ask saiki anything, in your terminal!:**
-  <!-- ```bash
-  saiki what is the best way to build AI agents
-  ``` -->
-  ```bash
-  saiki what are the current files in my directory
-  ```
-  ```bash
-  saiki write a script to add two numbers in ./addition
-  ```
-
-  Saiki CLI uses the default configuration defined in `configuration/saiki.yml`
-
-  You can customize this as well.
-- Check out [Saiki CLI guide](../user-guide/cli.md)
-- **Try the Web Playground:**
-  ```bash
-  saiki --mode web
-  ```
-
-  Then open [http://localhost:3000](http://localhost:3000) in your browser.
-  
-  The web playground gives you an interactive way to use your connect to MCP servers, test out the servers, try out different LLMs, and finally save your preferred combinations as AI agents
-
-  Check our WEb playground
-
-<!-- ## Example Use Cases
-
-- **Amazon Shopping Assistant:**
-  > "Can you go to amazon and add some snacks to my cart? I like trail mix, cheetos and maybe surprise me with something else?"
-- **Email Summary to Slack:**
-  > "Summarize emails and send highlights to Slack."
-- **AI Website Designer:**
-  > "Design a landing page based on README.md."
-
-Explore more in the [Examples & Demos](./examples-demos.md) section. -->
+**[Get started with Saiki in 5 minutes →](./quick-start)**
 
 ## Learn More
 
-- [Basics of AI Agents](../learn/what-is-an-ai-agent.md)new to AI Agents and want to learn the basics
-- [Configuration](../configuring-saiki/configuration.md): How to connect MCP servers and LLM providers
-- [Architecture](../architecture/overview.md): Saiki High-level design
-- [Contributing](../contribution-guide/overview.md): Get involved
-- [Community & Support](https://discord.gg/GFzWFAAZcm)
+- **New to AI Agents?** Start with [Basics of AI Agents](../learn/what-is-an-ai-agent.md) to learn the fundamentals
+- **Building Applications?** See the [Building with Saiki Guide](../building-with-saiki/) for patterns and examples
+- **LLM Configuration:** Check out [LLM Providers & Setup Guide](../configuring-saiki/llm/providers) for all supported models
+- **Adding Tools:** Learn about [MCP Server Configuration](../configuring-saiki/mcpServers.md) to enhance your agents
+- **Core Configuration:** Understand [Configuration](../configuring-saiki/configuration.md) for complete setup
+- **System Design:** Explore [Architecture](../architecture/overview.md) for Saiki's high-level design
+- **Get Involved:** See [Contributing Guide](../contribution-guide/overview.md) to help improve Saiki
+- **Community & Support:** Join our [Discord](https://discord.gg/GFzWFAAZcm) for help and discussions
+
+### 🤖 LLM-Ready Reference
+
+<details>
+<summary>📋 Quick copy reference for LLM context</summary>
+
+<div style={{"maxHeight": "400px", "overflow": "auto", "padding": "1rem", "border": "1px solid #ccc", "borderRadius": "8px", "fontSize": "0.85em", "fontFamily": "monospace"}}>
+
+```
+SAIKI FRAMEWORK REFERENCE
+
+Saiki: Configuration-driven AI agent framework
+- Config over code: Define agents in YAML
+- Multi-LLM: OpenAI, Anthropic, Google, Groq, OpenAI-compatible 
+- Tools: Connect via MCP (Model Context Protocol) servers
+- Interfaces: CLI, Web UI, Discord/Telegram bots, APIs
+
+BASIC CONFIG:
+llm:
+  provider: openai|anthropic|google|groq
+  model: gpt-4.1-mini|claude-4-sonnet-20250514|gemini-2.5-pro-exp-03-25|llama-3.3-70b-versatile
+  apiKey: $API_KEY
+  systemPrompt: "Your role and instructions"
+mcpServers:
+  filesystem: {type: stdio, command: npx, args: ["-y", "@modelcontextprotocol/server-filesystem", "."]}
+  puppeteer: {type: stdio, command: npx, args: ["-y", "@truffle-ai/puppeteer-server"]}
+
+USAGE:
+- CLI: saiki "command" or saiki (interactive)
+- Web: saiki --mode web (http://localhost:3000)
+- Bots: saiki --mode discord|telegram
+- Code: import {createSaikiAgent} from '@truffle-ai/saiki'
+
+POPULAR MCP SERVERS:
+- @modelcontextprotocol/server-filesystem (file ops)
+- @truffle-ai/puppeteer-server (web automation)  
+- @modelcontextprotocol/server-git (git ops)
+- @modelcontextprotocol/server-sqlite (database)
+
+API (when in web mode):
+- POST /api/message-sync {"message": "text"}
+- POST /api/mcp/servers/{id}/tools/{name}/execute {"arguments": {}}
+- WebSocket: ws://localhost:3001/ws
+
+PROGRAMMATIC:
+import {loadConfigFile, createSaikiAgent} from '@truffle-ai/saiki';
+const agent = await createSaikiAgent(await loadConfigFile('./config.yml'));
+const response = await agent.run("request");
+
+BEST PRACTICES:
+- Specific system prompts with tool usage guidance
+- Choose minimal necessary tools (reduces tokens)
+- Use environment variables for API keys
+- Error handling with try-catch
+- gpt-4.1-mini for speed, temperature: 0.1 for determinism
+
+QUICK START:
+npm install -g @truffle-ai/saiki
+saiki init project-name
+# Add API keys to .env
+# Configure saiki/agents/saiki.yml
+saiki "what can you help with?"
+```
+
+</div>
+
+</details>
 
 ---
 
-Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation! 
+Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation!
+Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation!

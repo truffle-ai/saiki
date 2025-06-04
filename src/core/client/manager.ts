@@ -13,7 +13,7 @@ export class MCPClientManager {
     private toolToClientMap: Map<string, IMCPClient> = new Map();
     private promptToClientMap: Map<string, IMCPClient> = new Map();
     private resourceToClientMap: Map<string, IMCPClient> = new Map();
-    private confirmationProvider?: ToolConfirmationProvider;
+    private confirmationProvider: ToolConfirmationProvider;
 
     constructor(confirmationProvider?: ToolConfirmationProvider) {
         // If a confirmation provider is passed, use it, otherwise use the default implementation
@@ -76,6 +76,7 @@ export class MCPClientManager {
         }
 
         // Cache resources, if supported
+        // TODO: HF SERVER HAS 100000+ RESOURCES - need to think of a way to make resources/caching optional or better.
         try {
             const resources = await client.listResources();
             resources.forEach((resourceUri) => {

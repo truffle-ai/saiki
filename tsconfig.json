@@ -5,10 +5,12 @@
         "moduleResolution": "NodeNext",
         "esModuleInterop": true,
         "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
         "baseUrl": ".",
         "paths": {
             "@app/*": ["src/app/*"],
-            "@core/*": ["src/core/*"]
+            "@core/*": ["src/core/*"],
+            "mitt": ["./node_modules/mitt/dist/index.d.ts"]
         },
         "outDir": "./dist",
         "rootDir": ".",

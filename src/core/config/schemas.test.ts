@@ -599,4 +599,142 @@ describe('Config Schemas', () => {
             expect(() => McpServerConfigSchema.parse(stdioInvalidArgs as any)).toThrow();
         });
     });
+
+    describe('AgentConfigSchema - Sessions Configuration', () => {
+        const baseValidConfig = {
+            mcpServers: {
+                main: { type: 'stdio' as const, command: 'node', args: ['agent-server.js'] },
+            },
+            llm: {
+                provider: 'openai',
+                model: 'o4-mini',
+                systemPrompt: 'You are an agent.',
+                apiKey: '123',
+            },
+        };
+
+        it('applies default sessions config if not provided', () => {
+            const parsed = AgentConfigSchema.parse(baseValidConfig);
+            expect(parsed.sessions).toEqual({
+                maxSessions: 100,
+                sessionTTL: 3600000,
+            });
+        });
+
+        it('accepts valid sessions config', () => {
+            const configWithSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: 50,
+                    sessionTTL: 1800000, // 30 minutes
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithSessions)).not.toThrow();
+            const parsed = AgentConfigSchema.parse(configWithSessions);
+            expect(parsed.sessions.maxSessions).toBe(50);
+            expect(parsed.sessions.sessionTTL).toBe(1800000);
+        });
+
+        it('applies default maxSessions if only sessionTTL is provided', () => {
+            const configWithPartialSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: 7200000, // 2 hours
+                },
+            };
+            const parsed = AgentConfigSchema.parse(configWithPartialSessions);
+            expect(parsed.sessions.maxSessions).toBe(100); // default
+            expect(parsed.sessions.sessionTTL).toBe(7200000);
+        });
+
+        it('applies default sessionTTL if only maxSessions is provided', () => {
+            const configWithPartialSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: 25,
+                },
+            };
+            const parsed = AgentConfigSchema.parse(configWithPartialSessions);
+            expect(parsed.sessions.maxSessions).toBe(25);
+            expect(parsed.sessions.sessionTTL).toBe(3600000); // default
+        });
+
+        it('rejects negative maxSessions', () => {
+            const configWithNegativeMaxSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: -5,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithNegativeMaxSessions)).toThrow();
+        });
+
+        it('rejects zero maxSessions', () => {
+            const configWithZeroMaxSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: 0,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithZeroMaxSessions)).toThrow();
+        });
+
+        it('rejects non-integer maxSessions', () => {
+            const configWithFloatMaxSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: 10.5,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithFloatMaxSessions)).toThrow();
+        });
+
+        it('rejects negative sessionTTL', () => {
+            const configWithNegativeTTL = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: -1000,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithNegativeTTL)).toThrow();
+        });
+
+        it('rejects zero sessionTTL', () => {
+            const configWithZeroTTL = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: 0,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithZeroTTL)).toThrow();
+        });
+
+        it('rejects non-integer sessionTTL', () => {
+            const configWithFloatTTL = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: 1800.5,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithFloatTTL)).toThrow();
+        });
+
+        it('rejects invalid types for sessions fields', () => {
+            const configWithStringMaxSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: '100', // Should be number
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithStringMaxSessions as any)).toThrow();
+
+            const configWithStringTTL = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: '3600000', // Should be number
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithStringTTL as any)).toThrow();
+        });
+    });
 });

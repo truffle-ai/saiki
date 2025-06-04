@@ -71,6 +71,21 @@ npm start -- --mode web
 
 Open http://localhost:3000 in your browser.
 
+### Server Mode
+
+Run Saiki as a server with just REST APIs and WebSockets:
+```bash
+saiki --mode server
+```
+
+This mode is perfect for:
+- Backend integrations 
+- Microservice architectures
+- Custom frontend development
+- API-only deployments
+
+The server exposes REST endpoints for messaging, MCP server management, and WebSocket support for real-time communication.
+
 ### Bot Modes
 
 Run Saiki as a Discord or Telegram bot.
@@ -120,7 +135,7 @@ Ready to jump in? Follow the [Installation](#installation) guide or explore demo
 saiki
 ```
 <a href="https://youtu.be/C-Z0aVbl4Ik">
-  <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" width="800"/>
+  <img src="https://github.com/user-attachments/assets/3f5be5e2-7a55-4093-a071-8c52f1a83ba3" alt="Saiki: Amazon shopping agent demo" width="600"/>
 </a>
 
 ### 🎮 Create AI NPCs For Your Games
@@ -129,7 +144,7 @@ Spin up new agents out-of-the-box and use them to power AI NPCs in your game env
 
 *Example project repo coming soon...*
 
-<img src="https://github.com/user-attachments/assets/c1fc6b60-d85c-4920-84f9-918949ef1ddb" alt="AI NPC Example" width="800">
+<img src="https://github.com/user-attachments/assets/c1fc6b60-d85c-4920-84f9-918949ef1ddb" alt="AI NPC Example" width="600">
 
 
 ### 📧 Send Email Summaries to Slack
@@ -137,13 +152,13 @@ Spin up new agents out-of-the-box and use them to power AI NPCs in your game env
 ```bash
 saiki --config-file ./configuration/examples/email_slack.yml
 ```
-<img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="800">
+<img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="600">
 
 ### 📝 Use Notion As A Second Brain
 ```bash
 saiki --config-file ./configuration/examples/notion.yml #Requires setup
 ```
-<img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="800">
+<img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="600">
 
 
 ## CLI Reference
@@ -164,7 +179,7 @@ Options:
   -c, --config-file <path>  Path to config file (default: "configuration/saiki.yml")
   -s, --strict              Require all server connections to succeed
   --no-verbose              Disable verbose output
-  --mode <mode>             Run mode: cli, web, discord, or telegram (default: "cli")
+  --mode <mode>             Run mode: cli, web, server, discord, or telegram (default: "cli")
   --web-port <port>         Port for WebUI (default: "3000")
   -m, --model <model>       Specify the LLM model to use
   -r, --router <router>     Specify the LLM router to use (vercel or in-built)
@@ -345,7 +360,7 @@ Saiki was built by the team at [Truffle AI](www.trytruffle.ai).
 
 Saiki is better with you! Join our Discord whether you want to say hello, share your projects, ask questions, or get help setting things up:
 
-[![Join our Discord server](https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat)](https://discord.gg/GwxwQs8CN5)
+[![Join our Discord server](https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat)](https://discord.gg/GFzWFAAZcm)
 
 If you're enjoying Saiki, please give us a ⭐ on GitHub!
 

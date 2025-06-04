@@ -37,40 +37,67 @@ const config: Config = {
             {
                 docs: {
                     sidebarPath: './sidebars.ts',
-                    // Please change this to your repo.
-                    // Remove this to remove the "edit this page" links.
                     editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
+                    showLastUpdateAuthor: true,
+                    showLastUpdateTime: true,
+                    breadcrumbs: true,
+                    remarkPlugins: [],
+                    rehypePlugins: [],
                 },
+                // BLOG DISABLED: To re-enable, uncomment the section below and related links in navbar/footer.
+                /*
                 blog: {
                     showReadingTime: true,
                     feedOptions: {
                         type: ['rss', 'atom'],
                         xslt: true,
                     },
-                    // Please change this to your repo.
-                    // Remove this to remove the "edit this page" links.
                     editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
-                    // Useful options to enforce blogging best practices
                     onInlineTags: 'warn',
                     onInlineAuthors: 'warn',
                     onUntruncatedBlogPosts: 'warn',
                 },
+                */
                 theme: {
                     customCss: './src/css/custom.css',
                 },
+                // gtag: {
+                //     trackingID: 'G-XXXXXXXXXX', // Replace with your Google Analytics ID
+                //     anonymizeIP: true,
+                // },
             } satisfies Preset.Options,
         ],
     ],
 
+    themes: ['@docusaurus/theme-mermaid'],
+
+    markdown: {
+        mermaid: true,
+    },
+
     themeConfig: {
         // Replace with your project's social card
-        image: 'img/docusaurus-social-card.jpg',
+        image: 'img/saiki-social-card.jpg',
+        docs: {
+            sidebar: {
+                hideable: true,
+                autoCollapseCategories: true,
+            },
+        },
+        colorMode: {
+            defaultMode: 'light',
+            disableSwitch: false,
+            respectPrefersColorScheme: true,
+        },
         navbar: {
             title: 'Saiki',
             logo: {
                 alt: 'Saiki Logo',
                 src: 'img/favicon.ico',
+                width: 32,
+                height: 32,
             },
+            hideOnScroll: true,
             items: [
                 {
                     type: 'docSidebar',
@@ -78,11 +105,24 @@ const config: Config = {
                     position: 'left',
                     label: 'Docs',
                 },
-                { to: '/blog', label: 'Blog', position: 'left' },
+                /*
+                {
+                    to: '/blog',
+                    label: 'Blog',
+                    position: 'left',
+                },
+                */
+                {
+                    href: 'https://discord.gg/GFzWFAAZcm',
+                    position: 'right',
+                    className: 'header-discord-link',
+                    'aria-label': 'Discord community',
+                },
                 {
                     href: 'https://github.com/truffle-ai/saiki',
-                    label: 'GitHub',
                     position: 'right',
+                    className: 'header-github-link',
+                    'aria-label': 'GitHub repository',
                 },
             ],
         },
@@ -90,11 +130,25 @@ const config: Config = {
             style: 'dark',
             links: [
                 {
-                    title: 'Docs',
+                    title: 'Documentation',
                     items: [
                         {
-                            label: 'Tutorial',
+                            label: 'Getting Started',
                             to: '/docs/getting-started/intro',
+                        },
+                        // Note: User updated this link, ensure it's correct after folder moves
+                        {
+                            label: 'Building with Saiki',
+                            to: '/docs/building-with-saiki',
+                        },
+                        {
+                            label: 'LLM Providers',
+                            to: '/docs/configuring-saiki/llm/providers',
+                        },
+                        // Note: This link will need to be updated after folder moves
+                        {
+                            label: 'API Reference',
+                            to: '/docs/api',
                         },
                     ],
                 },
@@ -102,40 +156,136 @@ const config: Config = {
                     title: 'Community',
                     items: [
                         {
-                            label: 'GitHub Issues',
-                            href: 'https://github.com/truffle-ai/saiki/issues',
-                        },
-                        {
                             label: 'Discord',
                             href: 'https://discord.gg/GFzWFAAZcm',
                         },
                         {
-                            label: 'X',
+                            label: 'GitHub Discussions',
+                            href: 'https://github.com/truffle-ai/saiki/discussions',
+                        },
+                        {
+                            label: 'GitHub Issues',
+                            href: 'https://github.com/truffle-ai/saiki/issues',
+                        },
+                        {
+                            label: 'X (Twitter)',
                             href: 'https://x.com/truffleai_',
                         },
                     ],
                 },
                 {
-                    title: 'More',
+                    title: 'Resources',
                     items: [
+                        /*
                         {
                             label: 'Blog',
                             to: '/blog',
                         },
+                        */
+                        {
+                            label: 'Examples',
+                            to: '/docs/getting-started/examples-demos',
+                        },
+                        {
+                            label: 'Contributing',
+                            to: '/docs/contribution-guide/overview',
+                        },
+                        {
+                            label: 'Changelog',
+                            href: 'https://github.com/truffle-ai/saiki/releases',
+                        },
+                    ],
+                },
+                {
+                    title: 'Truffle AI',
+                    items: [
+                        {
+                            label: 'Website',
+                            href: 'https://truffle.ai',
+                        },
                         {
                             label: 'GitHub',
-                            href: 'https://github.com/truffle-ai/saiki',
+                            href: 'https://github.com/truffle-ai',
+                        },
+                        {
+                            label: 'Privacy Policy',
+                            href: 'https://truffle.ai/privacy',
+                        },
+                        {
+                            label: 'Terms of Service',
+                            href: 'https://truffle.ai/terms',
                         },
                     ],
                 },
             ],
-            copyright: `Copyright © ${new Date().getFullYear()} Truffle AI.`,
+            copyright: `Copyright © ${new Date().getFullYear()} Truffle AI. Built with ❤️ for developers.`,
         },
         prism: {
-            theme: prismThemes.github,
-            darkTheme: prismThemes.dracula,
+            theme: prismThemes.oneLight,
+            darkTheme: prismThemes.oneDark,
+            additionalLanguages: [
+                'bash',
+                'diff',
+                'json',
+                'yaml',
+                'typescript',
+                'javascript',
+                'python',
+                'go',
+                'rust',
+                'docker',
+            ],
+        },
+        mermaid: {
+            theme: { light: 'neutral', dark: 'dark' },
+        },
+        announcementBar: {
+            id: 'support_us',
+            content:
+                '⭐️ If you like Saiki, give it a star on <a target="_blank" rel="noopener noreferrer" href="https://github.com/truffle-ai/saiki">GitHub</a> and join our <a target="_blank" rel="noopener noreferrer" href="https://discord.gg/GFzWFAAZcm">Discord</a>! ⭐️',
+            backgroundColor: '#6366f1',
+            textColor: '#ffffff',
+            isCloseable: true,
         },
     } satisfies Preset.ThemeConfig,
+
+    plugins: [
+        [
+            '@docusaurus/plugin-ideal-image',
+            {
+                quality: 70,
+                max: 1030,
+                min: 640,
+                steps: 2,
+                disableInDev: false,
+            },
+        ],
+    ],
+
+    headTags: [
+        {
+            tagName: 'link',
+            attributes: {
+                rel: 'preconnect',
+                href: 'https://fonts.googleapis.com',
+            },
+        },
+        {
+            tagName: 'link',
+            attributes: {
+                rel: 'preconnect',
+                href: 'https://fonts.gstatic.com',
+                crossorigin: 'anonymous',
+            },
+        },
+    ],
+
+    stylesheets: [
+        {
+            href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap',
+            type: 'text/css',
+        },
+    ],
 };
 
 export default config;

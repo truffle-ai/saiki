@@ -15,19 +15,28 @@
 import { ToolConfirmationProvider } from './types.js';
 import { CLIConfirmationProvider } from './cli-confirmation-provider.js';
 import { NoOpConfirmationProvider } from './noop-confirmation-provider.js';
+import {
+    createAllowedToolsProvider,
+    AllowedToolsConfig,
+} from './allowed-tools-provider/factory.js';
+import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
 // import { WebConfirmationProvider } from './web-confirmation-provider.js';
 // import { UIConfirmationProvider } from './ui-confirmation-provider.js';
 
 export function createToolConfirmationProvider(
-    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp'
+    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp' | 'server',
+    allowedToolsCfg?: AllowedToolsConfig
 ): ToolConfirmationProvider {
+    // Build allowedToolsProvider based on config or default
+    const toolsProvider = allowedToolsCfg ? createAllowedToolsProvider(allowedToolsCfg) : undefined;
     switch (runMode) {
         case 'cli':
-            return new CLIConfirmationProvider();
+            return new CLIConfirmationProvider(toolsProvider);
         case 'web':
         case 'discord':
         case 'telegram':
         case 'mcp':
+        case 'server':
             // Fallback: No-op provider for now. Replace with real provider when available.
             return new NoOpConfirmationProvider();
         default:
