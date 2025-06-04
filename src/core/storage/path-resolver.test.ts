@@ -8,7 +8,9 @@ import { promises as fs } from 'fs';
 vi.mock('../utils/path.js', () => ({
     isCurrentDirectorySaikiProject: vi.fn(),
     findSaikiProjectRoot: vi.fn(),
+    findSaikiProjectRootEnhanced: vi.fn(),
     isGlobalInstall: vi.fn(),
+    isSaikiProject: vi.fn(),
 }));
 
 // Mock fs for testing
@@ -22,12 +24,16 @@ vi.mock('fs', () => ({
 import {
     isCurrentDirectorySaikiProject,
     findSaikiProjectRoot,
+    findSaikiProjectRootEnhanced,
     isGlobalInstall,
+    isSaikiProject,
 } from '../utils/path.js';
 
 const mockIsCurrentDirectorySaikiProject = vi.mocked(isCurrentDirectorySaikiProject);
 const mockFindSaikiProjectRoot = vi.mocked(findSaikiProjectRoot);
+const mockFindSaikiProjectRootEnhanced = vi.mocked(findSaikiProjectRootEnhanced);
 const mockIsGlobalInstall = vi.mocked(isGlobalInstall);
+const mockIsSaikiProject = vi.mocked(isSaikiProject);
 const mockFs = vi.mocked(fs);
 
 describe('StoragePathResolver', () => {
@@ -49,8 +55,7 @@ describe('StoragePathResolver', () => {
     describe('createLocalContext', () => {
         it('should create context with project root when in Saiki project', async () => {
             const projectRoot = '/path/to/saiki';
-            mockIsCurrentDirectorySaikiProject.mockResolvedValue(true);
-            mockFindSaikiProjectRoot.mockResolvedValue(projectRoot);
+            mockFindSaikiProjectRootEnhanced.mockResolvedValue(projectRoot);
 
             const context = await StoragePathResolver.createLocalContext({
                 projectRoot,
@@ -65,8 +70,7 @@ describe('StoragePathResolver', () => {
         });
 
         it('should fall back to global when projectRoot is not a Saiki project', async () => {
-            mockIsCurrentDirectorySaikiProject.mockResolvedValue(false);
-            mockFindSaikiProjectRoot.mockResolvedValue(null);
+            mockFindSaikiProjectRootEnhanced.mockResolvedValue(null);
 
             const context = await StoragePathResolver.createLocalContext({
                 projectRoot: '/some/other/project',
@@ -86,7 +90,7 @@ describe('StoragePathResolver', () => {
             });
 
             expect(context.forceGlobal).toBe(true);
-            expect(mockIsCurrentDirectorySaikiProject).not.toHaveBeenCalled();
+            expect(mockFindSaikiProjectRootEnhanced).not.toHaveBeenCalled();
         });
     });
 
@@ -102,7 +106,7 @@ describe('StoragePathResolver', () => {
 
         it('should use local storage when SAIKI_FORCE_LOCAL_STORAGE is set', async () => {
             process.env.SAIKI_FORCE_LOCAL_STORAGE = 'true';
-            mockFindSaikiProjectRoot.mockResolvedValue('/path/to/saiki');
+            mockFindSaikiProjectRootEnhanced.mockResolvedValue('/path/to/saiki');
 
             const context = await StoragePathResolver.createLocalContextWithAutoDetection();
 
@@ -121,7 +125,7 @@ describe('StoragePathResolver', () => {
 
         it('should auto-detect local install when no env vars set', async () => {
             mockIsGlobalInstall.mockResolvedValue(false);
-            mockFindSaikiProjectRoot.mockResolvedValue('/path/to/saiki');
+            mockFindSaikiProjectRootEnhanced.mockResolvedValue('/path/to/saiki');
 
             const context = await StoragePathResolver.createLocalContextWithAutoDetection();
 
@@ -185,78 +189,6 @@ describe('StoragePathResolver', () => {
 
             const expectedPath = path.join(homedir(), '.saiki');
             expect(result).toBe(expectedPath);
-        });
-    });
-
-    describe('isGlobalInstall', () => {
-        it('should delegate to path utilities', async () => {
-            mockIsGlobalInstall.mockResolvedValue(true);
-
-            const result = await StoragePathResolver.isGlobalInstall();
-
-            expect(result).toBe(true);
-            expect(mockIsGlobalInstall).toHaveBeenCalled();
-        });
-    });
-
-    describe('isDirectorySaikiProject', () => {
-        it('should delegate to path utilities', async () => {
-            const dirPath = '/some/path';
-            mockIsCurrentDirectorySaikiProject.mockResolvedValue(true);
-
-            const result = await StoragePathResolver.isDirectorySaikiProject(dirPath);
-
-            expect(result).toBe(true);
-            expect(mockIsCurrentDirectorySaikiProject).toHaveBeenCalledWith(dirPath);
-        });
-    });
-
-    describe('detectProjectRoot', () => {
-        it('should delegate to path utilities', async () => {
-            const startPath = '/some/path';
-            const projectRoot = '/path/to/saiki';
-            mockFindSaikiProjectRoot.mockResolvedValue(projectRoot);
-
-            const result = await StoragePathResolver.detectProjectRoot(startPath);
-
-            expect(result).toBe(projectRoot);
-            expect(mockFindSaikiProjectRoot).toHaveBeenCalledWith(startPath);
-        });
-    });
-
-    describe('isSaikiProject', () => {
-        it('should return true for @truffle-ai/saiki package', () => {
-            const packageJson = { name: '@truffle-ai/saiki' };
-
-            const result = StoragePathResolver.isSaikiProject(packageJson);
-
-            expect(result).toBe(true);
-        });
-
-        it('should return true when saiki is in dependencies', () => {
-            const packageJson = {
-                name: 'some-project',
-                dependencies: {
-                    '@truffle-ai/saiki': '^1.0.0',
-                },
-            };
-
-            const result = StoragePathResolver.isSaikiProject(packageJson);
-
-            expect(result).toBe(true);
-        });
-
-        it('should return false for unrelated packages', () => {
-            const packageJson = {
-                name: 'some-project',
-                dependencies: {
-                    react: '^18.0.0',
-                },
-            };
-
-            const result = StoragePathResolver.isSaikiProject(packageJson);
-
-            expect(result).toBe(false);
         });
     });
 
