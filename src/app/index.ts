@@ -55,7 +55,7 @@ program
     .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
     .option(
         '--mode <mode>',
-        'The application in which saiki should talk to you - cli | web | server | discord | telegram',
+        'The application in which saiki should talk to you - cli | web | server | discord | telegram | mcp',
         'cli'
     )
     .option('--web-port <port>', 'optional port for the web UI', '3000');
@@ -145,7 +145,8 @@ program
             'Run saiki web UI with `saiki --mode web`\n' +
             'Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`\n' +
             'Run saiki as a discord bot with `saiki --mode discord`\n' +
-            'Run saiki as a telegram bot with `saiki --mode telegram`\n\n' +
+            'Run saiki as a telegram bot with `saiki --mode telegram`\n' +
+            'Run saiki as an MCP server with `saiki --mode mcp`\n\n' +
             'Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples'
     )
     .action(async (prompt: string[] = []) => {
