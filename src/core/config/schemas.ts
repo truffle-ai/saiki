@@ -388,9 +388,12 @@ export const AgentConfigSchema = z
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 
         // Storage configuration
-        storage: StorageSchema.optional().describe(
-            'Storage configuration for the agent using cache and database backends'
-        ),
+        storage: StorageSchema.optional()
+            .default({
+                cache: { type: 'memory' },
+                database: { type: 'memory' },
+            })
+            .describe('Storage configuration for the agent using cache and database backends'),
 
         sessions: z
             .object({

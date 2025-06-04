@@ -81,32 +81,6 @@ export type InitializeServicesOptions = {
     // configOverride?: Partial<AgentConfig>; // (optional) for field-level config overrides
 };
 
-/**
- * Get storage configuration from agent config
- * Returns default memory backends if no storage config is provided
- */
-function getStorageConfig(config: AgentConfig): StorageBackendConfig {
-    if (!config.storage) {
-        // No storage config provided, use memory defaults
-        return {
-            cache: { type: 'memory' as const },
-            database: { type: 'memory' as const },
-        };
-    }
-
-    // Use the provided storage configuration directly
-    return {
-        cache: {
-            type: config.storage.cache.type,
-            ...(config.storage.cache as any),
-        },
-        database: {
-            type: config.storage.database.type,
-            ...(config.storage.database as any),
-        },
-    };
-}
-
 // High-level factory to load, validate, and wire up all agent services in one call
 /**
  * Loads and validates configuration and initializes all agent services as a single unit.
@@ -131,12 +105,12 @@ export async function createAgentServices(
 
     // 3. Initialize storage backends
     logger.debug('Initializing storage backends');
-    const storageConfig = getStorageConfig(config);
-    const storage = overrides?.storage ?? (await initializeStorage(storageConfig));
+    const storage =
+        overrides?.storage ?? (await initializeStorage(config.storage as StorageBackendConfig));
 
     logger.debug('Storage backends initialized', {
-        cache: storageConfig.cache.type,
-        database: storageConfig.database.type,
+        cache: config.storage.cache.type,
+        database: config.storage.database.type,
     });
 
     // 4. Initialize client manager with storage-backed allowed tools provider
