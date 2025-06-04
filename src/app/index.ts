@@ -56,7 +56,7 @@ program
     .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
     .option(
         '--mode <mode>',
-        'The application in which saiki should talk to you - cli | web | discord | telegram | mcp | server',
+        'The application in which saiki should talk to you - cli | web | server | discord | telegram | mcp',
         'cli'
     )
     .option('--web-port <port>', 'optional port for the web UI', '3000');
@@ -247,7 +247,7 @@ program
                     agent,
                     apiPort,
                     true,
-                    agent.stateManager.getEffectiveConfig().agentCard || {}
+                    agent.getEffectiveConfig().agentCard || {}
                 );
 
                 // Start Next.js web server
@@ -256,12 +256,11 @@ program
                 break;
             }
 
-            // Start server with REST APIs and WebSockets
+            // Start server with REST APIs and WebSockets on port 3001
             case 'server': {
                 // Start server with REST APIs and WebSockets only
-                const webPort = parseInt(opts.webPort, 10);
-                const agentCard = agent.stateManager.getEffectiveConfig().agentCard ?? {};
-                const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
+                const agentCard = agent.getEffectiveConfig().agentCard ?? {};
+                const apiPort = getPort(process.env.API_PORT, 3001, 'API_PORT');
                 const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 
                 logger.info('Starting server (REST APIs + WebSockets)...', null, 'cyanBright');
@@ -296,12 +295,11 @@ program
                 }
                 break;
 
-            // TODO: Remove is server mode is stable and supports mcp
+            // TODO: Remove if server mode is stable and supports mcp
             case 'mcp': {
                 // Start API server only
-                const webPort = parseInt(opts.webPort, 10);
-                const agentCard = agent.stateManager.getEffectiveConfig().agentCard ?? {};
-                const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
+                const agentCard = agent.getEffectiveConfig().agentCard ?? {};
+                const apiPort = getPort(process.env.API_PORT, 3001, 'API_PORT');
                 const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 
                 logger.info('Starting API server...', null, 'cyanBright');

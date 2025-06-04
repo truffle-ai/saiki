@@ -40,7 +40,7 @@ lsof -ti:3000-3001 | xargs kill -9
 Start one server for the API at the root directory of this project [port 3001]:
 ```bash
 [  2:29PM ]  [ ~/Projects/saiki(storage✗) ]
- $ npm run build && npm link && saiki --mode api
+ $ npm run build && npm link && saiki --mode server
  ```
 
 then start the npm dev server [port 3000]
