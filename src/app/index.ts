@@ -205,6 +205,9 @@ program
             );
             logger.info(`Initializing Saiki with config: ${configPath}`);
             const cfg = await loadConfigFile(configPath);
+
+            // TODO: process cli config overrides and create a new config here before creating the agent
+            // maybe move the cli overrides into the loading of the config file?
             agent = await createSaikiAgent(
                 cfg,
                 {
