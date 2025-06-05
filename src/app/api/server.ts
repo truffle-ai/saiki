@@ -543,6 +543,46 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Load session as current working session
+    app.post('/api/sessions/:sessionId/load', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+
+            // Handle null/reset case
+            if (sessionId === 'null' || sessionId === 'undefined') {
+                await agent.loadSession(null);
+                res.json({
+                    status: 'reset',
+                    sessionId: null,
+                    currentSession: agent.getCurrentSessionId(),
+                });
+                return;
+            }
+
+            const session = await agent.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            await agent.loadSession(sessionId);
+            res.json({ status: 'loaded', sessionId, currentSession: agent.getCurrentSessionId() });
+        } catch (error) {
+            logger.error(`Error loading session ${req.params.sessionId}: ${error.message}`);
+            res.status(500).json({ error: 'Failed to load session' });
+        }
+    });
+
+    // Get current working session
+    app.get('/api/sessions/current', async (req, res) => {
+        try {
+            const currentSessionId = agent.getCurrentSessionId();
+            res.json({ currentSessionId });
+        } catch (error) {
+            logger.error(`Error getting current session: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get current session' });
+        }
+    });
+
     return { app, server, wss, webSubscriber };
 }
 

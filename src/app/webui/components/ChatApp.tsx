@@ -27,7 +27,7 @@ import {
 } from './ui/dropdown-menu';
 
 export default function ChatApp() {
-  const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState } = useChatContext();
+  const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState, returnToWelcome } = useChatContext();
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [isServerRegistryOpen, setServerRegistryOpen] = useState(false);
@@ -200,14 +200,14 @@ export default function ChatApp() {
       // After deleting, return to welcome state
       // Don't switch to any specific session, let user start fresh
       setDeleteDialogOpen(false);
-      window.location.reload(); // Simple way to reset to welcome state
+      returnToWelcome();
     } catch (error) {
       console.error('Error deleting conversation:', error);
       // You might want to show a toast notification here
     } finally {
       setIsDeleting(false);
     }
-  }, [currentSessionId]);
+  }, [currentSessionId, returnToWelcome]);
 
   const quickActions = [
     {
@@ -472,6 +472,7 @@ export default function ChatApp() {
                 onClose={() => setSessionsPanelOpen(false)}
                 currentSessionId={currentSessionId}
                 onSessionChange={handleSessionChange}
+                returnToWelcome={returnToWelcome}
                 variant="inline"
               />
             )}
@@ -516,7 +517,7 @@ export default function ChatApp() {
               </DialogTitle>
               <DialogDescription>
                 Download your tool configuration for Claude Desktop or other MCP clients
-                {currentSessionId !== 'default' && (
+                {currentSessionId && (
                   <span className="block mt-1 text-sm text-muted-foreground">
                     Including session-specific settings for: <span className="font-mono">{currentSessionId}</span>
                   </span>
@@ -578,7 +579,7 @@ export default function ChatApp() {
               </DialogTitle>
               <DialogDescription>
                 This will clear all messages in this conversation while keeping the session active.
-                {currentSessionId !== 'default' && (
+                {currentSessionId && (
                   <span className="block mt-2 font-medium">
                     Session: <span className="font-mono">{currentSessionId}</span>
                   </span>
@@ -612,7 +613,7 @@ export default function ChatApp() {
               </DialogTitle>
               <DialogDescription>
                 This will permanently delete this conversation and all its messages. This action cannot be undone.
-                {currentSessionId !== 'default' && (
+                {currentSessionId && (
                   <span className="block mt-2 font-medium">
                     Session: <span className="font-mono">{currentSessionId}</span>
                   </span>

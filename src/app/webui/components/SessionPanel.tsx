@@ -41,6 +41,7 @@ interface SessionPanelProps {
   onClose: () => void;
   currentSessionId?: string | null;
   onSessionChange: (sessionId: string) => void;
+  returnToWelcome: () => void;
   variant?: 'inline' | 'modal';
 }
 
@@ -49,6 +50,7 @@ export default function SessionPanel({
   onClose, 
   currentSessionId,
   onSessionChange,
+  returnToWelcome,
   variant = 'modal' 
 }: SessionPanelProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -155,7 +157,7 @@ export default function SessionPanel({
       
       // If we deleted the current session, trigger a page reload to return to welcome state
       if (currentSessionId === sessionId) {
-        window.location.reload();
+        returnToWelcome();
       }
     } catch (err) {
       console.error('Error deleting session:', err);
@@ -220,7 +222,7 @@ export default function SessionPanel({
       
       // If we deleted the current session, trigger a page reload to return to welcome state
       if (currentSessionId === selectedSessionForAction) {
-        window.location.reload();
+        returnToWelcome();
       }
       
       setDeleteConversationDialogOpen(false);
@@ -321,7 +323,7 @@ export default function SessionPanel({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-2">
                       <h3 className="font-medium text-sm truncate">
-                        {session.id === 'default' ? 'Default Chat' : session.id}
+                        {session.id}
                       </h3>
                       {currentSessionId === session.id && (
                         <Badge variant="secondary" className="text-xs">
@@ -372,26 +374,24 @@ export default function SessionPanel({
                         </Button>
                         
                         {/* Delete Conversation Button */}
-                        {session.id !== 'default' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedSessionForAction(session.id);
-                              setDeleteConversationDialogOpen(true);
-                            }}
-                            className="h-8 w-8 p-0"
-                            title="Delete Conversation"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSessionForAction(session.id);
+                            setDeleteConversationDialogOpen(true);
+                          }}
+                          className="h-8 w-8 p-0"
+                          title="Delete Conversation"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </>
                     )}
                     
                     {/* Delete Session Button */}
-                    {session.id !== 'default' && session.messageCount === 0 && (
+                    {session.messageCount === 0 && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -458,7 +458,7 @@ export default function SessionPanel({
             </DialogTitle>
             <DialogDescription>
               This will clear all messages in this conversation while keeping the session active.
-              {selectedSessionForAction && selectedSessionForAction !== 'default' && (
+              {selectedSessionForAction && (
                 <span className="block mt-2 font-medium">
                   Session: <span className="font-mono">{selectedSessionForAction}</span>
                 </span>
@@ -492,7 +492,7 @@ export default function SessionPanel({
             </DialogTitle>
             <DialogDescription>
               This will permanently delete this conversation and all its messages. This action cannot be undone.
-              {selectedSessionForAction && selectedSessionForAction !== 'default' && (
+              {selectedSessionForAction && (
                 <span className="block mt-2 font-medium">
                   Session: <span className="font-mono">{selectedSessionForAction}</span>
                 </span>
