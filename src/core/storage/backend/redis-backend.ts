@@ -22,6 +22,7 @@ export interface RedisBackendConfig extends BackendConfig {
 /**
  * Redis storage backend for production cache operations.
  * Implements the CacheBackend interface with connection pooling and optimizations.
+ * EXPERIMENTAL - NOT FULLY TESTED YET
  */
 export class RedisBackend implements CacheBackend {
     private redis: Redis | null = null;

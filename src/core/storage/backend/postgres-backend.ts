@@ -19,6 +19,7 @@ export interface PostgresBackendConfig extends BackendConfig {
 /**
  * PostgreSQL storage backend for production database operations.
  * Implements the DatabaseBackend interface with connection pooling and JSONB support.
+ * EXPERIMENTAL - NOT FULLY TESTED YET
  */
 export class PostgresBackend implements DatabaseBackend {
     private pool: Pool | null = null;
