@@ -13,6 +13,7 @@ import {
 } from './ui/dropdown-menu';
 import { Paperclip, SendHorizontal, X, Loader2, Bot, ChevronDown, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
+import { useChatContext } from './hooks/ChatContext';
 
 interface InputAreaProps {
   onSend: (content: string, imageData?: { base64: string; mimeType: string }) => void;
@@ -24,6 +25,9 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [imageData, setImageData] = useState<{ base64: string; mimeType: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Get current session context to ensure model switch applies to the correct session
+  const { currentSessionId } = useChatContext();
   
   // LLM selector state
   const [currentModel, setCurrentModel] = useState('Loading...');
@@ -142,14 +146,22 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     setIsLoadingModel(true);
     setModelSwitchError(null); // Clear any previous errors
     try {
+      const requestBody: any = {
+        provider: model.provider,
+        model: model.model,
+        router: 'vercel'
+      };
+
+      // Include current session ID to ensure model switch applies to the correct session
+      // If there's no active session, it will fall back to the default session behavior
+      if (currentSessionId) {
+        requestBody.sessionId = currentSessionId;
+      }
+
       const response = await fetch('/api/llm/switch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: model.provider,
-          model: model.model,
-          router: 'vercel'
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const result = await response.json();
