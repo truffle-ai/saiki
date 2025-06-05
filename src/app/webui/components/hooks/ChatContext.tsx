@@ -8,9 +8,10 @@ interface ChatContextType {
   sendMessage: (content: string, imageData?: { base64: string; mimeType: string }) => void;
   status: 'connecting' | 'open' | 'closed';
   reset: () => void;
-  currentSessionId: string;
+  currentSessionId: string | null;
   switchSession: (sessionId: string) => void;
   loadSessionHistory: (sessionId: string) => Promise<void>;
+  isWelcomeState: boolean;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -30,17 +31,86 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const [currentSessionId, setCurrentSessionId] = useState<string>('default');
+  // Start with no session
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isWelcomeState, setIsWelcomeState] = useState(true);
   const { messages, sendMessage: originalSendMessage, status, reset: originalReset, setMessages } = useChat(wsUrl);
 
-  // Enhanced sendMessage with session support
-  const sendMessage = useCallback((content: string, imageData?: { base64: string; mimeType: string }) => {
-    originalSendMessage(content, imageData, currentSessionId);
-  }, [originalSendMessage, currentSessionId]);
+  // Generate a session name based on timestamp and content preview
+  const generateSessionName = useCallback((firstMessage: string): string => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+    
+    // Create a short preview of the message
+    const preview = firstMessage.length > 30 
+      ? firstMessage.substring(0, 30).trim() + '...'
+      : firstMessage.trim();
+    
+    return `${timeStr} ${preview}`;
+  }, []);
+
+  // Auto-create session on first message
+  const createAutoSession = useCallback(async (firstMessage: string): Promise<string> => {
+    try {
+      const sessionName = generateSessionName(firstMessage);
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sessionName }),
+      });
+      
+      if (!response.ok) {
+        // If the generated name conflicts, fall back to auto-generated ID
+        const fallbackResponse = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}), // Let server generate ID
+        });
+        
+        if (!fallbackResponse.ok) {
+          throw new Error('Failed to create session');
+        }
+        
+        const fallbackData = await fallbackResponse.json();
+        return fallbackData.session.id;
+      }
+      
+      const data = await response.json();
+      return data.session.id;
+    } catch (error) {
+      console.error('Error creating auto session:', error);
+      // Fallback to a simple timestamp-based session ID
+      return `chat-${Date.now()}`;
+    }
+  }, [generateSessionName]);
+
+  // Enhanced sendMessage with auto-session creation
+  const sendMessage = useCallback(async (content: string, imageData?: { base64: string; mimeType: string }) => {
+    let sessionId = currentSessionId;
+    
+    // Auto-create session on first message
+    if (!sessionId && isWelcomeState) {
+      sessionId = await createAutoSession(content);
+      setCurrentSessionId(sessionId);
+      setIsWelcomeState(false);
+    }
+    
+    if (sessionId) {
+      originalSendMessage(content, imageData, sessionId);
+    } else {
+      console.error('No session available for sending message');
+    }
+  }, [originalSendMessage, currentSessionId, isWelcomeState, createAutoSession]);
 
   // Enhanced reset with session support
   const reset = useCallback(() => {
-    originalReset(currentSessionId);
+    if (currentSessionId) {
+      originalReset(currentSessionId);
+    }
   }, [originalReset, currentSessionId]);
 
   // Load session history when switching sessions
@@ -95,13 +165,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     if (sessionId === currentSessionId) return;
     
     setCurrentSessionId(sessionId);
+    setIsWelcomeState(false); // No longer in welcome state
     await loadSessionHistory(sessionId);
   }, [currentSessionId, loadSessionHistory]);
 
-  // Load default session history on mount
-  useEffect(() => {
-    loadSessionHistory('default');
-  }, [loadSessionHistory]);
+  // Don't auto-load any session on mount - start in welcome state
+  // Users see a clean slate initially
 
   // Listen for config-related WebSocket events via DOM events
   useEffect(() => {
@@ -143,7 +212,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       reset,
       currentSessionId,
       switchSession,
-      loadSessionHistory
+      loadSessionHistory,
+      isWelcomeState
     }}>
       {children}
     </ChatContext.Provider>

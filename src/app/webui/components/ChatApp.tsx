@@ -27,7 +27,7 @@ import {
 } from './ui/dropdown-menu';
 
 export default function ChatApp() {
-  const { messages, sendMessage, currentSessionId, switchSession } = useChatContext();
+  const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState } = useChatContext();
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [isServerRegistryOpen, setServerRegistryOpen] = useState(false);
@@ -52,7 +52,7 @@ export default function ChatApp() {
   useEffect(() => {
     if (isExportOpen) {
       // Include current session ID in config export if available
-      const exportUrl = currentSessionId && currentSessionId !== 'default' 
+      const exportUrl = currentSessionId 
         ? `/api/config.yaml?sessionId=${currentSessionId}`
         : '/api/config.yaml';
       
@@ -78,7 +78,7 @@ export default function ChatApp() {
 
   const handleDownload = useCallback(async () => {
     try {
-      const exportUrl = currentSessionId && currentSessionId !== 'default' 
+      const exportUrl = currentSessionId 
         ? `/api/config.yaml?sessionId=${currentSessionId}`
         : '/api/config.yaml';
       
@@ -90,7 +90,7 @@ export default function ChatApp() {
       const link = document.createElement('a');
       link.href = url;
       
-      const fileName = currentSessionId && currentSessionId !== 'default'
+      const fileName = currentSessionId
         ? `${exportName}-${currentSessionId}.yml`
         : `${exportName}.yml`;
       link.download = fileName;
@@ -109,7 +109,7 @@ export default function ChatApp() {
 
   const handleCopy = useCallback(async () => {
     try {
-      const exportUrl = currentSessionId && currentSessionId !== 'default' 
+      const exportUrl = currentSessionId 
         ? `/api/config.yaml?sessionId=${currentSessionId}`
         : '/api/config.yaml';
       
@@ -197,16 +197,17 @@ export default function ChatApp() {
         throw new Error('Failed to delete conversation');
       }
 
-      // Switch to default session after deletion
-      await switchSession('default');
+      // After deleting, return to welcome state
+      // Don't switch to any specific session, let user start fresh
       setDeleteDialogOpen(false);
+      window.location.reload(); // Simple way to reset to welcome state
     } catch (error) {
       console.error('Error deleting conversation:', error);
       // You might want to show a toast notification here
     } finally {
       setIsDeleting(false);
     }
-  }, [currentSessionId, switchSession]);
+  }, [currentSessionId]);
 
   const quickActions = [
     {
@@ -293,11 +294,11 @@ export default function ChatApp() {
                 <h1 className="text-base font-semibold tracking-tight">Saiki</h1>
               </div>
               
-              {/* Current Session Indicator */}
-              {currentSessionId && (
+              {/* Current Session Indicator - Only show when there's an active session */}
+              {currentSessionId && !isWelcomeState && (
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline" className="text-xs">
-                    {currentSessionId === 'default' ? 'Default Chat' : currentSessionId}
+                    {currentSessionId}
                   </Badge>
                 </div>
               )}
@@ -366,6 +367,23 @@ export default function ChatApp() {
                     <Keyboard className="h-4 w-4 mr-2" />
                     Shortcuts
                   </DropdownMenuItem>
+                  {/* Session Management Actions - Only show when there's an active session */}
+                  {currentSessionId && !isWelcomeState && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setResetDialogOpen(true)}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset Conversation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Conversation
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -376,24 +394,19 @@ export default function ChatApp() {
         <div className="flex-1 flex overflow-hidden">
           {/* Chat Content */}
           <div className="flex-1 flex flex-col">
-            {messages.length === 0 ? (
+            {isWelcomeState || messages.length === 0 ? (
               /* Welcome Screen - Clean Design */
               <div className="flex-1 flex items-center justify-center p-6">
-                <div className="w-full max-w-2xl mx-auto text-center space-y-8">
+                <div className="w-full max-w-md space-y-8">
                   <div className="space-y-4">
                     <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-2xl bg-primary/10 text-primary">
                       <img src="/logo.png" alt="Saiki" className="w-8 h-8" />
                     </div>
                     <div className="space-y-2">
-                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">Hello, I'm Saiki!</h2>
-                      <p className="text-muted-foreground text-base">
+                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent text-center">Hello, I'm Saiki!</h2>
+                      <p className="text-muted-foreground text-base text-center">
                         Try asking me something or connect new tools to expand what I can do
                       </p>
-                      {currentSessionId !== 'default' && (
-                        <p className="text-sm text-muted-foreground">
-                          Currently in session: <span className="font-mono">{currentSessionId}</span>
-                        </p>
-                      )}
                     </div>
                   </div>
 
@@ -421,7 +434,7 @@ export default function ChatApp() {
                   </div>
                 
                   {/* Quick Tips */}
-                  <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="text-xs text-muted-foreground space-y-1 text-center">
                     <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools/servers, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground</p>
                   </div>
                 </div>

@@ -39,7 +39,7 @@ interface Session {
 interface SessionPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  currentSessionId?: string;
+  currentSessionId?: string | null;
   onSessionChange: (sessionId: string) => void;
   variant?: 'inline' | 'modal';
 }
@@ -140,11 +140,6 @@ export default function SessionPanel({
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (sessionId === 'default') {
-      setError('Cannot delete the default session');
-      return;
-    }
-    
     setDeletingSessionId(sessionId);
     try {
       const response = await fetch(`/api/sessions/${sessionId}`, {
@@ -158,9 +153,9 @@ export default function SessionPanel({
       
       setSessions(prev => prev.filter(s => s.id !== sessionId));
       
-      // If we deleted the current session, switch to default
+      // If we deleted the current session, trigger a page reload to return to welcome state
       if (currentSessionId === sessionId) {
-        onSessionChange('default');
+        window.location.reload();
       }
     } catch (err) {
       console.error('Error deleting session:', err);
@@ -223,9 +218,9 @@ export default function SessionPanel({
       // Remove session from local state
       setSessions(prev => prev.filter(s => s.id !== selectedSessionForAction));
       
-      // If we deleted the current session, switch to default
+      // If we deleted the current session, trigger a page reload to return to welcome state
       if (currentSessionId === selectedSessionForAction) {
-        onSessionChange('default');
+        window.location.reload();
       }
       
       setDeleteConversationDialogOpen(false);
@@ -265,7 +260,7 @@ export default function SessionPanel({
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         <div className="flex items-center space-x-2">
           <MessageSquare className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">Chat Sessions</h2>
+          <h2 className="text-lg font-semibold">Sessions</h2>
         </div>
         <div className="flex items-center space-x-2">
           <Button

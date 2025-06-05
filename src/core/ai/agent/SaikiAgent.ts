@@ -82,6 +82,9 @@ export class SaikiAgent {
     // Default session for backward compatibility
     private defaultSession: ChatSession | null = null;
 
+    // Current default session ID for loadSession functionality
+    private currentDefaultSessionId: string = 'default';
+
     constructor(services: AgentServices) {
         // Validate all required services are provided
         for (const service of requiredServices) {
@@ -126,18 +129,23 @@ export class SaikiAgent {
                     (await this.sessionManager.getSession(sessionId)) ??
                     (await this.sessionManager.createSession(sessionId));
             } else {
-                // Use default session for backward compatibility
-                if (!this.defaultSession) {
-                    this.defaultSession = await this.sessionManager.createSession('default');
+                // Use loaded default session for backward compatibility
+                if (
+                    !this.defaultSession ||
+                    this.defaultSession.id !== this.currentDefaultSessionId
+                ) {
+                    this.defaultSession = await this.sessionManager.createSession(
+                        this.currentDefaultSessionId
+                    );
                     logger.debug(
-                        `SaikiAgent.run: created default session ${this.defaultSession.id}`
+                        `SaikiAgent.run: created/loaded default session ${this.defaultSession.id}`
                     );
                 }
                 session = this.defaultSession;
             }
 
             logger.debug(
-                `SaikiAgent.run: userInput: ${userInput}, imageDataInput: ${imageDataInput}, sessionId: ${sessionId || 'default'}`
+                `SaikiAgent.run: userInput: ${userInput}, imageDataInput: ${imageDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
             );
             const response = await session.run(userInput, imageDataInput);
 
@@ -191,8 +199,8 @@ export class SaikiAgent {
      * @param sessionId The session ID to delete
      */
     public async deleteSession(sessionId: string): Promise<void> {
-        // If deleting the default session, clear our reference
-        if (sessionId === 'default') {
+        // If deleting the currently loaded default session, clear our reference
+        if (sessionId === this.currentDefaultSessionId) {
             this.defaultSession = null;
         }
         return this.sessionManager.deleteSession(sessionId);
@@ -230,19 +238,87 @@ export class SaikiAgent {
     }
 
     /**
+     * Loads a session as the new "default" session for this agent.
+     * All subsequent operations that don't specify a session ID will use this session.
+     * This provides a clean "current working session" pattern for API users.
+     *
+     * @param sessionId The session ID to load as default, or null to reset to original default
+     * @throws Error if session doesn't exist
+     *
+     * @example
+     * ```typescript
+     * // Load a specific session as default
+     * await agent.loadSession('project-alpha');
+     * await agent.run("What's the status?"); // Uses project-alpha session
+     *
+     * // Reset to original default
+     * await agent.loadSession(null);
+     * await agent.run("Hello"); // Uses 'default' session
+     * ```
+     */
+    public async loadSession(sessionId: string | null = null): Promise<void> {
+        if (sessionId === null) {
+            this.currentDefaultSessionId = 'default';
+            this.defaultSession = null; // Clear cached session to force reload
+            logger.debug('Agent default session reset to original default');
+            return;
+        }
+
+        // Verify session exists before loading it
+        const session = await this.sessionManager.getSession(sessionId);
+        if (!session) {
+            throw new Error(`Session '${sessionId}' not found`);
+        }
+
+        this.currentDefaultSessionId = sessionId;
+        this.defaultSession = null; // Clear cached session to force reload
+        logger.debug(`Agent default session changed to: ${sessionId}`);
+    }
+
+    /**
+     * Gets the currently loaded default session ID.
+     * This reflects the session loaded via loadSession().
+     *
+     * @returns The current default session ID
+     */
+    public getCurrentSessionId(): string {
+        return this.currentDefaultSessionId;
+    }
+
+    /**
+     * Gets the currently loaded default session.
+     * This respects the session loaded via loadSession().
+     *
+     * @returns The current default ChatSession
+     */
+    public async getDefaultSession(): Promise<ChatSession> {
+        if (!this.defaultSession || this.defaultSession.id !== this.currentDefaultSessionId) {
+            this.defaultSession = await this.sessionManager.createSession(
+                this.currentDefaultSessionId
+            );
+        }
+        return this.defaultSession;
+    }
+
+    /**
      * Resets the conversation history for a specific session or the default session.
      * Keeps the session alive but the conversation history is cleared.
-     * @param sessionId Optional session ID. If not provided, resets the default session.
+     * @param sessionId Optional session ID. If not provided, resets the currently loaded default session.
      */
     public async resetConversation(sessionId?: string): Promise<void> {
         try {
-            const targetSessionId = sessionId || 'default';
+            const targetSessionId = sessionId || this.currentDefaultSessionId;
 
-            // Ensure session exists or create default session
+            // Ensure session exists or create loaded default session
             if (!sessionId) {
-                // Use default session for backward compatibility
-                if (!this.defaultSession) {
-                    this.defaultSession = await this.sessionManager.createSession('default');
+                // Use loaded default session for backward compatibility
+                if (
+                    !this.defaultSession ||
+                    this.defaultSession.id !== this.currentDefaultSessionId
+                ) {
+                    this.defaultSession = await this.sessionManager.createSession(
+                        this.currentDefaultSessionId
+                    );
                 }
             }
 
