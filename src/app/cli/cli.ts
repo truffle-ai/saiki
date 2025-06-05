@@ -83,7 +83,7 @@ export async function startAiCli(agent: SaikiAgent) {
                 }
                 process.stdin.resume();
                 rl.question(
-                    chalk.bold.green('\nWhat would you like to do? (type "help" for commands)'),
+                    chalk.bold.green('\nWhat would you like to do? (type "help" for commands) '),
                     (answer) => {
                         resolve(answer.trim());
                     }
