@@ -31,11 +31,7 @@ import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { StaticConfigManager } from '../config/static-config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager } from '../ai/session/session-manager.js';
-import {
-    initializeStorage,
-    type StorageBackends,
-    type StorageBackendConfig,
-} from '../storage/index.js';
+import { initializeStorage, type StorageBackends } from '../storage/index.js';
 import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/factory.js';
 import { logger } from '../logger/index.js';
 import type { CLIConfigOverrides, StorageConfig } from '../config/types.js';
@@ -105,8 +101,7 @@ export async function createAgentServices(
 
     // 3. Initialize storage backends
     logger.debug('Initializing storage backends');
-    const storage =
-        overrides?.storage ?? (await initializeStorage(config.storage as StorageBackendConfig));
+    const storage = overrides?.storage ?? (await initializeStorage(config.storage));
 
     logger.debug('Storage backends initialized', {
         cache: config.storage.cache.type,

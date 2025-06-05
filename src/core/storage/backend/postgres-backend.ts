@@ -1,20 +1,6 @@
 import { Pool, PoolClient } from 'pg';
 import type { DatabaseBackend } from './database-backend.js';
-import type { BackendConfig } from './types.js';
-
-export interface PostgresBackendConfig extends BackendConfig {
-    type: 'postgres';
-    connectionString: string;
-    maxConnections?: number;
-    idleTimeoutMillis?: number;
-    connectionTimeoutMillis?: number;
-    options?: {
-        ssl?: boolean | object;
-        application_name?: string;
-        statement_timeout?: number;
-        query_timeout?: number;
-    };
-}
+import type { PostgresBackendConfig } from '../../config/schemas.js';
 
 /**
  * PostgreSQL storage backend for production database operations.
@@ -31,7 +17,7 @@ export class PostgresBackend implements DatabaseBackend {
         if (this.connected) return;
 
         this.pool = new Pool({
-            connectionString: this.config.connectionString,
+            connectionString: this.config.connectionString || this.config.url,
             max: this.config.maxConnections || 20,
             idleTimeoutMillis: this.config.idleTimeoutMillis || 30000,
             connectionTimeoutMillis: this.config.connectionTimeoutMillis || 2000,

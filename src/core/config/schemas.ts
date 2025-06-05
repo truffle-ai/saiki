@@ -360,6 +360,8 @@ const MemoryBackendSchema = BaseBackendSchema.extend({
     // Memory backend doesn't need connection options, but inherits pool options for consistency
 }).strict();
 
+export type MemoryBackendConfig = z.infer<typeof MemoryBackendSchema>;
+
 // Redis backend configuration
 const RedisBackendSchema = BaseBackendSchema.extend({
     type: z.literal('redis'),
@@ -369,6 +371,8 @@ const RedisBackendSchema = BaseBackendSchema.extend({
     password: z.string().optional().describe('Redis password'),
     database: z.number().int().nonnegative().optional().describe('Redis database number'),
 }).strict();
+
+export type RedisBackendConfig = z.infer<typeof RedisBackendSchema>;
 
 // SQLite backend configuration
 const SqliteBackendSchema = BaseBackendSchema.extend({
@@ -382,6 +386,8 @@ const SqliteBackendSchema = BaseBackendSchema.extend({
     database: z.string().optional().describe('Database filename (default: saiki.db)'),
 }).strict();
 
+export type SqliteBackendConfig = z.infer<typeof SqliteBackendSchema>;
+
 // PostgreSQL backend configuration
 const PostgresBackendSchema = BaseBackendSchema.extend({
     type: z.literal('postgres'),
@@ -392,6 +398,8 @@ const PostgresBackendSchema = BaseBackendSchema.extend({
     database: z.string().optional().describe('PostgreSQL database name'),
     password: z.string().optional().describe('PostgreSQL password'),
 }).strict();
+
+export type PostgresBackendConfig = z.infer<typeof PostgresBackendSchema>;
 
 // Backend configuration using discriminated union
 const BackendConfigSchema = z
@@ -434,6 +442,8 @@ const BackendConfigSchema = z
             }
         }
     });
+
+export type BackendConfig = z.infer<typeof BackendConfigSchema>;
 
 // Storage configuration with cache and database backends
 export const StorageSchema = z

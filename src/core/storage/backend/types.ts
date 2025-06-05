@@ -4,6 +4,16 @@ import type { DatabaseBackend } from './database-backend.js';
 // Re-export interfaces
 export type { CacheBackend, DatabaseBackend };
 
+// Re-export schema types for convenience
+export type {
+    BackendConfig,
+    StorageConfig,
+    MemoryBackendConfig,
+    RedisBackendConfig,
+    SqliteBackendConfig,
+    PostgresBackendConfig,
+} from '../../config/schemas.js';
+
 /**
  * Collection of storage backends for different use cases
  */
@@ -13,39 +23,13 @@ export interface StorageBackends {
 }
 
 /**
- * Configuration for storage backends
- */
-export interface BackendConfig {
-    type: 'memory' | 'redis' | 'sqlite' | 'postgres';
-    url?: string;
-    path?: string;
-    connectionString?: string;
-    host?: string;
-    port?: number;
-    password?: string;
-    database?: number;
-    maxConnections?: number;
-    idleTimeoutMillis?: number;
-    connectionTimeoutMillis?: number;
-    options?: Record<string, any>;
-}
-
-/**
- * Storage configuration
- */
-export interface StorageBackendConfig {
-    cache: BackendConfig;
-    database: BackendConfig;
-}
-
-/**
  * Error types for storage operations
  */
 export class StorageError extends Error {
     constructor(
         message: string,
         public readonly operation: string,
-        public override readonly cause?: Error
+        public readonly cause?: Error
     ) {
         super(message);
         this.name = 'StorageError';

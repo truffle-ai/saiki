@@ -1,23 +1,6 @@
 import { Redis } from 'ioredis';
 import type { CacheBackend } from './cache-backend.js';
-import type { BackendConfig } from './types.js';
-
-export interface RedisBackendConfig extends BackendConfig {
-    type: 'redis';
-    host: string;
-    port: number;
-    password?: string;
-    database?: number;
-    ipv6?: boolean;
-    timeout?: number;
-    options?: {
-        connectTimeout?: number;
-        commandTimeout?: number;
-        retryDelayOnFailover?: number;
-        maxRetriesPerRequest?: number;
-        family?: 4 | 6;
-    };
-}
+import type { RedisBackendConfig } from '../../config/schemas.js';
 
 /**
  * Redis storage backend for production cache operations.
@@ -38,10 +21,9 @@ export class RedisBackend implements CacheBackend {
             port: this.config.port,
             ...(this.config.password && { password: this.config.password }),
             db: this.config.database || 0,
-            family: this.config.ipv6 ? 6 : 4,
-            connectTimeout: this.config.timeout,
-            commandTimeout: this.config.timeout,
-            retryDelayOnFailover: 100,
+            family: 4, // IPv4 by default
+            connectTimeout: this.config.connectionTimeoutMillis,
+            commandTimeout: this.config.connectionTimeoutMillis,
             maxRetriesPerRequest: 3,
             lazyConnect: true,
             ...this.config.options,

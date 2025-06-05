@@ -40,16 +40,13 @@ export type {
     CacheBackend,
     DatabaseBackend,
     StorageBackends,
-    StorageBackendConfig,
     BackendConfig,
+    StorageConfig,
 } from './backend/types.js';
 
 // Backend implementations - always available
 export { MemoryBackend } from './backend/memory-backend.js';
 
-// Optional backend configurations (types only - implementations are lazy-loaded)
-export type { SQLiteBackendConfig } from './backend/sqlite-backend.js';
-export type { RedisBackendConfig } from './backend/redis-backend.js';
-export type { PostgresBackendConfig } from './backend/postgres-backend.js';
-
+// Note: Backend configuration types (RedisBackendConfig, PostgresBackendConfig, etc.)
+// are exported from './config/schemas.js' to maintain single source of truth
 // Note: Actual backend classes are lazy-loaded by StorageManager to handle optional dependencies

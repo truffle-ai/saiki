@@ -20,6 +20,6 @@ export type {
     CacheBackend,
     DatabaseBackend,
     StorageBackends,
-    StorageBackendConfig,
     BackendConfig,
+    StorageConfig,
 } from './backend/types.js';

@@ -3,24 +3,13 @@ import { mkdirSync } from 'fs';
 import type { DatabaseBackend } from './database-backend.js';
 import { StoragePathResolver } from '../path-resolver.js';
 import { logger } from '../../logger/index.js';
-import type { BackendConfig } from './types.js';
+import type { SqliteBackendConfig } from '../../config/schemas.js';
 import { isSaikiProject } from '../../utils/path.js';
 import * as path from 'path';
 import { homedir } from 'os';
 
 // Dynamic import for better-sqlite3
 let Database: any;
-
-export interface SQLiteBackendConfig {
-    type: 'sqlite';
-    path?: string; // Optional custom path, if not provided will auto-detect using path resolver
-    database?: string; // Database name within the storage directory (default: 'saiki.db')
-    // SQLite-specific options
-    readonly?: boolean;
-    fileMustExist?: boolean;
-    timeout?: number;
-    verbose?: boolean;
-}
 
 /**
  * SQLite storage backend for local development and production.
@@ -29,9 +18,9 @@ export interface SQLiteBackendConfig {
 export class SQLiteBackend implements DatabaseBackend {
     private db: any; // Database.Database
     private dbPath: string;
-    private config: SQLiteBackendConfig;
+    private config: SqliteBackendConfig;
 
-    constructor(config: SQLiteBackendConfig) {
+    constructor(config: SqliteBackendConfig) {
         this.config = config;
         // Path will be resolved in connect() method
         this.dbPath = '';
@@ -95,7 +84,7 @@ export class SQLiteBackend implements DatabaseBackend {
         if (!Database) {
             try {
                 const module = await import('better-sqlite3');
-                Database = module.default;
+                Database = (module as any).default || module;
             } catch (error) {
                 throw new Error(
                     `Failed to import better-sqlite3: ${error instanceof Error ? error.message : String(error)}`
@@ -122,17 +111,18 @@ export class SQLiteBackend implements DatabaseBackend {
         }
 
         // Initialize SQLite database
+        const sqliteOptions = this.config.options || {};
         logger.debug(`SQLite initializing database with config:`, {
-            readonly: this.config.readonly || false,
-            fileMustExist: this.config.fileMustExist || false,
-            timeout: this.config.timeout || 5000,
+            readonly: sqliteOptions.readonly || false,
+            fileMustExist: sqliteOptions.fileMustExist || false,
+            timeout: sqliteOptions.timeout || 5000,
         });
 
         this.db = new Database(this.dbPath, {
-            readonly: this.config.readonly || false,
-            fileMustExist: this.config.fileMustExist || false,
-            timeout: this.config.timeout || 5000,
-            verbose: this.config.verbose
+            readonly: sqliteOptions.readonly || false,
+            fileMustExist: sqliteOptions.fileMustExist || false,
+            timeout: sqliteOptions.timeout || 5000,
+            verbose: sqliteOptions.verbose
                 ? (message?: unknown, ...additionalArgs: unknown[]) => {
                       logger.debug(
                           typeof message === 'string' || typeof message === 'object'

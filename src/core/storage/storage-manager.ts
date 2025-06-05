@@ -2,7 +2,7 @@ import type {
     CacheBackend,
     DatabaseBackend,
     StorageBackends,
-    StorageBackendConfig,
+    StorageConfig,
 } from './backend/types.js';
 import { MemoryBackend } from './backend/memory-backend.js';
 import { logger } from '../logger/index.js';
@@ -17,12 +17,12 @@ let PostgresBackend: any;
  * Handles both cache and database backends with automatic fallbacks.
  */
 export class StorageManager {
-    private config: StorageBackendConfig;
+    private config: StorageConfig;
     private cache?: CacheBackend;
     private database?: DatabaseBackend;
     private connected = false;
 
-    constructor(config: StorageBackendConfig) {
+    constructor(config: StorageConfig) {
         this.config = config;
     }
 
@@ -222,7 +222,7 @@ let defaultStorageManager: StorageManager | null = null;
 /**
  * Initialize the default storage manager with configuration
  */
-export async function initializeStorage(config: StorageBackendConfig): Promise<StorageBackends> {
+export async function initializeStorage(config: StorageConfig): Promise<StorageBackends> {
     if (defaultStorageManager) {
         await defaultStorageManager.disconnect();
     }
