@@ -349,7 +349,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Get current LLM configuration
     app.get('/api/llm/current', async (req, res) => {
         try {
-            const currentConfig = agent.getCurrentLLMConfig();
+            const { sessionId } = req.query;
+
+            // Use session-specific config if sessionId is provided, otherwise use default
+            const currentConfig = sessionId
+                ? agent.getEffectiveConfig(sessionId as string).llm
+                : agent.getCurrentLLMConfig();
+
             res.json({ config: currentConfig });
         } catch (error: any) {
             logger.error(`Error getting current LLM config: ${error.message}`);

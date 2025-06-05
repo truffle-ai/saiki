@@ -46,7 +46,12 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   useEffect(() => {
     const fetchCurrentModel = async () => {
       try {
-        const response = await fetch('/api/llm/current');
+        // Include session ID in the request to get the model for the specific session
+        const url = currentSessionId 
+          ? `/api/llm/current?sessionId=${currentSessionId}` 
+          : '/api/llm/current';
+        
+        const response = await fetch(url);
         if (response.ok) {
           const config = await response.json();
           // Try to match with core models first
@@ -65,7 +70,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     };
 
     fetchCurrentModel();
-  }, []);
+  }, [currentSessionId]); // Re-fetch whenever the session changes
 
   const adjustTextareaHeight = useCallback(() => {
     if (textareaRef.current) {
