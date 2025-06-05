@@ -26,6 +26,9 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
         logger.error(`Failed connections: ${Object.keys(failedConnections).length}.`, null, 'red');
     }
 
+    // // Reset conversation
+    // await agent.resetConversation();
+
     // Set up event management
     logger.info('Setting up CLI event subscriptions...');
     const cliSubscriber = new CLISubscriber();
@@ -79,9 +82,12 @@ export async function startAiCli(agent: SaikiAgent) {
                     return;
                 }
                 process.stdin.resume();
-                rl.question(chalk.bold.green('\nWhat would you like to do? '), (answer) => {
-                    resolve(answer.trim());
-                });
+                rl.question(
+                    chalk.bold.green('\nWhat would you like to do? (type "help" for commands)'),
+                    (answer) => {
+                        resolve(answer.trim());
+                    }
+                );
             });
         };
 
@@ -159,6 +165,7 @@ export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promi
     await _initCli(agent);
     try {
         // Execute the task
+        // await agent.resetConversation();
         await agent.run(prompt);
     } catch (error) {
         logger.error(
