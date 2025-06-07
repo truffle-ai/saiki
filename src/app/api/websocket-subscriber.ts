@@ -153,7 +153,6 @@ export class WebSocketEventSubscriber implements EventSubscriber {
                         name: payload.name,
                         success: payload.success,
                         error: payload.error,
-                        sessionId: payload.sessionId,
                     },
                 });
             },
@@ -168,7 +167,6 @@ export class WebSocketEventSubscriber implements EventSubscriber {
                     data: {
                         tools: payload.tools,
                         source: payload.source,
-                        sessionId: payload.sessionId,
                     },
                 });
             },

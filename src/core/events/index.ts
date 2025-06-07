@@ -53,14 +53,12 @@ export interface AgentEventMap {
         name: string;
         success: boolean;
         error?: string;
-        sessionId: string;
     };
 
     /** Fired when available tools list updates */
     'saiki:availableToolsUpdated': {
         tools: string[];
         source: 'mcp' | 'builtin';
-        sessionId: string;
     };
 
     /** Fired when LLM service switched */
