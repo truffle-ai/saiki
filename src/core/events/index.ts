@@ -66,8 +66,7 @@ export interface AgentEventMap {
         newConfig: any; // LLMConfig type
         router?: string;
         historyRetained?: boolean;
-        sessionId: string;
-        sessionIds?: string[];
+        sessionIds: string[];
     };
 
     // Session events forwarded to agent bus (with sessionId added)

@@ -478,7 +478,7 @@ export class SessionManager {
             newConfig: newLLMConfig,
             router: newLLMConfig.router,
             historyRetained: true,
-            sessionId: sessionId,
+            sessionIds: [sessionId],
         });
 
         const message = `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router for session ${sessionId}`;
@@ -502,7 +502,7 @@ export class SessionManager {
             newConfig: newLLMConfig,
             router: newLLMConfig.router,
             historyRetained: true,
-            sessionId: defaultSession.id,
+            sessionIds: [defaultSession.id],
         });
 
         const message = `Successfully switched to ${newLLMConfig.provider}/${newLLMConfig.model} using ${newLLMConfig.router} router`;
