@@ -26,7 +26,7 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
         logger.error(`Failed connections: ${Object.keys(failedConnections).length}.`, null, 'red');
     }
 
-    // // Reset conversation
+    // Reset conversation
     // await agent.resetConversation();
 
     // Set up event management
@@ -165,7 +165,8 @@ export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promi
     await _initCli(agent);
     try {
         // Execute the task
-        // await agent.resetConversation();
+        // reset conversation for headless mode
+        await agent.resetConversation();
         await agent.run(prompt);
     } catch (error) {
         logger.error(
