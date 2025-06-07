@@ -42,6 +42,7 @@ export class SessionManager {
     private readonly sessionTTL: number;
     private initialized = false;
     private cleanupInterval?: NodeJS.Timeout;
+    private initializationPromise: Promise<void>;
 
     constructor(
         private services: {
@@ -132,7 +133,10 @@ export class SessionManager {
      */
     private async ensureInitialized(): Promise<void> {
         if (!this.initialized) {
-            await this.init();
+            if (!this.initializationPromise) {
+                this.initializationPromise = this.init();
+            }
+            await this.initializationPromise;
         }
     }
 
