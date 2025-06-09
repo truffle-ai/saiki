@@ -12,6 +12,8 @@ let SQLiteBackend: any;
 let RedisBackend: any;
 let PostgresBackend: any;
 
+const HEALTH_CHECK_KEY = 'storage_manager_health_check';
+
 /**
  * Storage manager that initializes and manages storage backends.
  * Handles both cache and database backends with automatic fallbacks.
@@ -188,10 +190,10 @@ export class StorageManager {
 
         try {
             if (this.cache?.isConnected()) {
-                await this.cache.set('health_check', 'ok', 10);
-                const result = await this.cache.get('health_check');
+                await this.cache.set(HEALTH_CHECK_KEY, 'ok', 10);
+                const result = await this.cache.get(HEALTH_CHECK_KEY);
                 cacheHealthy = result === 'ok';
-                await this.cache.delete('health_check');
+                await this.cache.delete(HEALTH_CHECK_KEY);
             }
         } catch (error) {
             console.warn('Cache health check failed:', error);
@@ -199,10 +201,10 @@ export class StorageManager {
 
         try {
             if (this.database?.isConnected()) {
-                await this.database.set('health_check', 'ok');
-                const result = await this.database.get('health_check');
+                await this.database.set(HEALTH_CHECK_KEY, 'ok');
+                const result = await this.database.get(HEALTH_CHECK_KEY);
                 databaseHealthy = result === 'ok';
-                await this.database.delete('health_check');
+                await this.database.delete(HEALTH_CHECK_KEY);
             }
         } catch (error) {
             console.warn('Database health check failed:', error);
