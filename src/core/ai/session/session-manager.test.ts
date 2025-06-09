@@ -388,10 +388,17 @@ describe('SessionManager', () => {
                 createdAt: mockSessionData.createdAt,
                 lastActivity: mockSessionData.lastActivity,
                 messageCount: mockSessionData.messageCount,
+            });
+            expect(mockStorageManager.database.get).toHaveBeenCalledWith(`session:${sessionId}`);
+        });
+
+        test('should provide access to global configuration', async () => {
+            const config = sessionManager.getConfig();
+
+            expect(config).toEqual({
                 maxSessions: 10,
                 sessionTTL: 1800000,
             });
-            expect(mockStorageManager.database.get).toHaveBeenCalledWith(`session:${sessionId}`);
         });
 
         test('should list all active sessions', async () => {

@@ -13,6 +13,9 @@ export interface SessionMetadata {
     lastActivity: number;
     messageCount: number;
     // Additional metadata for session management
+}
+
+export interface SessionManagerConfig {
     maxSessions?: number;
     sessionTTL?: number;
 }
@@ -52,13 +55,10 @@ export class SessionManager {
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
         },
-        options: {
-            maxSessions?: number;
-            sessionTTL?: number;
-        } = {}
+        config: SessionManagerConfig = {}
     ) {
-        this.maxSessions = options.maxSessions ?? 100;
-        this.sessionTTL = options.sessionTTL ?? 3600000; // 1 hour
+        this.maxSessions = config.maxSessions ?? 100;
+        this.sessionTTL = config.sessionTTL ?? 3600000; // 1 hour
     }
 
     /**
@@ -329,10 +329,18 @@ export class SessionManager {
                   createdAt: sessionData.createdAt,
                   lastActivity: sessionData.lastActivity,
                   messageCount: sessionData.messageCount,
-                  maxSessions: this.maxSessions,
-                  sessionTTL: this.sessionTTL,
               }
             : undefined;
+    }
+
+    /**
+     * Get the global session manager configuration.
+     */
+    public getConfig(): SessionManagerConfig {
+        return {
+            maxSessions: this.maxSessions,
+            sessionTTL: this.sessionTTL,
+        };
     }
 
     /**
