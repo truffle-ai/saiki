@@ -221,31 +221,6 @@ export class SQLiteBackend implements DatabaseBackend {
     }
 
     // Schema management
-    private createTables(): void {
-        // Key-value store for settings, user data, etc.
-        this.db.exec(`
-      CREATE TABLE IF NOT EXISTS kv (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
-    `);
-
-        // List storage for messages, activities, etc.
-        this.db.exec(`
-      CREATE TABLE IF NOT EXISTS lists (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        key TEXT NOT NULL,
-        item TEXT NOT NULL,
-        created_at INTEGER NOT NULL
-      )
-    `);
-
-        // Indexes for performance
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_kv_key ON kv(key)');
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_lists_key ON lists(key)');
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_lists_created_at ON lists(key, created_at)');
-    }
 
     private checkConnection(): void {
         if (!this.db) {
