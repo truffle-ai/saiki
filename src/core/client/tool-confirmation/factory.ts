@@ -6,7 +6,7 @@
  *
  * Usage:
  *   import { createToolConfirmationProvider } from './factory.js';
- *   const provider = createToolConfirmationProvider(runMode);
+ *   const provider = createToolConfirmationProvider({ runMode });
  *
  * This centralizes provider selection logic, making it easy to extend and maintain.
  * TODO: implement web tool confirmation provider
