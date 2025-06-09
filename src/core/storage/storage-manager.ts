@@ -92,7 +92,7 @@ export class StorageManager {
 
             case 'memory':
             default:
-                console.log('Using memory cache backend');
+                logger.info('Using memory cache backend');
                 return new MemoryBackend();
         }
     }
@@ -109,7 +109,7 @@ export class StorageManager {
 
             case 'memory':
             default:
-                console.log('Using memory database backend');
+                logger.info('Using memory database backend');
                 return new MemoryBackend();
         }
     }
@@ -120,10 +120,10 @@ export class StorageManager {
                 const module = await import('./backend/redis-backend.js');
                 RedisBackend = module.RedisBackend;
             }
-            console.log(`Connecting to Redis at ${config.host}:${config.port}`);
+            logger.info(`Connecting to Redis at ${config.host}:${config.port}`);
             return new RedisBackend(config);
         } catch (error) {
-            console.warn('Redis not available, falling back to memory cache:', error);
+            logger.warn('Redis not available, falling back to memory cache:', error);
             return new MemoryBackend();
         }
     }
@@ -134,10 +134,10 @@ export class StorageManager {
                 const module = await import('./backend/postgres-backend.js');
                 PostgresBackend = module.PostgresBackend;
             }
-            console.log('Connecting to PostgreSQL database');
+            logger.info('Connecting to PostgreSQL database');
             return new PostgresBackend(config);
         } catch (error) {
-            console.warn('PostgreSQL not available, falling back to memory database:', error);
+            logger.warn('PostgreSQL not available, falling back to memory database:', error);
             return new MemoryBackend();
         }
     }
@@ -148,7 +148,7 @@ export class StorageManager {
                 const module = await import('./backend/sqlite-backend.js');
                 SQLiteBackend = module.SQLiteBackend;
             }
-            console.log(`Using SQLite database at ${config.path}`);
+            logger.info(`Using SQLite database at ${config.path}`);
             return new SQLiteBackend(config);
         } catch (error) {
             logger.error(
@@ -196,7 +196,7 @@ export class StorageManager {
                 await this.cache.delete(HEALTH_CHECK_KEY);
             }
         } catch (error) {
-            console.warn('Cache health check failed:', error);
+            logger.warn('Cache health check failed:', error);
         }
 
         try {
@@ -207,7 +207,7 @@ export class StorageManager {
                 await this.database.delete(HEALTH_CHECK_KEY);
             }
         } catch (error) {
-            console.warn('Database health check failed:', error);
+            logger.warn('Database health check failed:', error);
         }
 
         return {
