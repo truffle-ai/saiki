@@ -498,7 +498,7 @@ class SaikiWebSocketClient {
 const client = new SaikiWebSocketClient();
 
 client.on('connected', () => {
-  "console.log"('Successfully connected to Saiki');
+  console.log('Successfully connected to Saiki');
 });
 
 client.on('thinking', () => {
