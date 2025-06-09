@@ -1,5 +1,3 @@
-import type { InternalMessage } from '../ai/llm/messages/types.js';
-
 /**
  * Storage context for path resolution
  * Used by StoragePathResolver to determine storage locations
