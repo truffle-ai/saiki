@@ -146,7 +146,8 @@ program
             'Run saiki web UI with `saiki --mode web`\n' +
             'Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`\n' +
             'Run saiki as a discord bot with `saiki --mode discord`\n' +
-            'Run saiki as a telegram bot with `saiki --mode telegram`\n\n' +
+            'Run saiki as a telegram bot with `saiki --mode telegram`\n' +
+            'Run saiki as an MCP server with `saiki --mode mcp`\n\n' +
             'Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples'
     )
     .action(async (prompt: string[] = []) => {
