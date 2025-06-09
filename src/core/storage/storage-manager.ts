@@ -53,12 +53,12 @@ export class StorageManager {
     async disconnect(): Promise<void> {
         if (this.cache) {
             await this.cache.disconnect();
-            this.cache = undefined as any;
+            this.cache = undefined;
         }
 
         if (this.database) {
             await this.database.disconnect();
-            this.database = undefined as any;
+            this.database = undefined;
         }
 
         this.connected = false;
