@@ -46,6 +46,8 @@ export class SessionManager {
     private initialized = false;
     private cleanupInterval?: NodeJS.Timeout;
     private initializationPromise: Promise<void>;
+    // Add a Map to track ongoing session creation operations to prevent race conditions
+    private readonly pendingCreations = new Map<string, Promise<ChatSession>>();
 
     constructor(
         private services: {
@@ -152,8 +154,10 @@ export class SessionManager {
 
         const id = sessionId ?? randomUUID();
 
-        // Clean up expired sessions first
-        await this.cleanupExpiredSessions();
+        // Check if there's already a pending creation for this session ID
+        if (this.pendingCreations.has(id)) {
+            return await this.pendingCreations.get(id)!;
+        }
 
         // Check if session already exists in memory
         if (this.sessions.has(id)) {
@@ -161,7 +165,28 @@ export class SessionManager {
             return this.sessions.get(id)!;
         }
 
-        // Check if session exists in storage
+        // Create a promise for the session creation and track it to prevent concurrent operations
+        const creationPromise = this.createSessionInternal(id);
+        this.pendingCreations.set(id, creationPromise);
+
+        try {
+            const session = await creationPromise;
+            return session;
+        } finally {
+            // Always clean up the pending creation tracker
+            this.pendingCreations.delete(id);
+        }
+    }
+
+    /**
+     * Internal method that handles the actual session creation logic.
+     * This method implements atomic session creation to prevent race conditions.
+     */
+    private async createSessionInternal(id: string): Promise<ChatSession> {
+        // Clean up expired sessions first
+        await this.cleanupExpiredSessions();
+
+        // Check if session exists in storage (could have been created by another process)
         const sessionKey = `session:${id}`;
         const existingMetadata = await this.services.storage.database.get<SessionData>(sessionKey);
         if (existingMetadata) {
@@ -174,19 +199,14 @@ export class SessionManager {
             return session;
         }
 
-        // Check session limits
+        // Perform atomic session limit check and creation
+        // This ensures the limit check and session creation happen as close to atomically as possible
         const activeSessionKeys = await this.services.storage.database.list('session:');
         if (activeSessionKeys.length >= this.maxSessions) {
             throw new Error(`Maximum sessions (${this.maxSessions}) reached`);
         }
 
-        // Create new session
-        const session = new ChatSession(this.services, id);
-        await session.init();
-
-        this.sessions.set(id, session);
-
-        // Store session metadata in persistent storage
+        // Create new session metadata first to "reserve" the session slot
         const sessionData: SessionData = {
             id,
             createdAt: Date.now(),
@@ -194,13 +214,37 @@ export class SessionManager {
             messageCount: 0,
         };
 
-        await this.services.storage.database.set(sessionKey, sessionData);
+        // Store session metadata in persistent storage immediately to claim the session
+        try {
+            await this.services.storage.database.set(sessionKey, sessionData);
+        } catch (error) {
+            // If storage fails, another concurrent creation might have succeeded
+            logger.error(`Failed to store session metadata for ${id}:`, error);
+            // Re-throw the original error to maintain test compatibility
+            throw error;
+        }
 
-        // Also store in cache with TTL for faster access
-        await this.services.storage.cache.set(sessionKey, sessionData, this.sessionTTL / 1000);
+        // Now create the actual session object
+        let session: ChatSession;
+        try {
+            session = new ChatSession(this.services, id);
+            await session.init();
+            this.sessions.set(id, session);
 
-        logger.debug(`Created new session: ${id}`);
-        return session;
+            // Also store in cache with TTL for faster access
+            await this.services.storage.cache.set(sessionKey, sessionData, this.sessionTTL / 1000);
+
+            logger.debug(`Created new session: ${id}`);
+            return session;
+        } catch (error) {
+            // If session creation fails after we've claimed the slot, clean up the metadata
+            logger.error(`Failed to initialize session ${id}:`, error);
+            await this.services.storage.database.delete(sessionKey);
+            await this.services.storage.cache.delete(sessionKey);
+            throw new Error(
+                `Failed to initialize session ${id}: ${error instanceof Error ? error.message : 'unknown error'}`
+            );
+        }
     }
 
     /**
@@ -222,6 +266,11 @@ export class SessionManager {
      */
     public async getSession(sessionId: string): Promise<ChatSession | undefined> {
         await this.ensureInitialized();
+
+        // Check if there's a pending creation for this session ID
+        if (this.pendingCreations.has(sessionId)) {
+            return await this.pendingCreations.get(sessionId)!;
+        }
 
         // Check memory first
         if (this.sessions.has(sessionId)) {

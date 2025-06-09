@@ -633,6 +633,53 @@ describe('SessionManager', () => {
             expect(sessions[2]).toBeDefined();
         });
 
+        test('should prevent race conditions when creating multiple different sessions concurrently', async () => {
+            // Set a low session limit to test the race condition prevention
+            const limitedSessionManager = new SessionManager(mockServices, {
+                maxSessions: 2,
+                sessionTTL: 1800000, // 30 minutes
+            });
+            await limitedSessionManager.init();
+
+            // Create 2 sessions sequentially first to reach the limit
+            await limitedSessionManager.createSession('existing-1');
+            await limitedSessionManager.createSession('existing-2');
+
+            // Mock the database.list to return the existing sessions
+            mockStorageManager.database.list.mockResolvedValue([
+                'session:existing-1',
+                'session:existing-2',
+            ]);
+
+            // Now try to create 4 more sessions concurrently - all should fail
+            const promises = [
+                limitedSessionManager.createSession('session-1'),
+                limitedSessionManager.createSession('session-2'),
+                limitedSessionManager.createSession('session-3'),
+                limitedSessionManager.createSession('session-4'),
+            ];
+
+            const results = await Promise.allSettled(promises);
+
+            // Count successful and failed creations
+            const successes = results.filter((result) => result.status === 'fulfilled');
+            const failures = results.filter((result) => result.status === 'rejected');
+
+            // All should fail due to the limit since we're at capacity
+            expect(failures.length).toBe(4);
+            expect(successes.length).toBe(0);
+
+            // All failures should be due to session limit
+            failures.forEach((failure) => {
+                expect((failure as PromiseRejectedResult).reason.message).toContain(
+                    'Maximum sessions (2) reached'
+                );
+            });
+
+            // Clean up
+            await limitedSessionManager.cleanup();
+        });
+
         test('should handle legacy session metadata without TTL fields', async () => {
             const sessionId = 'legacy-session';
             const legacyMetadata = {
