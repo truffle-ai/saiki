@@ -8,7 +8,7 @@ export type { CacheBackend, DatabaseBackend };
 export type {
     BackendConfig,
     StorageConfig,
-    MemoryBackendConfig,
+    InMemoryBackendConfig,
     RedisBackendConfig,
     SqliteBackendConfig,
     PostgresBackendConfig,
