@@ -11,24 +11,29 @@ Let's get you running with Saiki in under 5 minutes. We'll create a simple agent
 ### Step 1: Create Your Project
 
 ```bash
-mkdir my-first-agent
-cd my-first-agent
-saiki init
+saiki create-app
 ```
+
+This starts the interactive CLI which will guide you through setting up your new project
 
 This creates a basic structure:
 ```
-my-first-agent/
+my-saiki-project/
 ├── .env                    # Your API keys go here
-├── saiki/
+├── src/saiki/
 │   ├── agents/
 │   │   └── saiki.yml      # Agent configuration
 │   └── saiki-example.ts   # Ready-to-run example
 ```
 
+```bash
+# Go to the newly created project
+cd <your_project_name>
+```
+
 ### Step 2: Add Your API Key
 
-Open `.env` and add your OpenAI key:
+If you didn't already add the API key as part of step 1, then open `.env` and add your OpenAI/Anthropic/Google API key:
 ```bash
 OPENAI_API_KEY=your_key_here
 ```
@@ -40,10 +45,13 @@ Don't have an OpenAI key? You can also use [other providers](../configuring-saik
 ### Step 3: Run Your First Agent
 
 ```bash
-node --loader ts-node/esm saiki/saiki-example.ts
+# change file-path accordingly if you used a different path
+node --loader ts-node/esm src/saiki/saiki-example.ts
 ```
 
-🎉 **Congratulations!** You just ran your first AI agent. Try asking it: *"What files are in this directory?"*
+🎉 **Congratulations!** You just ran your first AI agent and said to it: *"Hello saiki! What are the files in this directory"*
+
+Then the agent responded back to you!
 
 ## Understanding What Just Happened
 
@@ -51,7 +59,7 @@ Before we build more complex applications, let's understand the basics of how Sa
 
 ### The Configuration-First Approach
 
-Open `saiki/agents/saiki.yml`. You'll see something like:
+Open `src/saiki/agents/saiki.yml`. You'll see something like:
 
 ```yaml
 mcpServers:
@@ -81,14 +89,19 @@ This is Saiki's superpower: **you configure capabilities, not code them**.
 Look at `saiki-example.ts`:
 
 ```typescript
-import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+import 'dotenv/config';
+import { loadConfigFile, SaikiAgent, createSaikiAgent } from '@truffle-ai/saiki';
 
-const config = await loadConfigFile('./agents/saiki.yml');
-const agent = await createSaikiAgent(config);
+// 1. Initialize the agent from the config file
+// Every agent is defined by its own config file
+const config = await loadConfigFile('./src/saiki/agents/saiki.yml');
+export const agent = await createSaikiAgent(config);
 
-// That's it! Your agent is ready
-const response = await agent.run("What can you help me with?");
-console.log(response);
+// 2. Run the agent
+const response = await agent.run("Hello saiki! What are the files in this directory");
+console.log("Agent response:", response);
+
+// 3. Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki
 ```
 
 **Three lines of code** gave you an AI agent with file system capabilities. That's the Saiki philosophy: **powerful simplicity**.
@@ -97,7 +110,7 @@ console.log(response);
 
 ### Configuration vs Code
 - **Traditional approach**: Write code to integrate AI, handle errors, manage state
-- **Saiki approach**: Configure what you want, let Saiki handle the complexity
+- **Saiki approach**: Configure what you want, let Saiki handle the complexity of managing MCP servers, managing different LLMs
 
 ### Agents vs Tools
 - **Agent**: The AI brain that makes decisions and responds to users
