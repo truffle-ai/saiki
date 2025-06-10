@@ -1,7 +1,6 @@
 import { dirname } from 'path';
 import { mkdirSync } from 'fs';
 import type { DatabaseBackend } from './database-backend.js';
-import { StoragePathResolver } from '../path-resolver.js';
 import { logger } from '../../logger/index.js';
 import type { SqliteBackendConfig } from '../../config/schemas.js';
 import { isSaikiProject } from '../../utils/path.js';
