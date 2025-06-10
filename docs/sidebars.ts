@@ -45,7 +45,7 @@ const sidebars: SidebarsConfig = {
             type: 'category',
             label: 'Configuration',
             items: [
-                'configuring-saiki/configuration',
+                'configuring-saiki/overview',
                 {
                     type: 'category',
                     label: 'LLM Configuration',
@@ -56,6 +56,7 @@ const sidebars: SidebarsConfig = {
                     ],
                 },
                 'configuring-saiki/mcpServers',
+                'configuring-saiki/storage',
             ],
         },
 

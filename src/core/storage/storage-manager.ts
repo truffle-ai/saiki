@@ -90,9 +90,9 @@ export class StorageManager {
             case 'redis':
                 return this.createRedisBackend(cacheConfig);
 
-            case 'memory':
+            case 'in-memory':
             default:
-                logger.info('Using memory cache backend');
+                logger.info('Using in-memory cache backend');
                 return new MemoryBackend();
         }
     }
@@ -107,9 +107,9 @@ export class StorageManager {
             case 'sqlite':
                 return this.createSQLiteBackend(dbConfig);
 
-            case 'memory':
+            case 'in-memory':
             default:
-                logger.info('Using memory database backend');
+                logger.info('Using in-memory database backend');
                 return new MemoryBackend();
         }
     }
@@ -123,7 +123,7 @@ export class StorageManager {
             logger.info(`Connecting to Redis at ${config.host}:${config.port}`);
             return new RedisBackend(config);
         } catch (error) {
-            logger.warn('Redis not available, falling back to memory cache:', error);
+            logger.warn('Redis not available, falling back to in-memory cache:', error);
             return new MemoryBackend();
         }
     }
@@ -137,7 +137,7 @@ export class StorageManager {
             logger.info('Connecting to PostgreSQL database');
             return new PostgresBackend(config);
         } catch (error) {
-            logger.warn('PostgreSQL not available, falling back to memory database:', error);
+            logger.warn('PostgreSQL not available, falling back to in-memory database:', error);
             return new MemoryBackend();
         }
     }
@@ -155,7 +155,7 @@ export class StorageManager {
                 `SQLite backend failed to load: ${error instanceof Error ? error.message : String(error)}`
             );
             logger.error(`Full error details: ${JSON.stringify(error)}`);
-            logger.warn('Falling back to memory database backend');
+            logger.warn('Falling back to in-memory database backend');
             return new MemoryBackend();
         }
     }
