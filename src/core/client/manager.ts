@@ -7,6 +7,34 @@ import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-pr
 import { ToolSet } from '../ai/types.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
+/**
+ * Centralized manager for Multiple Model Context Protocol (MCP) servers.
+ *
+ * The MCPManager serves as a unified interface for managing connections to multiple MCP servers,
+ * providing access to their tools, prompts, and resources through a single entry point.
+ *
+ * Key responsibilities:
+ * - **Client Management**: Register, connect, disconnect, and remove MCP clients
+ * - **Resource Discovery**: Cache and provide access to tools, prompts, and resources from all connected clients
+ * - **Tool Execution**: Execute tools with built-in confirmation mechanisms for security
+ * - **Connection Handling**: Support both strict and lenient connection modes with error tracking
+ * - **Caching**: Maintain efficient lookup maps for fast access to client capabilities
+ *
+ * The manager supports dynamic client connections, allowing servers to be added or removed at runtime.
+ * It includes robust error handling and maintains connection state for debugging purposes.
+ *
+ * @example
+ * ```typescript
+ * const manager = new MCPManager();
+ * await manager.initializeFromConfig(serverConfigs);
+ *
+ * // Execute a tool from any connected server
+ * const result = await manager.executeTool('my_tool', { param: 'value' });
+ *
+ * // Get all available tools across all servers
+ * const tools = await manager.getAllTools();
+ * ```
+ */
 export class MCPManager {
     private clients: Map<string, IMCPClient> = new Map();
     private connectionErrors: { [key: string]: string } = {};
