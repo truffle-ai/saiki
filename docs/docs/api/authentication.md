@@ -62,7 +62,7 @@ For enterprise deployments with existing identity providers.
 - **Restrict access** with firewalls and VPNs
 - **Use reverse proxy** (nginx, Cloudflare) for additional security
 - **Implement CORS** policies appropriately
-
+<!-- 
 ### Environment Security
 ```bash
 # Use environment variables for sensitive data
@@ -73,7 +73,7 @@ export SAIKI_JWT_SECRET=your-jwt-secret
 echo "*.env" >> .gitignore
 ```
 
-### Request Validation
+<!-- ### Request Validation
 ```javascript
 // Validate and sanitize all inputs
 const validateMessage = (message) => {
@@ -87,7 +87,7 @@ const validateMessage = (message) => {
 };
 ```
 
-## Rate Limiting
+<!-- ## Rate Limiting
 
 Saiki implements rate limiting to prevent abuse:
 
@@ -137,7 +137,7 @@ async function makeAPICall(url, data) {
     throw error;
   }
 }
-```
+``` --> --> -->
 
 ## CORS Configuration
 
@@ -159,11 +159,11 @@ const allowedOrigins = [
 }
 ```
 
-## WebSocket Authentication
+<!-- ## WebSocket Authentication
 
 For WebSocket connections, authentication will be handled during the initial handshake:
 
-```javascript
+<!-- ```javascript
 // Future WebSocket authentication
 const ws = new WebSocket('ws://localhost:3001/', {
   headers: {
@@ -222,8 +222,7 @@ saiki --mode web --dev
 
 # With environment variables
 SAIKI_DEV_MODE=true saiki --mode web
-```
-
+``` --> 
 ## Production Deployment
 
 When deploying to production, consider these security measures:
@@ -289,17 +288,8 @@ app.use((req, res, next) => {
 });
 ```
 
-## Future Roadmap
-
-Planned authentication features:
-
-- **Q1 2024**: API Key authentication
-- **Q2 2024**: JWT token support
-- **Q3 2024**: OAuth 2.0 integration
-- **Q4 2024**: RBAC (Role-Based Access Control)
-
 ## Getting Help
 
 - **Security questions?** Join our [Discord community](https://discord.gg/GFzWFAAZcm)
-- **Found a vulnerability?** Email security@truffle.ai
+- **Found a vulnerability?** Email founders@truffle.ai
 - **Feature requests?** Create an [issue on GitHub](https://github.com/truffle-ai/saiki/issues) 
