@@ -25,7 +25,7 @@
  * This pattern ensures a clean, scalable, and maintainable architecture, balancing flexibility with simplicity.
  */
 
-import { MCPClientManager } from '../client/manager.js';
+import { MCPManager } from '../client/manager.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { StaticConfigManager } from '../config/static-config-manager.js';
@@ -42,7 +42,7 @@ import { AgentEventBus } from '../events/index.js';
  * Type for the core agent services returned by createAgentServices
  */
 export type AgentServices = {
-    clientManager: MCPClientManager;
+    clientManager: MCPManager;
     promptManager: PromptManager;
     agentEventBus: AgentEventBus;
     stateManager: AgentStateManager;
@@ -69,7 +69,7 @@ export type AgentServices = {
 export type InitializeServicesOptions = {
     runMode?: 'cli' | 'web'; // Context/mode override
     connectionMode?: 'strict' | 'lenient'; // Connection mode override
-    clientManager?: MCPClientManager; // Inject a custom or mock MCPClientManager
+    clientManager?: MCPManager; // Inject a custom or mock MCPManager
     agentEventBus?: AgentEventBus; // Inject a custom or mock AgentEventBus
     sessionManager?: SessionManager; // Inject a custom or mock SessionManager
     storage?: StorageBackends; // Inject a custom or mock storage backends
@@ -122,7 +122,7 @@ export async function createAgentServices(
         allowedToolsProvider,
     });
 
-    const clientManager = overrides?.clientManager ?? new MCPClientManager(confirmationProvider);
+    const clientManager = overrides?.clientManager ?? new MCPManager(confirmationProvider);
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
 
     const mcpServerCount = Object.keys(config.mcpServers).length;

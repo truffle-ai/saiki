@@ -8,7 +8,7 @@ import type { MessageManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
 import type { InternalMessage } from '../llm/messages/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
-import type { MCPClientManager } from '../../client/manager.js';
+import type { MCPManager } from '../../client/manager.js';
 import type { LLMConfig } from '../../config/schemas.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
 import type { StorageBackends } from '../../storage/backend/types.js';
@@ -115,7 +115,7 @@ export class ChatSession {
         private services: {
             stateManager: AgentStateManager;
             promptManager: PromptManager;
-            clientManager: MCPClientManager;
+            clientManager: MCPManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
         },

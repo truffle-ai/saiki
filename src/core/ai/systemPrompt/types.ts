@@ -1,9 +1,9 @@
 import { AgentConfig } from '../../config/schemas.js';
-import { MCPClientManager } from '../../client/manager.js';
+import { MCPManager } from '../../client/manager.js';
 
 // Context passed to dynamic contributors
 export interface DynamicContributorContext {
-    clientManager: MCPClientManager;
+    clientManager: MCPManager;
 }
 
 // Interface for all system prompt contributors

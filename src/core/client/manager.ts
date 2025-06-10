@@ -7,7 +7,7 @@ import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-pr
 import { ToolSet } from '../ai/types.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
-export class MCPClientManager {
+export class MCPManager {
     private clients: Map<string, IMCPClient> = new Map();
     private connectionErrors: { [key: string]: string } = {};
     private toolToClientMap: Map<string, IMCPClient> = new Map();

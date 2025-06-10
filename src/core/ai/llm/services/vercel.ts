@@ -2,7 +2,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { CoreMessage, generateText, LanguageModelV1, streamText } from 'ai';
 import { z } from 'zod';
-import { MCPClientManager } from '../../../client/manager.js';
+import { MCPManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../logger/index.js';
 import { ToolSet } from '../../types.js';
@@ -20,13 +20,13 @@ import type { SessionEventBus } from '../../../events/index.js';
 export class VercelLLMService implements ILLMService {
     private model: LanguageModelV1;
     private provider: string;
-    private clientManager: MCPClientManager;
+    private clientManager: MCPManager;
     private messageManager: MessageManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
 
     constructor(
-        clientManager: MCPClientManager,
+        clientManager: MCPManager,
         model: LanguageModelV1,
         provider: string,
         sessionEventBus: SessionEventBus,

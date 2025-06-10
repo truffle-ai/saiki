@@ -1,5 +1,5 @@
 // src/ai/agent/SaikiAgent.ts
-import { MCPClientManager } from '../../client/manager.js';
+import { MCPManager } from '../../client/manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
 import { StaticConfigManager } from '../../config/static-config-manager.js';
 import { AgentStateManager } from '../../config/agent-state-manager.js';
@@ -72,7 +72,7 @@ export class SaikiAgent {
      * This gives users the option to use methods of the services directly if they know what they are doing
      * But the main recommended entry points/functions would still be the wrapper methods we define below
      */
-    public readonly clientManager: MCPClientManager;
+    public readonly clientManager: MCPManager;
     public readonly promptManager: PromptManager;
     public readonly agentEventBus: AgentEventBus;
     public readonly stateManager: AgentStateManager;
