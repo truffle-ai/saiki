@@ -355,12 +355,12 @@ const BaseBackendSchema = z.object({
 });
 
 // Memory backend - minimal configuration
-const MemoryBackendSchema = BaseBackendSchema.extend({
-    type: z.literal('memory'),
-    // Memory backend doesn't need connection options, but inherits pool options for consistency
+const InMemoryBackendSchema = BaseBackendSchema.extend({
+    type: z.literal('in-memory'),
+    // In-memory backend doesn't need connection options, but inherits pool options for consistency
 }).strict();
 
-export type MemoryBackendConfig = z.infer<typeof MemoryBackendSchema>;
+export type InMemoryBackendConfig = z.infer<typeof InMemoryBackendSchema>;
 
 // Redis backend configuration
 const RedisBackendSchema = BaseBackendSchema.extend({
@@ -405,12 +405,12 @@ export type PostgresBackendConfig = z.infer<typeof PostgresBackendSchema>;
 const BackendConfigSchema = z
     .discriminatedUnion(
         'type',
-        [MemoryBackendSchema, RedisBackendSchema, SqliteBackendSchema, PostgresBackendSchema],
+        [InMemoryBackendSchema, RedisBackendSchema, SqliteBackendSchema, PostgresBackendSchema],
         {
             errorMap: (issue, ctx) => {
                 if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
                     return {
-                        message: `Invalid backend type. Expected 'memory', 'redis', 'sqlite', or 'postgres'.`,
+                        message: `Invalid backend type. Expected 'in-memory', 'redis', 'sqlite', or 'postgres'.`,
                     };
                 }
                 return { message: ctx.defaultError };
@@ -468,8 +468,8 @@ export const AgentConfigSchema = z
         // Storage configuration
         storage: StorageSchema.optional()
             .default({
-                cache: { type: 'memory' },
-                database: { type: 'memory' },
+                cache: { type: 'in-memory' },
+                database: { type: 'in-memory' },
             })
             .describe('Storage configuration for the agent using cache and database backends'),
 

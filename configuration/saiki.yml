@@ -62,7 +62,7 @@ llm:
 # Memory cache with file-based database (good for development with persistence)
 storage:
   cache:
-    type: memory
+    type: in-memory
   database:
     type: sqlite
     # path: ./data/saiki.db

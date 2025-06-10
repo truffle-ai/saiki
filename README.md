@@ -299,15 +299,15 @@ See our **[Building with Saiki Developer Guide](https://truffle-ai.github.io/sai
 
 ## MCP Server Management
 
-Saiki includes a powerful MCPClientManager that can be used as a standalone utility for managing MCP servers in your own applications. This is perfect for developers who need MCP server management without the full Saiki agent framework.
+Saiki includes a powerful MCPManager that can be used as a standalone utility for managing MCP servers in your own applications. This is perfect for developers who need MCP server management without the full Saiki agent framework.
 
 ### Quick Start: MCP Manager
 
 ```typescript
-import { MCPClientManager } from '@truffle-ai/saiki';
+import { MCPManager } from '@truffle-ai/saiki';
 
 // Create manager instance
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 // Connect to MCP servers
 await manager.connectServer('filesystem', {
@@ -339,7 +339,7 @@ console.log('Connected servers:', Array.from(clients.keys()));
 await manager.disconnectAll();
 ```
 
-The MCPClientManager provides a simple, unified interface for connecting to and managing multiple MCP servers simultaneously. See our **[MCP Manager Documentation](https://truffle-ai.github.io/saiki/docs/mcp-manager)** for complete API reference and advanced usage patterns.
+The MCPManager provides a simple, unified interface for connecting to and managing multiple MCP servers simultaneously. See our **[MCP Manager Documentation](https://truffle-ai.github.io/saiki/docs/mcp-manager)** for complete API reference and advanced usage patterns.
 
 ## Documentation & Learning Resources
 

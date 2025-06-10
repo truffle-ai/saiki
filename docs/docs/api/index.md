@@ -4,9 +4,8 @@ sidebar_position: 1
 
 # API Reference
 
-Welcome to the Saiki API documentation! This comprehensive guide covers everything you need to integrate Saiki agents into your applications.
-
 ## Overview
+Welcome to the Saiki API documentation! This comprehensive guide covers everything you need to integrate Saiki agents into your applications. 
 
 Saiki provides both **REST API** and **WebSocket API** interfaces when running in web mode (`saiki --mode web`). These APIs allow you to:
 

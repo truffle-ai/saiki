@@ -4,11 +4,11 @@ sidebar_position: 7
 
 # MCP Manager
 
-The MCPClientManager is Saiki's powerful standalone utility for managing Model Context Protocol (MCP) servers. Use it in your own applications to connect, manage, and interact with multiple MCP servers without needing the full Saiki agent framework.
+The MCPManager is Saiki's powerful standalone utility for managing Model Context Protocol (MCP) servers. Use it in your own applications to connect, manage, and interact with multiple MCP servers without needing the full Saiki agent framework.
 
 ## Overview
 
-The MCPClientManager provides:
+The MCPManager provides:
 - **Multi-server management**: Connect to multiple MCP servers simultaneously
 - **Unified tool interface**: Access tools from all connected servers
 - **Resource management**: Handle MCP resources and prompts
@@ -24,10 +24,10 @@ npm install @truffle-ai/saiki
 ## Quick Start
 
 ```typescript
-import { MCPClientManager } from '@truffle-ai/saiki';
+import { MCPManager } from '@truffle-ai/saiki';
 
 // Create manager instance
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 // Connect to an MCP server
 await manager.connectServer('filesystem', {
@@ -58,10 +58,10 @@ constructor(confirmationProvider?: ToolConfirmationProvider)
 
 **Example:**
 ```typescript
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 // With custom confirmation provider
-const manager = new MCPClientManager(customConfirmationProvider);
+const manager = new MCPManager(customConfirmationProvider);
 ```
 
 ### Connection Management
@@ -390,9 +390,9 @@ if (Object.keys(errors).length > 0) {
 ### Basic File Operations
 
 ```typescript
-import { MCPClientManager } from '@truffle-ai/saiki';
+import { MCPManager } from '@truffle-ai/saiki';
 
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 // Setup filesystem access
 await manager.connectServer('fs', {
@@ -421,7 +421,7 @@ await manager.executeTool('writeFile', {
 ### Web Search and Research
 
 ```typescript
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 // Setup web search
 await manager.connectServer('search', {
@@ -443,7 +443,7 @@ console.log('Search results:', results);
 ### Database Operations
 
 ```typescript
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 // Setup database connection
 await manager.connectServer('db', {
@@ -470,7 +470,7 @@ const schema = await manager.executeTool('describe_table', {
 ### Multi-Server Workflows
 
 ```typescript
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 // Connect to multiple servers
 await manager.initializeFromConfig({
@@ -529,7 +529,7 @@ await generateProjectReport();
 ### Error Handling
 
 ```typescript
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 try {
   await manager.connectServer('filesystem', {
@@ -583,7 +583,7 @@ class CustomConfirmationProvider implements ToolConfirmationProvider {
   }
 }
 
-const manager = new MCPClientManager(new CustomConfirmationProvider());
+const manager = new MCPManager(new CustomConfirmationProvider());
 ```
 
 ## Integration Examples
@@ -592,12 +592,12 @@ const manager = new MCPClientManager(new CustomConfirmationProvider());
 
 ```typescript
 import express from 'express';
-import { MCPClientManager } from '@truffle-ai/saiki';
+import { MCPManager } from '@truffle-ai/saiki';
 
 const app = express();
 app.use(express.json());
 
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 // Initialize MCP servers
 await manager.initializeFromConfig({
@@ -639,11 +639,11 @@ app.listen(3000, () => {
 
 ```typescript
 #!/usr/bin/env node
-import { MCPClientManager } from '@truffle-ai/saiki';
+import { MCPManager } from '@truffle-ai/saiki';
 import { Command } from 'commander';
 
 const program = new Command();
-const manager = new MCPClientManager();
+const manager = new MCPManager();
 
 program
   .name('mcp-cli')
@@ -737,4 +737,4 @@ program.parse();
 - Check server logs for detailed error information
 - Verify tool confirmation settings
 
-The MCPClientManager provides a powerful, flexible foundation for building MCP-based applications. Whether you're creating simple automation scripts or complex multi-server workflows, it handles the complexity of MCP protocol management while providing a clean, intuitive API. 🛠️ 
+The MCPManager provides a powerful, flexible foundation for building MCP-based applications. Whether you're creating simple automation scripts or complex multi-server workflows, it handles the complexity of MCP protocol management while providing a clean, intuitive API. 🛠️ 

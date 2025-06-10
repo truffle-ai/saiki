@@ -1,4 +1,4 @@
-import { MCPClientManager } from '../../../client/manager.js';
+import { MCPManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
 import { LLMConfig } from '../../../config/schemas.js';
 import { logger } from '../../../logger/index.js';
@@ -48,7 +48,7 @@ function extractApiKey(config: LLMConfig): string {
  */
 function _createInBuiltLLMService(
     config: LLMConfig,
-    clientManager: MCPClientManager,
+    clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): ILLMService {
@@ -132,7 +132,7 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 
 function _createVercelLLMService(
     config: LLMConfig,
-    clientManager: MCPClientManager,
+    clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): VercelLLMService {
@@ -153,7 +153,7 @@ function _createVercelLLMService(
 export function createLLMService(
     config: LLMConfig,
     router: LLMRouter,
-    clientManager: MCPClientManager,
+    clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): ILLMService {

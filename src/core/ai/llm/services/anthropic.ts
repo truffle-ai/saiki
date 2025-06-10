@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { MCPClientManager } from '../../../client/manager.js';
+import { MCPManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
@@ -16,13 +16,13 @@ import type { SessionEventBus } from '../../../events/index.js';
 export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
-    private clientManager: MCPClientManager;
+    private clientManager: MCPManager;
     private messageManager: MessageManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
 
     constructor(
-        clientManager: MCPClientManager,
+        clientManager: MCPManager,
         anthropic: Anthropic,
         sessionEventBus: SessionEventBus,
         messageManager: MessageManager,
