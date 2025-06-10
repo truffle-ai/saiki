@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import { InMemorySettingsProvider } from '../../settings/in-memory-provider.js';
 import { SettingsProvider } from '../../settings/types.js';
 import boxen from 'boxen';
-import { AllowedToolsProvider } from './allowed-tools-provider/types.js';
+import { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
 import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
 
 /**
@@ -14,11 +14,11 @@ import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory
  * and prompts for confirmation for other tools using logger's styling
  */
 export class CLIConfirmationProvider implements ToolConfirmationProvider {
-    public allowedToolsProvider: AllowedToolsProvider;
+    public allowedToolsProvider: IAllowedToolsProvider;
     private rl: readline.Interface | null = null;
     public settingsProvider: SettingsProvider;
 
-    constructor(allowedToolsProvider?: AllowedToolsProvider, settingsProvider?: SettingsProvider) {
+    constructor(allowedToolsProvider?: IAllowedToolsProvider, settingsProvider?: SettingsProvider) {
         this.allowedToolsProvider = allowedToolsProvider ?? new InMemoryAllowedToolsProvider();
         this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider();
     }

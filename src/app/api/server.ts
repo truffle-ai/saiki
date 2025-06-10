@@ -95,7 +95,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             return res.status(400).send({ error: 'Missing or invalid server config object' });
         }
         try {
-            await agent.addMcpServer(name, config);
+            await agent.connectMcpServer(name, config);
             logger.info(`Successfully connected to new server '${name}' via API request.`);
             res.status(200).send({ status: 'connected', name });
         } catch (error) {
@@ -115,7 +115,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             return res.status(400).json({ error: 'Missing name or config' });
         }
         try {
-            await agent.addMcpServer(name, config);
+            await agent.connectMcpServer(name, config);
             res.status(201).json({ status: 'connected', name });
         } catch (error: any) {
             logger.error(`Error connecting MCP server '${name}': ${error.message}`);
@@ -154,7 +154,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const tools = Object.entries(toolsMap).map(([toolName, toolDef]) => ({
                 id: toolName,
                 name: toolName,
-                description: toolDef.description,
+                description: toolDef.description || '',
                 inputSchema: toolDef.parameters,
             }));
             res.status(200).json({ tools });
@@ -349,7 +349,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Get current LLM configuration
     app.get('/api/llm/current', async (req, res) => {
         try {
-            const currentConfig = agent.getCurrentLLMConfig();
+            const { sessionId } = req.query;
+
+            // Use session-specific config if sessionId is provided, otherwise use default
+            const currentConfig = sessionId
+                ? agent.getEffectiveConfig(sessionId as string).llm
+                : agent.getCurrentLLMConfig();
+
             res.json({ config: currentConfig });
         } catch (error: any) {
             logger.error(`Error getting current LLM config: ${error.message}`);
@@ -424,16 +430,18 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // List all active sessions
     app.get('/api/sessions', async (req, res) => {
         try {
-            const sessionIds = agent.listSessions();
-            const sessions = sessionIds.map((id) => {
-                const metadata = agent.getSessionMetadata(id);
-                return {
-                    id,
-                    createdAt: metadata?.createdAt || null,
-                    lastActivity: metadata?.lastActivity || null,
-                    messageCount: metadata?.messageCount || 0,
-                };
-            });
+            const sessionIds = await agent.listSessions();
+            const sessions = await Promise.all(
+                sessionIds.map(async (id) => {
+                    const metadata = await agent.getSessionMetadata(id);
+                    return {
+                        id,
+                        createdAt: metadata?.createdAt || null,
+                        lastActivity: metadata?.lastActivity || null,
+                        messageCount: metadata?.messageCount || 0,
+                    };
+                })
+            );
             res.json({ sessions });
         } catch (error) {
             logger.error(`Error listing sessions: ${error.message}`);
@@ -445,8 +453,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.post('/api/sessions', express.json(), async (req, res) => {
         try {
             const { sessionId } = req.body;
-            const session = agent.createSession(sessionId);
-            const metadata = agent.getSessionMetadata(session.id);
+            const session = await agent.createSession(sessionId);
+            const metadata = await agent.getSessionMetadata(session.id);
             res.status(201).json({
                 session: {
                     id: session.id,
@@ -465,12 +473,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.get('/api/sessions/:sessionId', async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const session = agent.getSession(sessionId);
+            const session = await agent.getSession(sessionId);
             if (!session) {
                 return res.status(404).json({ error: 'Session not found' });
             }
 
-            const metadata = agent.getSessionMetadata(sessionId);
+            const metadata = await agent.getSessionMetadata(sessionId);
             const history = await agent.getSessionHistory(sessionId);
 
             res.json({
@@ -492,7 +500,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.get('/api/sessions/:sessionId/history', async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const session = agent.getSession(sessionId);
+            const session = await agent.getSession(sessionId);
             if (!session) {
                 return res.status(404).json({ error: 'Session not found' });
             }
@@ -511,12 +519,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.delete('/api/sessions/:sessionId', async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const session = agent.getSession(sessionId);
+            const session = await agent.getSession(sessionId);
             if (!session) {
                 return res.status(404).json({ error: 'Session not found' });
             }
 
-            await agent.endSession(sessionId);
+            await agent.deleteSession(sessionId);
             res.json({ status: 'deleted', sessionId });
         } catch (error) {
             logger.error(`Error deleting session ${req.params.sessionId}: ${error.message}`);
@@ -528,16 +536,56 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.post('/api/sessions/:sessionId/reset', async (req, res) => {
         try {
             const { sessionId } = req.params;
-            const session = agent.getSession(sessionId);
+            const session = await agent.getSession(sessionId);
             if (!session) {
                 return res.status(404).json({ error: 'Session not found' });
             }
 
-            await agent.resetSession(sessionId);
+            await agent.resetConversation(sessionId);
             res.json({ status: 'reset', sessionId });
         } catch (error) {
             logger.error(`Error resetting session ${req.params.sessionId}: ${error.message}`);
             res.status(500).json({ error: 'Failed to reset session' });
+        }
+    });
+
+    // Load session as current working session
+    app.post('/api/sessions/:sessionId/load', async (req, res) => {
+        try {
+            const { sessionId } = req.params;
+
+            // Handle null/reset case
+            if (sessionId === 'null' || sessionId === 'undefined') {
+                await agent.loadSession(null);
+                res.json({
+                    status: 'reset',
+                    sessionId: null,
+                    currentSession: agent.getCurrentSessionId(),
+                });
+                return;
+            }
+
+            const session = await agent.getSession(sessionId);
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+
+            await agent.loadSession(sessionId);
+            res.json({ status: 'loaded', sessionId, currentSession: agent.getCurrentSessionId() });
+        } catch (error) {
+            logger.error(`Error loading session ${req.params.sessionId}: ${error.message}`);
+            res.status(500).json({ error: 'Failed to load session' });
+        }
+    });
+
+    // Get current working session
+    app.get('/api/sessions/current', async (req, res) => {
+        try {
+            const currentSessionId = agent.getCurrentSessionId();
+            res.json({ currentSessionId });
+        } catch (error) {
+            logger.error(`Error getting current session: ${error.message}`);
+            res.status(500).json({ error: 'Failed to get current session' });
         }
     });
 

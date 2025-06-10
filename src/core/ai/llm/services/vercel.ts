@@ -1,6 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateText, LanguageModelV1, streamText } from 'ai';
+import { CoreMessage, generateText, LanguageModelV1, streamText } from 'ai';
 import { z } from 'zod';
 import { MCPClientManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';

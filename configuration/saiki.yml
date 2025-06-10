@@ -13,12 +13,13 @@ mcpServers:
     args:
       - -y
       - "@truffle-ai/puppeteer-server"
-  hf:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@llmindset/mcp-hfspace"
+  # hf:
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - -y
+  #     - "@llmindset/mcp-hfspace"
+
 
 # # describes the llm configuration
 llm:
@@ -55,6 +56,16 @@ llm:
         priority: 10
         source: dateTime
         enabled: true
+
+
+# Storage configuration - uses a two-tier architecture: cache (fast, ephemeral) and database (persistent, reliable)
+# Memory cache with file-based database (good for development with persistence)
+storage:
+  cache:
+    type: memory
+  database:
+    type: sqlite
+    # path: ./data/saiki.db
 
 ## To use Google Gemini, replace the LLM section with Google Gemini configuration below
 ## Similar for anthropic/groq/etc.

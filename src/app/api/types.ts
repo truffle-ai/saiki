@@ -8,4 +8,9 @@ export interface EventSubscriber {
      * Attach event handlers to the given event bus.
      */
     subscribe(eventBus: AgentEventBus): void;
+
+    /**
+     * Clean up event listeners and resources.
+     */
+    cleanup?(): void;
 }

@@ -9,7 +9,7 @@ import ServerRegistryModal from './ServerRegistryModal';
 import ServersPanel from './ServersPanel';
 import SessionPanel from './SessionPanel';
 import { Button } from "./ui/button";
-import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare } from "lucide-react";
+import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2, RefreshCw } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
@@ -23,10 +23,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 
 export default function ChatApp() {
-  const { messages, sendMessage, currentSessionId, switchSession } = useChatContext();
+  const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState, returnToWelcome } = useChatContext();
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [isServerRegistryOpen, setServerRegistryOpen] = useState(false);
@@ -42,10 +43,16 @@ export default function ChatApp() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
+  // Conversation management states
+  const [isResetDialogOpen, setResetDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     if (isExportOpen) {
       // Include current session ID in config export if available
-      const exportUrl = currentSessionId && currentSessionId !== 'default' 
+      const exportUrl = currentSessionId 
         ? `/api/config.yaml?sessionId=${currentSessionId}`
         : '/api/config.yaml';
       
@@ -71,7 +78,7 @@ export default function ChatApp() {
 
   const handleDownload = useCallback(async () => {
     try {
-      const exportUrl = currentSessionId && currentSessionId !== 'default' 
+      const exportUrl = currentSessionId 
         ? `/api/config.yaml?sessionId=${currentSessionId}`
         : '/api/config.yaml';
       
@@ -83,7 +90,7 @@ export default function ChatApp() {
       const link = document.createElement('a');
       link.href = url;
       
-      const fileName = currentSessionId && currentSessionId !== 'default'
+      const fileName = currentSessionId
         ? `${exportName}-${currentSessionId}.yml`
         : `${exportName}.yml`;
       link.download = fileName;
@@ -102,7 +109,7 @@ export default function ChatApp() {
 
   const handleCopy = useCallback(async () => {
     try {
-      const exportUrl = currentSessionId && currentSessionId !== 'default' 
+      const exportUrl = currentSessionId 
         ? `/api/config.yaml?sessionId=${currentSessionId}`
         : '/api/config.yaml';
       
@@ -147,6 +154,61 @@ export default function ChatApp() {
     }
   }, [switchSession]);
 
+  const handleResetConversation = useCallback(async () => {
+    if (!currentSessionId) return;
+    
+    setIsResetting(true);
+    try {
+      const response = await fetch(`/api/sessions/${currentSessionId}/reset`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reset conversation');
+      }
+
+      // Refresh the session to clear messages in the UI
+      await switchSession(currentSessionId);
+      setResetDialogOpen(false);
+    } catch (error) {
+      console.error('Error resetting conversation:', error);
+      // You might want to show a toast notification here
+    } finally {
+      setIsResetting(false);
+    }
+  }, [currentSessionId, switchSession]);
+
+  const handleDeleteConversation = useCallback(async () => {
+    if (!currentSessionId) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/sessions/${currentSessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete conversation');
+      }
+
+      // After deleting, return to welcome state
+      // Don't switch to any specific session, let user start fresh
+      setDeleteDialogOpen(false);
+      returnToWelcome();
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      // You might want to show a toast notification here
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [currentSessionId, returnToWelcome]);
+
   const quickActions = [
     {
       title: "What can you do?",
@@ -177,23 +239,23 @@ export default function ChatApp() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + J to toggle tools panel
+      // Ctrl/Cmd + J to toggle sessions panel
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
-        e.preventDefault();
-        setServersPanelOpen(prev => !prev);
-      }
-      // Ctrl/Cmd + Shift + J to open playground
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'j') {
-        e.preventDefault();
-        window.open('/playground', '_blank');
-      }
-      // Ctrl/Cmd + Shift + S to toggle sessions panel
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 's') {
         e.preventDefault();
         setSessionsPanelOpen(prev => !prev);
       }
+      // Ctrl/Cmd + K to toggle tools/servers panel
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'k') {
+        e.preventDefault();
+        setServersPanelOpen(prev => !prev);
+      }
+      // Ctrl/Cmd + L to open playground
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'l') {
+        e.preventDefault();
+        window.open('/playground', '_blank');
+      }
       // Ctrl/Cmd + Shift + E to export config
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'e') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
         e.preventDefault();
         setExportOpen(true);
       }
@@ -209,12 +271,14 @@ export default function ChatApp() {
         else if (isServerRegistryOpen) setServerRegistryOpen(false);
         else if (isExportOpen) setExportOpen(false);
         else if (showShortcuts) setShowShortcuts(false);
+        else if (isResetDialogOpen) setResetDialogOpen(false);
+        else if (isDeleteDialogOpen) setDeleteDialogOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isSessionsPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts]);
+  }, [isServersPanelOpen, isSessionsPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isResetDialogOpen, isDeleteDialogOpen]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -230,11 +294,11 @@ export default function ChatApp() {
                 <h1 className="text-base font-semibold tracking-tight">Saiki</h1>
               </div>
               
-              {/* Current Session Indicator */}
-              {currentSessionId && (
+              {/* Current Session Indicator - Only show when there's an active session */}
+              {currentSessionId && !isWelcomeState && (
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline" className="text-xs">
-                    {currentSessionId === 'default' ? 'Default Chat' : currentSessionId}
+                    {currentSessionId}
                   </Badge>
                 </div>
               )}
@@ -303,6 +367,23 @@ export default function ChatApp() {
                     <Keyboard className="h-4 w-4 mr-2" />
                     Shortcuts
                   </DropdownMenuItem>
+                  {/* Session Management Actions - Only show when there's an active session */}
+                  {currentSessionId && !isWelcomeState && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setResetDialogOpen(true)}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset Conversation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Conversation
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -313,24 +394,19 @@ export default function ChatApp() {
         <div className="flex-1 flex overflow-hidden">
           {/* Chat Content */}
           <div className="flex-1 flex flex-col">
-            {messages.length === 0 ? (
+            {isWelcomeState || messages.length === 0 ? (
               /* Welcome Screen - Clean Design */
               <div className="flex-1 flex items-center justify-center p-6">
-                <div className="w-full max-w-2xl mx-auto text-center space-y-8">
+                <div className="w-full max-w-md space-y-8">
                   <div className="space-y-4">
                     <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-2xl bg-primary/10 text-primary">
                       <img src="/logo.png" alt="Saiki" className="w-8 h-8" />
                     </div>
                     <div className="space-y-2">
-                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">Hello, I'm Saiki!</h2>
-                      <p className="text-muted-foreground text-base">
+                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent text-center">Hello, I'm Saiki!</h2>
+                      <p className="text-muted-foreground text-base text-center">
                         Try asking me something or connect new tools to expand what I can do
                       </p>
-                      {currentSessionId !== 'default' && (
-                        <p className="text-sm text-muted-foreground">
-                          Currently in session: <span className="font-mono">{currentSessionId}</span>
-                        </p>
-                      )}
                     </div>
                   </div>
 
@@ -358,8 +434,8 @@ export default function ChatApp() {
                   </div>
                 
                   {/* Quick Tips */}
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧S</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧J</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧P</kbd> for playground</p>
+                  <div className="text-xs text-muted-foreground space-y-1 text-center">
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools/servers, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground</p>
                   </div>
                 </div>
               </div>
@@ -396,6 +472,7 @@ export default function ChatApp() {
                 onClose={() => setSessionsPanelOpen(false)}
                 currentSessionId={currentSessionId}
                 onSessionChange={handleSessionChange}
+                returnToWelcome={returnToWelcome}
                 variant="inline"
               />
             )}
@@ -440,7 +517,7 @@ export default function ChatApp() {
               </DialogTitle>
               <DialogDescription>
                 Download your tool configuration for Claude Desktop or other MCP clients
-                {currentSessionId !== 'default' && (
+                {currentSessionId && (
                   <span className="block mt-1 text-sm text-muted-foreground">
                     Including session-specific settings for: <span className="font-mono">{currentSessionId}</span>
                   </span>
@@ -492,6 +569,75 @@ export default function ChatApp() {
           </DialogContent>
         </Dialog>
 
+        {/* Reset Conversation Confirmation Modal */}
+        <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <RefreshCw className="h-5 w-5" />
+                <span>Reset Conversation</span>
+              </DialogTitle>
+              <DialogDescription>
+                This will clear all messages in this conversation while keeping the session active.
+                {currentSessionId && (
+                  <span className="block mt-2 font-medium">
+                    Session: <span className="font-mono">{currentSessionId}</span>
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleResetConversation}
+                disabled={isResetting}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={cn("h-4 w-4", isResetting && "animate-spin")} />
+                <span>{isResetting ? 'Resetting...' : 'Reset Conversation'}</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Conversation Confirmation Modal */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <Trash2 className="h-5 w-5 text-destructive" />
+                <span>Delete Conversation</span>
+              </DialogTitle>
+              <DialogDescription>
+                This will permanently delete this conversation and all its messages. This action cannot be undone.
+                {currentSessionId && (
+                  <span className="block mt-2 font-medium">
+                    Session: <span className="font-mono">{currentSessionId}</span>
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteConversation}
+                disabled={isDeleting}
+                className="flex items-center space-x-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Conversation'}</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Shortcuts Modal */}
         <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
           <DialogContent className="sm:max-w-md">
@@ -504,11 +650,11 @@ export default function ChatApp() {
             
             <div className="space-y-3">
               {[
-                { key: '⌘ ⇧ S', desc: 'Toggle sessions panel' },
-                { key: '⌘ J', desc: 'Toggle tools panel' },
-                { key: '⌘ ⇧ J', desc: 'Open playground' },
-                { key: '⌘ ⇧ E', desc: 'Export config' },
-                { key: '⌘ /', desc: 'Show shortcuts' },
+                { key: '⌘J', desc: 'Toggle sessions panel' },
+                { key: '⌘K', desc: 'Toggle tools panel' },
+                { key: '⌘L', desc: 'Open playground' },
+                { key: '⌘⇧E', desc: 'Export config' },
+                { key: '⌘/', desc: 'Show shortcuts' },
                 { key: 'Esc', desc: 'Close panels' },
               ].map((shortcut, index) => (
                 <div key={index} className="flex justify-between items-center py-1">

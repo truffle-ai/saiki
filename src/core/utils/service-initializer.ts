@@ -30,9 +30,11 @@ import { createToolConfirmationProvider } from '../client/tool-confirmation/fact
 import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { StaticConfigManager } from '../config/static-config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
-import { SessionManager } from '../ai/session/SessionManager.js';
+import { SessionManager } from '../ai/session/session-manager.js';
+import { initializeStorage, type StorageBackends } from '../storage/index.js';
+import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/factory.js';
 import { logger } from '../logger/index.js';
-import type { CLIConfigOverrides } from '../config/types.js';
+import type { CLIConfigOverrides, StorageConfig } from '../config/types.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { AgentEventBus } from '../events/index.js';
 
@@ -45,6 +47,7 @@ export type AgentServices = {
     agentEventBus: AgentEventBus;
     stateManager: AgentStateManager;
     sessionManager: SessionManager;
+    storage: StorageBackends;
 };
 
 /**
@@ -69,6 +72,7 @@ export type InitializeServicesOptions = {
     clientManager?: MCPClientManager; // Inject a custom or mock MCPClientManager
     agentEventBus?: AgentEventBus; // Inject a custom or mock AgentEventBus
     sessionManager?: SessionManager; // Inject a custom or mock SessionManager
+    storage?: StorageBackends; // Inject a custom or mock storage backends
     // Add more overrides as needed
     // configOverride?: Partial<AgentConfig>; // (optional) for field-level config overrides
 };
@@ -95,29 +99,51 @@ export async function createAgentServices(
     const agentEventBus: AgentEventBus = overrides?.agentEventBus ?? new AgentEventBus();
     logger.debug('Agent event bus initialized');
 
-    // 3. Initialize client manager
+    // 3. Initialize storage backends
+    logger.debug('Initializing storage backends');
+    const storage = overrides?.storage ?? (await initializeStorage(config.storage));
+
+    logger.debug('Storage backends initialized', {
+        cache: config.storage.cache.type,
+        database: config.storage.database.type,
+    });
+
+    // 4. Initialize client manager with storage-backed allowed tools provider
     const connectionMode = overrides?.connectionMode ?? 'lenient';
     const runMode = overrides?.runMode ?? 'cli';
-    const confirmationProvider = createToolConfirmationProvider(
+
+    // Create allowed tools provider with memory configuration
+    // TODO: Implement storage-backed provider when tool persistence is needed
+    const allowedToolsProvider = createAllowedToolsProvider({ type: 'memory' });
+
+    // Create tool confirmation provider
+    const confirmationProvider = createToolConfirmationProvider({
         runMode,
-        config.storage.allowedTools
-    );
+        allowedToolsProvider,
+    });
+
     const clientManager = overrides?.clientManager ?? new MCPClientManager(confirmationProvider);
     await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
-    logger.debug(
-        overrides?.clientManager
-            ? 'Client manager and MCP servers initialized via override'
-            : 'Client manager and MCP servers initialized'
-    );
 
-    // 4. Initialize prompt manager
+    const mcpServerCount = Object.keys(config.mcpServers).length;
+    if (mcpServerCount === 0) {
+        logger.info('Agent initialized without MCP servers - only built-in capabilities available');
+    } else {
+        logger.debug(
+            overrides?.clientManager
+                ? 'Client manager and MCP servers initialized via override'
+                : `Client manager initialized with ${mcpServerCount} MCP server(s)`
+        );
+    }
+
+    // 5. Initialize prompt manager
     const promptManager = new PromptManager(config.llm.systemPrompt);
 
-    // 5. Initialize state manager for runtime state tracking
+    // 6. Initialize state manager for runtime state tracking
     const stateManager = new AgentStateManager(config, agentEventBus);
     logger.debug('Agent state manager initialized');
 
-    // 6. Initialize session manager
+    // 7. Initialize session manager
     const sessionManager =
         overrides?.sessionManager ??
         new SessionManager(
@@ -126,24 +152,32 @@ export async function createAgentServices(
                 promptManager,
                 clientManager,
                 agentEventBus,
+                storage, // Add storage backends to session services
             },
             {
                 maxSessions: config.sessions?.maxSessions,
                 sessionTTL: config.sessions?.sessionTTL,
             }
         );
+
+    // Initialize the session manager with persistent storage
+    if (!overrides?.sessionManager) {
+        await sessionManager.init();
+    }
+
     logger.debug(
         overrides?.sessionManager
             ? 'Session manager provided via override'
-            : 'Session manager initialized'
+            : 'Session manager initialized with storage support'
     );
 
-    // 7. Return the core services
+    // 8. Return the core services
     return {
         clientManager,
         promptManager,
         agentEventBus,
         stateManager,
         sessionManager,
+        storage,
     };
 }

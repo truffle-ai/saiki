@@ -23,7 +23,6 @@ export const AGENT_EVENT_NAMES = [
  * Session-level event names - events that occur within individual sessions
  */
 export const SESSION_EVENT_NAMES = [
-    'messageManager:conversationReset',
     'llmservice:thinking',
     'llmservice:chunk',
     'llmservice:response',
@@ -46,7 +45,7 @@ export interface AgentEventMap {
     // Agent-level events
     /** Fired when Saiki conversation is reset */
     'saiki:conversationReset': {
-        sessionId?: string;
+        sessionId: string;
     };
 
     /** Fired when MCP server connection succeeds or fails */
@@ -54,14 +53,12 @@ export interface AgentEventMap {
         name: string;
         success: boolean;
         error?: string;
-        sessionId?: string;
     };
 
     /** Fired when available tools list updates */
     'saiki:availableToolsUpdated': {
         tools: string[];
         source: 'mcp' | 'builtin';
-        sessionId?: string;
     };
 
     /** Fired when LLM service switched */
@@ -69,26 +66,20 @@ export interface AgentEventMap {
         newConfig: any; // LLMConfig type
         router?: string;
         historyRetained?: boolean;
-        sessionId?: string;
-        sessionIds?: string[];
+        sessionIds: string[];
     };
 
     // Session events forwarded to agent bus (with sessionId added)
-    /** Fired when MessageManager conversation is reset */
-    'messageManager:conversationReset': {
-        sessionId?: string;
-    };
-
     /** LLM service started thinking */
     'llmservice:thinking': {
-        sessionId?: string;
+        sessionId: string;
     };
 
     /** LLM service sent a streaming chunk */
     'llmservice:chunk': {
         content: string;
         isComplete?: boolean;
-        sessionId?: string;
+        sessionId: string;
     };
 
     /** LLM service final response */
@@ -96,7 +87,7 @@ export interface AgentEventMap {
         content: string;
         tokenCount?: number;
         model?: string;
-        sessionId?: string;
+        sessionId: string;
     };
 
     /** LLM service requested a tool call */
@@ -104,7 +95,7 @@ export interface AgentEventMap {
         toolName: string;
         args: Record<string, any>;
         callId?: string;
-        sessionId?: string;
+        sessionId: string;
     };
 
     /** LLM service returned a tool result */
@@ -113,7 +104,7 @@ export interface AgentEventMap {
         result: any;
         callId?: string;
         success: boolean;
-        sessionId?: string;
+        sessionId: string;
     };
 
     /** LLM service error */
@@ -121,7 +112,7 @@ export interface AgentEventMap {
         error: Error;
         context?: string;
         recoverable?: boolean;
-        sessionId?: string;
+        sessionId: string;
     };
 
     /** LLM service switched */
@@ -129,7 +120,7 @@ export interface AgentEventMap {
         newConfig: any; // LLMConfig type
         router?: string;
         historyRetained?: boolean;
-        sessionId?: string;
+        sessionId: string;
     };
 
     // Agent state manager events
@@ -186,9 +177,6 @@ export interface AgentEventMap {
  * (since they're already scoped to a session)
  */
 export interface SessionEventMap {
-    /** Fired when MessageManager conversation is reset */
-    'messageManager:conversationReset': void;
-
     /** LLM service started thinking */
     'llmservice:thinking': void;
 
@@ -272,51 +260,149 @@ export const EventNames: readonly EventName[] = Object.freeze([...EVENT_NAMES]);
  * Generic typed EventEmitter base class
  */
 class BaseTypedEventEmitter<TEventMap extends Record<string, any>> extends EventEmitter {
+    // Store listeners with their abort controllers for cleanup
+    private _abortListeners = new WeakMap<AbortSignal, Set<{ event: any; listener: any }>>();
+
     // Method overloads for typed events
-    emit<K extends keyof TEventMap>(
+    override emit<K extends keyof TEventMap>(
         event: K,
         ...args: TEventMap[K] extends void ? [] : [TEventMap[K]]
     ): boolean;
     // Method overload for untyped events (compatibility)
-    emit(event: string | symbol, ...args: any[]): boolean;
+    override emit(event: string | symbol, ...args: any[]): boolean;
     // Implementation
-    emit(event: any, ...args: any[]): boolean {
+    override emit(event: any, ...args: any[]): boolean {
         return super.emit(event, ...args);
     }
 
-    // Method overloads for typed events
-    on<K extends keyof TEventMap>(
+    // Method overloads for typed events with AbortController support
+    override on<K extends keyof TEventMap>(
         event: K,
-        listener: TEventMap[K] extends void ? () => void : (payload: TEventMap[K]) => void
+        listener: TEventMap[K] extends void ? () => void : (payload: TEventMap[K]) => void,
+        options?: { signal?: AbortSignal }
     ): this;
     // Method overload for untyped events (compatibility)
-    on(event: string | symbol, listener: (...args: any[]) => void): this;
+    override on(
+        event: string | symbol,
+        listener: (...args: any[]) => void,
+        options?: { signal?: AbortSignal }
+    ): this;
     // Implementation
-    on(event: any, listener: any): this {
-        return super.on(event, listener);
+    override on(event: any, listener: any, options?: { signal?: AbortSignal }): this {
+        // If signal is already aborted, don't add the listener
+        if (options?.signal?.aborted) {
+            return this;
+        }
+
+        // Add the listener
+        super.on(event, listener);
+
+        // Set up abort handling if signal is provided
+        if (options?.signal) {
+            const signal = options.signal;
+
+            // Track this listener for cleanup
+            if (!this._abortListeners.has(signal)) {
+                this._abortListeners.set(signal, new Set());
+            }
+            this._abortListeners.get(signal)!.add({ event, listener });
+
+            // Set up abort handler
+            const abortHandler = () => {
+                this.off(event, listener);
+
+                // Clean up tracking
+                const listeners = this._abortListeners.get(signal);
+                if (listeners) {
+                    listeners.delete({ event, listener });
+                    if (listeners.size === 0) {
+                        this._abortListeners.delete(signal);
+                    }
+                }
+            };
+
+            signal.addEventListener('abort', abortHandler, { once: true });
+        }
+
+        return this;
+    }
+
+    // Method overloads for typed events with AbortController support
+    override once<K extends keyof TEventMap>(
+        event: K,
+        listener: TEventMap[K] extends void ? () => void : (payload: TEventMap[K]) => void,
+        options?: { signal?: AbortSignal }
+    ): this;
+    // Method overload for untyped events (compatibility)
+    override once(
+        event: string | symbol,
+        listener: (...args: any[]) => void,
+        options?: { signal?: AbortSignal }
+    ): this;
+    // Implementation
+    override once(event: any, listener: any, options?: { signal?: AbortSignal }): this {
+        // If signal is already aborted, don't add the listener
+        if (options?.signal?.aborted) {
+            return this;
+        }
+
+        // Create a wrapper that handles both once and abort cleanup
+        const onceWrapper = (...args: any[]) => {
+            // Clean up abort tracking before calling the original listener
+            if (options?.signal) {
+                const listeners = this._abortListeners.get(options.signal);
+                if (listeners) {
+                    listeners.delete({ event, listener: onceWrapper });
+                    if (listeners.size === 0) {
+                        this._abortListeners.delete(options.signal);
+                    }
+                }
+            }
+            listener(...args);
+        };
+
+        // Add the wrapped listener
+        super.once(event, onceWrapper);
+
+        // Set up abort handling if signal is provided
+        if (options?.signal) {
+            const signal = options.signal;
+
+            // Track this listener for cleanup
+            if (!this._abortListeners.has(signal)) {
+                this._abortListeners.set(signal, new Set());
+            }
+            this._abortListeners.get(signal)!.add({ event, listener: onceWrapper });
+
+            // Set up abort handler
+            const abortHandler = () => {
+                this.off(event, onceWrapper);
+
+                // Clean up tracking
+                const listeners = this._abortListeners.get(signal);
+                if (listeners) {
+                    listeners.delete({ event, listener: onceWrapper });
+                    if (listeners.size === 0) {
+                        this._abortListeners.delete(signal);
+                    }
+                }
+            };
+
+            signal.addEventListener('abort', abortHandler, { once: true });
+        }
+
+        return this;
     }
 
     // Method overloads for typed events
-    once<K extends keyof TEventMap>(
+    override off<K extends keyof TEventMap>(
         event: K,
         listener: TEventMap[K] extends void ? () => void : (payload: TEventMap[K]) => void
     ): this;
     // Method overload for untyped events (compatibility)
-    once(event: string | symbol, listener: (...args: any[]) => void): this;
+    override off(event: string | symbol, listener: (...args: any[]) => void): this;
     // Implementation
-    once(event: any, listener: any): this {
-        return super.once(event, listener);
-    }
-
-    // Method overloads for typed events
-    off<K extends keyof TEventMap>(
-        event: K,
-        listener: TEventMap[K] extends void ? () => void : (payload: TEventMap[K]) => void
-    ): this;
-    // Method overload for untyped events (compatibility)
-    off(event: string | symbol, listener: (...args: any[]) => void): this;
-    // Implementation
-    off(event: any, listener: any): this {
+    override off(event: any, listener: any): this {
         return super.off(event, listener);
     }
 }

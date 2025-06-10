@@ -72,6 +72,8 @@ export const AgentCardSchema = z
     })
     .strict();
 
+export type AgentCard = z.infer<typeof AgentCardSchema>;
+
 // Define a base schema for common fields
 const BaseContributorSchema = z
     .object({
@@ -330,57 +332,147 @@ export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
 export const ServerConfigsSchema = z
     .record(McpServerConfigSchema)
-    .refine((obj) => Object.keys(obj).length > 0, {
-        message: 'At least one MCP server configuration is required.',
-    })
     .describe('A dictionary of server configurations, keyed by server name');
 export type ServerConfigs = z.infer<typeof ServerConfigsSchema>;
+
+// ==== STORAGE CONFIGURATION ====
+// Base schema for common connection pool options
+const BaseBackendSchema = z.object({
+    maxConnections: z.number().int().positive().optional().describe('Maximum connections'),
+    idleTimeoutMillis: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Idle timeout in milliseconds'),
+    connectionTimeoutMillis: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Connection timeout in milliseconds'),
+    options: z.record(z.any()).optional().describe('Backend-specific options'),
+});
+
+// Memory backend - minimal configuration
+const MemoryBackendSchema = BaseBackendSchema.extend({
+    type: z.literal('memory'),
+    // Memory backend doesn't need connection options, but inherits pool options for consistency
+}).strict();
+
+export type MemoryBackendConfig = z.infer<typeof MemoryBackendSchema>;
+
+// Redis backend configuration
+const RedisBackendSchema = BaseBackendSchema.extend({
+    type: z.literal('redis'),
+    url: z.string().optional().describe('Redis connection URL (redis://...)'),
+    host: z.string().optional().describe('Redis host'),
+    port: z.number().int().positive().optional().describe('Redis port'),
+    password: z.string().optional().describe('Redis password'),
+    database: z.number().int().nonnegative().optional().describe('Redis database number'),
+}).strict();
+
+export type RedisBackendConfig = z.infer<typeof RedisBackendSchema>;
+
+// SQLite backend configuration
+const SqliteBackendSchema = BaseBackendSchema.extend({
+    type: z.literal('sqlite'),
+    path: z
+        .string()
+        .optional()
+        .describe(
+            'SQLite database file path (optional, will auto-detect using path resolver if not provided)'
+        ),
+    database: z.string().optional().describe('Database filename (default: saiki.db)'),
+}).strict();
+
+export type SqliteBackendConfig = z.infer<typeof SqliteBackendSchema>;
+
+// PostgreSQL backend configuration
+const PostgresBackendSchema = BaseBackendSchema.extend({
+    type: z.literal('postgres'),
+    url: z.string().optional().describe('PostgreSQL connection URL (postgresql://...)'),
+    connectionString: z.string().optional().describe('PostgreSQL connection string'),
+    host: z.string().optional().describe('PostgreSQL host'),
+    port: z.number().int().positive().optional().describe('PostgreSQL port'),
+    database: z.string().optional().describe('PostgreSQL database name'),
+    password: z.string().optional().describe('PostgreSQL password'),
+}).strict();
+
+export type PostgresBackendConfig = z.infer<typeof PostgresBackendSchema>;
+
+// Backend configuration using discriminated union
+const BackendConfigSchema = z
+    .discriminatedUnion(
+        'type',
+        [MemoryBackendSchema, RedisBackendSchema, SqliteBackendSchema, PostgresBackendSchema],
+        {
+            errorMap: (issue, ctx) => {
+                if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
+                    return {
+                        message: `Invalid backend type. Expected 'memory', 'redis', 'sqlite', or 'postgres'.`,
+                    };
+                }
+                return { message: ctx.defaultError };
+            },
+        }
+    )
+    .describe('Backend configuration for storage system')
+    .superRefine((data, ctx) => {
+        // Validate Redis backend requirements
+        if (data.type === 'redis') {
+            if (!data.url && !data.host) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Redis backend requires either 'url' or 'host' to be specified",
+                    path: ['url'],
+                });
+            }
+        }
+
+        // Validate PostgreSQL backend requirements
+        if (data.type === 'postgres') {
+            if (!data.url && !data.connectionString && !data.host) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                        "PostgreSQL backend requires one of 'url', 'connectionString', or 'host' to be specified",
+                    path: ['url'],
+                });
+            }
+        }
+    });
+
+export type BackendConfig = z.infer<typeof BackendConfigSchema>;
+
+// Storage configuration with cache and database backends
+export const StorageSchema = z
+    .object({
+        cache: BackendConfigSchema.describe('Cache backend configuration (fast, ephemeral)'),
+        database: BackendConfigSchema.describe(
+            'Database backend configuration (persistent, reliable)'
+        ),
+    })
+    .describe('Storage configuration with cache and database backends');
+
+export type StorageConfig = z.infer<typeof StorageSchema>;
 
 export const AgentConfigSchema = z
     .object({
         agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
-        mcpServers: ServerConfigsSchema.describe(
-            'Configurations for MCP (Multi-Capability Peer) servers used by the agent'
-        ),
+        mcpServers: ServerConfigsSchema.optional()
+            .default({})
+            .describe('Configurations for MCP (Model Context Protocol) servers used by the agent'),
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
-        storage: z
-            .object({
-                history: z
-                    .object({
-                        provider: z.enum(['memory', 'file']).default('memory'),
-                        options: z.record(z.any()).optional(),
-                    })
-                    .optional()
-                    .default({ provider: 'memory' }),
-                allowedTools: z
-                    .object({
-                        provider: z.enum(['memory']).default('memory'),
-                        options: z.record(z.any()).optional(),
-                    })
-                    .optional()
-                    .default({ provider: 'memory' }),
-                userInfo: z
-                    .object({
-                        provider: z.enum(['memory']).default('memory'),
-                        options: z.record(z.any()).optional(),
-                    })
-                    .optional()
-                    .default({ provider: 'memory' }),
-                toolCache: z
-                    .object({
-                        provider: z.enum(['memory']).default('memory'),
-                        options: z.record(z.any()).optional(),
-                    })
-                    .optional()
-                    .default({ provider: 'memory' }),
-            })
-            .optional()
+
+        // Storage configuration
+        storage: StorageSchema.optional()
             .default({
-                history: { provider: 'memory' },
-                allowedTools: { provider: 'memory' },
-                userInfo: { provider: 'memory' },
-                toolCache: { provider: 'memory' },
-            }),
+                cache: { type: 'memory' },
+                database: { type: 'memory' },
+            })
+            .describe('Storage configuration for the agent using cache and database backends'),
+
         sessions: z
             .object({
                 maxSessions: z
@@ -408,5 +500,4 @@ export const AgentConfigSchema = z
             .describe('Session management configuration'),
     })
     .describe('Main configuration for an agent, including its LLM and server connections');
-
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;

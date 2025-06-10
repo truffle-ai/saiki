@@ -38,5 +38,12 @@ logs/
 # Optional eslint cache
 .eslintcache
 
-# Coverage directory
-public/
+# Coverage directory (main public, but allow webui public)
+/public/
+!/src/app/webui/public/
+
+# Test temporary files
+test-temp/
+
+# temporary storage
+.saiki/

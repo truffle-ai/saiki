@@ -42,7 +42,7 @@ export class MCPClientManager {
 
         [this.toolToClientMap, this.promptToClientMap, this.resourceToClientMap].forEach(
             (cacheMap) => {
-                for (const [key, mappedClient] of cacheMap.entries()) {
+                for (const [key, mappedClient] of Array.from(cacheMap.entries())) {
                     if (mappedClient === client) {
                         cacheMap.delete(key);
                     }
@@ -61,7 +61,10 @@ export class MCPClientManager {
             }
             logger.debug(`Cached tools for client: ${clientName}`);
         } catch (error) {
-            logger.error(`Error retrieving tools for client ${clientName}:`, error);
+            logger.error(
+                `Error retrieving tools for client ${clientName}: ${error instanceof Error ? error.message : String(error)}`
+            );
+            return; // Early return on error, no caching
         }
 
         // Cache prompts, if supported
@@ -94,7 +97,7 @@ export class MCPClientManager {
      */
     async getAllTools(): Promise<ToolSet> {
         const allTools: ToolSet = {};
-        for (const [toolName, client] of this.toolToClientMap.entries()) {
+        for (const [toolName, client] of Array.from(this.toolToClientMap.entries())) {
             const clientTools = await client.getTools();
             // clientTools is itself a ToolSet, so extract the specific Tool
             const toolDef = clientTools[toolName];
@@ -204,6 +207,12 @@ export class MCPClientManager {
         serverConfigs: ServerConfigs,
         connectionMode: 'strict' | 'lenient' = 'lenient'
     ): Promise<void> {
+        // Handle empty server configurations gracefully
+        if (Object.keys(serverConfigs).length === 0) {
+            logger.info('No MCP servers configured - running without external tools');
+            return;
+        }
+
         const successfulConnections: string[] = [];
         const connectionPromises: Promise<void>[] = [];
 
@@ -316,7 +325,7 @@ export class MCPClientManager {
      */
     async disconnectAll(): Promise<void> {
         const disconnectPromises: Promise<void>[] = [];
-        for (const [name, client] of this.clients.entries()) {
+        for (const [name, client] of Array.from(this.clients.entries())) {
             if (client.disconnect) {
                 disconnectPromises.push(
                     client

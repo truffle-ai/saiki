@@ -31,7 +31,27 @@ export class CLISubscriber implements EventSubscriber {
         );
         eventBus.on('llmservice:response', (payload) => this.onResponse(payload.content));
         eventBus.on('llmservice:error', (payload) => this.onError(payload.error));
-        eventBus.on('messageManager:conversationReset', this.onConversationReset.bind(this));
+        eventBus.on('saiki:conversationReset', this.onConversationReset.bind(this));
+    }
+
+    /**
+     * Clean up internal state and terminal display.
+     * Called when the CLI subscriber is being disposed of.
+     */
+    cleanup(): void {
+        // Clear any accumulated response state
+        this.accumulatedResponse = '';
+        this.currentLines = 0;
+
+        // Clear the terminal output if there's an active streaming display
+        if (this.currentLines > 0) {
+            // Move cursor up to clear the streaming response box
+            process.stdout.write(`\x1b[${this.currentLines}A`);
+            // Clear lines down from cursor
+            process.stdout.write('\x1b[J');
+        }
+
+        logger.debug('CLI event subscriber cleaned up');
     }
 
     onThinking(): void {

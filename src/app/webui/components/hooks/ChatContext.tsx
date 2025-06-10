@@ -8,9 +8,11 @@ interface ChatContextType {
   sendMessage: (content: string, imageData?: { base64: string; mimeType: string }) => void;
   status: 'connecting' | 'open' | 'closed';
   reset: () => void;
-  currentSessionId: string;
+  currentSessionId: string | null;
   switchSession: (sessionId: string) => void;
   loadSessionHistory: (sessionId: string) => Promise<void>;
+  isWelcomeState: boolean;
+  returnToWelcome: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -30,17 +32,67 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const [currentSessionId, setCurrentSessionId] = useState<string>('default');
+  // Start with no session - pure welcome state
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isWelcomeState, setIsWelcomeState] = useState(true);
   const { messages, sendMessage: originalSendMessage, status, reset: originalReset, setMessages } = useChat(wsUrl);
 
-  // Enhanced sendMessage with session support
-  const sendMessage = useCallback((content: string, imageData?: { base64: string; mimeType: string }) => {
-    originalSendMessage(content, imageData, currentSessionId);
-  }, [originalSendMessage, currentSessionId]);
+  // Auto-create session on first message with random UUID
+  const createAutoSession = useCallback(async (): Promise<string> => {
+    try {
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}), // Let server generate random UUID
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create session');
+      }
+      
+      const data = await response.json();
+      return data.session.id;
+    } catch (error) {
+      console.error('Error creating auto session:', error);
+      // Fallback to a simple timestamp-based session ID
+      return `chat-${Date.now()}`;
+    }
+  }, []);
+
+  // Enhanced sendMessage with auto-session creation
+  const sendMessage = useCallback(async (content: string, imageData?: { base64: string; mimeType: string }) => {
+    let sessionId = currentSessionId;
+    
+    // Auto-create session on first message
+    if (!sessionId && isWelcomeState) {
+      sessionId = await createAutoSession();
+      
+      // Load the new session as the current working session
+      try {
+        await fetch(`/api/sessions/${sessionId}/load`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        console.error('Error loading auto-created session:', error);
+      }
+      
+      setCurrentSessionId(sessionId);
+      setIsWelcomeState(false);
+    }
+    
+    if (sessionId) {
+      originalSendMessage(content, imageData, sessionId);
+    } else {
+      console.error('No session available for sending message');
+    }
+  }, [originalSendMessage, currentSessionId, isWelcomeState, createAutoSession]);
 
   // Enhanced reset with session support
   const reset = useCallback(() => {
-    originalReset(currentSessionId);
+    if (currentSessionId) {
+      originalReset(currentSessionId);
+    }
   }, [originalReset, currentSessionId]);
 
   // Load session history when switching sessions
@@ -90,18 +142,44 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [setMessages]);
 
-  // Switch to a different session
+  // Switch to a different session and load it on the backend
   const switchSession = useCallback(async (sessionId: string) => {
     if (sessionId === currentSessionId) return;
     
-    setCurrentSessionId(sessionId);
-    await loadSessionHistory(sessionId);
+    try {
+      // Load the session as the current working session on the backend
+      const loadResponse = await fetch(`/api/sessions/${sessionId}/load`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!loadResponse.ok) {
+        throw new Error('Failed to load session on backend');
+      }
+      
+      setCurrentSessionId(sessionId);
+      setIsWelcomeState(false); // No longer in welcome state
+      await loadSessionHistory(sessionId);
+    } catch (error) {
+      console.error('Error switching session:', error);
+      throw error; // Re-throw so UI can handle the error
+    }
   }, [currentSessionId, loadSessionHistory]);
 
-  // Load default session history on mount
-  useEffect(() => {
-    loadSessionHistory('default');
-  }, [loadSessionHistory]);
+  // Return to welcome state (no active session)
+  const returnToWelcome = useCallback(() => {
+    setCurrentSessionId(null);
+    setIsWelcomeState(true);
+    setMessages([]);
+    
+    // Reset the backend to no default session
+    fetch('/api/sessions/null/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    }).catch(error => {
+      console.warn('Error resetting backend session:', error);
+    });
+  }, [setMessages]);
 
   // Listen for config-related WebSocket events via DOM events
   useEffect(() => {
@@ -143,7 +221,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       reset,
       currentSessionId,
       switchSession,
-      loadSessionHistory
+      loadSessionHistory,
+      isWelcomeState,
+      returnToWelcome
     }}>
       {children}
     </ChatContext.Provider>

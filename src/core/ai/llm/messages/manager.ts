@@ -8,7 +8,7 @@ import { logger } from '../../../logger/index.js';
 import { getImageData, countMessagesTokens } from './utils.js';
 import { DynamicContributorContext } from '../../systemPrompt/types.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
-import { ConversationHistoryProvider } from './history/types.js';
+import { IConversationHistoryProvider } from './history/types.js';
 import { SessionEventBus } from '../../../events/index.js';
 /**
  * Manages conversation history and provides message formatting capabilities.
@@ -22,6 +22,8 @@ import { SessionEventBus } from '../../../events/index.js';
  *
  * Note: All conversation history is stored and retrieved via the injected ConversationHistoryProvider.
  * The MessageManager does not maintain an internal history cache.
+ * TOOD: clean up tokenizer logic if we are relying primarily on LLM API to give us token count.
+ * Right now its weaker because it doesn't account for tools and other non-text content in the prompt.
  */
 export class MessageManager {
     /**
@@ -68,8 +70,8 @@ export class MessageManager {
      */
     private compressionStrategies: ICompressionStrategy[];
 
-    private historyProvider: ConversationHistoryProvider;
-    private sessionId: string;
+    private historyProvider: IConversationHistoryProvider;
+    private readonly sessionId: string;
 
     /**
      * Creates a new MessageManager instance
@@ -79,8 +81,8 @@ export class MessageManager {
      * @param sessionEventBus Session-level event bus for emitting message-related events
      * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
      * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
-     * @param historyProvider ConversationHistoryProvider instance for managing conversation history
-     * @param sessionId Unique identifier for the conversation session
+     * @param historyProvider Session-scoped ConversationHistoryProvider instance for managing conversation history
+     * @param sessionId Unique identifier for the conversation session (readonly, for debugging)
      * @param compressionStrategies Optional array of compression strategies to apply when token limits are exceeded
      */
     constructor(
@@ -89,7 +91,7 @@ export class MessageManager {
         sessionEventBus: SessionEventBus,
         maxTokens: number,
         tokenizer: ITokenizer,
-        historyProvider: ConversationHistoryProvider,
+        historyProvider: IConversationHistoryProvider,
         sessionId: string,
         compressionStrategies: ICompressionStrategy[] = [
             new MiddleRemovalStrategy(),
@@ -103,7 +105,6 @@ export class MessageManager {
         if (!tokenizer) throw new Error('tokenizer is required');
         if (!historyProvider) throw new Error('historyProvider is required');
         if (!sessionId) throw new Error('sessionId is required');
-        if (!tokenizer) throw new Error('tokenizer is required');
         if (!compressionStrategies) throw new Error('compressionStrategies is required');
 
         this.formatter = formatter;
@@ -125,7 +126,7 @@ export class MessageManager {
      * @returns Promise that resolves to the number of tokens in the current history
      */
     async getTokenCount(): Promise<number> {
-        const history = await this.historyProvider.getHistory(this.sessionId);
+        const history = await this.historyProvider.getHistory();
         return countMessagesTokens(history, this.tokenizer);
     }
 
@@ -143,7 +144,7 @@ export class MessageManager {
             const systemPrompt = await this.getSystemPrompt(context);
 
             // Get history and apply compression (same logic as getFormattedMessages)
-            let history = await this.historyProvider.getHistory(this.sessionId);
+            let history = await this.historyProvider.getHistory();
 
             // Count system prompt tokens
             const systemPromptTokens = this.tokenizer.countTokens(systemPrompt);
@@ -251,7 +252,7 @@ export class MessageManager {
      * @returns Promise that resolves to a read-only copy of the conversation history
      */
     async getHistory(): Promise<Readonly<InternalMessage[]>> {
-        const history = await this.historyProvider.getHistory(this.sessionId);
+        const history = await this.historyProvider.getHistory();
         return [...history];
     }
 
@@ -331,12 +332,22 @@ export class MessageManager {
             `MessageManager: Adding message to history provider: ${JSON.stringify(message, null, 2)}`
         );
 
-        // Save to history provider
-        await this.historyProvider.saveMessage(this.sessionId, message);
+        try {
+            // Save to history provider
+            await this.historyProvider.saveMessage(message);
 
-        // Get updated history for logging
-        const history = await this.historyProvider.getHistory(this.sessionId);
-        logger.debug(`MessageManager: History now contains ${history.length} messages`);
+            // Get updated history for logging
+            const history = await this.historyProvider.getHistory();
+            logger.debug(`MessageManager: History now contains ${history.length} messages`);
+        } catch (error) {
+            logger.error(
+                `MessageManager: Failed to save message for session ${this.sessionId}:`,
+                error
+            );
+            throw new Error(
+                `Failed to save message: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
 
         // Note: Compression is currently handled lazily in getFormattedMessages
     }
@@ -451,14 +462,26 @@ export class MessageManager {
         history?: InternalMessage[]
     ): Promise<any[]> {
         // Use provided history or fetch from provider
-        const messageHistory = history ?? (await this.historyProvider.getHistory(this.sessionId));
+        let messageHistory: InternalMessage[];
+        try {
+            messageHistory = history ?? (await this.historyProvider.getHistory());
+        } catch (error) {
+            logger.error(
+                `MessageManager: Failed to get history for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`
+            );
+            throw new Error(
+                `Failed to get conversation history: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
 
         try {
             // Use pre-computed system prompt if provided
             const prompt = systemPrompt ?? (await this.getSystemPrompt(context));
             return this.formatter.format([...messageHistory], prompt);
         } catch (error) {
-            logger.error('Error formatting messages:', error);
+            logger.error(
+                `Error formatting messages: ${error instanceof Error ? error.message : String(error)}`
+            );
             throw new Error(
                 `Failed to format messages: ${error instanceof Error ? error.message : String(error)}`
             );
@@ -486,7 +509,7 @@ export class MessageManager {
             const systemPromptTokens = this.tokenizer.countTokens(systemPrompt);
 
             // Step 2: Get history and compress if needed
-            let history = await this.historyProvider.getHistory(this.sessionId);
+            let history = await this.historyProvider.getHistory();
             history = await this.compressHistoryIfNeeded(history, systemPromptTokens);
 
             // Step 3: Format messages with compressed history
@@ -543,10 +566,8 @@ export class MessageManager {
      */
     async resetConversation(): Promise<void> {
         // Clear persisted history
-        await this.historyProvider.clearHistory(this.sessionId);
-        this.sessionEventBus.emit('messageManager:conversationReset');
+        await this.historyProvider.clearHistory();
         logger.debug(`MessageManager: Conversation history cleared for session ${this.sessionId}`);
-        // Note: We don't reset the system prompt as it's usually fixed for a service
     }
 
     /**
@@ -630,7 +651,14 @@ export class MessageManager {
     async processLLMResponse(response: any): Promise<void> {
         const msgs = this.formatter.parseResponse(response) ?? [];
         for (const msg of msgs) {
-            await this.addMessage(msg);
+            try {
+                await this.addMessage(msg);
+            } catch (error) {
+                logger.error(
+                    `MessageManager: Failed to process LLM response message for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`
+                );
+                // Continue processing other messages rather than failing completely
+            }
         }
     }
 }

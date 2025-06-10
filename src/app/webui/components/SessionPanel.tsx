@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 import { 
@@ -16,10 +16,18 @@ import {
   Clock, 
   Hash,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  MoreHorizontal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from './ui/alert';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from './ui/dropdown-menu';
 
 interface Session {
   id: string;
@@ -31,8 +39,9 @@ interface Session {
 interface SessionPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  currentSessionId?: string;
+  currentSessionId?: string | null;
   onSessionChange: (sessionId: string) => void;
+  returnToWelcome: () => void;
   variant?: 'inline' | 'modal';
 }
 
@@ -41,6 +50,7 @@ export default function SessionPanel({
   onClose, 
   currentSessionId,
   onSessionChange,
+  returnToWelcome,
   variant = 'modal' 
 }: SessionPanelProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -49,6 +59,13 @@ export default function SessionPanel({
   const [isNewSessionOpen, setNewSessionOpen] = useState(false);
   const [newSessionId, setNewSessionId] = useState('');
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+
+  // Conversation management states
+  const [isResetDialogOpen, setResetDialogOpen] = useState(false);
+  const [isDeleteConversationDialogOpen, setDeleteConversationDialogOpen] = useState(false);
+  const [selectedSessionForAction, setSelectedSessionForAction] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false);
 
   const fetchSessions = useCallback(async () => {
     setLoading(true);
@@ -125,11 +142,6 @@ export default function SessionPanel({
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (sessionId === 'default') {
-      setError('Cannot delete the default session');
-      return;
-    }
-    
     setDeletingSessionId(sessionId);
     try {
       const response = await fetch(`/api/sessions/${sessionId}`, {
@@ -143,15 +155,83 @@ export default function SessionPanel({
       
       setSessions(prev => prev.filter(s => s.id !== sessionId));
       
-      // If we deleted the current session, switch to default
+      // If we deleted the current session, trigger a page reload to return to welcome state
       if (currentSessionId === sessionId) {
-        onSessionChange('default');
+        returnToWelcome();
       }
     } catch (err) {
       console.error('Error deleting session:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete session');
     } finally {
       setDeletingSessionId(null);
+    }
+  };
+
+  const handleResetConversation = async () => {
+    if (!selectedSessionForAction) return;
+    
+    setIsResetting(true);
+    try {
+      const response = await fetch(`/api/sessions/${selectedSessionForAction}/reset`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reset conversation');
+      }
+
+      // Refresh sessions to update message counts
+      await fetchSessions();
+      
+      // If we reset the current session, refresh it
+      if (currentSessionId === selectedSessionForAction) {
+        onSessionChange(selectedSessionForAction);
+      }
+      
+      setResetDialogOpen(false);
+      setSelectedSessionForAction(null);
+    } catch (error) {
+      console.error('Error resetting conversation:', error);
+      setError(error instanceof Error ? error.message : 'Failed to reset conversation');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleDeleteConversation = async () => {
+    if (!selectedSessionForAction) return;
+    
+    setIsDeletingConversation(true);
+    try {
+      const response = await fetch(`/api/sessions/${selectedSessionForAction}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete conversation');
+      }
+
+      // Remove session from local state
+      setSessions(prev => prev.filter(s => s.id !== selectedSessionForAction));
+      
+      // If we deleted the current session, trigger a page reload to return to welcome state
+      if (currentSessionId === selectedSessionForAction) {
+        returnToWelcome();
+      }
+      
+      setDeleteConversationDialogOpen(false);
+      setSelectedSessionForAction(null);
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete conversation');
+    } finally {
+      setIsDeletingConversation(false);
     }
   };
 
@@ -182,7 +262,7 @@ export default function SessionPanel({
       <div className="flex items-center justify-between p-4 border-b border-border/50">
         <div className="flex items-center space-x-2">
           <MessageSquare className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">Chat Sessions</h2>
+          <h2 className="text-lg font-semibold">Sessions</h2>
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -243,7 +323,7 @@ export default function SessionPanel({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-2">
                       <h3 className="font-medium text-sm truncate">
-                        {session.id === 'default' ? 'Default Chat' : session.id}
+                        {session.id}
                       </h3>
                       {currentSessionId === session.id && (
                         <Badge variant="secondary" className="text-xs">
@@ -273,20 +353,60 @@ export default function SessionPanel({
                     </div>
                   </div>
                   
-                  {session.id !== 'default' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSession(session.id);
-                      }}
-                      disabled={deletingSessionId === session.id}
-                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
+                  {/* Session Actions */}
+                  <div className="flex items-center space-x-1">
+                    {/* Conversation Actions - Direct Buttons */}
+                    {session.messageCount > 0 && (
+                      <>
+                        {/* Reset Conversation Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSessionForAction(session.id);
+                            setResetDialogOpen(true);
+                          }}
+                          className="h-8 w-8 p-0"
+                          title="Reset Conversation"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                        
+                        {/* Delete Conversation Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSessionForAction(session.id);
+                            setDeleteConversationDialogOpen(true);
+                          }}
+                          className="h-8 w-8 p-0"
+                          title="Delete Conversation"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </>
+                    )}
+                    
+                    {/* Delete Session Button */}
+                    {session.messageCount === 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSession(session.id);
+                        }}
+                        disabled={deletingSessionId === session.id}
+                        className="h-8 w-8 p-0"
+                        title="Delete Session"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
@@ -323,6 +443,75 @@ export default function SessionPanel({
             </Button>
             <Button onClick={handleCreateSession}>
               Create Session
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Conversation Confirmation Dialog */}
+      <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <RefreshCw className="h-5 w-5" />
+              <span>Reset Conversation</span>
+            </DialogTitle>
+            <DialogDescription>
+              This will clear all messages in this conversation while keeping the session active.
+              {selectedSessionForAction && (
+                <span className="block mt-2 font-medium">
+                  Session: <span className="font-mono">{selectedSessionForAction}</span>
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleResetConversation}
+              disabled={isResetting}
+              className="flex items-center space-x-2"
+            >
+              <RefreshCw className={cn("h-4 w-4", isResetting && "animate-spin")} />
+              <span>{isResetting ? 'Resetting...' : 'Reset Conversation'}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Conversation Confirmation Dialog */}
+      <Dialog open={isDeleteConversationDialogOpen} onOpenChange={setDeleteConversationDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              <span>Delete Conversation</span>
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete this conversation and all its messages. This action cannot be undone.
+              {selectedSessionForAction && (
+                <span className="block mt-2 font-medium">
+                  Session: <span className="font-mono">{selectedSessionForAction}</span>
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConversationDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteConversation}
+              disabled={isDeletingConversation}
+              className="flex items-center space-x-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>{isDeletingConversation ? 'Deleting...' : 'Delete Conversation'}</span>
             </Button>
           </DialogFooter>
         </DialogContent>

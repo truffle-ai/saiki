@@ -26,10 +26,8 @@ describe('AgentStateManager Events', () => {
                 router: 'in-built',
             },
             storage: {
-                history: { provider: 'memory' },
-                allowedTools: { provider: 'memory' },
-                userInfo: { provider: 'memory' },
-                toolCache: { provider: 'memory' },
+                cache: { type: 'memory' },
+                database: { type: 'memory' },
             },
             sessions: {
                 maxSessions: 100,
