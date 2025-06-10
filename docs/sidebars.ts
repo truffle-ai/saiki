@@ -43,7 +43,7 @@ const sidebars: SidebarsConfig = {
         // Setup & Configuration
         {
             type: 'category',
-            label: 'Configuration',
+            label: 'Configuring Saiki',
             items: [
                 'configuring-saiki/overview',
                 {
