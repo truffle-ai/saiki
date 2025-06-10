@@ -29,7 +29,8 @@ async function findAndDeleteFiles(
             const stat = await fs.stat(fullPath);
 
             if (stat.isDirectory()) {
-                const isExcluded = excludeDirs.some((excluded) => fullPath.includes(excluded));
+                const pathSegments = fullPath.split(path.sep);
+                const isExcluded = excludeDirs.some((excluded) => pathSegments.includes(excluded));
                 if (!isExcluded) {
                     await findAndDeleteFiles(fullPath, extensions, excludeDirs);
                 }
