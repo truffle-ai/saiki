@@ -346,7 +346,7 @@ The MCPManager provides a simple, unified interface for connecting to and managi
 Find detailed guides, architecture, and API reference in our comprehensive [documentation](https://truffle-ai.github.io/saiki/docs/getting-started):
 
 - **[Quick Start](https://truffle-ai.github.io/saiki/docs/getting-started/quick-start)** - Get up and running in minutes
-- **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/configuration)** - Configure agents, LLMs, and tools
+- **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/overview)** - Configure agents, LLMs, and tools
 - **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/building-with-saiki)** - Developer guide with examples and patterns
 - **[Multi-Agent Systems](https://truffle-ai.github.io/saiki/docs/building-with-saiki/multi-agent-systems)** - Agent collaboration patterns
 - **[API Reference](https://truffle-ai.github.io/saiki/docs/api)** - REST APIs, WebSocket, and SDKs

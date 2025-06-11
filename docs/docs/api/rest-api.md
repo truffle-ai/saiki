@@ -483,7 +483,7 @@ All endpoints return errors in a consistent format:
 }
 ```
 
-## Rate Limiting
+<!-- ## Rate Limiting
 
 API responses include rate limiting headers:
 
@@ -495,7 +495,7 @@ X-RateLimit-Reset: 1640995200
 Content-Type: application/json
 ```
 
-See [Authentication](./authentication#rate-limiting) for detailed rate limiting information.
+See [Authentication](./authentication#rate-limiting) for detailed rate limiting information. -->
 
 ## Next Steps
 
