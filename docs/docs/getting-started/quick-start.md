@@ -59,6 +59,6 @@ The web playground provides an interactive way to:
 ## Next Steps
 
 - **Learn the Basics:** Check out our [CLI guide](../user-guide/cli) for more advanced usage
-- **Configure Your Agent:** See [Configuration](../configuring-saiki/configuration) to customize your setup
+- **Configure Your Agent:** See [Configuration](../configuring-saiki/overview) to customize your setup
 - **Add Tools:** Learn about [MCP Servers](../configuring-saiki/mcpServers) to enhance your agent's capabilities
 - **Choose Your LLM:** Explore [LLM Providers](../configuring-saiki/llm/providers) for all supported models 

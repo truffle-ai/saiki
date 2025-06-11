@@ -33,7 +33,7 @@ Saiki is built on Saiki-core, our core primitives that we feel are necessary to 
 - **Building Applications?** See the [Building with Saiki Guide](../building-with-saiki/) for patterns and examples
 - **LLM Configuration:** Check out [LLM Providers & Setup Guide](../configuring-saiki/llm/providers) for all supported models
 - **Adding Tools:** Learn about [MCP Server Configuration](../configuring-saiki/mcpServers) to enhance your agents
-- **Core Configuration:** Understand [Configuration](../configuring-saiki/configuration) for complete setup
+- **Core Configuration:** Understand [Configuration](../configuring-saiki/overview) for complete setup
 - **System Design:** Explore [Architecture](../architecture/overview) for Saiki's high-level design
 - **Get Involved:** See [Contributing Guide](../contribution-guide/overview) to help improve Saiki
 - **Community & Support:** Join our [Discord](https://discord.gg/GFzWFAAZcm) for help and discussions

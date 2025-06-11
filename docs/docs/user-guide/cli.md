@@ -52,7 +52,7 @@ This allows you to configure saiki CLI to use a different AI agent
 saiki --config-file <path_to_agent_config_file>
 ```
 
-Check [Configuration Guide](../configuring-saiki/configuration.md) to understand more about saiki config files
+Check [Configuration Guide](../configuring-saiki/overview.md) to understand more about saiki config files
 
 #### **Run a specific command with Saiki CLI:**
 
