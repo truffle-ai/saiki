@@ -105,10 +105,6 @@ describe('SaikiAgent.switchLLM', () => {
             // Add any methods that might be called
         };
 
-        mockConfigManager = {
-            // Add any methods that might be called
-        };
-
         mockStorageManager = {
             // Add any methods that might be called
         };
@@ -120,7 +116,7 @@ describe('SaikiAgent.switchLLM', () => {
             agentEventBus: mockEventBus,
             stateManager: mockStateManager,
             sessionManager: mockSessionManager,
-            storageManager: mockStorageManager,
+            storage: mockStorageManager,
         });
 
         // Mock the validation function
