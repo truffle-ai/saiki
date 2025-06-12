@@ -17,7 +17,6 @@ describe('SaikiAgent.switchLLM', () => {
     let mockEventBus: any;
     let mockClientManager: any;
     let mockPromptManager: any;
-    let mockConfigManager: any;
     let mockStorageManager: any;
 
     const mockLLMConfig: LLMConfig = {

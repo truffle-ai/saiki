@@ -14,9 +14,10 @@ export type LLMConfig = {
     model: string;
     apiKey: string;
     systemPrompt: string | SystemPromptConfig;
-    providerOptions?: Record<string, any>;
     baseURL?: string;
-    maxTokens?: number;
+    maxInputTokens?: number;
+    maxOutputTokens?: number;
+    temperature?: number;
     router?: 'vercel' | 'in-built';
 };
 
@@ -45,9 +46,10 @@ export interface ContributorConfig {
 
 ### Optional Fields
 
-- **providerOptions** (object): Provider-specific options like temperature, top_p
 - **baseURL** (string): Custom API endpoint for OpenAI-compatible providers
-- **maxTokens** (number): Maximum response tokens (required for custom providers)
+- **maxInputTokens** (number): Maximum tokens for input context (when this is crossed, messages are compressed)
+- **maxOutputTokens** (number): Maximum tokens for AI response generation
+- **temperature** (number): Controls randomness in AI responses (0 = deterministic, 1 = very creative)
 - **router** (string): Choose between `vercel` (default) or `in-built` routers
 
 ## System Prompt Configuration
@@ -110,46 +112,71 @@ llm:
   - `dateTime`: Automatically adds current date/time context
 - Enable/disable with the `enabled` field
 
-## Provider Options
+## LLM Response Control
 
-Different providers support various options that can be passed through `providerOptions`:
+### Temperature Setting
+Control the creativity/randomness of AI responses:
 
-### OpenAI Provider Options
 ```yaml
 llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
-  providerOptions:
-    temperature: 0.7
-    top_p: 0.9
-    frequency_penalty: 0
-    presence_penalty: 0
+  temperature: 0.7  # 0 = deterministic, 1 = very creative
 ```
 
-### Anthropic Provider Options
+### Token Limits
+
+**Input Token Control (maxInputTokens)**
+- Controls when conversation history gets compressed/truncated
+- Useful for managing long conversations
+- Defaults to model's maximum context window
+
+**Output Token Control (maxOutputTokens)**
+- Limits how long the AI's responses can be
+- Prevents excessively long responses
+- Provider-specific limits may apply
+
+```yaml
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY
+  maxInputTokens: 100000   # Compress history when exceeding this
+  maxOutputTokens: 4000    # Limit response length
+  temperature: 0.7
+```
+
+## Provider Examples
+
+### OpenAI Configuration
+```yaml
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY
+  temperature: 0.7
+  maxOutputTokens: 4000
+```
+
+### Anthropic Configuration
 ```yaml
 llm:
   provider: anthropic
   model: claude-3-5-sonnet-20240620
   apiKey: $ANTHROPIC_API_KEY
-  providerOptions:
-    temperature: 0.7
-    top_p: 0.9
-    top_k: 40
+  temperature: 0.7
+  maxOutputTokens: 8000
 ```
 
-### Google Provider Options
+### Google Configuration
 ```yaml
 llm:
   provider: google
   model: gemini-2.0-flash
   apiKey: $GOOGLE_GENERATIVE_AI_API_KEY
-  providerOptions:
-    temperature: 0.7
-    topP: 0.9
-    topK: 40
-    maxOutputTokens: 8192
+  temperature: 0.7
+  maxOutputTokens: 8192
 ```
 
 ## Custom Providers
@@ -162,14 +189,14 @@ llm:
   model: your-custom-model
   apiKey: $YOUR_API_KEY
   baseURL: https://api.your-provider.com/v1
-  maxTokens: 100000  # Required for custom providers
-  providerOptions:
-    temperature: 0.7
+  maxInputTokens: 100000   # Required for custom providers
+  maxOutputTokens: 4000
+  temperature: 0.7
 ```
 
 **Important Notes for Custom Providers:**
 - Always set `provider: openai` for OpenAI-compatible APIs
-- The `maxTokens` field is required
+- The `maxInputTokens` field is required when using `baseURL`
 - Use `baseURL` to point to the custom endpoint
 - The `model` field should match what the provider expects
 
@@ -227,9 +254,7 @@ llm:
         type: dynamic
         priority: 2
         source: dateTime
-  providerOptions:
-    temperature: 0.3
-    top_p: 0.9
+  temperature: 0.3
 ```
 
 ### Local Development Configuration
@@ -239,7 +264,9 @@ llm:
   model: llama3.2
   apiKey: dummy
   baseURL: http://localhost:11434/v1
-  maxTokens: 8000
+  maxInputTokens: 8000
+  maxOutputTokens: 4000
+  temperature: 0.7
   router: in-built
   systemPrompt: |
     You are a helpful AI assistant running locally.
