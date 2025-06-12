@@ -47,7 +47,7 @@ export class VercelLLMService implements ILLMService {
         this.maxOutputTokens = maxOutputTokens;
 
         logger.debug(
-            `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, messageManager: ${this.messageManager}, temperature: ${temperature}, maxOutputTokens: ${maxOutputTokens}`
+            `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, temperature: ${temperature}, maxOutputTokens: ${maxOutputTokens}`
         );
     }
 
