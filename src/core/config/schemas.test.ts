@@ -204,17 +204,20 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('accepts valid temperature values', () => {
+        it.each([
+            { temperature: -0.1, description: 'below minimum' },
+            { temperature: 1.5, description: 'above maximum' },
+            { temperature: -1, description: 'negative value' },
+            { temperature: 2, description: 'greater than 1' },
+        ])('rejects temperature $description ($temperature)', ({ temperature }) => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
                 apiKey: '123',
-                temperature: 0.7,
+                temperature,
             };
-            expect(() => LLMConfigSchema.parse(config)).not.toThrow();
-            const parsed = LLMConfigSchema.parse(config);
-            expect(parsed.temperature).toBe(0.7);
+            expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
         it('correctly validates case-insensitive provider names', () => {
