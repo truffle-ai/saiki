@@ -18,7 +18,6 @@ describe('buildLLMConfig', () => {
         router: 'vercel',
         systemPrompt: 'You are a helpful assistant.',
         maxIterations: 50,
-        providerOptions: {},
     };
 
     beforeEach(() => {
@@ -38,7 +37,9 @@ describe('buildLLMConfig', () => {
         // The function automatically calculates maxTokens from the model if not present
         const expectedConfig = {
             ...baseLLMConfig,
-            maxTokens: 128000, // gpt-4o has 128000 tokens according to registry
+            maxInputTokens: 128000, // gpt-4o has 128000 tokens according to registry
+            maxOutputTokens: undefined,
+            temperature: undefined,
         };
         expect(result.config).toEqual(expectedConfig);
     });
@@ -190,11 +191,11 @@ describe('buildLLMConfig', () => {
         );
     });
 
-    it('should handle maxTokens updates', async () => {
-        const result = await buildLLMConfig({ maxTokens: 2000 }, baseLLMConfig);
+    it('should handle maxInputTokens updates', async () => {
+        const result = await buildLLMConfig({ maxInputTokens: 2000 }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
-        expect(result.config.maxTokens).toBe(2000);
+        expect(result.config.maxInputTokens).toBe(2000);
     });
 
     it('should validate empty model', async () => {
@@ -224,13 +225,13 @@ describe('buildLLMConfig', () => {
         expect(result.errors[0].message).toBe('Unknown provider: unknown');
     });
 
-    it('should validate negative maxTokens', async () => {
-        const result = await buildLLMConfig({ maxTokens: -100 }, baseLLMConfig);
+    it('should validate negative maxInputTokens', async () => {
+        const result = await buildLLMConfig({ maxInputTokens: -100 }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toHaveLength(1);
         expect(result.errors[0].type).toBe('invalid_max_tokens');
-        expect(result.errors[0].message).toBe('maxTokens must be a positive number');
+        expect(result.errors[0].message).toBe('maxInputTokens must be a positive number');
     });
 
     it('should validate invalid router', async () => {
@@ -242,13 +243,14 @@ describe('buildLLMConfig', () => {
         expect(result.errors[0].message).toBe('Router must be either "vercel" or "in-built"');
     });
 
-    it('should validate invalid providerOptions', async () => {
-        const result = await buildLLMConfig({ providerOptions: 'invalid' as any }, baseLLMConfig);
-
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('invalid_provider_options');
-        expect(result.errors[0].message).toBe('Provider options must be an object');
+    it('should handle temperature and maxOutputTokens validation', async () => {
+        const result1 = await buildLLMConfig(
+            { temperature: 0.5, maxOutputTokens: 4000 },
+            baseLLMConfig
+        );
+        expect(result1.isValid).toBe(true);
+        expect(result1.config.temperature).toBe(0.5);
+        expect(result1.config.maxOutputTokens).toBe(4000);
     });
 
     it('should handle maxIterations update', async () => {
@@ -258,18 +260,18 @@ describe('buildLLMConfig', () => {
         expect(result.config.maxIterations).toBe(100);
     });
 
-    it('should update maxTokens when model changes', async () => {
+    it('should update maxInputTokens when model changes', async () => {
         const result = await buildLLMConfig({ model: 'gpt-4o-mini' }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
-        expect(result.config.maxTokens).toBeDefined();
+        expect(result.config.maxInputTokens).toBeDefined();
     });
 
-    it('should handle high maxTokens without error', async () => {
-        const result = await buildLLMConfig({ maxTokens: 50000 }, baseLLMConfig);
+    it('should handle high maxInputTokens without error', async () => {
+        const result = await buildLLMConfig({ maxInputTokens: 50000 }, baseLLMConfig);
 
         expect(result.isValid).toBe(true);
-        expect(result.config.maxTokens).toBe(50000);
+        expect(result.config.maxInputTokens).toBe(50000);
     });
 
     it('should keep current baseURL when provider supports it', async () => {

@@ -8,7 +8,7 @@ import { logger } from '../../../logger/index.js';
 import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { MessageManager } from '../messages/manager.js';
-import { getMaxTokensForModel } from '../registry.js';
+import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
@@ -24,6 +24,8 @@ export class VercelLLMService implements ILLMService {
     private messageManager: MessageManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
+    private temperature: number | undefined;
+    private maxOutputTokens: number | undefined;
 
     constructor(
         clientManager: MCPManager,
@@ -31,7 +33,9 @@ export class VercelLLMService implements ILLMService {
         provider: string,
         sessionEventBus: SessionEventBus,
         messageManager: MessageManager,
-        maxIterations: number = 10
+        maxIterations: number = 10,
+        temperature?: number,
+        maxOutputTokens?: number
     ) {
         this.model = model;
         this.provider = provider;
@@ -39,9 +43,11 @@ export class VercelLLMService implements ILLMService {
         this.clientManager = clientManager;
         this.sessionEventBus = sessionEventBus;
         this.messageManager = messageManager;
+        this.temperature = temperature;
+        this.maxOutputTokens = maxOutputTokens;
 
         logger.debug(
-            `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, messageManager: ${this.messageManager}`
+            `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, messageManager: ${this.messageManager}, temperature: ${temperature}, maxOutputTokens: ${maxOutputTokens}`
         );
     }
 
@@ -143,6 +149,9 @@ export class VercelLLMService implements ILLMService {
             `vercel generateText:Generating text with messages (${estimatedTokens} estimated tokens)`
         );
 
+        const temperature = this.temperature;
+        const maxTokens = this.maxOutputTokens;
+
         const response = await generateText({
             model: this.model,
             messages: messages,
@@ -194,6 +203,8 @@ export class VercelLLMService implements ILLMService {
                 // NOTE: Message manager additions are now handled after generateText completes
             },
             maxSteps: maxSteps,
+            ...(maxTokens && { maxTokens }),
+            ...(temperature !== undefined && { temperature }),
         });
 
         // Parse and append each new InternalMessage from the formatter using MessageManager
@@ -236,6 +247,10 @@ export class VercelLLMService implements ILLMService {
     // returns AsyncIterable<string> & ReadableStream<string>
     async streamText(messages: any[], tools: VercelToolSet, maxSteps: number = 10): Promise<any> {
         let stepIteration = 0;
+
+        const temperature = this.temperature;
+        const maxTokens = this.maxOutputTokens;
+
         // use vercel's streamText with mcp
         const response = streamText({
             model: this.model,
@@ -312,8 +327,8 @@ export class VercelLLMService implements ILLMService {
                 );
             },
             maxSteps: maxSteps,
-            // maxTokens: this.maxTokens,
-            // temperature: this.temperature,
+            ...(maxTokens && { maxTokens }),
+            ...(temperature !== undefined && { temperature }),
         });
 
         logger.silly(`streamText response object: ${JSON.stringify(response, null, 2)}`);
@@ -328,16 +343,19 @@ export class VercelLLMService implements ILLMService {
      */
     getConfig(): LLMServiceConfig {
         const configuredMaxTokens = this.messageManager.getMaxTokens();
-        let modelMaxTokens: number;
+        let modelMaxInputTokens: number;
 
         // Fetching max tokens from LLM registry - default to configured max tokens if not found
         // Max tokens may not be found if the model is supplied by user
         try {
-            modelMaxTokens = getMaxTokensForModel(this.model.provider, this.model.modelId);
+            modelMaxInputTokens = getMaxInputTokensForModel(
+                this.model.provider,
+                this.model.modelId
+            );
         } catch (error) {
             // if the model is not found in the LLM registry, log and default to configured max tokens
             if (error instanceof ModelNotFoundError) {
-                modelMaxTokens = configuredMaxTokens;
+                modelMaxInputTokens = configuredMaxTokens;
                 logger.debug(
                     `Could not find model ${this.model.modelId} in LLM registry to get max tokens. Using configured max tokens: ${configuredMaxTokens}.`
                 );
@@ -350,8 +368,8 @@ export class VercelLLMService implements ILLMService {
             router: 'vercel',
             provider: `${this.model.provider}`,
             model: this.model,
-            configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens,
+            configuredMaxInputTokens: configuredMaxTokens,
+            modelMaxInputTokens: modelMaxInputTokens,
         };
     }
 }

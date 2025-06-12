@@ -108,14 +108,14 @@ export function getSupportedModels(provider: string): string[] {
 }
 
 /**
- * Retrieves the maximum token limit for a given provider and model from the registry.
+ * Retrieves the maximum input token limit for a given provider and model from the registry.
  * Throws an error if the provider or model is not found.
  * @param provider The name of the provider (e.g., 'openai', 'anthropic', 'google').
  * @param model The specific model name.
- * @returns The maximum token limit for the model.
+ * @returns The maximum input token limit for the model.
  * @throws {Error} If the provider or model is not found in the registry.
  */
-export function getMaxTokensForModel(provider: string, model: string): number {
+export function getMaxInputTokensForModel(provider: string, model: string): number {
     const lowerProvider = provider?.toLowerCase();
     const lowerModel = model?.toLowerCase();
 
@@ -238,73 +238,77 @@ export function isRouterSupportedForProvider(provider: string, router: string): 
 }
 
 /**
- * Determines the effective maximum token limit based on configuration.
+ * Determines the effective maximum input token limit based on configuration.
  * Priority:
- * 1. Explicit `maxTokens` in config (handles `baseURL` case implicitly via Zod validation).
+ * 1. Explicit `maxInputTokens` in config
  * 2. Registry lookup for known provider/model.
  *
  * @param config The validated LLM configuration.
- * @returns The effective maximum token count.
+ * @returns The effective maximum input token count for the LLM.
  * @throws {Error}
- * If `baseURL` is set but `maxTokens` is missing (indicating a Zod validation inconsistency).
+ * If `baseURL` is set but `maxInputTokens` is missing (indicating a Zod validation inconsistency).
  * Or if `baseURL` is not set, but model isn't found in registry.
  * TODO: make more readable
  */
-export function getEffectiveMaxTokens(config: LLMConfig): number {
+export function getEffectiveMaxInputTokens(config: LLMConfig): number {
+    const configuredMaxInputTokens = config.maxInputTokens;
+
     // Priority 1: Explicit config override or required value with baseURL
-    if (config.maxTokens != null) {
-        // Case 1a: baseURL is set. maxTokens is required and validated by Zod. Trust it.
+    if (configuredMaxInputTokens != null) {
+        // Case 1a: baseURL is set. maxInputTokens is required and validated by Zod. Trust it.
         if (config.baseURL) {
-            logger.debug(`Using maxTokens from configuration (with baseURL): ${config.maxTokens}`);
-            return config.maxTokens;
+            logger.debug(
+                `Using maxInputTokens from configuration (with baseURL): ${configuredMaxInputTokens}`
+            );
+            return configuredMaxInputTokens;
         }
 
-        // Case 1b: baseURL is NOT set, but maxTokens is provided (override).
+        // Case 1b: baseURL is NOT set, but maxInputTokens is provided (override).
         // Sanity-check against registry limits.
         try {
-            const registryMaxTokens = getMaxTokensForModel(config.provider, config.model);
-            if (config.maxTokens > registryMaxTokens) {
+            const registryMaxInputTokens = getMaxInputTokensForModel(config.provider, config.model);
+            if (configuredMaxInputTokens > registryMaxInputTokens) {
                 logger.warn(
-                    `Provided maxTokens (${config.maxTokens}) for ${config.provider}/${config.model} exceeds the registry limit (${registryMaxTokens}). Capping to registry limit.`
+                    `Provided maxInputTokens (${configuredMaxInputTokens}) for ${config.provider}/${config.model} exceeds the known limit (${registryMaxInputTokens}) for model ${config.model}. Capping to registry limit.`
                 );
-                return registryMaxTokens;
+                return registryMaxInputTokens;
             } else {
                 logger.debug(
-                    `Using valid maxTokens override from configuration: ${config.maxTokens} (Registry limit: ${registryMaxTokens})`
+                    `Using valid maxInputTokens override from configuration: ${configuredMaxInputTokens} (Registry limit: ${registryMaxInputTokens})`
                 );
-                return config.maxTokens;
+                return configuredMaxInputTokens;
             }
         } catch (error: any) {
             // Handle registry lookup failures during override check
             if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
                 logger.warn(
-                    `Registry lookup failed during maxTokens override check for ${config.provider}/${config.model}: ${error.message}. ` +
-                        `Proceeding with the provided maxTokens value (${config.maxTokens}), but it might be invalid.`
+                    `Registry lookup failed during maxInputTokens override check for ${config.provider}/${config.model}: ${error.message}. ` +
+                        `Proceeding with the provided maxInputTokens value (${configuredMaxInputTokens}), but it might be invalid.`
                 );
                 // Return the user's value, assuming Zod validation passed for provider/model existence initially.
-                return config.maxTokens;
+                return configuredMaxInputTokens;
             } else {
                 // Re-throw unexpected errors
                 logger.error(
-                    `Unexpected error during registry lookup for maxTokens override check: ${error}`
+                    `Unexpected error during registry lookup for maxInputTokens override check: ${error}`
                 );
                 throw error; // Or potentially throw EffectiveMaxTokensError if stricter handling is needed.
             }
         }
     }
 
-    // Priority 2: baseURL is set but maxTokens is missing - default to 128k tokens
+    // Priority 2: baseURL is set but maxInputTokens is missing - default to 128k tokens
     if (config.baseURL) {
         logger.warn(
-            `baseURL is set but maxTokens is missing. Defaulting to ${DEFAULT_MAX_TOKENS}. ` +
-                `Provide 'maxTokens' in configuration to avoid default fallback.`
+            `baseURL is set but maxInputTokens is missing. Defaulting to ${DEFAULT_MAX_TOKENS}. ` +
+                `Provide 'maxInputTokens' in configuration to avoid default fallback.`
         );
         return DEFAULT_MAX_TOKENS;
     }
 
     // Priority 3: No override, no baseURL - use registry.
     try {
-        const registryMaxTokens = getMaxTokensForModel(config.provider, config.model);
+        const registryMaxTokens = getMaxInputTokensForModel(config.provider, config.model);
         logger.debug(
             `Using maxTokens from registry for ${config.provider}/${config.model}: ${registryMaxTokens}`
         );

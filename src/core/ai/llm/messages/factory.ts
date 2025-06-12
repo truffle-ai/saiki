@@ -5,8 +5,8 @@ import { LLMConfig } from '../../../config/schemas.js';
 import { LLMRouter } from '../types.js';
 import { createMessageFormatter } from './formatters/factory.js';
 import { createTokenizer } from '../tokenizer/factory.js';
-import { getEffectiveMaxTokens } from '../registry.js';
-import { getMaxTokensForModel } from '../registry.js';
+import { getEffectiveMaxInputTokens } from '../registry.js';
+import { getMaxInputTokensForModel } from '../registry.js';
 import { SessionEventBus } from '../../../events/index.js';
 import { logger } from '../../../logger/index.js';
 
@@ -38,7 +38,7 @@ export function createMessageManager(
     logger.debug(`Tokenizer created for ${provider}/${model}`);
 
     const formatter = createMessageFormatter(provider, router);
-    const effectiveMaxTokens = getEffectiveMaxTokens(config);
+    const effectiveMaxTokens = getEffectiveMaxInputTokens(config);
     logger.debug(
         `Creating MessageManager for ${provider}/${model} using ${router} router with maxTokens: ${effectiveMaxTokens}`
     );

@@ -22,7 +22,7 @@ import {
     getSupportedRoutersForProvider,
     supportsBaseURL,
     isValidProvider,
-    getEffectiveMaxTokens,
+    getEffectiveMaxInputTokens,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
 

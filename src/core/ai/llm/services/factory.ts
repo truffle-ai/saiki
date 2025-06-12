@@ -137,13 +137,16 @@ function _createVercelLLMService(
     messageManager: MessageManager
 ): VercelLLMService {
     const model = _createVercelModel(config);
+
     return new VercelLLMService(
         clientManager,
         model,
         config.provider,
         sessionEventBus,
         messageManager,
-        config.maxIterations
+        config.maxIterations,
+        config.temperature,
+        config.maxOutputTokens
     );
 }
 

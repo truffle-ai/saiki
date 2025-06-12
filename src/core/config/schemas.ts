@@ -3,7 +3,7 @@ import {
     getSupportedProviders,
     getSupportedModels,
     isValidProviderModel,
-    getMaxTokensForModel,
+    getMaxInputTokensForModel,
 } from '../ai/llm/registry.js';
 
 // (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
@@ -161,13 +161,6 @@ export const LLMConfigSchema = z
             .describe(
                 'Maximum number of iterations for agentic loops or chained LLM calls, defaults to 50'
             ),
-        providerOptions: z
-            .record(z.any())
-            .optional()
-            .default({})
-            .describe(
-                'Additional, provider-specific options (e.g., temperature, top_p), defaults to an empty object'
-            ),
         router: z
             .enum(['vercel', 'in-built'])
             .optional()
@@ -180,19 +173,35 @@ export const LLMConfigSchema = z
             .describe(
                 'Base URL for the LLM provider (e.g., https://api.openai.com/v1, https://api.anthropic.com/v1). \nCurrently only supported for OpenAI.'
             ),
-        maxTokens: z
+        maxInputTokens: z
             .number()
             .int()
             .positive()
             .optional()
             .describe(
-                'Maximum number of tokens to use for the LLM, required for unknown models, calculated internally for known models'
+                'Maximum number of input tokens for conversation history. Used for compression/truncation. Required for unknown models, defaults to maximum value for known models.'
+            ),
+        maxOutputTokens: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+                'Maximum number of tokens the LLM can generate in its response. Controls the length of AI responses.'
+            ),
+        temperature: z
+            .number()
+            .min(0)
+            .max(1)
+            .optional()
+            .describe(
+                'Controls randomness in AI responses. 0 = deterministic, 1 = very creative. Default varies by provider.'
             ),
     })
     .superRefine((data, ctx) => {
         const providerLower = data.provider?.toLowerCase();
         const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
-        const maxTokensIsSet = data.maxTokens != null;
+        const maxInputTokensIsSet = data.maxInputTokens != null;
 
         // Provider must be one of the supported list
         const supportedProvidersList = getSupportedProviders();
@@ -228,17 +237,25 @@ export const LLMConfigSchema = z
                     });
                 }
             }
-            // 2. maxTokens must be within the model's limit
-            if (maxTokensIsSet) {
+            // 2. maxInputTokens must be within the model's limit
+            if (maxInputTokensIsSet) {
                 try {
-                    const registryMaxTokens = getMaxTokensForModel(providerLower, data.model);
-                    if (data.maxTokens != null && data.maxTokens > registryMaxTokens) {
+                    const registryMaxInputTokens = getMaxInputTokensForModel(
+                        providerLower,
+                        data.model
+                    );
+                    // Check maxInputTokens field
+                    if (
+                        data.maxInputTokens != null &&
+                        data.maxInputTokens > registryMaxInputTokens
+                    ) {
                         ctx.addIssue({
                             code: z.ZodIssueCode.custom,
-                            path: ['maxTokens'],
-                            message: `Max tokens for model '${data.model}' is ${registryMaxTokens}. You provided ${data.maxTokens}`,
+                            path: ['maxInputTokens'],
+                            message: `Max input tokens for model '${data.model}' is ${registryMaxInputTokens}. You provided ${data.maxInputTokens}`,
                         });
                     }
+                    // Temperature validation is already handled by the Zod schema, so we don't need to validate it here
                 } catch (error: any) {
                     // Handle ProviderNotFoundError and ModelNotFoundError specifically
                     if (

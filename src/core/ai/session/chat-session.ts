@@ -3,7 +3,7 @@ import { createMessageManager } from '../llm/messages/factory.js';
 import { createLLMService } from '../llm/services/factory.js';
 import { createTokenizer } from '../llm/tokenizer/factory.js';
 import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
-import { getEffectiveMaxTokens } from '../llm/registry.js';
+import { getEffectiveMaxInputTokens } from '../llm/registry.js';
 import type { MessageManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
 import type { InternalMessage } from '../llm/messages/types.js';
@@ -361,7 +361,7 @@ export class ChatSession {
             }
 
             // Get effective max tokens for the new config
-            const newMaxTokens = getEffectiveMaxTokens(newLLMConfig);
+            const newMaxTokens = getEffectiveMaxInputTokens(newLLMConfig);
 
             // Update MessageManager configuration
             this.messageManager.updateConfig(newMaxTokens, newTokenizer, newFormatter);

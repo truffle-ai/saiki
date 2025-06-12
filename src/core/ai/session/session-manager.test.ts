@@ -24,8 +24,7 @@ describe('SessionManager', () => {
         router: 'in-built',
         systemPrompt: 'You are a helpful assistant',
         maxIterations: 50,
-        maxTokens: 128000,
-        providerOptions: {},
+        maxInputTokens: 128000,
     };
 
     const mockSessionData = {

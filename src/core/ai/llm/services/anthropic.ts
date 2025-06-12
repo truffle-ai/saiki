@@ -5,7 +5,7 @@ import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { getMaxTokensForModel } from '../registry.js';
+import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import type { SessionEventBus } from '../../../events/index.js';
 
@@ -228,14 +228,14 @@ export class AnthropicService implements ILLMService {
      */
     getConfig(): LLMServiceConfig {
         const configuredMaxTokens = this.messageManager.getMaxTokens();
-        const modelMaxTokens = getMaxTokensForModel('anthropic', this.model);
+        const modelMaxInputTokens = getMaxInputTokensForModel('anthropic', this.model);
 
         return {
             router: 'in-built',
             provider: 'anthropic',
             model: this.model,
-            configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens,
+            configuredMaxInputTokens: configuredMaxTokens,
+            modelMaxInputTokens: modelMaxInputTokens,
         };
     }
 
