@@ -1,0 +1,45 @@
+---
+description: Adding any new services/modules to the class
+globs: 
+alwaysApply: false
+---
+- **Configuration Source of Truth**
+  - The config file (e.g., `saiki.yml`) is the primary source for both high-level and low-level service options (e.g., LLM provider, compression strategies for MessageManager).
+  - All user-facing and environment-specific configuration should be handled via the config file for clarity, auditability, and ease of use.
+
+- **Override Pattern for Advanced/Test Use**
+  - Use the `InitializeServicesOptions` type to override only top-level services (e.g., `MessageManager`, `LLMService`, `ClientManager`) for advanced, programmatic, or test scenarios.
+  - Do **not** expose every internal dependency as a code-level override. If you need to customize internals (e.g., a custom compression strategy), construct the service yourself and inject it as a top-level override.
+
+- **Best Practices**
+  - ✅ DO: Use the config file for normal operation and low-level tuning.
+  - ✅ DO: Use top-level service overrides for code/test/advanced scenarios.
+  - ❌ DON'T: Add every internal dependency to `InitializeServicesOptions` unless there is a strong, recurring need.
+  - ✅ DO: Document this pattern in code comments and keep the override API surface small and maintainable.
+
+- **Examples**
+```typescript
+// ✅ DO: Use config for compression strategies
+// In saiki.yml:
+messages:
+  compression:
+    - type: middle
+      preserveStart: 4
+      preserveEnd: 5
+    - type: oldest
+      minMessagesToKeep: 4
+
+// ✅ DO: Use code override for top-level service in tests
+const testMessageManager = new MessageManager(...);
+initializeServices(config, { messageManager: testMessageManager });
+
+// ❌ DON'T: Add every internal (e.g., compressionStrategy) to InitializeServicesOptions
+```
+
+- **References**
+  - See [src/utils/service-initializer.ts](mdc:src/utils/service-initializer.ts) for implementation.
+  - Related: [dev_workflow.mdc](mdc:.cursor/rules/dev_workflow.mdc), [self_improve.mdc](mdc:.cursor/rules/self_improve.mdc)
+
+- **Rule Maintenance**
+  - Update this rule if the initialization pattern changes or new best practices emerge.
+  - Cross-reference with other rules as needed to avoid duplication.
