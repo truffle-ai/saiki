@@ -34,7 +34,7 @@ describe('buildLLMConfig', () => {
         expect(result.isValid).toBe(true);
         expect(result.errors).toHaveLength(0);
 
-        // The function automatically calculates maxTokens from the model if not present
+        // The function automatically calculates maxInputTokens from the model if not present
         const expectedConfig = {
             ...baseLLMConfig,
             maxInputTokens: 128000, // gpt-4o has 128000 tokens according to registry

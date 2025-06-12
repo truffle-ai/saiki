@@ -275,7 +275,7 @@ export const LLMConfigSchema = z
                         ctx.addIssue({
                             code: z.ZodIssueCode.custom,
                             path: [], // General error
-                            message: `An unexpected error occurred while validating maxTokens: ${error.message}`,
+                            message: `An unexpected error occurred while validating maxInputTokens: ${error.message}`,
                         });
                     }
                 }

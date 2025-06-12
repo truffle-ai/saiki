@@ -20,8 +20,8 @@ function expandEnvVars(config: any): any {
         );
 
         // Try to convert numeric strings to numbers
-        if (expanded !== config && /^\d+(\.\d+)?$/.test(expanded)) {
-            return parseFloat(expanded);
+        if (expanded !== config && /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(expanded.trim())) {
+            return Number(expanded); // handles int, float, sci-notation
         }
 
         return expanded;

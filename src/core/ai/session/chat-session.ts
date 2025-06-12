@@ -339,7 +339,6 @@ export class ChatSession {
     public async switchLLM(newLLMConfig: LLMConfig): Promise<void> {
         try {
             // Update MessageManager configuration first
-            // This fixes the issue where MessageManager has stale maxTokens after LLM switch
             const provider = newLLMConfig.provider.toLowerCase();
             const model = newLLMConfig.model.toLowerCase();
             const router = newLLMConfig.router;
@@ -361,10 +360,10 @@ export class ChatSession {
             }
 
             // Get effective max tokens for the new config
-            const newMaxTokens = getEffectiveMaxInputTokens(newLLMConfig);
+            const newMaxInputTokens = getEffectiveMaxInputTokens(newLLMConfig);
 
             // Update MessageManager configuration
-            this.messageManager.updateConfig(newMaxTokens, newTokenizer, newFormatter);
+            this.messageManager.updateConfig(newMaxInputTokens, newTokenizer, newFormatter);
 
             // Create new LLM service with the same dependencies but new config
             const newLLMService = createLLMService(
@@ -379,7 +378,7 @@ export class ChatSession {
             this.llmService = newLLMService;
 
             logger.info(
-                `ChatSession ${this.id}: LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}, MessageManager updated with maxTokens: ${newMaxTokens}`
+                `ChatSession ${this.id}: LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}, MessageManager updated with maxTokens: ${newMaxInputTokens}`
             );
 
             // Emit session-level event

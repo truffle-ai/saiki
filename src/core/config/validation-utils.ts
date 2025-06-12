@@ -587,7 +587,6 @@ function buildFinalConfig(
         );
     }
 
-    // MaxInputTokens (new explicit field replacing legacy maxTokens)
     let maxInputTokens: number | undefined;
     if (updates.maxInputTokens !== undefined) {
         if (typeof updates.maxInputTokens !== 'number' || updates.maxInputTokens <= 0) {

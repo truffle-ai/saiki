@@ -10,7 +10,7 @@ import {
     getEffectiveMaxInputTokens,
 } from './registry.js';
 import { ModelNotFoundError } from './errors.js';
-import { EffectiveMaxTokensError } from './errors.js';
+import { EffectiveMaxInputTokensError } from './errors.js';
 import { ProviderNotFoundError } from './errors.js';
 
 describe('LLM Registry', () => {
@@ -32,19 +32,19 @@ describe('LLM Registry', () => {
         expect(getSupportedModels('foo')).toEqual([]);
     });
 
-    it('should return correct maxTokens for valid provider and model', () => {
+    it('should return correct maxInputTokens for valid provider and model', () => {
         expect(getMaxInputTokensForModel('openai', 'o4-mini')).toBe(200000);
     });
 
-    it('should be case-insensitive for getMaxTokensForModel', () => {
+    it('should be case-insensitive for getMaxInputTokensForModel', () => {
         expect(getMaxInputTokensForModel('OpenAI', 'O4-MINI')).toBe(200000);
     });
 
-    it('should throw ProviderNotFoundError for unknown provider in getMaxTokensForModel', () => {
+    it('should throw ProviderNotFoundError for unknown provider in getMaxInputTokensForModel', () => {
         expect(() => getMaxInputTokensForModel('foo', 'o4-mini')).toThrow(ProviderNotFoundError);
     });
 
-    it('should throw ModelNotFoundError for unknown model in getMaxTokensForModel', () => {
+    it('should throw ModelNotFoundError for unknown model in getMaxInputTokensForModel', () => {
         expect(() => getMaxInputTokensForModel('openai', 'foo')).toThrow(ModelNotFoundError);
     });
 
@@ -89,7 +89,7 @@ describe('LLM Registry', () => {
         expect(allModels).toEqual(expected);
     });
 
-    describe('getEffectiveMaxTokens()', () => {
+    describe('getEffectiveMaxInputTokens()', () => {
         it('returns explicit override when provided and within registry limit', () => {
             const config = { provider: 'openai', model: 'o4-mini', maxInputTokens: 1000 } as any;
             expect(getEffectiveMaxInputTokens(config)).toBe(1000);
@@ -139,9 +139,9 @@ describe('LLM Registry', () => {
             expect(getEffectiveMaxInputTokens(config)).toBe(registryLimit);
         });
 
-        it('throws EffectiveMaxTokensError when lookup fails without override or baseURL', () => {
+        it('throws EffectiveMaxInputTokensError when lookup fails without override or baseURL', () => {
             const config = { provider: 'openai', model: 'non-existent-model' } as any;
-            expect(() => getEffectiveMaxInputTokens(config)).toThrow(EffectiveMaxTokensError);
+            expect(() => getEffectiveMaxInputTokens(config)).toThrow(EffectiveMaxInputTokensError);
         });
     });
 });

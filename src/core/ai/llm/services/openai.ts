@@ -202,7 +202,7 @@ export class OpenAIService implements ILLMService {
      * @returns Configuration object with provider and model information
      */
     getConfig(): LLMServiceConfig {
-        const configuredMaxTokens = this.messageManager.getMaxTokens();
+        const configuredMaxInputTokens = this.messageManager.getMaxInputTokens();
         let modelMaxInputTokens: number;
 
         // Fetching max tokens from LLM registry - default to configured max tokens if not found
@@ -212,9 +212,9 @@ export class OpenAIService implements ILLMService {
         } catch (error) {
             // if the model is not found in the LLM registry, log and default to configured max tokens
             if (error instanceof ModelNotFoundError) {
-                modelMaxInputTokens = configuredMaxTokens;
+                modelMaxInputTokens = configuredMaxInputTokens;
                 logger.debug(
-                    `Could not find model ${this.model} in LLM registry to get max tokens. Using configured max tokens: ${configuredMaxTokens}.`
+                    `Could not find model ${this.model} in LLM registry to get max tokens. Using configured max tokens: ${configuredMaxInputTokens}.`
                 );
                 // for any other error, throw
             } else {
@@ -226,7 +226,7 @@ export class OpenAIService implements ILLMService {
             router: 'in-built',
             provider: 'openai',
             model: this.model,
-            configuredMaxInputTokens: configuredMaxTokens,
+            configuredMaxInputTokens: configuredMaxInputTokens,
             modelMaxInputTokens,
         };
     }

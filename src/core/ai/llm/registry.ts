@@ -2,14 +2,14 @@ import { logger } from '../../logger/index.js';
 import { LLMConfig } from '../../config/schemas.js';
 import {
     CantInferProviderError,
-    EffectiveMaxTokensError,
+    EffectiveMaxInputTokensError,
     ModelNotFoundError,
     ProviderNotFoundError,
 } from './errors.js';
 
 export interface ModelInfo {
     name: string;
-    maxTokens: number;
+    maxInputTokens: number;
     default?: boolean;
     // Add other relevant metadata if needed, e.g., supported features, cost tier
 }
@@ -21,7 +21,8 @@ export interface ProviderInfo {
     // Add other provider-specific metadata if needed
 }
 
-export const DEFAULT_MAX_TOKENS = 128000;
+/** Fallback when we cannot determine the model's input-token limit */
+export const DEFAULT_MAX_INPUT_TOKENS = 128000;
 
 export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'groq';
 
@@ -29,40 +30,40 @@ export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'groq';
 export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     openai: {
         models: [
-            { name: 'gpt-4.1', maxTokens: 1047576 },
-            { name: 'gpt-4.1-mini', maxTokens: 1047576, default: true },
-            { name: 'gpt-4.1-nano', maxTokens: 1047576 },
-            { name: 'gpt-4o', maxTokens: 128000 },
-            { name: 'gpt-4o-mini', maxTokens: 128000 },
-            { name: 'o4-mini', maxTokens: 200000 },
-            { name: 'o3', maxTokens: 200000 },
-            { name: 'o3-mini', maxTokens: 200000 },
-            { name: 'o1', maxTokens: 200000 },
+            { name: 'gpt-4.1', maxInputTokens: 1047576 },
+            { name: 'gpt-4.1-mini', maxInputTokens: 1047576, default: true },
+            { name: 'gpt-4.1-nano', maxInputTokens: 1047576 },
+            { name: 'gpt-4o', maxInputTokens: 128000 },
+            { name: 'gpt-4o-mini', maxInputTokens: 128000 },
+            { name: 'o4-mini', maxInputTokens: 200000 },
+            { name: 'o3', maxInputTokens: 200000 },
+            { name: 'o3-mini', maxInputTokens: 200000 },
+            { name: 'o1', maxInputTokens: 200000 },
         ],
         supportedRouters: ['vercel', 'in-built'],
         supportsBaseURL: true,
     },
     anthropic: {
         models: [
-            { name: 'claude-4-opus-20250514', maxTokens: 200000 },
-            { name: 'claude-4-sonnet-20250514', maxTokens: 200000, default: true },
-            { name: 'claude-3-7-sonnet-20250219', maxTokens: 200000 },
-            { name: 'claude-3-5-sonnet-20240620', maxTokens: 200000 },
-            { name: 'claude-3-haiku-20240307', maxTokens: 200000 },
-            { name: 'claude-3-opus-20240229', maxTokens: 200000 },
-            { name: 'claude-3-sonnet-20240229', maxTokens: 200000 },
+            { name: 'claude-4-opus-20250514', maxInputTokens: 200000 },
+            { name: 'claude-4-sonnet-20250514', maxInputTokens: 200000, default: true },
+            { name: 'claude-3-7-sonnet-20250219', maxInputTokens: 200000 },
+            { name: 'claude-3-5-sonnet-20240620', maxInputTokens: 200000 },
+            { name: 'claude-3-haiku-20240307', maxInputTokens: 200000 },
+            { name: 'claude-3-opus-20240229', maxInputTokens: 200000 },
+            { name: 'claude-3-sonnet-20240229', maxInputTokens: 200000 },
         ],
         supportedRouters: ['vercel', 'in-built'],
         supportsBaseURL: false,
     },
     google: {
         models: [
-            { name: 'gemini-2.5-pro-exp-03-25', maxTokens: 1048576, default: true },
-            { name: 'gemini-2.5-flash-preview-05-20', maxTokens: 1048576 },
-            { name: 'gemini-2.0-flash', maxTokens: 1048576 },
-            { name: 'gemini-2.0-flash-lite', maxTokens: 1048576 },
-            { name: 'gemini-1.5-pro-latest', maxTokens: 1048576 },
-            { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 },
+            { name: 'gemini-2.5-pro-exp-03-25', maxInputTokens: 1048576, default: true },
+            { name: 'gemini-2.5-flash-preview-05-20', maxInputTokens: 1048576 },
+            { name: 'gemini-2.0-flash', maxInputTokens: 1048576 },
+            { name: 'gemini-2.0-flash-lite', maxInputTokens: 1048576 },
+            { name: 'gemini-1.5-pro-latest', maxInputTokens: 1048576 },
+            { name: 'gemini-1.5-flash-latest', maxInputTokens: 1048576 },
         ],
         supportedRouters: ['vercel'],
         supportsBaseURL: false,
@@ -70,8 +71,8 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     // https://console.groq.com/docs/models
     groq: {
         models: [
-            { name: 'gemma-2-9b-it', maxTokens: 8192 },
-            { name: 'llama-3.3-70b-versatile', maxTokens: 128000, default: true },
+            { name: 'gemma-2-9b-it', maxInputTokens: 8192 },
+            { name: 'llama-3.3-70b-versatile', maxInputTokens: 128000, default: true },
         ],
         supportedRouters: ['vercel'],
         supportsBaseURL: false,
@@ -137,8 +138,8 @@ export function getMaxInputTokensForModel(provider: string, model: string): numb
         throw new ModelNotFoundError(provider, model);
     }
 
-    logger.debug(`Found max tokens for ${provider}/${model}: ${modelInfo.maxTokens}`);
-    return modelInfo.maxTokens;
+    logger.debug(`Found max tokens for ${provider}/${model}: ${modelInfo.maxInputTokens}`);
+    return modelInfo.maxInputTokens;
 }
 
 /**
@@ -292,7 +293,7 @@ export function getEffectiveMaxInputTokens(config: LLMConfig): number {
                 logger.error(
                     `Unexpected error during registry lookup for maxInputTokens override check: ${error}`
                 );
-                throw error; // Or potentially throw EffectiveMaxTokensError if stricter handling is needed.
+                throw error;
             }
         }
     }
@@ -300,31 +301,31 @@ export function getEffectiveMaxInputTokens(config: LLMConfig): number {
     // Priority 2: baseURL is set but maxInputTokens is missing - default to 128k tokens
     if (config.baseURL) {
         logger.warn(
-            `baseURL is set but maxInputTokens is missing. Defaulting to ${DEFAULT_MAX_TOKENS}. ` +
+            `baseURL is set but maxInputTokens is missing. Defaulting to ${DEFAULT_MAX_INPUT_TOKENS}. ` +
                 `Provide 'maxInputTokens' in configuration to avoid default fallback.`
         );
-        return DEFAULT_MAX_TOKENS;
+        return DEFAULT_MAX_INPUT_TOKENS;
     }
 
     // Priority 3: No override, no baseURL - use registry.
     try {
-        const registryMaxTokens = getMaxInputTokensForModel(config.provider, config.model);
+        const registryMaxInputTokens = getMaxInputTokensForModel(config.provider, config.model);
         logger.debug(
-            `Using maxTokens from registry for ${config.provider}/${config.model}: ${registryMaxTokens}`
+            `Using maxInputTokens from registry for ${config.provider}/${config.model}: ${registryMaxInputTokens}`
         );
-        return registryMaxTokens;
+        return registryMaxInputTokens;
     } catch (error: any) {
         // Handle registry lookup failures gracefully (e.g., typo in validated config)
         if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
             // Log as error and throw a specific fatal error
             logger.error(
                 `Registry lookup failed for ${config.provider}/${config.model}: ${error.message}. ` +
-                    `Effective maxTokens cannot be determined.`
+                    `Effective maxInputTokens cannot be determined.`
             );
-            throw new EffectiveMaxTokensError(config.provider, config.model);
+            throw new EffectiveMaxInputTokensError(config.provider, config.model);
         } else {
             // Re-throw unexpected errors during registry lookup
-            logger.error(`Unexpected error during registry lookup for maxTokens: ${error}`);
+            logger.error(`Unexpected error during registry lookup for maxInputTokens: ${error}`);
             throw error;
         }
     }
