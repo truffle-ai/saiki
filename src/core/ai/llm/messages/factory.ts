@@ -5,13 +5,13 @@ import { LLMConfig } from '../../../config/schemas.js';
 import { LLMRouter } from '../types.js';
 import { createMessageFormatter } from './formatters/factory.js';
 import { createTokenizer } from '../tokenizer/factory.js';
-import { getEffectiveMaxTokens } from '../registry.js';
-import { getMaxTokensForModel } from '../registry.js';
+import { getEffectiveMaxInputTokens } from '../registry.js';
+import { getMaxInputTokensForModel } from '../registry.js';
 import { SessionEventBus } from '../../../events/index.js';
 import { logger } from '../../../logger/index.js';
 
 /**
- * Factory function to create a MessageManager instance with the correct formatter, tokenizer, and maxTokens
+ * Factory function to create a MessageManager instance with the correct formatter, tokenizer, and maxInputTokens
  * based on the LLM config and router
  *
  * @param config LLMConfig object containing provider, model, systemPrompt, etc.
@@ -38,15 +38,15 @@ export function createMessageManager(
     logger.debug(`Tokenizer created for ${provider}/${model}`);
 
     const formatter = createMessageFormatter(provider, router);
-    const effectiveMaxTokens = getEffectiveMaxTokens(config);
+    const effectiveMaxInputTokens = getEffectiveMaxInputTokens(config);
     logger.debug(
-        `Creating MessageManager for ${provider}/${model} using ${router} router with maxTokens: ${effectiveMaxTokens}`
+        `Creating MessageManager for ${provider}/${model} using ${router} router with maxInputTokens: ${effectiveMaxInputTokens}`
     );
     return new MessageManager(
         formatter,
         promptManager,
         sessionEventBus,
-        effectiveMaxTokens,
+        effectiveMaxInputTokens,
         tokenizer,
         historyProvider,
         sessionId

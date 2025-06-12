@@ -2,14 +2,14 @@ import { logger } from '../../logger/index.js';
 import { LLMConfig } from '../../config/schemas.js';
 import {
     CantInferProviderError,
-    EffectiveMaxTokensError,
+    EffectiveMaxInputTokensError,
     ModelNotFoundError,
     ProviderNotFoundError,
 } from './errors.js';
 
 export interface ModelInfo {
     name: string;
-    maxTokens: number;
+    maxInputTokens: number;
     default?: boolean;
     // Add other relevant metadata if needed, e.g., supported features, cost tier
 }
@@ -21,7 +21,8 @@ export interface ProviderInfo {
     // Add other provider-specific metadata if needed
 }
 
-export const DEFAULT_MAX_TOKENS = 128000;
+/** Fallback when we cannot determine the model's input-token limit */
+export const DEFAULT_MAX_INPUT_TOKENS = 128000;
 
 export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'groq';
 
@@ -29,40 +30,40 @@ export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'groq';
 export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     openai: {
         models: [
-            { name: 'gpt-4.1', maxTokens: 1047576 },
-            { name: 'gpt-4.1-mini', maxTokens: 1047576, default: true },
-            { name: 'gpt-4.1-nano', maxTokens: 1047576 },
-            { name: 'gpt-4o', maxTokens: 128000 },
-            { name: 'gpt-4o-mini', maxTokens: 128000 },
-            { name: 'o4-mini', maxTokens: 200000 },
-            { name: 'o3', maxTokens: 200000 },
-            { name: 'o3-mini', maxTokens: 200000 },
-            { name: 'o1', maxTokens: 200000 },
+            { name: 'gpt-4.1', maxInputTokens: 1047576 },
+            { name: 'gpt-4.1-mini', maxInputTokens: 1047576, default: true },
+            { name: 'gpt-4.1-nano', maxInputTokens: 1047576 },
+            { name: 'gpt-4o', maxInputTokens: 128000 },
+            { name: 'gpt-4o-mini', maxInputTokens: 128000 },
+            { name: 'o4-mini', maxInputTokens: 200000 },
+            { name: 'o3', maxInputTokens: 200000 },
+            { name: 'o3-mini', maxInputTokens: 200000 },
+            { name: 'o1', maxInputTokens: 200000 },
         ],
         supportedRouters: ['vercel', 'in-built'],
         supportsBaseURL: true,
     },
     anthropic: {
         models: [
-            { name: 'claude-4-opus-20250514', maxTokens: 200000 },
-            { name: 'claude-4-sonnet-20250514', maxTokens: 200000, default: true },
-            { name: 'claude-3-7-sonnet-20250219', maxTokens: 200000 },
-            { name: 'claude-3-5-sonnet-20240620', maxTokens: 200000 },
-            { name: 'claude-3-haiku-20240307', maxTokens: 200000 },
-            { name: 'claude-3-opus-20240229', maxTokens: 200000 },
-            { name: 'claude-3-sonnet-20240229', maxTokens: 200000 },
+            { name: 'claude-4-opus-20250514', maxInputTokens: 200000 },
+            { name: 'claude-4-sonnet-20250514', maxInputTokens: 200000, default: true },
+            { name: 'claude-3-7-sonnet-20250219', maxInputTokens: 200000 },
+            { name: 'claude-3-5-sonnet-20240620', maxInputTokens: 200000 },
+            { name: 'claude-3-haiku-20240307', maxInputTokens: 200000 },
+            { name: 'claude-3-opus-20240229', maxInputTokens: 200000 },
+            { name: 'claude-3-sonnet-20240229', maxInputTokens: 200000 },
         ],
         supportedRouters: ['vercel', 'in-built'],
         supportsBaseURL: false,
     },
     google: {
         models: [
-            { name: 'gemini-2.5-pro-exp-03-25', maxTokens: 1048576, default: true },
-            { name: 'gemini-2.5-flash-preview-05-20', maxTokens: 1048576 },
-            { name: 'gemini-2.0-flash', maxTokens: 1048576 },
-            { name: 'gemini-2.0-flash-lite', maxTokens: 1048576 },
-            { name: 'gemini-1.5-pro-latest', maxTokens: 1048576 },
-            { name: 'gemini-1.5-flash-latest', maxTokens: 1048576 },
+            { name: 'gemini-2.5-pro-exp-03-25', maxInputTokens: 1048576, default: true },
+            { name: 'gemini-2.5-flash-preview-05-20', maxInputTokens: 1048576 },
+            { name: 'gemini-2.0-flash', maxInputTokens: 1048576 },
+            { name: 'gemini-2.0-flash-lite', maxInputTokens: 1048576 },
+            { name: 'gemini-1.5-pro-latest', maxInputTokens: 1048576 },
+            { name: 'gemini-1.5-flash-latest', maxInputTokens: 1048576 },
         ],
         supportedRouters: ['vercel'],
         supportsBaseURL: false,
@@ -70,8 +71,8 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     // https://console.groq.com/docs/models
     groq: {
         models: [
-            { name: 'gemma-2-9b-it', maxTokens: 8192 },
-            { name: 'llama-3.3-70b-versatile', maxTokens: 128000, default: true },
+            { name: 'gemma-2-9b-it', maxInputTokens: 8192 },
+            { name: 'llama-3.3-70b-versatile', maxInputTokens: 128000, default: true },
         ],
         supportedRouters: ['vercel'],
         supportsBaseURL: false,
@@ -108,14 +109,14 @@ export function getSupportedModels(provider: string): string[] {
 }
 
 /**
- * Retrieves the maximum token limit for a given provider and model from the registry.
+ * Retrieves the maximum input token limit for a given provider and model from the registry.
  * Throws an error if the provider or model is not found.
  * @param provider The name of the provider (e.g., 'openai', 'anthropic', 'google').
  * @param model The specific model name.
- * @returns The maximum token limit for the model.
+ * @returns The maximum input token limit for the model.
  * @throws {Error} If the provider or model is not found in the registry.
  */
-export function getMaxTokensForModel(provider: string, model: string): number {
+export function getMaxInputTokensForModel(provider: string, model: string): number {
     const lowerProvider = provider?.toLowerCase();
     const lowerModel = model?.toLowerCase();
 
@@ -137,8 +138,8 @@ export function getMaxTokensForModel(provider: string, model: string): number {
         throw new ModelNotFoundError(provider, model);
     }
 
-    logger.debug(`Found max tokens for ${provider}/${model}: ${modelInfo.maxTokens}`);
-    return modelInfo.maxTokens;
+    logger.debug(`Found max tokens for ${provider}/${model}: ${modelInfo.maxInputTokens}`);
+    return modelInfo.maxInputTokens;
 }
 
 /**
@@ -238,89 +239,93 @@ export function isRouterSupportedForProvider(provider: string, router: string): 
 }
 
 /**
- * Determines the effective maximum token limit based on configuration.
+ * Determines the effective maximum input token limit based on configuration.
  * Priority:
- * 1. Explicit `maxTokens` in config (handles `baseURL` case implicitly via Zod validation).
+ * 1. Explicit `maxInputTokens` in config
  * 2. Registry lookup for known provider/model.
  *
  * @param config The validated LLM configuration.
- * @returns The effective maximum token count.
+ * @returns The effective maximum input token count for the LLM.
  * @throws {Error}
- * If `baseURL` is set but `maxTokens` is missing (indicating a Zod validation inconsistency).
+ * If `baseURL` is set but `maxInputTokens` is missing (indicating a Zod validation inconsistency).
  * Or if `baseURL` is not set, but model isn't found in registry.
  * TODO: make more readable
  */
-export function getEffectiveMaxTokens(config: LLMConfig): number {
+export function getEffectiveMaxInputTokens(config: LLMConfig): number {
+    const configuredMaxInputTokens = config.maxInputTokens;
+
     // Priority 1: Explicit config override or required value with baseURL
-    if (config.maxTokens != null) {
-        // Case 1a: baseURL is set. maxTokens is required and validated by Zod. Trust it.
+    if (configuredMaxInputTokens != null) {
+        // Case 1a: baseURL is set. maxInputTokens is required and validated by Zod. Trust it.
         if (config.baseURL) {
-            logger.debug(`Using maxTokens from configuration (with baseURL): ${config.maxTokens}`);
-            return config.maxTokens;
+            logger.debug(
+                `Using maxInputTokens from configuration (with baseURL): ${configuredMaxInputTokens}`
+            );
+            return configuredMaxInputTokens;
         }
 
-        // Case 1b: baseURL is NOT set, but maxTokens is provided (override).
+        // Case 1b: baseURL is NOT set, but maxInputTokens is provided (override).
         // Sanity-check against registry limits.
         try {
-            const registryMaxTokens = getMaxTokensForModel(config.provider, config.model);
-            if (config.maxTokens > registryMaxTokens) {
+            const registryMaxInputTokens = getMaxInputTokensForModel(config.provider, config.model);
+            if (configuredMaxInputTokens > registryMaxInputTokens) {
                 logger.warn(
-                    `Provided maxTokens (${config.maxTokens}) for ${config.provider}/${config.model} exceeds the registry limit (${registryMaxTokens}). Capping to registry limit.`
+                    `Provided maxInputTokens (${configuredMaxInputTokens}) for ${config.provider}/${config.model} exceeds the known limit (${registryMaxInputTokens}) for model ${config.model}. Capping to registry limit.`
                 );
-                return registryMaxTokens;
+                return registryMaxInputTokens;
             } else {
                 logger.debug(
-                    `Using valid maxTokens override from configuration: ${config.maxTokens} (Registry limit: ${registryMaxTokens})`
+                    `Using valid maxInputTokens override from configuration: ${configuredMaxInputTokens} (Registry limit: ${registryMaxInputTokens})`
                 );
-                return config.maxTokens;
+                return configuredMaxInputTokens;
             }
         } catch (error: any) {
             // Handle registry lookup failures during override check
             if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
                 logger.warn(
-                    `Registry lookup failed during maxTokens override check for ${config.provider}/${config.model}: ${error.message}. ` +
-                        `Proceeding with the provided maxTokens value (${config.maxTokens}), but it might be invalid.`
+                    `Registry lookup failed during maxInputTokens override check for ${config.provider}/${config.model}: ${error.message}. ` +
+                        `Proceeding with the provided maxInputTokens value (${configuredMaxInputTokens}), but it might be invalid.`
                 );
                 // Return the user's value, assuming Zod validation passed for provider/model existence initially.
-                return config.maxTokens;
+                return configuredMaxInputTokens;
             } else {
                 // Re-throw unexpected errors
                 logger.error(
-                    `Unexpected error during registry lookup for maxTokens override check: ${error}`
+                    `Unexpected error during registry lookup for maxInputTokens override check: ${error}`
                 );
-                throw error; // Or potentially throw EffectiveMaxTokensError if stricter handling is needed.
+                throw error;
             }
         }
     }
 
-    // Priority 2: baseURL is set but maxTokens is missing - default to 128k tokens
+    // Priority 2: baseURL is set but maxInputTokens is missing - default to 128k tokens
     if (config.baseURL) {
         logger.warn(
-            `baseURL is set but maxTokens is missing. Defaulting to ${DEFAULT_MAX_TOKENS}. ` +
-                `Provide 'maxTokens' in configuration to avoid default fallback.`
+            `baseURL is set but maxInputTokens is missing. Defaulting to ${DEFAULT_MAX_INPUT_TOKENS}. ` +
+                `Provide 'maxInputTokens' in configuration to avoid default fallback.`
         );
-        return DEFAULT_MAX_TOKENS;
+        return DEFAULT_MAX_INPUT_TOKENS;
     }
 
     // Priority 3: No override, no baseURL - use registry.
     try {
-        const registryMaxTokens = getMaxTokensForModel(config.provider, config.model);
+        const registryMaxInputTokens = getMaxInputTokensForModel(config.provider, config.model);
         logger.debug(
-            `Using maxTokens from registry for ${config.provider}/${config.model}: ${registryMaxTokens}`
+            `Using maxInputTokens from registry for ${config.provider}/${config.model}: ${registryMaxInputTokens}`
         );
-        return registryMaxTokens;
+        return registryMaxInputTokens;
     } catch (error: any) {
         // Handle registry lookup failures gracefully (e.g., typo in validated config)
         if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
             // Log as error and throw a specific fatal error
             logger.error(
                 `Registry lookup failed for ${config.provider}/${config.model}: ${error.message}. ` +
-                    `Effective maxTokens cannot be determined.`
+                    `Effective maxInputTokens cannot be determined.`
             );
-            throw new EffectiveMaxTokensError(config.provider, config.model);
+            throw new EffectiveMaxInputTokensError(config.provider, config.model);
         } else {
             // Re-throw unexpected errors during registry lookup
-            logger.error(`Unexpected error during registry lookup for maxTokens: ${error}`);
+            logger.error(`Unexpected error during registry lookup for maxInputTokens: ${error}`);
             throw error;
         }
     }

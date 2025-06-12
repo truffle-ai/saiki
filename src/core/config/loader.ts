@@ -18,6 +18,12 @@ function expandEnvVars(config: any): any {
                 return process.env[v1 || v2] || '';
             }
         );
+
+        // Try to convert numeric strings to numbers
+        if (expanded !== config && /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(expanded.trim())) {
+            return Number(expanded); // handles int, float, sci-notation
+        }
+
         return expanded;
     } else if (Array.isArray(config)) {
         return config.map(expandEnvVars);

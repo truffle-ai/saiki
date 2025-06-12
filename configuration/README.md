@@ -76,7 +76,11 @@ The `llm` section configures the AI provider settings.
 | `provider` | string | Yes | AI provider (e.g., "openai", "anthropic", "google") |
 | `model` | string | Yes | The model to use |
 | `apiKey` | string | Yes | API key or environment variable reference |
-| `providerOptions` | object | No | Provider-specific options like temperature and maxTokens |
+| `temperature` | number | No | Controls randomness (0-1, default varies by provider) |
+| `maxInputTokens` | number | No | Maximum input tokens for context compression |
+| `maxOutputTokens` | number | No | Maximum output tokens for response length |
+| `baseURL` | string | No | Custom API endpoint for OpenAI-compatible providers |
+| `router` | string | No | Router type ("vercel" or "in-built", default: "vercel") |
 
 ### API Key Configuration
 

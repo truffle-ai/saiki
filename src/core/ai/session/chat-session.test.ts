@@ -19,7 +19,7 @@ vi.mock('../llm/messages/formatters/factory.js', () => ({
     createMessageFormatter: vi.fn(),
 }));
 vi.mock('../llm/registry.js', () => ({
-    getEffectiveMaxTokens: vi.fn(),
+    getEffectiveMaxInputTokens: vi.fn(),
 }));
 vi.mock('../../logger/index.js', () => ({
     logger: {
@@ -35,14 +35,14 @@ import { createMessageManager } from '../llm/messages/factory.js';
 import { createLLMService } from '../llm/services/factory.js';
 import { createTokenizer } from '../llm/tokenizer/factory.js';
 import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
-import { getEffectiveMaxTokens } from '../llm/registry.js';
+import { getEffectiveMaxInputTokens } from '../llm/registry.js';
 
 const mockCreateDatabaseHistoryProvider = vi.mocked(createDatabaseHistoryProvider);
 const mockCreateMessageManager = vi.mocked(createMessageManager);
 const mockCreateLLMService = vi.mocked(createLLMService);
 const mockCreateTokenizer = vi.mocked(createTokenizer);
 const mockCreateFormatter = vi.mocked(createMessageFormatter);
-const mockGetEffectiveMaxTokens = vi.mocked(getEffectiveMaxTokens);
+const mockGetEffectiveMaxInputTokens = vi.mocked(getEffectiveMaxInputTokens);
 
 describe('ChatSession', () => {
     let chatSession: ChatSession;
@@ -61,8 +61,7 @@ describe('ChatSession', () => {
         router: 'in-built',
         systemPrompt: 'You are a helpful assistant',
         maxIterations: 50,
-        maxTokens: 128000,
-        providerOptions: {},
+        maxInputTokens: 128000,
     };
 
     beforeEach(() => {
@@ -159,7 +158,7 @@ describe('ChatSession', () => {
         mockCreateLLMService.mockReturnValue(mockLLMService);
         mockCreateTokenizer.mockReturnValue(mockTokenizer);
         mockCreateFormatter.mockReturnValue(mockFormatter);
-        mockGetEffectiveMaxTokens.mockReturnValue(128000);
+        mockGetEffectiveMaxInputTokens.mockReturnValue(128000);
 
         // Create ChatSession instance
         chatSession = new ChatSession(mockServices, sessionId);
@@ -249,14 +248,14 @@ describe('ChatSession', () => {
         test('should optimize LLM switching by only creating new components when necessary', async () => {
             const newConfig: LLMConfig = {
                 ...mockLLMConfig,
-                maxTokens: 256000, // Only change maxTokens
+                maxInputTokens: 256000, // Only change maxInputTokens
             };
 
             await chatSession.switchLLM(newConfig);
 
-            // Should call updateConfig with effective maxTokens (from getEffectiveMaxTokens mock)
+            // Should call updateConfig with effective maxInputTokens (from getEffectiveMaxInputTokens mock)
             expect(mockMessageManager.updateConfig).toHaveBeenCalledWith(
-                128000, // effective maxTokens (mocked return value)
+                128000, // effective maxInputTokens (mocked return value)
                 undefined, // newTokenizer (no provider change)
                 undefined // newFormatter (no router change)
             );
@@ -295,7 +294,7 @@ describe('ChatSession', () => {
             await chatSession.switchLLM(newConfig);
 
             expect(mockMessageManager.updateConfig).toHaveBeenCalledWith(
-                128000, // newMaxTokens
+                128000, // newMaxInputTokens
                 expect.any(Object), // newTokenizer
                 expect.any(Object) // newFormatter
             );

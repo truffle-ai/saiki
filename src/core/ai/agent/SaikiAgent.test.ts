@@ -17,7 +17,6 @@ describe('SaikiAgent.switchLLM', () => {
     let mockEventBus: any;
     let mockClientManager: any;
     let mockPromptManager: any;
-    let mockConfigManager: any;
     let mockStorageManager: any;
 
     const mockLLMConfig: LLMConfig = {
@@ -27,8 +26,7 @@ describe('SaikiAgent.switchLLM', () => {
         router: 'vercel',
         systemPrompt: 'You are a helpful assistant',
         maxIterations: 50,
-        maxTokens: 128000,
-        providerOptions: {},
+        maxInputTokens: 128000,
     };
 
     beforeEach(() => {
@@ -107,10 +105,6 @@ describe('SaikiAgent.switchLLM', () => {
             // Add any methods that might be called
         };
 
-        mockConfigManager = {
-            // Add any methods that might be called
-        };
-
         mockStorageManager = {
             // Add any methods that might be called
         };
@@ -122,7 +116,7 @@ describe('SaikiAgent.switchLLM', () => {
             agentEventBus: mockEventBus,
             stateManager: mockStateManager,
             sessionManager: mockSessionManager,
-            storageManager: mockStorageManager,
+            storage: mockStorageManager,
         });
 
         // Mock the validation function

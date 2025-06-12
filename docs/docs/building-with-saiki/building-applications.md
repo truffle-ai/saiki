@@ -308,8 +308,7 @@ llm:
   provider: openai
   model: gpt-4.1  # More capable for production
   apiKey: $OPENAI_API_KEY
-  providerOptions:
-    temperature: 0.3  # More consistent responses
+  temperature: 0.3  # More consistent responses
 ```
 
 ### Adding More Capabilities

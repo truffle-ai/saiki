@@ -18,13 +18,13 @@ export class CantInferProviderError extends Error {
     }
 }
 
-// Custom error for when maxTokens cannot be determined
-export class EffectiveMaxTokensError extends Error {
+// Custom error for when maxInputTokens cannot be determined
+export class EffectiveMaxInputTokensError extends Error {
     constructor(provider: string, model: string) {
         super(
-            `Could not determine effective maxTokens for ${provider}/${model}. ` +
-                `'maxTokens' was not provided in config, and the model was not found in the registry.`
+            `Could not determine effective maxInputTokens for ${provider}/${model}. ` +
+                `'maxInputTokens' was not provided in config, and the model was not found in the registry.`
         );
-        this.name = 'EffectiveMaxTokensError';
+        this.name = 'EffectiveMaxInputTokensError';
     }
 }

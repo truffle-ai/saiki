@@ -58,7 +58,7 @@ llm:
   model: your-custom-model
   apiKey: $YOUR_API_KEY
   baseURL: https://api.your-provider.com/v1
-  maxTokens: 100000  # Required for custom providers
+  maxInputTokens: 100000  # Required for custom providers
 ```
 
 ### Popular Compatible Providers
@@ -72,7 +72,7 @@ llm:
   model: llama3.2
   apiKey: dummy  # Required but ignored for local
   baseURL: http://localhost:11434/v1  # Ollama default
-  maxTokens: 8000
+  maxInputTokens: 8000
 ```
 
 **Popular local model options:**
@@ -88,7 +88,7 @@ llm:
   model: gpt-4
   apiKey: $AZURE_OPENAI_API_KEY
   baseURL: https://your-resource.openai.azure.com/openai/deployments/gpt-4
-  maxTokens: 128000
+  maxInputTokens: 128000
 ```
 
 **Setup notes:**
@@ -105,7 +105,7 @@ llm:
   model: anthropic/claude-3.5-sonnet
   apiKey: $OPENROUTER_API_KEY
   baseURL: https://openrouter.ai/api/v1
-  maxTokens: 200000
+  maxInputTokens: 200000
 ```
 
 **Popular OpenRouter models:**
@@ -121,7 +121,7 @@ llm:
   model: meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo
   apiKey: $TOGETHER_API_KEY
   baseURL: https://api.together.xyz/v1
-  maxTokens: 8000
+  maxInputTokens: 8000
 ```
 
 **Popular Together.ai models:**
@@ -136,7 +136,7 @@ llm:
   model: meta-llama/Llama-2-70b-chat-hf
   apiKey: $ANYSCALE_API_KEY
   baseURL: https://api.endpoints.anyscale.com/v1
-  maxTokens: 4000
+  maxInputTokens: 4000
 ```
 
 #### **Perplexity**
@@ -146,7 +146,7 @@ llm:
   model: llama-3.1-sonar-huge-128k-online
   apiKey: $PERPLEXITY_API_KEY
   baseURL: https://api.perplexity.ai
-  maxTokens: 128000
+  maxInputTokens: 128000
 ```
 
 **Special feature**: Online models that can search the web in real-time.
@@ -234,8 +234,8 @@ apiKey: $OPENAI_API_KEY  # Not: OPENAI_API_KEY
 - For custom providers, consider implementing retry logic
 
 **Timeout Issues**
-- Increase timeout settings in `providerOptions`
 - Consider using a different model or provider
+- Check your network connection and provider status
 
 ### Getting Help
 

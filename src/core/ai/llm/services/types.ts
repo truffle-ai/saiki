@@ -31,7 +31,6 @@ export type LLMServiceConfig = {
     router: string;
     provider: string;
     model: string | LanguageModelV1;
-    configuredMaxTokens?: number | null;
-    modelMaxTokens?: number | null;
-    [key: string]: any;
+    configuredMaxInputTokens?: number | null;
+    modelMaxInputTokens?: number | null;
 };

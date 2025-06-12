@@ -170,15 +170,18 @@ describe('Config Schemas', () => {
             expect(parsed.maxIterations).toBe(50);
         });
 
-        it('applies default providerOptions if not provided', () => {
+        it('handles explicit temperature and maxOutputTokens', () => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
                 apiKey: '123',
+                temperature: 0.7,
+                maxOutputTokens: 4000,
             };
             const parsed = LLMConfigSchema.parse(config);
-            expect(parsed.providerOptions).toEqual({});
+            expect(parsed.temperature).toBe(0.7);
+            expect(parsed.maxOutputTokens).toBe(4000);
         });
 
         it('applies default router if not provided', () => {
@@ -201,23 +204,20 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('accepts valid provider-specific options', () => {
+        it.each([
+            { temperature: -0.1, description: 'below minimum' },
+            { temperature: 1.5, description: 'above maximum' },
+            { temperature: -1, description: 'negative value' },
+            { temperature: 2, description: 'greater than 1' },
+        ])('rejects temperature $description ($temperature)', ({ temperature }) => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
                 apiKey: '123',
-                providerOptions: {
-                    temperature: 0.7,
-                    top_p: 0.9,
-                },
+                temperature,
             };
-            expect(() => LLMConfigSchema.parse(config)).not.toThrow();
-            const parsed = LLMConfigSchema.parse(config);
-            expect(parsed.providerOptions).toEqual({
-                temperature: 0.7,
-                top_p: 0.9,
-            });
+            expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
         it('correctly validates case-insensitive provider names', () => {
@@ -249,59 +249,59 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('accepts if baseURL is set but maxTokens is missing', () => {
+        it('accepts if baseURL is set but maxInputTokens is missing', () => {
             const config = {
                 provider: 'openai',
                 model: 'my-custom-model',
                 systemPrompt: 'Test',
                 apiKey: '123',
                 baseURL: 'https://api.custom.com/v1', // baseURL is set
-                // maxTokens is missing
+                // maxInputTokens is missing
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
 
-        it('accepts valid config with baseURL and maxTokens for openai', () => {
+        it('accepts valid config with baseURL and maxInputTokens for openai', () => {
             const config = {
                 provider: 'openai',
                 model: 'my-company-finetune-v3',
                 systemPrompt: 'Test',
                 apiKey: '123',
                 baseURL: 'https://api.custom.com/v1',
-                maxTokens: 8192,
+                maxInputTokens: 8192,
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
 
-        it('rejects if maxTokens exceeds limit for a known model (no baseURL)', () => {
+        it('rejects if maxInputTokens exceeds limit for a known model (no baseURL)', () => {
             const config = {
                 provider: 'openai',
                 model: 'gpt-4o-mini',
                 systemPrompt: 'Test',
                 apiKey: '123',
-                maxTokens: 200000, // Exceeds the limit
+                maxInputTokens: 200000, // Exceeds the limit
             };
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('accepts maxTokens within limit for a known model (no baseURL)', () => {
+        it('accepts maxInputTokens within limit for a known model (no baseURL)', () => {
             const config = {
                 provider: 'openai',
                 model: 'gpt-4o-mini', // Known model
                 systemPrompt: 'Test',
                 apiKey: '123',
-                maxTokens: 4096, // Within limit
+                maxInputTokens: 4096, // Within limit
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
 
-        it('accepts known model without maxTokens specified (no baseURL)', () => {
+        it('accepts known model without maxInputTokens specified (no baseURL)', () => {
             const config = {
                 provider: 'anthropic',
                 model: 'claude-3-haiku-20240307', // Known model
                 systemPrompt: 'Test',
                 apiKey: '123',
-                // maxTokens is not provided, should be fine
+                // maxInputTokens is not provided, should be fine
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });

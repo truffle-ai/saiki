@@ -8,7 +8,7 @@ import {
     supportsBaseURL,
     getProviderFromModel,
     getDefaultModelForProvider,
-    getEffectiveMaxTokens,
+    getEffectiveMaxInputTokens,
 } from '../ai/llm/registry.js';
 import type { LLMConfig, McpServerConfig } from './schemas.js';
 import { LLMConfigSchema, McpServerConfigSchema } from './schemas.js';
@@ -28,7 +28,6 @@ export type ValidationErrorType =
     | 'unsupported_router'
     | 'invalid_base_url'
     | 'invalid_max_tokens'
-    | 'invalid_provider_options'
     | 'schema_validation'
     | 'general';
 
@@ -207,10 +206,10 @@ export function validateRuntimeState(state: AgentRuntimeState): ValidationResult
         warnings.push('API key seems too short - please verify it is correct');
     }
 
-    if (state.llm.maxTokens !== undefined && state.llm.maxTokens <= 0) {
+    if (state.llm.maxInputTokens !== undefined && state.llm.maxInputTokens <= 0) {
         errors.push({
             type: 'invalid_max_tokens',
-            message: 'maxTokens must be a positive number',
+            message: 'maxInputTokens must be a positive number',
         });
     }
 
@@ -588,46 +587,33 @@ function buildFinalConfig(
         );
     }
 
-    // MaxTokens
-    let maxTokens: number | undefined;
-    if (updates.maxTokens !== undefined) {
-        if (typeof updates.maxTokens !== 'number' || updates.maxTokens <= 0) {
+    let maxInputTokens: number | undefined;
+    if (updates.maxInputTokens !== undefined) {
+        if (typeof updates.maxInputTokens !== 'number' || updates.maxInputTokens <= 0) {
             errors.push({
                 type: 'invalid_max_tokens',
-                message: 'maxTokens must be a positive number',
+                message: 'maxInputTokens must be a positive number',
             });
         } else {
-            maxTokens = updates.maxTokens;
+            maxInputTokens = updates.maxInputTokens;
         }
     } else {
-        const effectiveMaxTokens = getEffectiveMaxTokens(core);
+        const effectiveMaxInputTokens = getEffectiveMaxInputTokens(core);
         const modelChanged = core.model !== currentConfig.model;
 
         if (modelChanged) {
-            maxTokens = effectiveMaxTokens;
-            if (currentConfig.maxTokens && currentConfig.maxTokens !== effectiveMaxTokens) {
+            maxInputTokens = effectiveMaxInputTokens;
+            if (
+                currentConfig.maxInputTokens &&
+                currentConfig.maxInputTokens !== effectiveMaxInputTokens
+            ) {
                 warnings.push(
-                    `Updated maxTokens from ${currentConfig.maxTokens} to ${effectiveMaxTokens} for model '${core.model}'`
+                    `Updated maxInputTokens from ${currentConfig.maxInputTokens} to ${effectiveMaxInputTokens} for model '${core.model}'`
                 );
             }
         } else {
-            maxTokens = currentConfig.maxTokens || effectiveMaxTokens;
+            maxInputTokens = currentConfig.maxInputTokens || effectiveMaxInputTokens;
         }
-    }
-
-    // Provider options
-    let providerOptions: Record<string, any> = {};
-    if (updates.providerOptions !== undefined) {
-        if (typeof updates.providerOptions !== 'object' || updates.providerOptions === null) {
-            errors.push({
-                type: 'invalid_provider_options',
-                message: 'Provider options must be an object',
-            });
-        } else {
-            providerOptions = updates.providerOptions;
-        }
-    } else {
-        providerOptions = currentConfig.providerOptions || {};
     }
 
     return {
@@ -640,9 +626,14 @@ function buildFinalConfig(
             updates.maxIterations !== undefined
                 ? updates.maxIterations
                 : currentConfig.maxIterations || 50,
-        providerOptions,
+        temperature:
+            updates.temperature !== undefined ? updates.temperature : currentConfig.temperature,
+        maxOutputTokens:
+            updates.maxOutputTokens !== undefined
+                ? updates.maxOutputTokens
+                : currentConfig.maxOutputTokens,
         ...(baseURL && { baseURL }),
-        ...(maxTokens && { maxTokens }),
+        ...(maxInputTokens && { maxInputTokens }),
     };
 }
 

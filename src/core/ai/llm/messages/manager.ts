@@ -44,7 +44,7 @@ export class MessageManager {
     /**
      * Maximum number of tokens allowed in the conversation (if specified)
      */
-    private maxTokens: number;
+    private maxInputTokens: number;
 
     /**
      * Actual token count from the last LLM response.
@@ -53,8 +53,8 @@ export class MessageManager {
     private lastActualTokenCount: number = 0;
 
     /**
-     * Compression threshold as a percentage of maxTokens.
-     * When estimated tokens exceed (maxTokens * threshold), compression is triggered.
+     * Compression threshold as a percentage of maxInputTokens.
+     * When estimated tokens exceed (maxInputTokens * threshold), compression is triggered.
      */
     private compressionThreshold: number = 0.8; // 80% threshold
 
@@ -64,7 +64,7 @@ export class MessageManager {
     private tokenizer: ITokenizer;
 
     /**
-     * The sequence of compression strategies to apply when maxTokens is exceeded.
+     * The sequence of compression strategies to apply when maxInputTokens is exceeded.
      * The order in this array matters, as strategies are applied sequentially until
      * the token count is within the limit.
      */
@@ -79,7 +79,7 @@ export class MessageManager {
      * @param formatter Formatter implementation for the target LLM provider
      * @param promptManager PromptManager instance for the conversation
      * @param sessionEventBus Session-level event bus for emitting message-related events
-     * @param maxTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
+     * @param maxInputTokens Maximum token limit for the conversation history. Triggers compression if exceeded and a tokenizer is provided.
      * @param tokenizer Tokenizer implementation used for counting tokens and enabling compression.
      * @param historyProvider Session-scoped ConversationHistoryProvider instance for managing conversation history
      * @param sessionId Unique identifier for the conversation session (readonly, for debugging)
@@ -89,7 +89,7 @@ export class MessageManager {
         formatter: IMessageFormatter,
         promptManager: PromptManager,
         sessionEventBus: SessionEventBus,
-        maxTokens: number,
+        maxInputTokens: number,
         tokenizer: ITokenizer,
         historyProvider: IConversationHistoryProvider,
         sessionId: string,
@@ -101,7 +101,7 @@ export class MessageManager {
         if (!formatter) throw new Error('formatter is required');
         if (!promptManager) throw new Error('promptManager is required');
         if (!sessionEventBus) throw new Error('sessionEventBus is required');
-        if (!maxTokens) throw new Error('maxTokens is required');
+        if (!maxInputTokens) throw new Error('maxInputTokens is required');
         if (!tokenizer) throw new Error('tokenizer is required');
         if (!historyProvider) throw new Error('historyProvider is required');
         if (!sessionId) throw new Error('sessionId is required');
@@ -110,7 +110,7 @@ export class MessageManager {
         this.formatter = formatter;
         this.promptManager = promptManager;
         this.sessionEventBus = sessionEventBus;
-        this.maxTokens = maxTokens;
+        this.maxInputTokens = maxInputTokens;
         this.tokenizer = tokenizer;
         this.historyProvider = historyProvider;
         this.sessionId = sessionId;
@@ -174,27 +174,27 @@ export class MessageManager {
     }
 
     /**
-     * Returns the configured maximum number of tokens for the conversation.
+     * Returns the configured maximum number of input tokens for the conversation.
      */
-    getMaxTokens(): number {
-        return this.maxTokens;
+    getMaxInputTokens(): number {
+        return this.maxInputTokens;
     }
 
     /**
      * Updates the MessageManager configuration when LLM config changes.
      * This is called when SaikiAgent.switchLLM() updates the LLM configuration.
      *
-     * @param newMaxTokens New maximum token limit
+     * @param newMaxInputTokens New maximum token limit
      * @param newTokenizer Optional new tokenizer if provider changed
      * @param newFormatter Optional new formatter if provider/router changed
      */
     updateConfig(
-        newMaxTokens: number,
+        newMaxInputTokens: number,
         newTokenizer?: ITokenizer,
         newFormatter?: IMessageFormatter
     ): void {
-        const oldMaxTokens = this.maxTokens;
-        this.maxTokens = newMaxTokens;
+        const oldMaxInputTokens = this.maxInputTokens;
+        this.maxInputTokens = newMaxInputTokens;
 
         if (newTokenizer) {
             this.tokenizer = newTokenizer;
@@ -204,7 +204,9 @@ export class MessageManager {
             this.formatter = newFormatter;
         }
 
-        logger.debug(`MessageManager config updated: maxTokens ${oldMaxTokens} -> ${newMaxTokens}`);
+        logger.debug(
+            `MessageManager config updated: maxInputTokens ${oldMaxInputTokens} -> ${newMaxInputTokens}`
+        );
     }
 
     /**
@@ -227,7 +229,7 @@ export class MessageManager {
      */
     shouldCompress(newInputTokens: number): boolean {
         const estimatedTotal = this.lastActualTokenCount + newInputTokens;
-        const compressionTrigger = this.maxTokens * this.compressionThreshold;
+        const compressionTrigger = this.maxInputTokens * this.compressionThreshold;
 
         logger.debug(
             `Compression check: actual=${this.lastActualTokenCount}, newInput=${newInputTokens}, total=${estimatedTotal}, trigger=${compressionTrigger}`
@@ -446,7 +448,7 @@ export class MessageManager {
 
     /**
      * Gets the conversation history formatted for the target LLM provider.
-     * Applies compression strategies sequentially if the manager is configured with a `maxTokens` limit
+     * Applies compression strategies sequentially if the manager is configured with a `maxInputTokens` limit
      * and a `tokenizer`, and the current token count exceeds the limit. Compression happens *before* formatting.
      * Uses the injected formatter to convert internal messages (potentially compressed) to the provider's format.
      *
@@ -590,22 +592,22 @@ export class MessageManager {
         );
 
         // If counting failed or we are within limits, do nothing
-        if (currentTotalTokens <= this.maxTokens) {
+        if (currentTotalTokens <= this.maxInputTokens) {
             logger.debug(
-                `MessageManager: History compression not needed. Total token count: ${currentTotalTokens}, Max tokens: ${this.maxTokens}`
+                `MessageManager: History compression not needed. Total token count: ${currentTotalTokens}, Max tokens: ${this.maxInputTokens}`
             );
             return history;
         }
 
         logger.info(
-            `MessageManager: History exceeds token limit (${currentTotalTokens} > ${this.maxTokens}). Applying compression strategies sequentially.`
+            `MessageManager: History exceeds token limit (${currentTotalTokens} > ${this.maxInputTokens}). Applying compression strategies sequentially.`
         );
 
         const initialLength = history.length;
         let workingHistory = [...history];
 
         // Calculate target tokens for history (leave room for system prompt)
-        const targetHistoryTokens = this.maxTokens - systemPromptTokens;
+        const targetHistoryTokens = this.maxInputTokens - systemPromptTokens;
 
         // Iterate through the configured compression strategies sequentially
         for (const strategy of this.compressionStrategies) {
@@ -632,7 +634,7 @@ export class MessageManager {
             const messagesRemoved = initialLength - workingHistory.length;
 
             // If counting failed or we are now within limits, stop applying strategies
-            if (currentTotalTokens <= this.maxTokens) {
+            if (currentTotalTokens <= this.maxInputTokens) {
                 logger.debug(
                     `MessageManager: Compression successful after ${strategyName}. New total count: ${currentTotalTokens}, messages removed: ${messagesRemoved}`
                 );

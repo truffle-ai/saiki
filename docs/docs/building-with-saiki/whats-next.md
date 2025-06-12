@@ -120,8 +120,7 @@ try {
 llm:
   provider: groq
   model: llama-3.3-70b-versatile
-  providerOptions:
-    temperature: 0.1  # More deterministic
+  temperature: 0.1  # More deterministic
 ```
 
 **For Quality**:
@@ -129,8 +128,7 @@ llm:
 llm:
   provider: anthropic
   model: claude-3-5-sonnet-20240620
-  providerOptions:
-    temperature: 0.3  # Balanced creativity
+  temperature: 0.3  # Balanced creativity
 ```
 
 **For Cost**:
