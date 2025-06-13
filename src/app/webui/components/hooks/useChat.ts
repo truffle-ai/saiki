@@ -251,7 +251,7 @@ export function useChat(wsUrl: string) {
             content: string,
             imageData?: { base64: string; mimeType: string },
             sessionId?: string,
-            stream?: boolean
+            stream = false
         ) => {
             if (wsRef.current?.readyState === globalThis.WebSocket.OPEN) {
                 const message = {
@@ -259,7 +259,7 @@ export function useChat(wsUrl: string) {
                     content,
                     imageData,
                     sessionId,
-                    stream: stream ?? false, // Include stream parameter
+                    stream,
                 };
                 wsRef.current.send(JSON.stringify(message));
 
