@@ -651,11 +651,8 @@ export class MessageManager {
      * @param response The stream response from the LLM provider
      */
     async processLLMStreamResponse(response: any): Promise<void> {
-        // Check if the formatter has a parseStreamResponse method
-        if (
-            'parseStreamResponse' in this.formatter &&
-            typeof this.formatter.parseStreamResponse === 'function'
-        ) {
+        // Use type-safe access to parseStreamResponse method
+        if (this.formatter.parseStreamResponse) {
             const msgs = (await this.formatter.parseStreamResponse(response)) ?? [];
             for (const msg of msgs) {
                 try {
