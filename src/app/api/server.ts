@@ -51,7 +51,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
         try {
             const sessionId = req.body.sessionId as string | undefined;
-            await agent.run(req.body.message, undefined, sessionId);
+            const stream = req.body.stream === true; // Extract stream preference, default to false
+            await agent.run(req.body.message, undefined, sessionId, stream);
             res.status(202).send({ status: 'processing', sessionId });
         } catch (error) {
             logger.error(`Error handling POST /api/message: ${error.message}`);
@@ -71,7 +72,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             : undefined;
         try {
             const sessionId = req.body.sessionId as string | undefined;
-            const responseText = await agent.run(req.body.message, imageDataInput, sessionId);
+            const stream = req.body.stream === true; // Extract stream preference, default to false
+            const responseText = await agent.run(
+                req.body.message,
+                imageDataInput,
+                sessionId,
+                stream
+            );
             res.status(200).send({ response: responseText, sessionId });
         } catch (error) {
             logger.error(`Error handling POST /api/message-sync: ${error.message}`);
@@ -239,9 +246,10 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
                     const sessionId = data.sessionId as string | undefined;
+                    const stream = data.stream === true; // Extract stream preference, default to false
                     if (imageDataInput) logger.info('Image data included in message.');
                     if (sessionId) logger.info(`Message for session: ${sessionId}`);
-                    await agent.run(data.content, imageDataInput, sessionId);
+                    await agent.run(data.content, imageDataInput, sessionId, stream);
                 } else if (data.type === 'reset') {
                     const sessionId = data.sessionId as string | undefined;
                     logger.info(

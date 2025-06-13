@@ -203,9 +203,14 @@ export class SQLiteBackend implements DatabaseBackend {
     async append<T>(key: string, item: T): Promise<void> {
         this.checkConnection();
         const serialized = JSON.stringify(item);
+
+        // Use atomic subquery to calculate next sequence and insert in single statement
+        // This eliminates race conditions under WAL mode
         this.db
-            .prepare('INSERT INTO list_store (key, value, sequence) VALUES (?, ?, ?)')
-            .run(key, serialized, Date.now());
+            .prepare(
+                'INSERT INTO list_store (key, value, sequence) VALUES (?, ?, (SELECT COALESCE(MAX(sequence), 0) + 1 FROM list_store WHERE key = ?))'
+            )
+            .run(key, serialized, key);
     }
 
     async getRange<T>(key: string, start: number, count: number): Promise<T[]> {

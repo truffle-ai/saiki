@@ -247,13 +247,19 @@ export function useChat(wsUrl: string) {
     }, [wsUrl]);
 
     const sendMessage = useCallback(
-        (content: string, imageData?: { base64: string; mimeType: string }, sessionId?: string) => {
+        (
+            content: string,
+            imageData?: { base64: string; mimeType: string },
+            sessionId?: string,
+            stream = false
+        ) => {
             if (wsRef.current?.readyState === globalThis.WebSocket.OPEN) {
                 const message = {
                     type: 'message',
                     content,
                     imageData,
                     sessionId,
+                    stream,
                 };
                 wsRef.current.send(JSON.stringify(message));
 

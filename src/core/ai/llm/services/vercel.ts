@@ -69,7 +69,11 @@ export class VercelLLMService implements ILLMService {
         }, {});
     }
 
-    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+    async completeTask(
+        userInput: string,
+        imageData?: ImageData,
+        stream?: boolean
+    ): Promise<string> {
         // Add user message, with optional image data
         logger.debug(
             `VercelLLMService: Adding user message: ${userInput} and imageData: ${imageData}`
@@ -107,12 +111,20 @@ export class VercelLLMService implements ILLMService {
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
                 logger.debug(`Estimated tokens being sent to Vercel provider: ${tokensUsed}`);
 
-                // Call LLM with properly formatted and compressed messages
-                fullResponse = await this.generateText(
-                    formattedMessages,
-                    formattedTools,
-                    this.maxIterations
-                );
+                // Both methods now return strings and handle message processing internally
+                if (stream) {
+                    fullResponse = await this.streamText(
+                        formattedMessages,
+                        formattedTools,
+                        this.maxIterations
+                    );
+                } else {
+                    fullResponse = await this.generateText(
+                        formattedMessages,
+                        formattedTools,
+                        this.maxIterations
+                    );
+                }
             }
 
             return (
@@ -165,7 +177,7 @@ export class VercelLLMService implements ILLMService {
                 );
 
                 // Track token usage from each step
-                if (step.usage) {
+                if (step.usage?.totalTokens !== undefined) {
                     totalTokens += step.usage.totalTokens;
                 }
 
@@ -215,34 +227,14 @@ export class VercelLLMService implements ILLMService {
         return response.text;
     }
 
-    async processStream(
+    // Updated streamText to behave like generateText - returns string and handles message processing internally
+    async streamText(
         messages: any[],
         tools: VercelToolSet,
         maxSteps: number = 10
     ): Promise<string> {
-        const stream = await this.streamText(messages, tools, maxSteps);
-        let fullResponse = '';
-        let totalTokens = 0;
-
-        for await (const textPart of stream) {
-            fullResponse += textPart;
-            // this.sessionEventBus.emit('chunk', textPart);
-        }
-
-        // Add final assistant message, might not be needed
-        await this.messageManager.addAssistantMessage(fullResponse);
-
-        this.sessionEventBus.emit('llmservice:response', {
-            content: fullResponse,
-            model: this.model.modelId,
-            tokenCount: totalTokens > 0 ? totalTokens : undefined,
-        });
-        return fullResponse;
-    }
-
-    // returns AsyncIterable<string> & ReadableStream<string>
-    async streamText(messages: any[], tools: VercelToolSet, maxSteps: number = 10): Promise<any> {
         let stepIteration = 0;
+        let totalTokens = 0;
 
         const temperature = this.temperature;
         const maxTokens = this.maxOutputTokens;
@@ -281,10 +273,25 @@ export class VercelLLMService implements ILLMService {
                     `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
                 );
 
-                // Process tool calls
+                // Track token usage from each step as fallback for providers that don't report final usage
+                if (step.usage?.totalTokens !== undefined) {
+                    totalTokens += step.usage.totalTokens;
+                    logger.debug(
+                        `Step ${stepIteration} tokens: ${step.usage.totalTokens}, running total: ${totalTokens}`
+                    );
+                }
+
+                // Emit response event for step text (without token count until final)
+                if (step.text) {
+                    this.sessionEventBus.emit('llmservice:response', {
+                        content: step.text,
+                        model: this.model.modelId,
+                        tokenCount: totalTokens > 0 ? totalTokens : undefined,
+                    });
+                }
+
+                // Process tool calls (same as generateText)
                 if (step.toolCalls && step.toolCalls.length > 0) {
-                    // Don't add assistant message with tool calls to history
-                    // Just emit the events
                     for (const toolCall of step.toolCalls) {
                         this.sessionEventBus.emit('llmservice:toolCall', {
                             toolName: toolCall.toolName,
@@ -294,11 +301,9 @@ export class VercelLLMService implements ILLMService {
                     }
                 }
 
-                // Process tool results
-                if (step.stepType === 'tool-result' && step.toolResults) {
+                // Process tool results (same condition as generateText)
+                if (step.toolResults && step.toolResults.length > 0) {
                     for (const toolResult of step.toolResults as any) {
-                        // Don't add tool results to message manager
-                        // Just emit the events
                         this.sessionEventBus.emit('llmservice:toolResult', {
                             toolName: toolResult.toolName,
                             result: toolResult.result,
@@ -321,16 +326,54 @@ export class VercelLLMService implements ILLMService {
                         2
                     )}`
                 );
+
+                // Use final result usage if available (authoritative), otherwise keep accumulated count
+                // Some providers may not report final usage, so we maintain both approaches:
+                // 1. Accumulate step tokens as fallback (done in onStepFinish above)
+                // 2. Use final result tokens if provided (more accurate for providers that support it)
+                if (result.usage && result.usage.totalTokens !== undefined) {
+                    const accumulatedTokens = totalTokens;
+                    totalTokens = result.usage.totalTokens;
+                    logger.debug(
+                        `Token count - Accumulated: ${accumulatedTokens}, Final result: ${totalTokens}`
+                    );
+                } else {
+                    logger.debug(
+                        `Using accumulated token count: ${totalTokens} (no final usage provided)`
+                    );
+                }
             },
             maxSteps: maxSteps,
             ...(maxTokens && { maxTokens }),
             ...(temperature !== undefined && { temperature }),
         });
 
+        // Consume the stream to get the final text
+        let fullResponse = '';
+        for await (const textPart of response.textStream) {
+            fullResponse += textPart;
+        }
+
+        // Process the LLM response through MessageManager using the new stream method
+        await this.messageManager.processLLMStreamResponse(response);
+
+        // Update MessageManager with actual token count for hybrid approach
+        if (totalTokens > 0) {
+            logger.debug(`Stream finished, updating actual token count: ${totalTokens}`);
+            this.messageManager.updateActualTokenCount(totalTokens);
+        }
+
+        // Emit final response event with token count
+        this.sessionEventBus.emit('llmservice:response', {
+            content: fullResponse,
+            model: this.model.modelId,
+            tokenCount: totalTokens > 0 ? totalTokens : undefined,
+        });
+
         logger.silly(`streamText response object: ${JSON.stringify(response, null, 2)}`);
 
-        // Return the textStream part for processStream to iterate over
-        return response.textStream;
+        // Return the final text string (same as generateText)
+        return fullResponse;
     }
 
     /**

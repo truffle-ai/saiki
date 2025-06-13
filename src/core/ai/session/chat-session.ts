@@ -233,12 +233,13 @@ export class ChatSession {
      */
     public async run(
         input: string,
-        imageDataInput?: { image: string; mimeType: string }
+        imageDataInput?: { image: string; mimeType: string },
+        stream?: boolean
     ): Promise<string> {
         logger.debug(
             `Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput}`
         );
-        const response = await this.llmService.completeTask(input, imageDataInput);
+        const response = await this.llmService.completeTask(input, imageDataInput, stream);
         return response;
     }
 

@@ -386,7 +386,11 @@ describe('ChatSession', () => {
             const response = await chatSession.run(userMessage);
 
             expect(response).toBe(expectedResponse);
-            expect(mockLLMService.completeTask).toHaveBeenCalledWith(userMessage, undefined);
+            expect(mockLLMService.completeTask).toHaveBeenCalledWith(
+                userMessage,
+                undefined,
+                undefined
+            );
         });
 
         test('should delegate history operations to message manager', async () => {

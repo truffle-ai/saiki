@@ -646,6 +646,31 @@ export class MessageManager {
     }
 
     /**
+     * Parses a raw LLM stream response, converts it into internal messages and adds them to the history.
+     *
+     * @param response The stream response from the LLM provider
+     */
+    async processLLMStreamResponse(response: any): Promise<void> {
+        // Use type-safe access to parseStreamResponse method
+        if (this.formatter.parseStreamResponse) {
+            const msgs = (await this.formatter.parseStreamResponse(response)) ?? [];
+            for (const msg of msgs) {
+                try {
+                    await this.addMessage(msg);
+                } catch (error) {
+                    logger.error(
+                        `MessageManager: Failed to process LLM stream response message for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`
+                    );
+                    // Continue processing other messages rather than failing completely
+                }
+            }
+        } else {
+            // Fallback to regular processing
+            await this.processLLMResponse(response);
+        }
+    }
+
+    /**
      * Parses a raw LLM response, converts it into internal messages and adds them to the history.
      *
      * @param response The response from the LLM provider

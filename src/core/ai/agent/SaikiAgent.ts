@@ -118,7 +118,8 @@ export class SaikiAgent {
     public async run(
         userInput: string,
         imageDataInput?: { image: string; mimeType: string },
-        sessionId?: string
+        sessionId?: string,
+        stream: boolean = false
     ): Promise<string | null> {
         try {
             let session: ChatSession;
@@ -147,7 +148,7 @@ export class SaikiAgent {
             logger.debug(
                 `SaikiAgent.run: userInput: ${userInput}, imageDataInput: ${imageDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
             );
-            const response = await session.run(userInput, imageDataInput);
+            const response = await session.run(userInput, imageDataInput, stream);
 
             // Increment message count for this session (counts each)
             await this.sessionManager.incrementMessageCount(session.id);

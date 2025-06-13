@@ -41,7 +41,11 @@ export class AnthropicService implements ILLMService {
         return this.clientManager.getAllTools();
     }
 
-    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+    async completeTask(
+        userInput: string,
+        imageData?: ImageData,
+        stream?: boolean
+    ): Promise<string> {
         // Add user message with optional image data
         await this.messageManager.addUserMessage(userInput, imageData);
 
