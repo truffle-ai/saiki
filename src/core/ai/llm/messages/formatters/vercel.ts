@@ -1,6 +1,6 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
-import type { GenerateTextResult } from 'ai';
+import type { GenerateTextResult, StreamTextResult } from 'ai';
 import { getImageData } from '../utils.js';
 // import Core SDK types if/when needed
 
@@ -68,6 +68,26 @@ export class VercelMessageFormatter implements IMessageFormatter {
      */
     formatSystemPrompt(): null {
         return null;
+    }
+
+    /**
+     * Parses raw Vercel SDK stream response into internal message objects.
+     * This handles StreamTextResult which has different structure than GenerateTextResult
+     */
+    async parseStreamResponse(response: StreamTextResult<any, any>): Promise<InternalMessage[]> {
+        // For streaming, we need to wait for the response to complete
+        // and then access the messages from the resolved promise
+        const resolvedResponse = await response.response;
+
+        // Convert the structure to match what parseResponse expects
+        const adaptedResponse = {
+            response: {
+                messages: resolvedResponse?.messages || [],
+            },
+        };
+
+        // Reuse the existing parseResponse logic
+        return this.parseResponse(adaptedResponse as GenerateTextResult<any, any>);
     }
 
     /**

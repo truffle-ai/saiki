@@ -72,7 +72,7 @@ export class VercelLLMService implements ILLMService {
     async completeTask(
         userInput: string,
         imageData?: ImageData,
-        stream: boolean = false
+        stream: boolean = true
     ): Promise<string> {
         // Add user message, with optional image data
         logger.debug(
@@ -111,8 +111,9 @@ export class VercelLLMService implements ILLMService {
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
                 logger.debug(`Estimated tokens being sent to Vercel provider: ${tokensUsed}`);
 
+                // Both methods now return strings and handle message processing internally
                 if (stream) {
-                    fullResponse = await this.processStream(
+                    fullResponse = await this.streamText(
                         formattedMessages,
                         formattedTools,
                         this.maxIterations
@@ -226,33 +227,12 @@ export class VercelLLMService implements ILLMService {
         return response.text;
     }
 
-    async processStream(
+    // Updated streamText to behave like generateText - returns string and handles message processing internally
+    async streamText(
         messages: any[],
         tools: VercelToolSet,
         maxSteps: number = 10
     ): Promise<string> {
-        const stream = await this.streamText(messages, tools, maxSteps);
-        let fullResponse = '';
-        let totalTokens = 0;
-
-        for await (const textPart of stream) {
-            fullResponse += textPart;
-            // this.sessionEventBus.emit('chunk', textPart);
-        }
-
-        // Add final assistant message, might not be needed
-        await this.messageManager.addAssistantMessage(fullResponse);
-
-        this.sessionEventBus.emit('llmservice:response', {
-            content: fullResponse,
-            model: this.model.modelId,
-            tokenCount: totalTokens > 0 ? totalTokens : undefined,
-        });
-        return fullResponse;
-    }
-
-    // returns AsyncIterable<string> & ReadableStream<string>
-    async streamText(messages: any[], tools: VercelToolSet, maxSteps: number = 10): Promise<any> {
         let stepIteration = 0;
         let totalTokens = 0;
 
@@ -338,16 +318,46 @@ export class VercelLLMService implements ILLMService {
                         2
                     )}`
                 );
+
+                // Get final token count from result
+                if (result.usage) {
+                    logger.debug(
+                        `Stream finished, result usage: ${JSON.stringify(result.usage, null, 2)}`
+                    );
+                    totalTokens = result.usage.totalTokens;
+                }
             },
             maxSteps: maxSteps,
             ...(maxTokens && { maxTokens }),
             ...(temperature !== undefined && { temperature }),
         });
 
+        // Consume the stream to get the final text
+        let fullResponse = '';
+        for await (const textPart of response.textStream) {
+            fullResponse += textPart;
+        }
+
+        // Process the LLM response through MessageManager using the new stream method
+        await this.messageManager.processLLMStreamResponse(response);
+
+        // Update MessageManager with actual token count for hybrid approach
+        if (totalTokens > 0) {
+            logger.debug(`Stream finished, updating actual token count: ${totalTokens}`);
+            this.messageManager.updateActualTokenCount(totalTokens);
+        }
+
+        // Emit final response event with token count
+        this.sessionEventBus.emit('llmservice:response', {
+            content: fullResponse,
+            model: this.model.modelId,
+            tokenCount: totalTokens > 0 ? totalTokens : undefined,
+        });
+
         logger.silly(`streamText response object: ${JSON.stringify(response, null, 2)}`);
 
-        // Return the textStream part for processStream to iterate over
-        return response.textStream;
+        // Return the final text string (same as generateText)
+        return fullResponse;
     }
 
     /**

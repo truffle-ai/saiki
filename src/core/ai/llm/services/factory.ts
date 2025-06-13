@@ -95,9 +95,14 @@ function _createVercelModel(llmConfig: LLMConfig): LanguageModelV1 {
     switch (provider.toLowerCase()) {
         case 'openai': {
             const baseURL = getOpenAICompatibleBaseURL(llmConfig);
-            const options: { apiKey: string; baseURL?: string } = { apiKey };
+            const options: {
+                apiKey: string;
+                baseURL?: string;
+                compatibility?: 'strict' | 'compatible';
+            } = { apiKey, compatibility: 'strict' };
             if (baseURL) {
                 options.baseURL = baseURL;
+                options.compatibility = 'compatible';
             }
             return createOpenAI(options)(model);
         }
