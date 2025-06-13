@@ -241,13 +241,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                         : undefined;
                     const sessionId = data.sessionId as string | undefined;
                     const stream = data.stream === true; // Extract stream preference, default to false
-                    logger.info(
-                        `🔧 WebSocket received stream parameter: ${data.stream} -> ${stream}`
-                    );
                     if (imageDataInput) logger.info('Image data included in message.');
                     if (sessionId) logger.info(`Message for session: ${sessionId}`);
-                    if (stream) logger.info('Streaming enabled for this message.');
-                    else logger.info('Streaming disabled for this message.');
                     await agent.run(data.content, imageDataInput, sessionId, stream);
                 } else if (data.type === 'reset') {
                     const sessionId = data.sessionId as string | undefined;

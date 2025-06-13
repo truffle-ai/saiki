@@ -85,7 +85,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     
     if (sessionId) {
-      console.log('🔧 ChatContext sending message with streaming:', isStreaming);
       originalSendMessage(content, imageData, sessionId, isStreaming);
     } else {
       console.error('No session available for sending message');

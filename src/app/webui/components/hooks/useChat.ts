@@ -261,12 +261,6 @@ export function useChat(wsUrl: string) {
                     sessionId,
                     stream: stream ?? false, // Include stream parameter
                 };
-                console.log(
-                    '🔧 WebSocket sending message with stream:',
-                    stream,
-                    'message:',
-                    message
-                );
                 wsRef.current.send(JSON.stringify(message));
 
                 // Add user message to local state immediately

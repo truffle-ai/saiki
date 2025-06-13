@@ -203,9 +203,27 @@ export class SQLiteBackend implements DatabaseBackend {
     async append<T>(key: string, item: T): Promise<void> {
         this.checkConnection();
         const serialized = JSON.stringify(item);
-        this.db
-            .prepare('INSERT INTO list_store (key, value, sequence) VALUES (?, ?, ?)')
-            .run(key, serialized, Date.now());
+
+        // Use a transaction to atomically get the next sequence and insert
+        const insertMessage = this.db.transaction((k: string, value: string) => {
+            // Get the next sequence number for this key
+            const maxSeqResult = this.db
+                .prepare(
+                    'SELECT COALESCE(MAX(sequence), 0) + 1 as next_seq FROM list_store WHERE key = ?'
+                )
+                .get(k) as { next_seq: number };
+
+            const nextSequence = maxSeqResult.next_seq;
+
+            // Insert with the calculated sequence
+            this.db
+                .prepare('INSERT INTO list_store (key, value, sequence) VALUES (?, ?, ?)')
+                .run(k, value, nextSequence);
+
+            return nextSequence;
+        });
+
+        insertMessage(key, serialized);
     }
 
     async getRange<T>(key: string, start: number, count: number): Promise<T[]> {
