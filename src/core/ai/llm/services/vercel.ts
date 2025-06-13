@@ -278,10 +278,17 @@ export class VercelLLMService implements ILLMService {
                     totalTokens += step.usage.totalTokens;
                 }
 
-                // Process tool calls
+                // Emit response event for step text (same as generateText)
+                if (step.text) {
+                    this.sessionEventBus.emit('llmservice:response', {
+                        content: step.text,
+                        model: this.model.modelId,
+                        tokenCount: totalTokens > 0 ? totalTokens : undefined,
+                    });
+                }
+
+                // Process tool calls (same as generateText)
                 if (step.toolCalls && step.toolCalls.length > 0) {
-                    // Don't add assistant message with tool calls to history
-                    // Just emit the events
                     for (const toolCall of step.toolCalls) {
                         this.sessionEventBus.emit('llmservice:toolCall', {
                             toolName: toolCall.toolName,
@@ -291,11 +298,9 @@ export class VercelLLMService implements ILLMService {
                     }
                 }
 
-                // Process tool results
-                if (step.stepType === 'tool-result' && step.toolResults) {
+                // Process tool results (same condition as generateText)
+                if (step.toolResults && step.toolResults.length > 0) {
                     for (const toolResult of step.toolResults as any) {
-                        // Don't add tool results to message manager
-                        // Just emit the events
                         this.sessionEventBus.emit('llmservice:toolResult', {
                             toolName: toolResult.toolName,
                             result: toolResult.result,
