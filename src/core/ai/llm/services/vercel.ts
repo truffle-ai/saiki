@@ -69,7 +69,11 @@ export class VercelLLMService implements ILLMService {
         }, {});
     }
 
-    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+    async completeTask(
+        userInput: string,
+        imageData?: ImageData,
+        stream: boolean = false
+    ): Promise<string> {
         // Add user message, with optional image data
         logger.debug(
             `VercelLLMService: Adding user message: ${userInput} and imageData: ${imageData}`
@@ -107,12 +111,19 @@ export class VercelLLMService implements ILLMService {
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
                 logger.debug(`Estimated tokens being sent to Vercel provider: ${tokensUsed}`);
 
-                // Call LLM with properly formatted and compressed messages
-                fullResponse = await this.generateText(
-                    formattedMessages,
-                    formattedTools,
-                    this.maxIterations
-                );
+                if (stream) {
+                    fullResponse = await this.processStream(
+                        formattedMessages,
+                        formattedTools,
+                        this.maxIterations
+                    );
+                } else {
+                    fullResponse = await this.generateText(
+                        formattedMessages,
+                        formattedTools,
+                        this.maxIterations
+                    );
+                }
             }
 
             return (
@@ -243,6 +254,7 @@ export class VercelLLMService implements ILLMService {
     // returns AsyncIterable<string> & ReadableStream<string>
     async streamText(messages: any[], tools: VercelToolSet, maxSteps: number = 10): Promise<any> {
         let stepIteration = 0;
+        let totalTokens = 0;
 
         const temperature = this.temperature;
         const maxTokens = this.maxOutputTokens;
@@ -280,6 +292,11 @@ export class VercelLLMService implements ILLMService {
                 logger.debug(
                     `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
                 );
+
+                // Track token usage from each step
+                if (step.usage) {
+                    totalTokens += step.usage.totalTokens;
+                }
 
                 // Process tool calls
                 if (step.toolCalls && step.toolCalls.length > 0) {
