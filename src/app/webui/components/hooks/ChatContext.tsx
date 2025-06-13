@@ -121,18 +121,59 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const history = data.history || [];
       
       // Convert API history to UI messages
-      const uiMessages: Message[] = history.map((msg: any, index: number) => ({
-        id: `session-${sessionId}-${index}`,
-        role: msg.role,
-        content: msg.content,
-        createdAt: Date.now() - (history.length - index) * 1000, // Approximate timestamps
-        sessionId: sessionId,
-        ...(msg.role === 'tool' && {
-          toolName: msg.toolName,
-          toolArgs: msg.toolArgs,
-          toolResult: msg.toolResult,
-        }),
-      }));
+      const uiMessages: Message[] = [];
+      
+      for (let index = 0; index < history.length; index++) {
+        const msg: any = history[index];
+        const baseMessage = {
+          id: `session-${sessionId}-${index}`,
+          role: msg.role,
+          content: msg.content,
+          createdAt: Date.now() - (history.length - index) * 1000, // Approximate timestamps
+          sessionId: sessionId,
+        };
+
+        if (msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0) {
+          // Handle assistant messages with tool calls
+          // First add the assistant message (if it has content)
+          if (msg.content) {
+            uiMessages.push(baseMessage);
+          }
+          
+          // Then add tool call messages for each tool call
+          msg.toolCalls.forEach((toolCall: any, toolIndex: number) => {
+            const toolArgs = toolCall.function ? JSON.parse(toolCall.function.arguments || '{}') : {};
+            const toolName = toolCall.function?.name || 'unknown';
+            
+            // Look for corresponding tool result in subsequent messages
+            let toolResult = undefined;
+            for (let j = index + 1; j < history.length; j++) {
+              const nextMsg = history[j];
+              if (nextMsg.role === 'tool' && nextMsg.toolCallId === toolCall.id) {
+                toolResult = nextMsg.content;
+                break;
+              }
+            }
+            
+            uiMessages.push({
+              id: `session-${sessionId}-${index}-tool-${toolIndex}`,
+              role: 'tool' as const,
+              content: null,
+              createdAt: Date.now() - (history.length - index) * 1000 + toolIndex,
+              sessionId: sessionId,
+              toolName: toolName,
+              toolArgs: toolArgs,
+              toolResult: toolResult,
+            });
+          });
+        } else if (msg.role === 'tool') {
+          // Skip standalone tool messages as they're handled above with their corresponding tool calls
+          continue;
+        } else {
+          // Handle regular messages (user, system, assistant without tool calls)
+          uiMessages.push(baseMessage);
+        }
+      }
       
       setMessages(uiMessages);
     } catch (error) {
