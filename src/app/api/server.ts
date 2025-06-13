@@ -38,6 +38,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     webSubscriber.subscribe(agent.agentEventBus);
 
     // HTTP endpoints
+
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+        res.status(200).send('OK');
+    });
+
     app.post('/api/message', express.json(), async (req, res) => {
         logger.info('Received message via POST /api/message');
         if (!req.body || !req.body.message) {
