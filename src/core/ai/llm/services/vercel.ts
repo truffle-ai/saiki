@@ -72,7 +72,7 @@ export class VercelLLMService implements ILLMService {
     async completeTask(
         userInput: string,
         imageData?: ImageData,
-        stream: boolean = true
+        stream: boolean = false
     ): Promise<string> {
         // Add user message, with optional image data
         logger.debug(
