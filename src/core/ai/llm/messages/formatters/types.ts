@@ -34,7 +34,6 @@ export interface IMessageFormatter {
 
     /**
      * Optional method for parsing streaming LLM responses into InternalMessage objects.
-     * This handles StreamTextResult which has different structure than GenerateTextResult.
      *
      * @param response The streaming response from the LLM provider
      * @returns Promise that resolves to an array of InternalMessage objects
