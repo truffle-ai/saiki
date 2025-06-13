@@ -15,21 +15,38 @@ Simple guide to run Saiki server with Docker.
 ## Run Saiki Server
 
 ```bash
-docker run --env-file .env -p 3000:3000 saiki
+docker run --env-file .env -p 3001:3001 saiki
 ```
 
-Access the API at: http://localhost:3000
+The server will start on port 3001 with:
+- ✅ SQLite database connected
+- ✅ MCP servers (filesystem & puppeteer) connected
+- ✅ REST API + WebSocket endpoints available
 
-## Custom Port
+## Access Your Server
 
-```bash
-docker run --env-file .env -p 8080:8080 -e PORT=8080 saiki
-```
+- **API Endpoints:** http://localhost:3001/api/
+- **Health Check:** http://localhost:3001/health
+- **MCP Servers:** http://localhost:3001/api/mcp/servers
+
+## Available API Endpoints
+
+- `POST /api/message` - Send async message
+- `POST /api/message-sync` - Send sync message
+- `POST /api/reset` - Reset conversation
+- `GET /api/mcp/servers` - List MCP servers
+- WebSocket support for real-time events
 
 ## Docker Compose
 
 ```bash
 docker compose up --build
+```
+
+## Background Mode
+
+```bash
+docker run -d --env-file .env -p 3001:3001 saiki
 ```
 
 ## Cloud Deployment
@@ -42,4 +59,4 @@ docker build --platform=linux/amd64 -t saiki .
 docker push your-registry.com/saiki
 ```
 
-That's it. Saiki runs in server mode with REST API + WebSocket on the specified port.
+That's it! Saiki runs in server mode with REST API + WebSocket on port 3001.

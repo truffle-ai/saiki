@@ -3,48 +3,63 @@
 ARG NODE_VERSION=20.18.1
 
 ################################################################################
-# Build stage - includes dev dependencies
+# Build stage - optimized for smaller final image
 FROM node:${NODE_VERSION}-alpine AS builder
+
+# Install build dependencies for native modules
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 
-# Install all dependencies (dev + prod) for building
-RUN npm install --include=dev --ignore-scripts
+# Install dependencies - allow scripts for native modules
+RUN npm ci --include=dev
 
 # Copy source and build
 COPY . .
-RUN npm run build && npm prune --production
+RUN npm run build
+
+# Clean up and prepare production node_modules with native bindings
+RUN npm prune --production && \
+    npm cache clean --force && \
+    rm -rf /root/.npm /tmp/* /usr/lib/node_modules/npm/man /usr/lib/node_modules/npm/doc /usr/lib/node_modules/npm/html /usr/lib/node_modules/npm/scripts
 
 ################################################################################
-# Production stage - minimal runtime
+# Production stage - minimal Alpine with Chromium
 FROM node:${NODE_VERSION}-alpine AS production
 
-# Install Chromium for puppeteer server
+# Install only essential Chromium dependencies in single layer
 RUN apk add --no-cache \
     chromium \
-    harfbuzz \
-    nss \
-    freetype \
-    ttf-freefont
+    && rm -rf /var/cache/apk/* /tmp/*
 
 WORKDIR /app
 
 # Create non-root user
 RUN addgroup -g 1001 -S saiki && adduser -S saiki -u 1001
 
-# Copy only production files
+# Create .saiki directory with proper permissions for database
+RUN mkdir -p /app/.saiki/database && \
+    chown -R saiki:saiki /app/.saiki
+
+# Copy only essential production files
 COPY --from=builder --chown=saiki:saiki /app/dist ./dist
 COPY --from=builder --chown=saiki:saiki /app/node_modules ./node_modules
 COPY --from=builder --chown=saiki:saiki /app/package.json ./
 COPY --from=builder --chown=saiki:saiki /app/configuration ./configuration
 
 # Environment variables
-ENV NODE_ENV=production
-ENV PORT=3000
-ENV CONFIG_FILE=/app/configuration/saiki.yml
+ENV NODE_ENV=production \
+    PORT=3000 \
+    CONFIG_FILE=/app/configuration/saiki.yml \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Switch to non-root user
 USER saiki
@@ -57,4 +72,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE $PORT
 
 # Server mode: REST APIs + WebSocket on single port
-CMD node dist/src/app/index.js --mode server --web-port $PORT --config-file $CONFIG_FILE 
+CMD ["sh", "-c", "node dist/src/app/index.js --mode server --web-port $PORT --config-file $CONFIG_FILE"] 
