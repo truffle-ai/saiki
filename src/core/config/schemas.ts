@@ -285,65 +285,86 @@ export const LLMConfigSchema = z
 
 export type LLMConfig = z.infer<typeof LLMConfigSchema>;
 
-export const StdioServerConfigSchema = z.object({
-    type: z.literal('stdio'),
-    command: z.string().describe("The shell command to launch the server (e.g., 'node')"),
-    args: z.array(z.string()).describe("Array of arguments for the command (e.g., ['script.js'])"),
-    env: z
-        .record(z.string())
-        .optional()
-        .default({})
-        .describe(
-            'Optional environment variables for the server process, defaults to an empty object'
-        ),
-    timeout: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .default(30000)
-        .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
-});
+export const StdioServerConfigSchema = z
+    .object({
+        type: z.literal('stdio'),
+        command: z.string().describe("The shell command to launch the server (e.g., 'node')"),
+        args: z
+            .array(z.string())
+            .describe("Array of arguments for the command (e.g., ['script.js'])"),
+        env: z
+            .record(z.string())
+            .optional()
+            .default({})
+            .describe(
+                'Optional environment variables for the server process, defaults to an empty object'
+            ),
+        timeout: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .default(30000)
+            .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
+    })
+    .strict();
 export type StdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
 
-export const SseServerConfigSchema = z.object({
-    type: z.literal('sse'),
-    url: z.string().url().describe('URL for the SSE server endpoint'),
-    headers: z
-        .record(z.string())
-        .optional()
-        .default({})
-        .describe('Optional headers for the SSE connection, defaults to an empty object'),
-    timeout: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .default(30000)
-        .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
-});
+export const SseServerConfigSchema = z
+    .object({
+        type: z.literal('sse'),
+        url: z.string().url().describe('URL for the SSE server endpoint'),
+        headers: z
+            .record(z.string())
+            .optional()
+            .default({})
+            .describe('Optional headers for the SSE connection, defaults to an empty object'),
+        timeout: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .default(30000)
+            .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
+    })
+    .strict();
 export type SseServerConfig = z.infer<typeof SseServerConfigSchema>;
 
-export const HttpServerConfigSchema = z.object({
-    type: z.literal('http'),
-    baseUrl: z.string().url().describe('Base URL for the HTTP server'),
-    headers: z
-        .record(z.string())
-        .optional()
-        .default({})
-        .describe('Optional headers for HTTP requests, defaults to an empty object'),
-    timeout: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .default(30000)
-        .describe('Timeout in milliseconds for HTTP requests, defaults to 30000ms'),
-});
+export const HttpServerConfigSchema = z
+    .object({
+        type: z.literal('http'),
+        baseUrl: z.string().url().describe('Base URL for the HTTP server'),
+        headers: z
+            .record(z.string())
+            .optional()
+            .default({})
+            .describe('Optional headers for HTTP requests, defaults to an empty object'),
+        timeout: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .default(30000)
+            .describe('Timeout in milliseconds for HTTP requests, defaults to 30000ms'),
+    })
+    .strict();
 export type HttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
 
 export const McpServerConfigSchema = z
-    .union([StdioServerConfigSchema, SseServerConfigSchema, HttpServerConfigSchema])
+    .discriminatedUnion(
+        'type',
+        [StdioServerConfigSchema, SseServerConfigSchema, HttpServerConfigSchema],
+        {
+            errorMap: (issue, ctx) => {
+                if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
+                    return {
+                        message: `Invalid server type. Expected 'stdio', 'sse', or 'http'.`,
+                    };
+                }
+                return { message: ctx.defaultError };
+            },
+        }
+    )
     .describe('Configuration for an MCP server connection (can be stdio, sse, or http)');
 export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
