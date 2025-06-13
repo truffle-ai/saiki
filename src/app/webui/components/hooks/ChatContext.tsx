@@ -13,6 +13,8 @@ interface ChatContextType {
   loadSessionHistory: (sessionId: string) => Promise<void>;
   isWelcomeState: boolean;
   returnToWelcome: () => void;
+  isStreaming: boolean;
+  setStreaming: (streaming: boolean) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -35,6 +37,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // Start with no session - pure welcome state
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isWelcomeState, setIsWelcomeState] = useState(true);
+  const [isStreaming, setIsStreaming] = useState(true); // Default to streaming enabled
   const { messages, sendMessage: originalSendMessage, status, reset: originalReset, setMessages } = useChat(wsUrl);
 
   // Auto-create session on first message with random UUID
@@ -82,11 +85,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     
     if (sessionId) {
-      originalSendMessage(content, imageData, sessionId);
+      console.log('🔧 ChatContext sending message with streaming:', isStreaming);
+      originalSendMessage(content, imageData, sessionId, isStreaming);
     } else {
       console.error('No session available for sending message');
     }
-  }, [originalSendMessage, currentSessionId, isWelcomeState, createAutoSession]);
+  }, [originalSendMessage, currentSessionId, isWelcomeState, createAutoSession, isStreaming]);
 
   // Enhanced reset with session support
   const reset = useCallback(() => {
@@ -264,7 +268,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       switchSession,
       loadSessionHistory,
       isWelcomeState,
-      returnToWelcome
+      returnToWelcome,
+      isStreaming,
+      setStreaming: setIsStreaming
     }}>
       {children}
     </ChatContext.Provider>

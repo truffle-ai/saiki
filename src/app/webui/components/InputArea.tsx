@@ -11,9 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Paperclip, SendHorizontal, X, Loader2, Bot, ChevronDown, AlertCircle } from 'lucide-react';
+import { Paperclip, SendHorizontal, X, Loader2, Bot, ChevronDown, AlertCircle, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { useChatContext } from './hooks/ChatContext';
+import { Switch } from './ui/switch';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 
 interface InputAreaProps {
   onSend: (content: string, imageData?: { base64: string; mimeType: string }) => void;
@@ -27,7 +29,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Get current session context to ensure model switch applies to the correct session
-  const { currentSessionId } = useChatContext();
+  const { currentSessionId, isStreaming, setStreaming } = useChatContext();
   
   // LLM selector state
   const [currentModel, setCurrentModel] = useState('Loading...');
@@ -287,11 +289,35 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
               onKeyDown={handleKeyDown}
               placeholder="Ask Saiki anything..."
               rows={1}
-              className="resize-none min-h-[42px] w-full border-input bg-transparent focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 rounded-lg p-2.5 pr-24 text-sm"
+              className="resize-none min-h-[42px] w-full border-input bg-transparent focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 rounded-lg p-2.5 pr-32 text-sm"
             />
             
-            {/* Model Selector - Inline in input */}
-            <div className="absolute bottom-1.5 right-2">
+            {/* Controls - Model Selector and Streaming Toggle */}
+            <div className="absolute bottom-1.5 right-2 flex items-center gap-2">
+              {/* Streaming Toggle */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 cursor-pointer">
+                      <Zap className={`h-3 w-3 ${isStreaming ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                      <Switch
+                        checked={isStreaming}
+                        onCheckedChange={setStreaming}
+                        className="scale-75"
+                        aria-label="Toggle streaming"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>{isStreaming ? 'Streaming enabled' : 'Streaming disabled'}</p>
+                    <p className="text-xs opacity-75">
+                      {isStreaming ? 'Responses will stream in real-time' : 'Responses will arrive all at once'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {/* Model Selector */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 

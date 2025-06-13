@@ -247,14 +247,26 @@ export function useChat(wsUrl: string) {
     }, [wsUrl]);
 
     const sendMessage = useCallback(
-        (content: string, imageData?: { base64: string; mimeType: string }, sessionId?: string) => {
+        (
+            content: string,
+            imageData?: { base64: string; mimeType: string },
+            sessionId?: string,
+            stream?: boolean
+        ) => {
             if (wsRef.current?.readyState === globalThis.WebSocket.OPEN) {
                 const message = {
                     type: 'message',
                     content,
                     imageData,
                     sessionId,
+                    stream: stream ?? false, // Include stream parameter
                 };
+                console.log(
+                    '🔧 WebSocket sending message with stream:',
+                    stream,
+                    'message:',
+                    message
+                );
                 wsRef.current.send(JSON.stringify(message));
 
                 // Add user message to local state immediately

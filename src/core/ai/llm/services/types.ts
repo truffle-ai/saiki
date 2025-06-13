@@ -15,7 +15,7 @@ export interface ILLMService {
      * @param imageData Optional image data associated with the user input.
      * @returns A promise that resolves with the final text response from the AI.
      */
-    completeTask(userInput: string, imageData?: ImageData): Promise<string>;
+    completeTask(userInput: string, imageData?: ImageData, stream?: boolean): Promise<string>;
 
     // Get all available tools
     getAllTools(): Promise<ToolSet>;
