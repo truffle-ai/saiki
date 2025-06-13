@@ -125,12 +125,14 @@ export const ContributorConfigSchema = z
 
 export type ContributorConfig = z.infer<typeof ContributorConfigSchema>;
 
-export const SystemPromptConfigSchema = z.object({
-    contributors: z
-        .array(ContributorConfigSchema)
-        .min(1)
-        .describe('An array of contributor configurations that make up the system prompt'),
-});
+export const SystemPromptConfigSchema = z
+    .object({
+        contributors: z
+            .array(ContributorConfigSchema)
+            .min(1)
+            .describe('An array of contributor configurations that make up the system prompt'),
+    })
+    .strict();
 
 export type SystemPromptConfig = z.infer<typeof SystemPromptConfigSchema>;
 
@@ -281,7 +283,8 @@ export const LLMConfigSchema = z
                 }
             }
         }
-    });
+    })
+    .strict();
 
 export type LLMConfig = z.infer<typeof LLMConfigSchema>;
 
@@ -491,6 +494,7 @@ export const StorageSchema = z
             'Database backend configuration (persistent, reliable)'
         ),
     })
+    .strict()
     .describe('Storage configuration with cache and database backends');
 
 export type StorageConfig = z.infer<typeof StorageSchema>;
@@ -537,5 +541,6 @@ export const AgentConfigSchema = z
             })
             .describe('Session management configuration'),
     })
+    .strict()
     .describe('Main configuration for an agent, including its LLM and server connections');
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
