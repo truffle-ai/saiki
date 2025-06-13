@@ -273,12 +273,15 @@ export class VercelLLMService implements ILLMService {
                     `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
                 );
 
-                // Track token usage from each step
+                // Track token usage from each step as fallback for providers that don't report final usage
                 if (step.usage) {
                     totalTokens += step.usage.totalTokens;
+                    logger.debug(
+                        `Step ${stepIteration} tokens: ${step.usage.totalTokens}, running total: ${totalTokens}`
+                    );
                 }
 
-                // Emit response event for step text (same as generateText)
+                // Emit response event for step text (without token count until final)
                 if (step.text) {
                     this.sessionEventBus.emit('llmservice:response', {
                         content: step.text,
@@ -324,14 +327,20 @@ export class VercelLLMService implements ILLMService {
                     )}`
                 );
 
-                // Get final token count from result
-                if (result.usage) {
+                // Use final result usage if available (authoritative), otherwise keep accumulated count
+                // Some providers may not report final usage, so we maintain both approaches:
+                // 1. Accumulate step tokens as fallback (done in onStepFinish above)
+                // 2. Use final result tokens if provided (more accurate for providers that support it)
+                if (result.usage && result.usage.totalTokens !== undefined) {
+                    const accumulatedTokens = totalTokens;
+                    totalTokens = result.usage.totalTokens;
                     logger.debug(
-                        `Stream finished, result usage: ${JSON.stringify(result.usage, null, 2)}`
+                        `Token count - Accumulated: ${accumulatedTokens}, Final result: ${totalTokens}`
                     );
-                    if (result.usage?.totalTokens !== undefined) {
-                        totalTokens = result.usage.totalTokens;
-                    }
+                } else {
+                    logger.debug(
+                        `Using accumulated token count: ${totalTokens} (no final usage provided)`
+                    );
                 }
             },
             maxSteps: maxSteps,
