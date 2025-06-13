@@ -42,13 +42,14 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
   const [command, setCommand] = useState('');
   const [args, setArgs] = useState('');
   const [url, setUrl] = useState('');
-  const [baseUrl, setBaseUrl] = useState('');
-  const [headerPairs, setHeaderPairs] = useState<HeaderPair[]>([]);
+  const [headerPairs, setHeaderPairs] = useState<Array<{ key: string; value: string }>>([
+    { key: '', value: '' },
+  ]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Helper function to convert header pairs to record
-  const headersToRecord = (pairs: HeaderPair[]): Record<string, string> => {
+  const headersToRecord = (pairs: Array<{ key: string; value: string }>): Record<string, string> => {
     const headers: Record<string, string> = {};
     pairs.forEach(pair => {
       if (pair.key.trim() && pair.value.trim()) {
@@ -66,14 +67,23 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
           setCommand('');
           setArgs('');
           setUrl('');
-          setBaseUrl('');
-          setHeaderPairs([]);
+          setHeaderPairs([{ key: '', value: '' }]);
           setError(null);
           setIsSubmitting(false);
       }, 300);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  const handleServerTypeChange = (value: string) => {
+    const type = value as 'stdio' | 'sse' | 'http';
+    setServerType(type);
+    setCommand('');
+    setArgs('');
+    setUrl('');
+    setHeaderPairs([{ key: '', value: '' }]);
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,13 +130,13 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
         timeout: 30000,
       };
     } else {
-      if (!baseUrl.trim()) {
-        setError('Base URL is required for HTTP servers.');
+      if (!url.trim()) {
+        setError('URL is required for HTTP servers.');
         setIsSubmitting(false);
         return;
       }
       try {
-        new URL(baseUrl.trim());
+        new URL(url.trim());
       } catch (_) {
         setError('Invalid URL format for HTTP server.');
         setIsSubmitting(false);
@@ -135,7 +145,7 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
       
       config = {
         type: 'http',
-        baseUrl: baseUrl.trim(),
+        url: url.trim(),
         headers: headersToRecord(headerPairs),
         timeout: 30000,
       };
@@ -161,6 +171,10 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const addHeaderPair = () => {
+    setHeaderPairs([...headerPairs, { key: '', value: '' }]);
   };
 
   return (
@@ -198,7 +212,7 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
             </Label>
             <Select
                 value={serverType}
-                onValueChange={(value: 'stdio' | 'sse' | 'http') => setServerType(value)}
+                onValueChange={(value: 'stdio' | 'sse' | 'http') => handleServerTypeChange(value)}
                 disabled={isSubmitting}
             >
                 <SelectTrigger id="serverType" className="col-span-3">
@@ -274,18 +288,18 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
                     />
                   </div>
                 </div>
-              </>
+             </>
           ) : (
              <>
                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="baseUrl" className="text-right">
-                    Base URL
+                  <Label htmlFor="url" className="text-right">
+                    URL
                   </Label>
                   <Input
-                    id="baseUrl"
+                    id="url"
                     type="url"
-                    value={baseUrl}
-                    onChange={e => setBaseUrl(e.target.value)}
+                    value={url}
+                    onChange={e => setUrl(e.target.value)}
                     className="col-span-3"
                     placeholder="e.g., http://localhost:8080"
                     required

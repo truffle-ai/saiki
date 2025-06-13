@@ -240,6 +240,17 @@ export default function AddCustomServerModal({
         }
     };
 
+    const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            config: {
+                ...prev.config,
+                [name]: value,
+            },
+        }));
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -355,21 +366,19 @@ export default function AddCustomServerModal({
                                 </div>
                             </>
                         ) : formData.config.type === 'sse' ? (
-                            <div>
+                            <div className="space-y-2">
                                 <Label htmlFor="url">URL *</Label>
                                 <Input
                                     id="url"
+                                    name="url"
                                     value={formData.config.url}
-                                    onChange={(e) => setFormData(prev => ({ 
-                                        ...prev, 
-                                        config: { ...prev.config, url: e.target.value } 
-                                    }))}
-                                    placeholder="https://example.com/api/events"
+                                    onChange={handleConfigChange}
+                                    placeholder="http://localhost:8080/sse"
                                     required
                                 />
                             </div>
                         ) : (
-                            <div>
+                            <div className="space-y-2">
                                 <Label htmlFor="baseUrl">Base URL *</Label>
                                 <Input
                                     id="baseUrl"
@@ -398,7 +407,7 @@ export default function AddCustomServerModal({
                         )}
 
                         {(formData.config.type === 'sse' || formData.config.type === 'http') && (
-                            <div>
+                            <div className="space-y-4">
                                 <KeyValueEditor
                                     label="Headers"
                                     pairs={headerPairs}

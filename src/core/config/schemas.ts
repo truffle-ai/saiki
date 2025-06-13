@@ -200,6 +200,7 @@ export const LLMConfigSchema = z
                 'Controls randomness in AI responses. 0 = deterministic, 1 = very creative. Default varies by provider.'
             ),
     })
+    .strict()
     .superRefine((data, ctx) => {
         const providerLower = data.provider?.toLowerCase();
         const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
@@ -283,8 +284,7 @@ export const LLMConfigSchema = z
                 }
             }
         }
-    })
-    .strict();
+    });
 
 export type LLMConfig = z.infer<typeof LLMConfigSchema>;
 
@@ -336,7 +336,7 @@ export type SseServerConfig = z.infer<typeof SseServerConfigSchema>;
 export const HttpServerConfigSchema = z
     .object({
         type: z.literal('http'),
-        baseUrl: z.string().url().describe('Base URL for the HTTP server'),
+        url: z.string().url().describe('URL for the HTTP server'),
         headers: z
             .record(z.string())
             .optional()

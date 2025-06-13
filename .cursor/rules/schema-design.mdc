@@ -73,7 +73,7 @@ Use `.describe()` on every schema field to explain its purpose.
 ```typescript
 // ✅ DO: Add a clear description
 export const HttpServerConfigSchema = z.object({
-    baseUrl: z.string().url().describe('Base URL for the HTTP server'),
+    url: z.string().url().describe('URL for the HTTP server'),
     timeout: z
         .number()
         .positive()
@@ -122,7 +122,3 @@ export const LLMConfigSchema = z
         }
     });
 ```
-
----
-
-By following these guidelines, we can ensure that our configuration schemas remain a powerful and reliable foundation for the application.

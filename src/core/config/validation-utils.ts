@@ -703,14 +703,14 @@ export function validateMcpServerConfig(
                 });
             }
         } else if (serverConfig.type === 'sse' || serverConfig.type === 'http') {
-            const url = serverConfig.type === 'sse' ? serverConfig.url : serverConfig.baseUrl;
+            const url = serverConfig.url;
             try {
                 new URL(url);
             } catch {
                 errors.push({
                     type: 'schema_validation',
                     message: `Invalid URL format: ${url}`,
-                    field: serverConfig.type === 'sse' ? 'url' : 'baseUrl',
+                    field: 'url',
                     suggestedAction: 'Provide a valid URL with protocol (http:// or https://)',
                 });
             }
