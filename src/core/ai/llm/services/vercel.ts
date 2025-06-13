@@ -177,7 +177,7 @@ export class VercelLLMService implements ILLMService {
                 );
 
                 // Track token usage from each step
-                if (step.usage) {
+                if (step.usage?.totalTokens !== undefined) {
                     totalTokens += step.usage.totalTokens;
                 }
 
@@ -274,7 +274,7 @@ export class VercelLLMService implements ILLMService {
                 );
 
                 // Track token usage from each step as fallback for providers that don't report final usage
-                if (step.usage) {
+                if (step.usage?.totalTokens !== undefined) {
                     totalTokens += step.usage.totalTokens;
                     logger.debug(
                         `Step ${stepIteration} tokens: ${step.usage.totalTokens}, running total: ${totalTokens}`
