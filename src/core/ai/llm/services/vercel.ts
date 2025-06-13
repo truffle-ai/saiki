@@ -329,7 +329,7 @@ export class VercelLLMService implements ILLMService {
                     logger.debug(
                         `Stream finished, result usage: ${JSON.stringify(result.usage, null, 2)}`
                     );
-                    totalTokens = result.usage.totalTokens;
+                    totalTokens = result.usage?.totalTokens;
                 }
             },
             maxSteps: maxSteps,
