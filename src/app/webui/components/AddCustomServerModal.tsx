@@ -55,7 +55,6 @@ export default function AddCustomServerModal({
             command: string;
             args: string[];
             url: string;
-            baseUrl: string;
             env: Record<string, string>;
             headers: Record<string, string>;
             timeout: number;
@@ -81,7 +80,6 @@ export default function AddCustomServerModal({
             command: '',
             args: [],
             url: '',
-            baseUrl: '',
             env: {},
             headers: {},
             timeout: 30000,
@@ -178,8 +176,8 @@ export default function AddCustomServerModal({
             if (formData.config.type === 'sse' && !formData.config.url.trim()) {
                 throw new Error('URL is required for SSE servers');
             }
-            if (formData.config.type === 'http' && !formData.config.baseUrl.trim()) {
-                throw new Error('Base URL is required for HTTP servers');
+            if (formData.config.type === 'http' && !formData.config.url.trim()) {
+                throw new Error('URL is required for HTTP servers');
             }
 
             const entry: Omit<ServerRegistryEntry, 'id' | 'isOfficial' | 'lastUpdated'> = {
@@ -214,7 +212,6 @@ export default function AddCustomServerModal({
                     command: '',
                     args: [],
                     url: '',
-                    baseUrl: '',
                     env: {},
                     headers: {},
                     timeout: 30000,
@@ -379,14 +376,12 @@ export default function AddCustomServerModal({
                             </div>
                         ) : (
                             <div className="space-y-2">
-                                <Label htmlFor="baseUrl">Base URL *</Label>
+                                <Label htmlFor="url">URL *</Label>
                                 <Input
-                                    id="baseUrl"
-                                    value={formData.config.baseUrl}
-                                    onChange={(e) => setFormData(prev => ({ 
-                                        ...prev, 
-                                        config: { ...prev.config, baseUrl: e.target.value } 
-                                    }))}
+                                    id="url"
+                                    name="url"
+                                    value={formData.config.url}
+                                    onChange={handleConfigChange}
                                     placeholder="https://example.com"
                                     required
                                 />
