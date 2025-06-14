@@ -175,6 +175,7 @@ export class Logger {
 
     // Tool-related logging
     toolCall(toolName: string, args: any) {
+        if (this.isSilent) return;
         console.log(
             boxen(
                 `${chalk.cyan('Tool Call')}: ${chalk.yellow(toolName)}\n${chalk.dim('Arguments')}:\n${chalk.white(JSON.stringify(args, null, 2))}`,
@@ -184,6 +185,7 @@ export class Logger {
     }
 
     toolResult(result: any) {
+        if (this.isSilent) return;
         let displayText = '';
         let isError = false;
         let borderColor = 'green';
