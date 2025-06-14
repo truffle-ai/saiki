@@ -446,47 +446,35 @@ describe('Config Schemas', () => {
     });
 
     describe('httpServerConfigSchema', () => {
-        it('accepts valid config', () => {
+        it('accepts valid config with optional fields', () => {
             const validConfig = {
                 type: 'http' as const,
-                baseUrl: 'http://localhost:9000/api',
+                url: 'http://localhost:9000/api',
                 headers: { 'X-API-Key': 'secretkey' },
                 timeout: 20000,
             };
             expect(() => HttpServerConfigSchema.parse(validConfig)).not.toThrow();
         });
 
-        it('applies default headers if not provided', () => {
-            const config = { type: 'http' as const, baseUrl: 'http://localhost:9000/api' };
-            const parsed = HttpServerConfigSchema.parse(config);
-            expect(parsed.headers).toEqual({});
+        it('rejects missing required fields (url)', () => {
+            const missingUrl = { type: 'http' as const };
+            expect(() => HttpServerConfigSchema.parse(missingUrl as any)).toThrow();
         });
 
-        it('applies default timeout if not provided', () => {
-            const config = { type: 'http' as const, baseUrl: 'http://localhost:9000/api' };
-            const parsed = HttpServerConfigSchema.parse(config);
-            expect(parsed.timeout).toBe(30000);
-        });
-
-        it('rejects missing required fields (baseUrl)', () => {
-            const missingBaseUrl = { type: 'http' as const };
-            expect(() => HttpServerConfigSchema.parse(missingBaseUrl as any)).toThrow();
-        });
-
-        it('rejects invalid types for fields (baseUrl, headers, timeout)', () => {
-            const invalidBaseUrlType = { type: 'http' as const, baseUrl: 'not-a-url' };
-            expect(() => HttpServerConfigSchema.parse(invalidBaseUrlType as any)).toThrow(); // Zod's .url() catches this
+        it('rejects invalid types for fields (url, headers, timeout)', () => {
+            const invalidUrlType = { type: 'http' as const, url: 'not-a-url' };
+            expect(() => HttpServerConfigSchema.parse(invalidUrlType as any)).toThrow(); // Zod's .url() catches this
 
             const invalidHeadersType = {
                 type: 'http' as const,
-                baseUrl: 'http://localhost:9000/api',
-                headers: 'X-API-Key: secretkey', // Should be record
+                url: 'http://localhost:9000/api',
+                headers: 'not-an-object',
             };
             expect(() => HttpServerConfigSchema.parse(invalidHeadersType as any)).toThrow();
 
             const invalidTimeoutType = {
                 type: 'http' as const,
-                baseUrl: 'http://localhost:9000/api',
+                url: 'http://localhost:9000/api',
                 timeout: false, // Should be number
             };
             expect(() => HttpServerConfigSchema.parse(invalidTimeoutType as any)).toThrow();
@@ -498,7 +486,7 @@ describe('Config Schemas', () => {
             const validRecord = {
                 server1: { type: 'stdio' as const, command: 'node', args: ['s1.js'] },
                 server2: { type: 'sse' as const, url: 'http://localhost/sse2' },
-                server3: { type: 'http' as const, baseUrl: 'http://localhost/http3' },
+                server3: { type: 'http' as const, url: 'http://localhost/http3' },
             };
             expect(() => ServerConfigsSchema.parse(validRecord)).not.toThrow();
         });
@@ -575,7 +563,7 @@ describe('Config Schemas', () => {
         });
 
         it('accepts valid http server config', () => {
-            const httpConf = { type: 'http' as const, baseUrl: 'http://localhost/http' };
+            const httpConf = { type: 'http' as const, url: 'http://localhost/http' };
             expect(() => McpServerConfigSchema.parse(httpConf)).not.toThrow();
         });
 

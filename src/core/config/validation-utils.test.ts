@@ -412,7 +412,7 @@ describe('validateMcpServerConfig', () => {
         test('should validate http server config', () => {
             const serverConfig: McpServerConfig = {
                 type: 'http',
-                baseUrl: 'https://api.example.com',
+                url: 'https://api.example.com',
             };
 
             const result = validateMcpServerConfig('test-server', serverConfig);
@@ -461,10 +461,10 @@ describe('validateMcpServerConfig', () => {
             expect(result.errors[0].message).toContain('Invalid server configuration');
         });
 
-        test('should reject invalid http baseUrl', () => {
+        test('should reject invalid http url', () => {
             const serverConfig: McpServerConfig = {
                 type: 'http',
-                baseUrl: 'invalid-url',
+                url: 'invalid-url',
             };
 
             const result = validateMcpServerConfig('test-server', serverConfig);

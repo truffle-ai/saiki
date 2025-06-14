@@ -55,7 +55,6 @@ export default function AddCustomServerModal({
             command: string;
             args: string[];
             url: string;
-            baseUrl: string;
             env: Record<string, string>;
             headers: Record<string, string>;
             timeout: number;
@@ -81,7 +80,6 @@ export default function AddCustomServerModal({
             command: '',
             args: [],
             url: '',
-            baseUrl: '',
             env: {},
             headers: {},
             timeout: 30000,
@@ -178,8 +176,8 @@ export default function AddCustomServerModal({
             if (formData.config.type === 'sse' && !formData.config.url.trim()) {
                 throw new Error('URL is required for SSE servers');
             }
-            if (formData.config.type === 'http' && !formData.config.baseUrl.trim()) {
-                throw new Error('Base URL is required for HTTP servers');
+            if (formData.config.type === 'http' && !formData.config.url.trim()) {
+                throw new Error('URL is required for HTTP servers');
             }
 
             const entry: Omit<ServerRegistryEntry, 'id' | 'isOfficial' | 'lastUpdated'> = {
@@ -214,7 +212,6 @@ export default function AddCustomServerModal({
                     command: '',
                     args: [],
                     url: '',
-                    baseUrl: '',
                     env: {},
                     headers: {},
                     timeout: 30000,
@@ -238,6 +235,17 @@ export default function AddCustomServerModal({
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            config: {
+                ...prev.config,
+                [name]: value,
+            },
+        }));
     };
 
     return (
@@ -355,29 +363,25 @@ export default function AddCustomServerModal({
                                 </div>
                             </>
                         ) : formData.config.type === 'sse' ? (
-                            <div>
+                            <div className="space-y-2">
                                 <Label htmlFor="url">URL *</Label>
                                 <Input
                                     id="url"
+                                    name="url"
                                     value={formData.config.url}
-                                    onChange={(e) => setFormData(prev => ({ 
-                                        ...prev, 
-                                        config: { ...prev.config, url: e.target.value } 
-                                    }))}
-                                    placeholder="https://example.com/api/events"
+                                    onChange={handleConfigChange}
+                                    placeholder="http://localhost:8080/sse"
                                     required
                                 />
                             </div>
                         ) : (
-                            <div>
-                                <Label htmlFor="baseUrl">Base URL *</Label>
+                            <div className="space-y-2">
+                                <Label htmlFor="url">URL *</Label>
                                 <Input
-                                    id="baseUrl"
-                                    value={formData.config.baseUrl}
-                                    onChange={(e) => setFormData(prev => ({ 
-                                        ...prev, 
-                                        config: { ...prev.config, baseUrl: e.target.value } 
-                                    }))}
+                                    id="url"
+                                    name="url"
+                                    value={formData.config.url}
+                                    onChange={handleConfigChange}
                                     placeholder="https://example.com"
                                     required
                                 />
@@ -398,7 +402,7 @@ export default function AddCustomServerModal({
                         )}
 
                         {(formData.config.type === 'sse' || formData.config.type === 'http') && (
-                            <div>
+                            <div className="space-y-4">
                                 <KeyValueEditor
                                     label="Headers"
                                     pairs={headerPairs}

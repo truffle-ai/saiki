@@ -703,16 +703,25 @@ export function validateMcpServerConfig(
                 });
             }
         } else if (serverConfig.type === 'sse' || serverConfig.type === 'http') {
-            const url = serverConfig.type === 'sse' ? serverConfig.url : serverConfig.baseUrl;
-            try {
-                new URL(url);
-            } catch {
+            const url = serverConfig.url;
+            if (!url) {
                 errors.push({
                     type: 'schema_validation',
-                    message: `Invalid URL format: ${url}`,
-                    field: serverConfig.type === 'sse' ? 'url' : 'baseUrl',
-                    suggestedAction: 'Provide a valid URL with protocol (http:// or https://)',
+                    message: 'URL is required for http/sse server types',
+                    field: 'url',
+                    suggestedAction: 'Provide a non-empty url string',
                 });
+            } else {
+                try {
+                    new URL(url);
+                } catch {
+                    errors.push({
+                        type: 'schema_validation',
+                        message: `Invalid URL format: ${url}`,
+                        field: 'url',
+                        suggestedAction: 'Provide a valid URL with protocol (http:// or https://)',
+                    });
+                }
             }
         }
     }

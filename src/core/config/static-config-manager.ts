@@ -276,15 +276,18 @@ export class StaticConfigManager {
     }
 
     private handleZodError(err: any, configSectionName: string): never {
-        if (err instanceof z.ZodError) {
-            const issues = err.errors.map((e) => {
-                const p = e.path.join('.') || configSectionName;
-                return `  • ${p}: ${e.message}`;
-            });
-            throw new Error(`Invalid ${configSectionName} configuration:\n${issues.join('\n')}`);
-        }
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new Error(`Unexpected error during ${configSectionName} config validation: ${msg}`);
+        // commenting for now because this doesn't seem helpful,
+        // TODO: remove or refactor later
+        // if (err instanceof z.ZodError) {
+        //     const issues = err.errors.map((e) => {
+        //         const p = e.path.join('.') || configSectionName;
+        //         return `  • ${p}: ${e.message}`;
+        //     });
+        //     throw new Error(`Invalid ${configSectionName} configuration:\n${issues.join('\n')}`);
+        // }
+        // const msg = err instanceof Error ? err.message : String(err);
+        // throw new Error(`Unexpected error during ${configSectionName} config validation: ${msg}`);
+        throw err;
     }
 
     /**

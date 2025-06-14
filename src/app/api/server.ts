@@ -5,11 +5,14 @@ import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 import { WebSocketEventSubscriber } from './websocket-subscriber.js';
 import { logger } from '@core/index.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { randomUUID } from 'crypto';
 import type { AgentCard } from '@core/index.js';
 import { setupA2ARoutes } from './a2a.js';
-import { initializeMcpServerEndpoints } from './mcp_handler.js';
+import {
+    createMcpTransport,
+    initializeMcpServer,
+    initializeMcpServerApiEndpoints,
+    type McpTransportType,
+} from './mcp/mcp_handler.js';
 import { createAgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
@@ -303,20 +306,25 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     setupA2ARoutes(app, agentCardData);
 
     // --- Initialize and Setup MCP Server and Endpoints ---
-    const mcpTransport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: randomUUID,
-        enableJsonResponse: true,
-    });
+    // Get transport type from environment variable or default to http
+    try {
+        const transportType = (process.env.SAIKI_MCP_TRANSPORT_TYPE as McpTransportType) || 'http';
+        const mcpTransport = await createMcpTransport(transportType);
 
-    // TODO: Think of a better way to handle the MCP implementation
-    await initializeMcpServerEndpoints(
-        app,
-        agent,
-        agentName,
-        agentVersion,
-        agentCardData, // Pass the agent card data for the MCP resource
-        mcpTransport
-    );
+        // TODO: Think of a better way to handle the MCP implementation
+        await initializeMcpServer(
+            agent,
+            agentCardData, // Pass the agent card data for the MCP resource
+            mcpTransport
+        );
+        await initializeMcpServerApiEndpoints(app, mcpTransport);
+    } catch (error: any) {
+        logger.error(`Failed to initialize MCP server: ${error.message}`);
+        // Add error middleware to handle the failure gracefully
+        app.use((req, res) => {
+            res.status(500).json({ error: 'MCP server initialization failed' });
+        });
+    }
 
     // Configuration export endpoint
     app.get('/api/config.yaml', async (req, res) => {

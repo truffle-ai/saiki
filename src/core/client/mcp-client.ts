@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { z } from 'zod';
+
 import { logger } from '../logger/index.js';
 import type {
     McpServerConfig,
@@ -50,7 +50,7 @@ export class MCPClient implements IMCPClient {
             return this.connectViaSSE(sseConfig.url, sseConfig.headers, serverName);
         } else if (config.type === 'http') {
             const httpConfig: HttpServerConfig = config;
-            return this.connectViaHttp(httpConfig.baseUrl, httpConfig.headers, serverName);
+            return this.connectViaHttp(httpConfig.url, httpConfig.headers || {}, serverName);
         } else {
             throw new Error('Unsupported server type');
         }
@@ -156,7 +156,7 @@ export class MCPClient implements IMCPClient {
 
     async connectViaSSE(
         url: string,
-        headers: Record<string, string>,
+        headers: Record<string, string> = {},
         serverName: string
     ): Promise<Client> {
         logger.debug(`Connecting to SSE MCP server at url: ${url}`);
@@ -202,13 +202,13 @@ export class MCPClient implements IMCPClient {
      * Connect to an MCP server via Streamable HTTP transport
      */
     private async connectViaHttp(
-        baseUrl: string,
-        headers: Record<string, string>,
+        url: string,
+        headers: Record<string, string> = {},
         serverAlias?: string
     ): Promise<Client> {
-        logger.info(`Connecting to HTTP MCP server at ${baseUrl}`);
-        this.transport = new StreamableHTTPClientTransport(new URL(baseUrl), {
-            requestInit: { headers },
+        logger.info(`Connecting to HTTP MCP server at ${url}`);
+        this.transport = new StreamableHTTPClientTransport(new URL(url), {
+            requestInit: { headers: headers || {} },
         });
         this.client = new Client(
             { name: 'Saiki-http-mcp-client', version: '1.0.0' },
@@ -218,11 +218,11 @@ export class MCPClient implements IMCPClient {
             logger.info('Establishing HTTP connection...');
             await this.client.connect(this.transport);
             this.isConnected = true;
-            logger.info(`✅ HTTP SERVER ${serverAlias ?? baseUrl} CONNECTED`);
+            logger.info(`✅ HTTP SERVER ${serverAlias ?? url} CONNECTED`);
             return this.client;
         } catch (error: any) {
             logger.error(
-                `Failed to connect to HTTP MCP server ${baseUrl}: ${JSON.stringify(error.message, null, 2)}`
+                `Failed to connect to HTTP MCP server ${url}: ${JSON.stringify(error.message, null, 2)}`
             );
             throw error;
         }

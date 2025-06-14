@@ -34,6 +34,8 @@ import { initSaiki, postInitSaiki } from './cli/commands/init.js';
 import { getUserInputToInitSaikiApp } from './cli/commands/init.js';
 import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
 import { startNextJsWebServer } from './web.js';
+import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
+import { createAgentCard } from '@core/config/agentCard.js';
 // Load environment variables
 dotenv.config();
 
@@ -261,6 +263,7 @@ program
             }
 
             // Start server with REST APIs and WebSockets on port 3001
+            // This also enables saiki to be used as a remote mcp server at localhost:3001/mcp
             case 'server': {
                 // Start server with REST APIs and WebSockets only
                 const agentCard = agent.getEffectiveConfig().agentCard ?? {};
@@ -300,15 +303,36 @@ program
                 break;
 
             // TODO: Remove if server mode is stable and supports mcp
+            // Starts saiki as a local mcp server
+            // Use `saiki --mode mcp` to start saiki as a local mcp server
+            // Use `saiki --mode server` to start saiki as a remote server
             case 'mcp': {
-                // Start API server only
-                const agentCard = agent.getEffectiveConfig().agentCard ?? {};
-                const apiPort = getPort(process.env.API_PORT, 3001, 'API_PORT');
-                const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+                // Start stdio mcp server only
+                const agentCardConfig = agent.getEffectiveConfig().agentCard ?? {};
 
-                logger.info('Starting API server...', null, 'cyanBright');
-                await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
-                logger.info(`API endpoints available at ${apiUrl}`, null, 'magenta');
+                try {
+                    // Redirect logs to file to prevent interference with stdio transport
+                    const logFile =
+                        process.env.SAIKI_MCP_LOG_FILE ||
+                        path.join(require('os').tmpdir(), 'saiki-mcp.log');
+                    logger.redirectToFile(logFile);
+
+                    const agentCardData = createAgentCard(
+                        {
+                            defaultName: agentCardConfig.name ?? 'saiki',
+                            defaultVersion: agentCardConfig.version ?? '1.0.0',
+                            defaultBaseUrl: 'stdio://local-saiki',
+                        },
+                        agentCardConfig // preserve overrides from saiki.yml
+                    );
+                    // Use stdio transport in mcp mode
+                    const mcpTransport = await createMcpTransport('stdio');
+                    await initializeMcpServer(agent, agentCardData, mcpTransport);
+                } catch (err) {
+                    // Write to stderr instead of stdout to avoid interfering with MCP protocol
+                    process.stderr.write(`MCP server startup failed: ${err}\n`);
+                    process.exit(1);
+                }
                 break;
             }
 
