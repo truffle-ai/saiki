@@ -312,11 +312,14 @@ program
 
                 logger.info('Starting saiki as local mcp server...', null, 'cyanBright');
                 try {
-                    const agentCardData = createAgentCard({
-                        defaultName: agentCardConfig.name ?? 'saiki',
-                        defaultVersion: agentCardConfig.version ?? '1.0.0',
-                        defaultBaseUrl: 'stdio://local-saiki',
-                    });
+                    const agentCardData = createAgentCard(
+                        {
+                            defaultName: agentCardConfig.name ?? 'saiki',
+                            defaultVersion: agentCardConfig.version ?? '1.0.0',
+                            defaultBaseUrl: 'stdio://local-saiki',
+                        },
+                        agentCardConfig // preserve overrides from saiki.yml
+                    );
                     // Use stdio transport in mcp mode
                     const mcpTransport = await createMcpTransport('stdio');
                     await initializeMcpServer(agent, agentCardData, mcpTransport);

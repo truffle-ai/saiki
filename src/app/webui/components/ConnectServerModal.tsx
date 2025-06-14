@@ -111,7 +111,7 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
             config = {
                 type: 'sse',
                 url: url.trim(),
-                ...(headerPairs.length ? { headers: headersToRecord(headerPairs) } : {}),
+                headers: headerPairs.length ? headersToRecord(headerPairs) : {},
                 timeout: 30000,
             };
         } else {
@@ -131,7 +131,7 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
             config = {
                 type: 'http',
                 url: url.trim(),
-                ...(headerPairs.length ? { headers: headersToRecord(headerPairs) } : {}),
+                headers: headerPairs.length ? headersToRecord(headerPairs) : {},
                 timeout: 30000,
             };
         }
