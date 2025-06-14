@@ -23,7 +23,7 @@ export function createAgentCard(
     const { defaultName, defaultVersion, defaultBaseUrl, webSubscriber } = context;
 
     // Start with overrides (which are now Partial<AgentCard> or {})
-    const effectiveInput: Record<string, any> = { ...overrides };
+    const effectiveInput: Record<string, any> = { ...(overrides || {}) };
 
     // Layer in context-dependent required fields if not already provided by overrides.
     effectiveInput.name = overrides?.name ?? defaultName;

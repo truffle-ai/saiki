@@ -307,16 +307,24 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
     // --- Initialize and Setup MCP Server and Endpoints ---
     // Get transport type from environment variable or default to http
-    const transportType = (process.env.SAIKI_MCP_TRANSPORT_TYPE as McpTransportType) || 'http';
-    const mcpTransport = await createMcpTransport(transportType);
+    try {
+        const transportType = (process.env.SAIKI_MCP_TRANSPORT_TYPE as McpTransportType) || 'http';
+        const mcpTransport = await createMcpTransport(transportType);
 
-    // TODO: Think of a better way to handle the MCP implementation
-    await initializeMcpServer(
-        agent,
-        agentCardData, // Pass the agent card data for the MCP resource
-        mcpTransport
-    );
-    await initializeMcpServerApiEndpoints(app, mcpTransport);
+        // TODO: Think of a better way to handle the MCP implementation
+        await initializeMcpServer(
+            agent,
+            agentCardData, // Pass the agent card data for the MCP resource
+            mcpTransport
+        );
+        await initializeMcpServerApiEndpoints(app, mcpTransport);
+    } catch (error: any) {
+        logger.error(`Failed to initialize MCP server: ${error.message}`);
+        // Add error middleware to handle the failure gracefully
+        app.use((req, res) => {
+            res.status(500).json({ error: 'MCP server initialization failed' });
+        });
+    }
 
     // Configuration export endpoint
     app.get('/api/config.yaml', async (req, res) => {

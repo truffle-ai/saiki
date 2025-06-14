@@ -50,7 +50,7 @@ export class MCPClient implements IMCPClient {
             return this.connectViaSSE(sseConfig.url, sseConfig.headers, serverName);
         } else if (config.type === 'http') {
             const httpConfig: HttpServerConfig = config;
-            return this.connectViaHttp(httpConfig.url, httpConfig.headers, serverName);
+            return this.connectViaHttp(httpConfig.url, httpConfig.headers || {}, serverName);
         } else {
             throw new Error('Unsupported server type');
         }
@@ -156,7 +156,7 @@ export class MCPClient implements IMCPClient {
 
     async connectViaSSE(
         url: string,
-        headers: Record<string, string>,
+        headers: Record<string, string> = {},
         serverName: string
     ): Promise<Client> {
         logger.debug(`Connecting to SSE MCP server at url: ${url}`);
@@ -203,12 +203,12 @@ export class MCPClient implements IMCPClient {
      */
     private async connectViaHttp(
         url: string,
-        headers: Record<string, string>,
+        headers: Record<string, string> = {},
         serverAlias?: string
     ): Promise<Client> {
         logger.info(`Connecting to HTTP MCP server at ${url}`);
         this.transport = new StreamableHTTPClientTransport(new URL(url), {
-            requestInit: { headers },
+            requestInit: { headers: headers || {} },
         });
         this.client = new Client(
             { name: 'Saiki-http-mcp-client', version: '1.0.0' },
