@@ -11,10 +11,10 @@ import express from 'express';
 import { SaikiAgent } from '@core/index.js';
 import { randomUUID } from 'crypto';
 
-export type McpTransportType = 'stdio' | 'sse' | 'streamable-http';
+export type McpTransportType = 'stdio' | 'sse' | 'http';
 
 export async function createMcpTransport(
-    transportType: McpTransportType = 'streamable-http'
+    transportType: McpTransportType = 'http'
 ): Promise<Transport> {
     logger.info(`Creating MCP transport of type: ${transportType}`);
 
@@ -30,7 +30,7 @@ export async function createMcpTransport(
                 'SSE transport requires HTTP response context and should be created per-request'
             );
 
-        case 'streamable-http':
+        case 'http':
         default:
             // Create streamable HTTP transport for HTTP-based communication
             return new StreamableHTTPServerTransport({

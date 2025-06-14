@@ -321,7 +321,7 @@ program
                     defaultVersion: agentCard.version ?? '1.0.0',
                     defaultBaseUrl: 'stdio://local-saiki',
                 });
-                // Get transport type from environment variable or default to streamable-http
+                // Use stdio transport in mcp mode
                 const mcpTransport = await createMcpTransport('stdio');
                 await initializeMcpServer(agent, agentCardData, mcpTransport);
                 break;

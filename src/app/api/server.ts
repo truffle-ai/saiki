@@ -306,9 +306,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     setupA2ARoutes(app, agentCardData);
 
     // --- Initialize and Setup MCP Server and Endpoints ---
-    // Get transport type from environment variable or default to streamable-http
-    const transportType =
-        (process.env.SAIKI_MCP_TRANSPORT_TYPE as McpTransportType) || 'streamable-http';
+    // Get transport type from environment variable or default to http
+    const transportType = (process.env.SAIKI_MCP_TRANSPORT_TYPE as McpTransportType) || 'http';
     const mcpTransport = await createMcpTransport(transportType);
 
     // TODO: Think of a better way to handle the MCP implementation
