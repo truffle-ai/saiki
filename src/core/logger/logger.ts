@@ -1,6 +1,8 @@
 import * as winston from 'winston';
 import chalk from 'chalk';
 import boxen from 'boxen';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Winston logger configuration
 const logLevels = {
@@ -258,7 +260,11 @@ export class Logger {
 
     // Redirect logs to file (useful for MCP mode to avoid stdout interference)
     redirectToFile(filePath: string) {
-        // Remove console transport
+        // Ensure directory exists
+        const dir = path.dirname(filePath);
+        fs.mkdirSync(dir, { recursive: true });
+
+        // Remove all previous transports
         this.logger.clear();
 
         // Add file transport

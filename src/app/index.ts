@@ -310,11 +310,13 @@ program
                 // Start stdio mcp server only
                 const agentCardConfig = agent.getEffectiveConfig().agentCard ?? {};
 
-                // Redirect logs to file to prevent interference with stdio transport
-                const logFile = process.env.SAIKI_MCP_LOG_FILE || '/tmp/saiki-mcp.log';
-                logger.redirectToFile(logFile);
-
                 try {
+                    // Redirect logs to file to prevent interference with stdio transport
+                    const logFile =
+                        process.env.SAIKI_MCP_LOG_FILE ||
+                        path.join(require('os').tmpdir(), 'saiki-mcp.log');
+                    logger.redirectToFile(logFile);
+
                     const agentCardData = createAgentCard(
                         {
                             defaultName: agentCardConfig.name ?? 'saiki',
