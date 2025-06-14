@@ -84,7 +84,7 @@ But you can customize the tools by using a custom saiki configuration file. Chec
    ```
 
 4. **Any custom functionality**
-    Youu can configure saiki to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](./configuring-saiki/overview)
+    You can configure saiki to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](./configuring-saiki/overview)
 
 ## Remote MCP Server Setup
 
@@ -109,12 +109,12 @@ saiki --mode server --debug
 ### Step 2: Configure the Connection URL
 
 **HTTP MCP Endpoint:**
-```
+```bash
 http://localhost:3001/mcp
 ```
 
 **For network access:**
-```
+```bash
 http://YOUR_SERVER_IP:3001/mcp
 ```
 

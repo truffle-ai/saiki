@@ -31,14 +31,14 @@ export function createAgentCard(
     effectiveInput.url = overrides?.url ?? `${defaultBaseUrl}/mcp`;
 
     // Handle context-dependent capabilities.pushNotifications.
-    const capsFromOverrides = overrides?.capabilities;
+    const capsFromInput = effectiveInput.capabilities;
     effectiveInput.capabilities = {
-        ...(capsFromOverrides ?? {}),
-        pushNotifications: capsFromOverrides?.pushNotifications ?? !!webSubscriber,
+        ...(capsFromInput ?? {}),
+        pushNotifications: capsFromInput?.pushNotifications ?? !!webSubscriber,
     };
 
-    // If overrides specify an empty skills array, this means "use schema default skills".
-    if (overrides?.skills && overrides?.skills.length === 0) {
+    // If input specifies an empty skills array, this means "use schema default skills".
+    if (effectiveInput.skills && effectiveInput.skills.length === 0) {
         effectiveInput.skills = undefined;
     }
 

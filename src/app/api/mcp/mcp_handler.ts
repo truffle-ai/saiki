@@ -30,8 +30,7 @@ export async function createMcpTransport(
                 'SSE transport requires HTTP response context and should be created per-request'
             );
 
-        case 'http':
-        default:
+        default: // http
             // Create streamable HTTP transport for HTTP-based communication
             return new StreamableHTTPServerTransport({
                 sessionIdGenerator: randomUUID,

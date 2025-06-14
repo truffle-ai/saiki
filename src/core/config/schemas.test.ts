@@ -446,7 +446,7 @@ describe('Config Schemas', () => {
     });
 
     describe('httpServerConfigSchema', () => {
-        it('accepts valid config', () => {
+        it('accepts valid config with optional fields', () => {
             const validConfig = {
                 type: 'http' as const,
                 url: 'http://localhost:9000/api',
@@ -454,16 +454,6 @@ describe('Config Schemas', () => {
                 timeout: 20000,
             };
             expect(() => HttpServerConfigSchema.parse(validConfig)).not.toThrow();
-        });
-
-        it('accepts valid http server config with optional fields', () => {
-            const config = {
-                type: 'http' as const,
-                url: 'http://localhost:9000/api',
-                headers: { 'X-Test': 'true' },
-                timeout: 5000,
-            };
-            expect(() => HttpServerConfigSchema.parse(config)).not.toThrow();
         });
 
         it('rejects missing required fields (url)', () => {

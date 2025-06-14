@@ -32,11 +32,7 @@ import {
 } from './cli/commands/create.js';
 import { initSaiki, postInitSaiki } from './cli/commands/init.js';
 import { getUserInputToInitSaikiApp } from './cli/commands/init.js';
-import {
-    checkForFileInCurrentDirectory,
-    FileNotFoundError,
-    getPackageVersion,
-} from './cli/utils/package-mgmt.js';
+import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
 import { startNextJsWebServer } from './web.js';
 import { initializeMcpServer } from './api/mcp/mcp_handler.js';
 import { createAgentCard } from '@core/config/agentCard.js';
@@ -312,18 +308,23 @@ program
             // Use `saiki --mode mcp` to start saiki as a local mcp server
             // Use `saiki --mode server` to start saiki as a remote server
             case 'mcp': {
-                // Start stdio mcp serveronly
-                const agentCard = agent.getEffectiveConfig().agentCard ?? {};
+                // Start stdio mcp server only
+                const agentCardConfig = agent.getEffectiveConfig().agentCard ?? {};
 
                 logger.info('Starting saiki as local mcp server...', null, 'cyanBright');
-                const agentCardData = createAgentCard({
-                    defaultName: agentCard.name ?? 'saiki',
-                    defaultVersion: agentCard.version ?? '1.0.0',
-                    defaultBaseUrl: 'stdio://local-saiki',
-                });
-                // Use stdio transport in mcp mode
-                const mcpTransport = await createMcpTransport('stdio');
-                await initializeMcpServer(agent, agentCardData, mcpTransport);
+                try {
+                    const agentCardData = createAgentCard({
+                        defaultName: agentCardConfig.name ?? 'saiki',
+                        defaultVersion: agentCardConfig.version ?? '1.0.0',
+                        defaultBaseUrl: 'stdio://local-saiki',
+                    });
+                    // Use stdio transport in mcp mode
+                    const mcpTransport = await createMcpTransport('stdio');
+                    await initializeMcpServer(agent, agentCardData, mcpTransport);
+                } catch (err) {
+                    logger.error(`MCP server startup failed: ${err}`);
+                    process.exit(1);
+                }
                 break;
             }
 
