@@ -268,6 +268,7 @@ program
             }
 
             // Start server with REST APIs and WebSockets on port 3001
+            // This also enables saiki to be used as a remote mcp server at localhost:3001/mcp
             case 'server': {
                 // Start server with REST APIs and WebSockets only
                 const agentCard = agent.getEffectiveConfig().agentCard ?? {};
