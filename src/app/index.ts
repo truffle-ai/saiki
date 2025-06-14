@@ -34,9 +34,8 @@ import { initSaiki, postInitSaiki } from './cli/commands/init.js';
 import { getUserInputToInitSaikiApp } from './cli/commands/init.js';
 import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
 import { startNextJsWebServer } from './web.js';
-import { initializeMcpServer } from './api/mcp/mcp_handler.js';
+import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
 import { createAgentCard } from '@core/config/agentCard.js';
-import { createMcpTransport } from './api/mcp/mcp_handler.js';
 // Load environment variables
 dotenv.config();
 

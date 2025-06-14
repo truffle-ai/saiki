@@ -41,7 +41,7 @@ Note: if you use a different llm in your config file, you will need to pass the 
   "mcpServers": {
     "saiki": {
       "command": "npx",
-      "args": ["-y", "@truffle-ai/saiki", "--mode", "mcp", "--config", "path/to/your/saiki.yml"],
+      "args": ["-y", "@truffle-ai/saiki", "--mode", "mcp", "--config-file", "path/to/your/saiki.yml"],
       "env": {
         "OPENAI_API_KEY": "your_openai_api_key"
       }
@@ -69,17 +69,17 @@ But you can customize the tools by using a custom saiki configuration file. Chec
 **Example Usage in Cursor:**
 
 1. **Ask Saiki for help:**
-   ```
+   ```bash
    Hey saiki help me refactor this function to be more efficient
    ```
 
 2. **Get file analysis:**
-   ```
+   ```bash
    Hey saiki analyze the architecture of this project
    ```
 
 3. **Browse the web:**
-   ```
+   ```ba
    Hey saiki search the web for soccer shoes under $100
    ```
 
@@ -96,11 +96,11 @@ saiki --mode server
 
 **Options:**
 ```bash
-# Custom port
-saiki --mode server --port 8080
+# Custom port using environment variable
+API_PORT=8080 saiki --mode server
 
-# Custom host (for network access)
-saiki --mode server --host 0.0.0.0 --port 3001
+# Custom port for network access
+API_PORT=3001 saiki --mode server
 
 # Enable debug logging
 saiki --mode server --debug
