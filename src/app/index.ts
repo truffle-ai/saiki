@@ -32,8 +32,15 @@ import {
 } from './cli/commands/create.js';
 import { initSaiki, postInitSaiki } from './cli/commands/init.js';
 import { getUserInputToInitSaikiApp } from './cli/commands/init.js';
-import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
+import {
+    checkForFileInCurrentDirectory,
+    FileNotFoundError,
+    getPackageVersion,
+} from './cli/utils/package-mgmt.js';
 import { startNextJsWebServer } from './web.js';
+import { initializeMcpServer } from './api/mcp/mcp_handler.js';
+import { createAgentCard } from '@core/config/agentCard.js';
+import { createMcpTransport } from './api/mcp/mcp_handler.js';
 // Load environment variables
 dotenv.config();
 
@@ -300,15 +307,22 @@ program
                 break;
 
             // TODO: Remove if server mode is stable and supports mcp
+            // Starts saiki as a local mcp server
+            // Use `saiki --mode mcp` to start saiki as a local mcp server
+            // Use `saiki --mode server` to start saiki as a remote server
             case 'mcp': {
-                // Start API server only
+                // Start stdio mcp serveronly
                 const agentCard = agent.getEffectiveConfig().agentCard ?? {};
-                const apiPort = getPort(process.env.API_PORT, 3001, 'API_PORT');
-                const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 
-                logger.info('Starting API server...', null, 'cyanBright');
-                await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
-                logger.info(`API endpoints available at ${apiUrl}`, null, 'magenta');
+                logger.info('Starting saiki as local mcp server...', null, 'cyanBright');
+                const agentCardData = createAgentCard({
+                    defaultName: agentCard.name ?? 'saiki',
+                    defaultVersion: agentCard.version ?? '1.0.0',
+                    defaultBaseUrl: 'stdio://local-saiki',
+                });
+                // Get transport type from environment variable or default to streamable-http
+                const mcpTransport = await createMcpTransport('stdio');
+                await initializeMcpServer(agent, agentCardData, mcpTransport);
                 break;
             }
 

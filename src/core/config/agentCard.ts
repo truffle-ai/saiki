@@ -18,7 +18,7 @@ export interface MinimalAgentCardContext {
  */
 export function createAgentCard(
     context: MinimalAgentCardContext,
-    overrides: Partial<AgentCard> // Updated type from AgentCardOverride to Partial<AgentCard>
+    overrides?: Partial<AgentCard> // Updated type from AgentCardOverride to Partial<AgentCard>
 ): AgentCard {
     const { defaultName, defaultVersion, defaultBaseUrl, webSubscriber } = context;
 
@@ -26,19 +26,19 @@ export function createAgentCard(
     const effectiveInput: Record<string, any> = { ...overrides };
 
     // Layer in context-dependent required fields if not already provided by overrides.
-    effectiveInput.name = overrides.name ?? defaultName;
-    effectiveInput.version = overrides.version ?? defaultVersion;
-    effectiveInput.url = overrides.url ?? `${defaultBaseUrl}/mcp`;
+    effectiveInput.name = overrides?.name ?? defaultName;
+    effectiveInput.version = overrides?.version ?? defaultVersion;
+    effectiveInput.url = overrides?.url ?? `${defaultBaseUrl}/mcp`;
 
     // Handle context-dependent capabilities.pushNotifications.
-    const capsFromOverrides = overrides.capabilities;
+    const capsFromOverrides = overrides?.capabilities;
     effectiveInput.capabilities = {
         ...(capsFromOverrides ?? {}),
         pushNotifications: capsFromOverrides?.pushNotifications ?? !!webSubscriber,
     };
 
     // If overrides specify an empty skills array, this means "use schema default skills".
-    if (overrides.skills && overrides.skills.length === 0) {
+    if (overrides?.skills && overrides?.skills.length === 0) {
         effectiveInput.skills = undefined;
     }
 

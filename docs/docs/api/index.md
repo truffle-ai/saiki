@@ -2,8 +2,6 @@
 sidebar_position: 1
 ---
 
-# API Reference
-
 ## Overview
 Welcome to the Saiki API documentation! This comprehensive guide covers everything you need to integrate Saiki agents into your applications. 
 
