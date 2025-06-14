@@ -310,7 +310,10 @@ program
                 // Start stdio mcp server only
                 const agentCardConfig = agent.getEffectiveConfig().agentCard ?? {};
 
-                logger.info('Starting saiki as local mcp server...', null, 'cyanBright');
+                // Redirect logs to file to prevent interference with stdio transport
+                const logFile = process.env.SAIKI_MCP_LOG_FILE || '/tmp/saiki-mcp.log';
+                logger.redirectToFile(logFile);
+
                 try {
                     const agentCardData = createAgentCard(
                         {
@@ -324,7 +327,8 @@ program
                     const mcpTransport = await createMcpTransport('stdio');
                     await initializeMcpServer(agent, agentCardData, mcpTransport);
                 } catch (err) {
-                    logger.error(`MCP server startup failed: ${err}`);
+                    // Write to stderr instead of stdout to avoid interfering with MCP protocol
+                    process.stderr.write(`MCP server startup failed: ${err}\n`);
                     process.exit(1);
                 }
                 break;

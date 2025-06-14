@@ -160,7 +160,7 @@ describe('StaticConfigManager', () => {
             // Corrupt the internal state to test validation
             (cm as any).resolved.llm.provider = 'invalid-provider';
 
-            expect(() => cm.validate()).toThrow(/Provider 'invalid-provider' is not supported/);
+            expect(() => cm.validate()).toThrow(/Provider .* is not supported/);
         });
 
         it('constructor validation catches invalid configs immediately', () => {

@@ -1,24 +1,26 @@
 ---
 sidebar_position: 8
+title: "Using Saiki as an MCP Server"
+sidebar_label: "MCP Server"
 ---
 
 # Using Saiki as an MCP Server
 
-Saiki can be used as a Model Context Protocol (MCP) server, allowing other applications and AI tools to connect to it and use its capabilities.
+Saiki can act as a Model Context Protocol (MCP) server, enabling external tools like Cursor or Claude Desktop to connect and interact with your Saiki agent.
 
-This lets Cursor/Claude desktop, any other client talk to your saiki agent, enabling multi-agent communication!
+This allows Cursor, Claude Desktop, or any other client to communicate with your Saiki agent and enable multi-agent workflows.
 
-By default, saiki has tools to access files and browse the web, but you can configure this too by changing saiki's config file!
+By default, Saiki has tools to access files and browse the web, but you can configure this too by changing Saiki's config file!
 Check out our [Configuration guide](./configuring-saiki/overview)
 
-## Local MCP Server guide
+## Local MCP Server Guide
 
 
 ### Setup in Cursor
 
 1. **Create or edit your `.cursor/mcp.json` file:**
 
-Use the default saiki configuration
+Use the default Saiki configuration
 ```json
 {
   "mcpServers": {
@@ -33,8 +35,8 @@ Use the default saiki configuration
 }
 ```
 
-Using a custom saiki configuration:
-Note: if you use a different llm in your config file, you will need to pass the env variable for that provider.
+Using a custom Saiki configuration:
+Note: if you use a different LLM in your config file, you will need to pass the appropriate environment variable for that provider.
 
 ```json
 {
@@ -56,54 +58,64 @@ Note: if you use a different llm in your config file, you will need to pass the 
 ### Using Saiki in Cursor
 
 **Available Tools in Cursor:**
-- `chat_with_agent`: Interact with saiki AI agent
+- `chat_with_agent`: Interact with Saiki AI agent
 
-**Available tools that saiki has:**
+**Available Saiki tools:**
 
-By default, saiki is an AI agent that has tools to:
+By default, Saiki is an AI agent that has tools to:
 - browse the web
 - search files on your local system
 
-But you can customize the tools by using a custom saiki configuration file. Check out our [Configuration guide](./configuring-saiki/overview).
+But you can customize the tools by using a custom Saiki configuration file. Check out our [Configuration guide](./configuring-saiki/overview).
 
 **Example Usage in Cursor:**
 
 1. **Ask Saiki for help:**
    ```bash
-   Hey saiki help me refactor this function to be more efficient
+   Ask Saiki to help me refactor this function to be more efficient
    ```
 
 2. **Get file analysis:**
    ```bash
-   Hey saiki analyze the architecture of this project
+   Ask Saiki to analyze the architecture of this project
    ```
 
 3. **Browse the web:**
-   ```ba
-   Hey saiki search the web for soccer shoes under $100
+   ```bash
+   Ask Saiki to search the web for soccer shoes under $100
    ```
 
-4. **Any custom functionality**
-    You can configure saiki to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](./configuring-saiki/overview)
+4. **Any custom functionality:**
+    You can configure Saiki to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](./configuring-saiki/overview)
 
 ## Remote MCP Server Setup
 
 ### Step 1: Start Saiki in Server Mode
 
 ```bash
+# If installed globally
 saiki --mode server
+
+# Or via npx
+npx @truffle-ai/saiki --mode server
 ```
 
 **Options:**
 ```bash
 # Custom port using environment variable
 API_PORT=8080 saiki --mode server
+# Or via npx
+API_PORT=8080 npx @truffle-ai/saiki --mode server
 
 # Custom port for network access
 API_PORT=3001 saiki --mode server
+# Or via npx
+API_PORT=3001 npx @truffle-ai/saiki --mode server
 
 # Enable debug logging
 saiki --mode server --debug
+# Or via npx
+npx @truffle-ai/saiki --mode server --debug
 ```
 
 ### Step 2: Configure the Connection URL
@@ -131,5 +143,9 @@ Cursor/Claude desktop don't support streamable http yet
 
 **Debug mode:**
 ```bash
+# If installed globally
 saiki --mode mcp --debug
+
+# Or via npx
+npx @truffle-ai/saiki --mode mcp --debug
 ``` 

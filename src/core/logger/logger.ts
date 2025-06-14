@@ -95,6 +95,7 @@ const getDefaultLogLevel = (): string => {
 
 export class Logger {
     private logger: winston.Logger;
+    private isSilent: boolean = false;
 
     constructor(options: LoggerOptions = {}) {
         // Create Winston logger
@@ -154,6 +155,8 @@ export class Logger {
 
     // Display AI response in a box
     displayAIResponse(response: any) {
+        if (this.isSilent) return;
+
         if (response.content) {
             console.log(
                 boxen(chalk.white(response.content), {
@@ -251,6 +254,28 @@ export class Logger {
         } else {
             this.warn(`Invalid log level: ${level}. Using current level: ${this.logger.level}`);
         }
+    }
+
+    // Redirect logs to file (useful for MCP mode to avoid stdout interference)
+    redirectToFile(filePath: string) {
+        // Remove console transport
+        this.logger.clear();
+
+        // Add file transport
+        this.logger.add(
+            new winston.transports.File({
+                filename: filePath,
+                format: winston.format.combine(
+                    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+                    maskFormat(),
+                    winston.format.errors({ stack: true }),
+                    winston.format.json()
+                ),
+            })
+        );
+
+        // Set silent mode for console methods
+        this.isSilent = true;
     }
 
     // Get current log level
