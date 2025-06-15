@@ -35,36 +35,11 @@ const config: Config = {
         [
             'classic',
             {
-                docs: {
-                    sidebarPath: './sidebars.ts',
-                    editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
-                    showLastUpdateAuthor: true,
-                    showLastUpdateTime: true,
-                    breadcrumbs: true,
-                    remarkPlugins: [],
-                    rehypePlugins: [],
-                },
-                // BLOG DISABLED: To re-enable, uncomment the section below and related links in navbar/footer.
-                /*
-                blog: {
-                    showReadingTime: true,
-                    feedOptions: {
-                        type: ['rss', 'atom'],
-                        xslt: true,
-                    },
-                    editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
-                    onInlineTags: 'warn',
-                    onInlineAuthors: 'warn',
-                    onUntruncatedBlogPosts: 'warn',
-                },
-                */
+                docs: false,
+                blog: false,
                 theme: {
                     customCss: './src/css/custom.css',
                 },
-                // gtag: {
-                //     trackingID: 'G-XXXXXXXXXX', // Replace with your Google Analytics ID
-                //     anonymizeIP: true,
-                // },
             } satisfies Preset.Options,
         ],
     ],
@@ -100,18 +75,17 @@ const config: Config = {
             hideOnScroll: true,
             items: [
                 {
-                    type: 'docSidebar',
-                    sidebarId: 'tutorialSidebar',
+                    to: '/docs/getting-started/intro',
                     position: 'left',
                     label: 'Docs',
+                    activeBaseRegex: `/docs/`,
                 },
-                /*
                 {
-                    to: '/blog',
-                    label: 'Blog',
+                    to: '/api',
                     position: 'left',
+                    label: 'API Reference',
+                    activeBaseRegex: `/api/`,
                 },
-                */
                 {
                     href: 'https://discord.gg/GFzWFAAZcm',
                     position: 'right',
@@ -136,19 +110,13 @@ const config: Config = {
                             label: 'Getting Started',
                             to: '/docs/getting-started/intro',
                         },
-                        // Note: User updated this link, ensure it's correct after folder moves
                         {
-                            label: 'Building with Saiki',
-                            to: '/docs/building-with-saiki',
+                            label: 'Guides',
+                            to: '/docs/guides',
                         },
-                        {
-                            label: 'LLM Providers',
-                            to: '/docs/configuring-saiki/llm/providers',
-                        },
-                        // Note: This link will need to be updated after folder moves
                         {
                             label: 'API Reference',
-                            to: '/docs/api',
+                            to: '/api',
                         },
                     ],
                 },
@@ -176,19 +144,13 @@ const config: Config = {
                 {
                     title: 'Resources',
                     items: [
-                        /*
-                        {
-                            label: 'Blog',
-                            to: '/blog',
-                        },
-                        */
                         {
                             label: 'Examples',
                             to: '/docs/getting-started/examples-demos',
                         },
                         {
                             label: 'Contributing',
-                            to: '/docs/contribution-guide/overview',
+                            to: '/docs/community/contribution-guide/overview',
                         },
                         {
                             label: 'Changelog',
@@ -251,13 +213,29 @@ const config: Config = {
 
     plugins: [
         [
-            '@docusaurus/plugin-ideal-image',
+            '@docusaurus/plugin-content-docs',
             {
-                quality: 70,
-                max: 1030,
-                min: 640,
-                steps: 2,
-                disableInDev: false,
+                id: 'docs',
+                path: 'docs',
+                routeBasePath: 'docs',
+                sidebarPath: './sidebars.ts',
+                editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
+                showLastUpdateAuthor: true,
+                showLastUpdateTime: true,
+                breadcrumbs: true,
+            },
+        ],
+        [
+            '@docusaurus/plugin-content-docs',
+            {
+                id: 'api',
+                path: 'api',
+                routeBasePath: 'api',
+                sidebarPath: './api-sidebars.ts',
+                editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
+                showLastUpdateAuthor: true,
+                showLastUpdateTime: true,
+                breadcrumbs: true,
             },
         ],
     ],

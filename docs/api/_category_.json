@@ -1,0 +1,9 @@
+{
+  "label": "API Reference",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "title": "Saiki API Reference",
+    "description": "Welcome to the Saiki API documentation. Here you will find detailed information about our REST and WebSocket APIs. To use either API, you must first start the Saiki server by running the following command in your terminal:\n\n```bash\nsaiki --mode server\n```\n\nBy default, the server will start on `http://localhost:3001`."
+  }
+}
