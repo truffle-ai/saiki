@@ -3,7 +3,7 @@ sidebar_position: 1
 ---
 
 ## Overview
-Welcome to the Saiki API documentation! This comprehensive guide covers everything you need to integrate Saiki agents into your applications. 
+Welcome to the Saiki API guide! This comprehensive guide covers everything you need to integrate Saiki agents into your applications. 
 
 Saiki provides both **REST API** and **WebSocket API** interfaces when running in web mode (`saiki --mode web`). These APIs allow you to:
 
@@ -41,36 +41,18 @@ ws.send(JSON.stringify({
 
 ## API Sections
 
-### [Authentication](./authentication)
-Learn about API authentication, rate limiting, and security considerations.
-
-### [REST API](./rest-api)
+### [REST API](../../api/rest-api)
 Complete reference for all HTTP endpoints:
 - Message endpoints
 - Server management
 - Tool execution
 - Configuration
 
-### [WebSocket API](./websocket-api)
+### [WebSocket API](../../api/websocket-api)
 Real-time communication with Saiki agents:
 - Connection setup
 - Message types
 - Event streaming
-- Error handling
-
-### [SDKs & Examples](./sdks-examples)
-Code examples and SDKs for popular languages:
-- JavaScript/TypeScript
-- Python
-- cURL examples
-- Integration patterns
-
-### [Error Handling](./error-handling)
-Understanding and handling API errors:
-- Error codes
-- Error responses
-- Retry strategies
-- Debugging tips
 
 ## Key Features
 
@@ -188,9 +170,7 @@ curl http://localhost:3001/api/health
 
 ## Next Steps
 
-1. **New to APIs?** Start with [Authentication](./authentication) to understand the basics
-2. **Building a web app?** Check out [REST API](./rest-api) endpoints
-3. **Need real-time updates?** Explore [WebSocket API](./websocket-api)
-4. **Want examples?** Browse [SDKs & Examples](./sdks-examples)
+1. **Building a web app?** Check out the [REST API Reference](../../api/rest-api)
+2. **Need real-time updates?** Explore the [WebSocket API Reference](../../api/websocket-api)
 
 Ready to build something amazing? Let's dive in! 🚀 
