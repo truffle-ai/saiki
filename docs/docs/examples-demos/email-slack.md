@@ -1,15 +1,17 @@
 ---
 
 title: "Email summaries in slack"
+hide_title: true
 ---
 
 
-## 📧 Email Summary to Slack
-**Task:**
-> Summarize emails and send highlights to Slack
+## 📧 Email Summaries in Slack
 
 ```bash
 saiki --config-file ./configuration/examples/email_slack.yml
 ```
+**Task:**
+> Summarize emails and send highlights to Slack
 
+**Output:**
 ![Email to Slack Demo](/assets/email_slack_demo.gif)

@@ -1,14 +1,18 @@
 ---
 title: "Design a website with saiki"
+hide_title: true
 ---
 
-**Task:**
-> Design a landing page based on README.md
+## Website Designer
 
 ```bash
 saiki --config-file ./configuration/examples/website_designer.yml
 ```
 
+**Task:**
+> Design a landing page based on README.md
+
+**Output:**
 ![Website Designer Demo](/assets/website_demo.gif)
 
 ---
