@@ -8,9 +8,9 @@ Ready to build AI-powered applications? This comprehensive guide will take you f
 
 ## What You'll Learn
 
-This guide is structured to take you through the entire journey of building with Saiki:
+This guide is structured into sub-sections to take you through the entire journey of building with Saiki.
 
-### [Getting Started](./getting-started)
+### [Create your first agent](./create-first-agent)
 Your first 5 minutes with Saiki - get up and running quickly:
 - Create your first project
 - Set up API keys
@@ -25,9 +25,8 @@ Learn to build real-world applications:
 - Understanding the Saiki philosophy
 
 ### [Advanced Patterns](./advanced-patterns)
-Production-ready patterns and best practices:
+Production-ready patterns and best practice for more advanced use-cases:
 - Specialized agents
-- Error handling strategies
 - Event-driven architecture
 - Performance optimization
 
@@ -51,7 +50,6 @@ Before you start, make sure you have:
 - **Node.js 20+** installed
 - **An API key** from one of the [supported LLM providers](../../guides/configuring-saiki/llm/)
 - **Basic TypeScript/JavaScript** knowledge
-- **A code editor** (VS Code recommended)
 
 ## The Saiki Philosophy
 
