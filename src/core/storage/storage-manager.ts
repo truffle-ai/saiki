@@ -222,7 +222,11 @@ export class StorageManager {
  * Create storage backends without using singleton pattern
  * This allows multiple agent instances to have independent storage
  */
-export async function createStorageBackends(config: StorageConfig): Promise<StorageBackends> {
-    const storageManager = new StorageManager(config);
-    return await storageManager.connect();
+export async function createStorageBackends(config: StorageConfig): Promise<{
+    manager: StorageManager;
+    backends: StorageBackends;
+}> {
+    const manager = new StorageManager(config);
+    const backends = await manager.connect();
+    return { manager, backends };
 }
