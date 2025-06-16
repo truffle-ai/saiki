@@ -5,7 +5,7 @@ sidebar_label: "Overview"
 
 # Configuring Saiki
 
-Saiki's power comes from its customizability. You can customize every part of your Saiki agent with one config file. 
+Saiki's power comes from its customizability. You can customize every part of your Saiki agent with one `yml` config file. 
 
 This guide walks through all the different features you can customize, and the expected format.
 
@@ -52,12 +52,15 @@ llm:
 ## Key Sections Explained
 
 - **mcpServers:**
-  - This section represents the different MCP servers that you want to connect to Saiki
+  - This section represents the different MCP servers that you want to connect to your agent
   - Each key represents a different MCP server
   - [Complete Reference](./mcpServers)
 - **llm:**
-  - This section defines the configuration for the LLM that Saiki will use as its brain.
+  - This section defines the configuration for the LLM that your agent will use as its brain.
   - [Complete Reference](./llm)
+- **storage:**
+  - This section defines where the agent will store conversatio history, settings, and other data. 
+  - [Complete Reference](./storage)
 
 ## Best Practices
 

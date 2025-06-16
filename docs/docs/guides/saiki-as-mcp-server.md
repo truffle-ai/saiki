@@ -70,23 +70,23 @@ But you can customize the tools by using a custom Saiki configuration file. Chec
 
 **Example Usage in Cursor:**
 
-1. **Ask Saiki for help:**
+1. **Refactor a function:**
    ```bash
-   Ask Saiki to help me refactor this function to be more efficient
+   Ask Saiki agent to help me refactor this function to be more efficient
    ```
 
 2. **Get file analysis:**
    ```bash
-   Ask Saiki to analyze the architecture of this project
+   Ask Saiki agent to analyze the architecture of this project
    ```
 
 3. **Browse the web:**
    ```bash
-   Ask Saiki to search the web for soccer shoes under $100
+   Ask Saiki agent to search the web for soccer shoes under $100
    ```
 
 4. **Any custom functionality:**
-    You can configure Saiki to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](./configuring-saiki/overview)
+    You can configure your Saiki agent to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](./configuring-saiki/overview)
 
 ## Remote MCP Server Setup
 

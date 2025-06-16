@@ -5,7 +5,7 @@ sidebar_label: "MCP Configuration"
 
 # mcpServers Configuration
 
-The `mcpServers` section defines the Model Context Protocol (MCP) servers that Saiki can use for tool execution.
+The `mcpServers` section defines the Model Context Protocol (MCP) servers that your Saiki Agent can use for tool execution.
 
 Saiki supports three types of MCP server connections:
 - **Local servers** (`stdio`) - Launch processes on your machine
@@ -55,6 +55,10 @@ mcpServers:
 ```
 
 ## Remote MCP Server (sse)
+
+:::note
+SSE is on the deprecation path. We recommend using the [`http`](#http-mcp-server-http) type instead.
+:::
 
 Remote MCP servers use the `sse` type to connect to a server over HTTP using Server-Sent Events. This is useful for cloud-hosted or remote tool integrations.
 
