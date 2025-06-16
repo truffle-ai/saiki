@@ -1,10 +1,12 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # What is MCP (Model Context Protocol)?
 
-The **Model Context Protocol (MCP)** is an open protocol that defines how AI agents (like Saiki agents) can discover, connect to, and interact with external tools, services, and APIs in a standardized way.
+The **Model Context Protocol (MCP)** is an open protocol created and maintained by Anthropic - [MCP github organization](https://github.com/modelcontextprotocol)
+
+MCP defines how AI agents (like Saiki agents) can discover, connect to, and interact with external tools, services, and APIs in a standardized way.
 
 ## Why MCP Matters
 
@@ -14,10 +16,11 @@ The **Model Context Protocol (MCP)** is an open protocol that defines how AI age
 
 ## How Saiki Agents Use MCP
 
-Saiki agents uses MCP to:
+Saiki agents use MCP to:
 - **Discover available tools:** MCP servers advertise what actions they support (e.g., read a file, send an email, browse the web).
 - **Connect to tools:** Saiki agents communicate with MCP servers using a standard protocol (often over stdio, HTTP, or sockets).
 - **Invoke tool actions:** When you give a command, Saiki selects the right tool(s) via MCP and orchestrates their use to fulfill your request.
+- **Read server resources:** Saiki agents can read resources from the server, like files, databases, etc and use that to reason about what to do next.
 
 ## Example: Registering a Tool via MCP
 

@@ -18,7 +18,9 @@ Some of the cool things you can do with Saiki CLI:
 - Start building your own AI applications - get started with building your own Cursor! `saiki create-app`
 
 
-More CLI commands coming soon! Request a CLI command here.
+More CLI commands coming soon! 
+
+Request a CLI command by creating an issue [here](https://github.com/truffle-ai/saiki/issues).
 
 
 #### **See all available options and flags:**

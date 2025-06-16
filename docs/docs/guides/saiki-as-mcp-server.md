@@ -6,15 +6,15 @@ sidebar_label: "Using Saiki as an MCP Server"
 
 # Using Saiki as an MCP Server
 
-Saiki can act as a Model Context Protocol (MCP) server, enabling external tools like Cursor or Claude Desktop to connect and interact with your Saiki agent.
+Saiki agents can act as Model Context Protocol (MCP) server, enabling external tools like Cursor/Claude Desktop or any MCP client to connect and interact with your Saiki agent.
 
-This allows Cursor, Claude Desktop, or any other client to communicate with your Saiki agent and enable multi-agent workflows.
+This means you can even connect one Saiki agent to another Saiki agent!
 
-By default, Saiki has tools to access files and browse the web, but you can configure this too by changing Saiki's config file!
+The default Saiki agent has tools to access files and browse the web, but you can configure this too by changing the config file!
+
 Check out our [Configuration guide](./configuring-saiki/overview)
 
 ## Local MCP Server Guide
-
 
 ### Setup in Cursor
 

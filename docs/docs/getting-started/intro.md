@@ -104,5 +104,4 @@ saiki "what can you help with?"
 
 ---
 
-Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation!
-Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation!
+Saiki is built by the team at [Truffle AI](https://trytruffle.ai). Join our community and help shape the future of natural language automation!
