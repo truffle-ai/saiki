@@ -29,6 +29,7 @@
 export {
     StorageManager,
     initializeStorage,
+    createStorageBackends,
     getStorage,
     shutdownStorage,
     getStorageInfo,

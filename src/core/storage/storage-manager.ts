@@ -234,6 +234,15 @@ export async function initializeStorage(config: StorageConfig): Promise<StorageB
 }
 
 /**
+ * Create storage backends without using singleton pattern
+ * This allows multiple agent instances to have independent storage
+ */
+export async function createStorageBackends(config: StorageConfig): Promise<StorageBackends> {
+    const storageManager = new StorageManager(config);
+    return await storageManager.connect();
+}
+
+/**
  * Get the current storage backends (cache and database)
  */
 export function getStorage(): StorageBackends | null {
