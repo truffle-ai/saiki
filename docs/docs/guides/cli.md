@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 
 ---
 
@@ -18,7 +18,9 @@ Some of the cool things you can do with Saiki CLI:
 - Start building your own AI applications - get started with building your own Cursor! `saiki create-app`
 
 
-More CLI commands coming soon! Request a CLI command here.
+More CLI commands coming soon! 
+
+Request a CLI command by creating an issue [here](https://github.com/truffle-ai/saiki/issues).
 
 
 #### **See all available options and flags:**
@@ -52,7 +54,7 @@ This allows you to configure saiki CLI to use a different AI agent
 saiki --config-file <path_to_agent_config_file>
 ```
 
-Check [Configuration Guide](../configuring-saiki/overview.md) to understand more about saiki config files
+Check [Configuration Guide](./configuring-saiki/overview) to understand more about saiki config files
 
 #### **Run a specific command with Saiki CLI:**
 
@@ -101,6 +103,8 @@ saiki --mode mcp
 
 With this, you can now connect this agent to Cursor, claude desktop, or even other Saiki agents!
 
+Check [Using saiki as an MCP Server](./saiki-as-mcp-server.md) to understand more about MCP servers.
+
 
 #### **Change log level for saiki CLI**
 
@@ -127,7 +131,7 @@ Add saiki into an existing typescript project
 saiki init-app
 ```
 
-Check [Building with Saiki Guide](../building-with-saiki/) for more information!
+Check [Building with Saiki Guide](../tutorials/building-with-saiki/) for more information!
 
 ## Coming soon!
 

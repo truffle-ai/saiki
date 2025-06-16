@@ -5,9 +5,9 @@ sidebar_label: "Storage Configuration"
 
 # Storage Configuration
 
-The `storage` section in your configuration file defines how Saiki stores data. It's composed of two main components: a `cache` for temporary, high-speed data access, and a `database` for persistent, long-term storage.
+The `storage` section in your configuration file defines how your agent stores data. It's composed of two main components: a `cache` for temporary, high-speed data access, and a `database` for persistent, long-term storage.
 
-You can configure different backends for both the cache and the database, allowing you to tailor Saiki's storage to your specific needs, from simple in-memory setups to robust production environments using Redis and PostgreSQL.
+You can configure different backends for both the cache and the database, allowing you to tailor your agent's storage to your specific needs, from simple in-memory setups to robust production environments using Redis and PostgreSQL.
 
 ```yaml
 storage:

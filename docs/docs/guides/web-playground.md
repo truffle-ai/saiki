@@ -33,6 +33,3 @@ saiki --mode web --web-port 3333
 When installed as a global CLI, saiki stores conversation history in `~/.saiki` folder by default
 
 In development mode, storage location defaults to`<path_to_saiki_project_dir>/.saiki`
-
-## Examples
-Coming soon!

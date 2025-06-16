@@ -31,7 +31,7 @@ llm:
   apiKey: $GOOGLE_GENERATIVE_AI_API_KEY
 ```
 
-**Learn more**: [LLM Providers Guide](../configuring-saiki/llm/providers)
+**Learn more**: [LLM Providers Guide](../../guides/configuring-saiki/llm/providers)
 
 ### 2. Add More Tools
 Expand your agents' capabilities with additional MCP servers:
@@ -51,7 +51,7 @@ mcpServers:
   # Add database access, API calls, and more!
 ```
 
-**Learn more**: [MCP Server Configuration](../configuring-saiki/mcpServers)
+**Learn more**: [MCP Server Configuration](../../guides/configuring-saiki/mcpServers)
 
 ### 3. Deploy Your Application
 Take your application to production:
@@ -59,7 +59,7 @@ Take your application to production:
 - **Development**: Run locally with `npm start`
 - **Production**: Use Docker containers with proper monitoring
 
-**Learn more**: [Deployment Guide](../user-guide/deployment)
+**Learn more**: [Deployment Guide](../../guides/deployment)
 
 ## Going Deeper
 
@@ -73,16 +73,16 @@ Connect with other developers building AI applications:
 ### Explore Examples
 See what others have built and get inspiration:
 
-- **[Examples Repository](../getting-started/examples-demos)** - Working code you can run
+- **[Examples Repository](../../examples-demos/)** - Working code you can run
 - **Community showcase** in our Discord
 - **Blog posts** and tutorials from the community
 
 ### Read the Advanced Docs
 Dive deeper into Saiki's capabilities:
 
-- **[API Reference](../api)** - Complete API documentation
-- **[Architecture Overview](../architecture/overview)** - How Saiki works under the hood
-- **[Contributing Guide](../contribution-guide/overview)** - Help improve Saiki
+- **[API Reference](../../api-reference/)** - Complete API documentation
+- **[Architecture Overview](../../architecture/overview)** - How Saiki works under the hood
+- **[Contributing Guide](https://github.com/truffle-ai/saiki/blob/main/CONTRIBUTING.md)** - Help improve Saiki
 
 ## Pro Tips for Saiki Success
 
@@ -176,7 +176,7 @@ Chain multiple Saiki agents or calls together:
 ### Follow Our Progress
 - **[GitHub Releases](https://github.com/truffle-ai/saiki/releases)** - New features and fixes
 - **[Twitter/X](https://x.com/truffleai_)** - Updates and announcements
-- **[Blog](https://truffle.ai/blog)** - Deep dives and tutorials
+- **[Blog](https://trytruffle.ai/blog)** - Deep dives and tutorials
 
 ### Community Events
 - **Office hours** in Discord

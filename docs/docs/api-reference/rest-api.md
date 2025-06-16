@@ -58,7 +58,7 @@ curl -X POST http://localhost:3001/api/message-sync \
 #### Status Codes
 
 | Code | Description |
-|------|-------------|
+|------|----------|
 | `200` | Success - Message processed |
 | `400` | Bad Request - Invalid message format |
 | `429` | Rate Limit - Too many requests |
@@ -495,10 +495,9 @@ X-RateLimit-Reset: 1640995200
 Content-Type: application/json
 ```
 
-See [Authentication](./authentication#rate-limiting) for detailed rate limiting information. -->
+Rate limiting information will be documented here in future updates. -->
 
 ## Next Steps
 
 - **Need real-time updates?** Check out [WebSocket API](./websocket-api)
-- **Want code examples?** Browse [SDKs & Examples](./sdks-examples)
-- **Having issues?** See [Error Handling](./error-handling) 
+- **Want code examples?** Browse [SDKs & Examples](./sdks-examples) 

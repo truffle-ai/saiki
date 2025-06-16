@@ -1,20 +1,20 @@
 ---
 sidebar_position: 8
 title: "Using Saiki as an MCP Server"
-sidebar_label: "MCP Server"
+sidebar_label: "Using Saiki as an MCP Server"
 ---
 
 # Using Saiki as an MCP Server
 
-Saiki can act as a Model Context Protocol (MCP) server, enabling external tools like Cursor or Claude Desktop to connect and interact with your Saiki agent.
+Saiki agents can act as Model Context Protocol (MCP) server, enabling external tools like Cursor/Claude Desktop or any MCP client to connect and interact with your Saiki agent.
 
-This allows Cursor, Claude Desktop, or any other client to communicate with your Saiki agent and enable multi-agent workflows.
+This means you can even connect one Saiki agent to another Saiki agent!
 
-By default, Saiki has tools to access files and browse the web, but you can configure this too by changing Saiki's config file!
+The default Saiki agent has tools to access files and browse the web, but you can configure this too by changing the config file!
+
 Check out our [Configuration guide](./configuring-saiki/overview)
 
 ## Local MCP Server Guide
-
 
 ### Setup in Cursor
 
@@ -70,23 +70,23 @@ But you can customize the tools by using a custom Saiki configuration file. Chec
 
 **Example Usage in Cursor:**
 
-1. **Ask Saiki for help:**
+1. **Refactor a function:**
    ```bash
-   Ask Saiki to help me refactor this function to be more efficient
+   Ask Saiki agent to help me refactor this function to be more efficient
    ```
 
 2. **Get file analysis:**
    ```bash
-   Ask Saiki to analyze the architecture of this project
+   Ask Saiki agent to analyze the architecture of this project
    ```
 
 3. **Browse the web:**
    ```bash
-   Ask Saiki to search the web for soccer shoes under $100
+   Ask Saiki agent to search the web for soccer shoes under $100
    ```
 
 4. **Any custom functionality:**
-    You can configure Saiki to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](./configuring-saiki/overview)
+    You can configure your Saiki agent to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](./configuring-saiki/overview)
 
 ## Remote MCP Server Setup
 

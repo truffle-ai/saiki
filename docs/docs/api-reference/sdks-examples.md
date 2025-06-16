@@ -959,6 +959,6 @@ describe('SaikiClient', () => {
 
 ## Next Steps
 
-- **Having issues?** Check out [Error Handling](./error-handling)
+
 - **Want to contribute?** Add your SDK to our [GitHub repository](https://github.com/truffle-ai/saiki)
 - **Need help?** Join our [Discord community](https://discord.gg/GFzWFAAZcm) 
