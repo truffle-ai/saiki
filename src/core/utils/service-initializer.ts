@@ -31,10 +31,10 @@ import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { StaticConfigManager } from '../config/static-config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager } from '../ai/session/session-manager.js';
-import { initializeStorage, type StorageBackends } from '../storage/index.js';
+import { createStorageBackends, type StorageBackends } from '../storage/index.js';
 import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/factory.js';
 import { logger } from '../logger/index.js';
-import type { CLIConfigOverrides, StorageConfig } from '../config/types.js';
+import type { CLIConfigOverrides } from '../config/types.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { AgentEventBus } from '../events/index.js';
 
@@ -99,9 +99,12 @@ export async function createAgentServices(
     const agentEventBus: AgentEventBus = overrides?.agentEventBus ?? new AgentEventBus();
     logger.debug('Agent event bus initialized');
 
-    // 3. Initialize storage backends
+    // 3. Initialize storage backends (instance-specific, not singleton)
     logger.debug('Initializing storage backends');
-    const storage = overrides?.storage ?? (await initializeStorage(config.storage));
+    const storageResult = overrides?.storage
+        ? { manager: null, backends: overrides.storage }
+        : await createStorageBackends(config.storage);
+    const storage = storageResult.backends;
 
     logger.debug('Storage backends initialized', {
         cache: config.storage.cache.type,

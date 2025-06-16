@@ -8,32 +8,28 @@
  * Usage:
  *
  * ```typescript
- * // Initialize storage with configuration
- * const storage = await initializeStorage({
- *   cache: { type: 'memory' },
- *   database: { type: 'memory' }
+ * // Create storage backends for an agent instance
+ * const { manager, backends } = await createStorageBackends({
+ *   cache: { type: 'in-memory' },
+ *   database: { type: 'in-memory' }
  * });
  *
  * // Use cache for temporary data
- * await storage.cache.set('session:123', sessionData, 3600); // 1 hour TTL
- * const sessionData = await storage.cache.get('session:123');
+ * await backends.cache.set('session:123', sessionData, 3600); // 1 hour TTL
+ * const sessionData = await backends.cache.get('session:123');
  *
  * // Use database for persistent data
- * await storage.database.set('user:456', userData);
- * await storage.database.append('messages:789', message);
- * const messages = await storage.database.getRange('messages:789', 0, 50);
+ * await backends.database.set('user:456', userData);
+ * await backends.database.append('messages:789', message);
+ * const messages = await backends.database.getRange('messages:789', 0, 50);
+ *
+ * // Cleanup when done
+ * await manager.disconnect();
  * ```
  */
 
 // Main storage manager and utilities
-export {
-    StorageManager,
-    initializeStorage,
-    getStorage,
-    shutdownStorage,
-    getStorageInfo,
-    checkStorageHealth,
-} from './storage-manager.js';
+export { StorageManager, createStorageBackends } from './storage-manager.js';
 
 // Backend interfaces
 export type {
