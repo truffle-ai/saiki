@@ -209,7 +209,7 @@ const config: Config = {
                         },
                         {
                             label: 'Privacy Policy',
-                            href: 'https://www.trytruffle.ai/privacy',
+                            href: 'https://trytruffle.ai/privacy',
                         },
                         {
                             label: 'Terms of Service',

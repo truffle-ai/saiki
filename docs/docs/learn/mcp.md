@@ -20,7 +20,7 @@ Saiki agents use MCP to:
 - **Discover available tools:** MCP servers advertise what actions they support (e.g., read a file, send an email, browse the web).
 - **Connect to tools:** Saiki agents communicate with MCP servers using a standard protocol (often over stdio, HTTP, or sockets).
 - **Invoke tool actions:** When you give a command, Saiki selects the right tool(s) via MCP and orchestrates their use to fulfill your request.
-- **Read server resources:** Saiki agents can read resources from the server, like files, databases, etc and use that to reason about what to do next.
+- **Read server resources:** Saiki agents can read resources from the server, like files, databases, etc., and use that to reason about what to do next.
 
 ## Example: Registering a Tool via MCP
 

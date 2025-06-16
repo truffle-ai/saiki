@@ -16,7 +16,7 @@ Saiki provides both **REST API** and **WebSocket API** interfaces when running a
 
 ## Quick Start
 
-### 1. Start Saiki in Web Mode
+### 1. Start Saiki in Server Mode
 ```bash
 saiki --mode server
 ```

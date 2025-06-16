@@ -176,7 +176,7 @@ Chain multiple Saiki agents or calls together:
 ### Follow Our Progress
 - **[GitHub Releases](https://github.com/truffle-ai/saiki/releases)** - New features and fixes
 - **[Twitter/X](https://x.com/truffleai_)** - Updates and announcements
-- **[Blog](https://truffle.ai/blog)** - Deep dives and tutorials
+- **[Blog](https://trytruffle.ai/blog)** - Deep dives and tutorials
 
 ### Community Events
 - **Office hours** in Discord

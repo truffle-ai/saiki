@@ -59,7 +59,7 @@ llm:
   - This section defines the configuration for the LLM that your agent will use as its brain.
   - [Complete Reference](./llm)
 - **storage:**
-  - This section defines where the agent will store conversatio history, settings, and other data. 
+  - This section defines where the agent will store conversation history, settings, and other data. 
   - [Complete Reference](./storage)
 
 ## Best Practices
