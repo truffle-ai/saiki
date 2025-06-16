@@ -218,21 +218,6 @@ export class StorageManager {
     }
 }
 
-// Default storage manager instance
-let defaultStorageManager: StorageManager | null = null;
-
-/**
- * Initialize the default storage manager with configuration
- */
-export async function initializeStorage(config: StorageConfig): Promise<StorageBackends> {
-    if (defaultStorageManager) {
-        await defaultStorageManager.disconnect();
-    }
-
-    defaultStorageManager = new StorageManager(config);
-    return await defaultStorageManager.connect();
-}
-
 /**
  * Create storage backends without using singleton pattern
  * This allows multiple agent instances to have independent storage
@@ -240,35 +225,4 @@ export async function initializeStorage(config: StorageConfig): Promise<StorageB
 export async function createStorageBackends(config: StorageConfig): Promise<StorageBackends> {
     const storageManager = new StorageManager(config);
     return await storageManager.connect();
-}
-
-/**
- * Get the current storage backends (cache and database)
- */
-export function getStorage(): StorageBackends | null {
-    return defaultStorageManager?.getBackends() || null;
-}
-
-/**
- * Shutdown storage and cleanup connections
- */
-export async function shutdownStorage(): Promise<void> {
-    if (defaultStorageManager) {
-        await defaultStorageManager.disconnect();
-        defaultStorageManager = null;
-    }
-}
-
-/**
- * Get storage manager info for debugging
- */
-export async function getStorageInfo() {
-    return defaultStorageManager?.getInfo() || null;
-}
-
-/**
- * Run health check on storage backends
- */
-export async function checkStorageHealth() {
-    return defaultStorageManager?.healthCheck() || null;
 }

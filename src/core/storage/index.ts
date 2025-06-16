@@ -8,8 +8,8 @@
  * Usage:
  *
  * ```typescript
- * // Initialize storage with configuration
- * const storage = await initializeStorage({
+ * // Create storage backends for an agent instance
+ * const storage = await createStorageBackends({
  *   cache: { type: 'memory' },
  *   database: { type: 'memory' }
  * });
@@ -26,15 +26,7 @@
  */
 
 // Main storage manager and utilities
-export {
-    StorageManager,
-    initializeStorage,
-    createStorageBackends,
-    getStorage,
-    shutdownStorage,
-    getStorageInfo,
-    checkStorageHealth,
-} from './storage-manager.js';
+export { StorageManager, createStorageBackends } from './storage-manager.js';
 
 // Backend interfaces
 export type {

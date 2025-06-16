@@ -31,11 +31,7 @@ import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { StaticConfigManager } from '../config/static-config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager } from '../ai/session/session-manager.js';
-import {
-    initializeStorage,
-    createStorageBackends,
-    type StorageBackends,
-} from '../storage/index.js';
+import { createStorageBackends, type StorageBackends } from '../storage/index.js';
 import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/factory.js';
 import { logger } from '../logger/index.js';
 import type { CLIConfigOverrides, StorageConfig } from '../config/types.js';
