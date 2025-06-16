@@ -86,7 +86,7 @@ That's it! You now have an AI agent with file system capabilities.
 
 Choose your path:
 
-- **🚀 New to Saiki?** Start with [Getting Started](./getting-started) for a quick introduction
+- **🚀 New to Saiki?** Start with [Getting Started](../../getting-started/intro) for a quick introduction
 - **⚡ Want to build something now?** Jump to [Building Applications](./building-applications) for real examples
 - **🎯 Need production patterns?** Go straight to [Advanced Patterns](./advanced-patterns)
 - **🤖 Building multi-agent systems?** Check out [Multi-Agent Systems](./multi-agent-systems) for collaboration patterns
