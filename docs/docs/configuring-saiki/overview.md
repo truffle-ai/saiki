@@ -11,8 +11,6 @@ This guide walks through all the different features you can customize, and the e
 
 We chose `yml` instead of the more popular `json` because of its support for comments (which we find super useful!), and better parsing libraries.
 
-One of our core tenets is that for most new features we add, we will add a configuration entry for it to allow users to use it easily.
-
 ## Where to Place Your Config
 
 By default, Saiki uses a configuration file named `configuration/saiki.yml`. You can also specify a custom config path using the CLI:
