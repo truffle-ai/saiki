@@ -2,95 +2,350 @@
 sidebar_position: 1
 ---
 
-# Introduction
+# Building Applications
 
-Ready to build AI-powered applications? This comprehensive guide will take you from zero to shipping your first Saiki-powered app. We'll start simple and build your understanding step by step.
+Now let's build something useful. We'll create three types of applications, each building on what you've learned.
 
-## What You'll Learn
+## Application 1: Smart File Organizer
 
-This guide is structured to take you through the entire journey of building with Saiki:
-
-### [Getting Started](./getting-started)
-Your first 5 minutes with Saiki - get up and running quickly:
-- Create your first project
-- Set up API keys
-- Run your first AI agent
-- Understand the basic concepts
-
-### [Building Applications](./building-applications)
-Learn to build real-world applications:
-- Smart file organizer
-- Interactive code helper
-- Web API service
-- Understanding the Saiki philosophy
-
-### [Advanced Patterns](./advanced-patterns)
-Production-ready patterns and best practices:
-- Specialized agents
-- Error handling strategies
-- Event-driven architecture
-- Performance optimization
-
-### [Multi-Agent Systems](./multi-agent-systems)
-Build collaborative systems where agents work together:
-- Inter-agent communication with MCP
-- Setting up multiple specialized agents
-- Agent orchestration patterns
-- Real-world multi-agent examples
-
-### [What's Next](./whats-next)
-Resources and guidance for continued learning:
-- Next steps in your journey
-- Community resources
-- Pro tips and best practices
-
-## Prerequisites
-
-Before you start, make sure you have:
-
-- **Node.js 18+** installed
-- **An API key** from one of the [supported LLM providers](../configuring-saiki/llm/)
-- **Basic TypeScript/JavaScript** knowledge
-- **A code editor** (VS Code recommended)
-
-## The Saiki Philosophy
-
-Saiki follows a **configuration-first approach**. Instead of writing complex code to integrate AI capabilities, you:
-
-1. **Configure capabilities** through YAML files
-2. **Define behavior** with system prompts
-3. **Connect tools** via MCP servers
-4. **Build applications** with simple API calls
-
-This approach means you can focus on **what your AI should do**, not **how to make it work**.
-
-## Quick Example
-
-Here's a complete AI agent in just a few lines:
+Let's build an agent that can organize messy directories:
 
 ```typescript
+// file-organizer.ts
+import 'dotenv/config';
 import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
 
-// Load configuration
 const config = await loadConfigFile('./agents/saiki.yml');
-
-// Create agent
 const agent = await createSaikiAgent(config);
 
-// Use it!
-const response = await agent.run("What files are in this directory?");
+console.log("🗂️ Smart File Organizer");
+console.log("I can help organize your files by type, date, or project.\n");
+
+const task = "Look at the current directory and suggest how to organize these files. Create folders if needed.";
+const response = await agent.run(task);
 console.log(response);
 ```
 
-That's it! You now have an AI agent with file system capabilities.
+**What you're learning:** Single-purpose agents with clear objectives work best.
 
-## Ready to Start?
+### Making it Interactive
 
-Choose your path:
+Let's add some user input:
 
-- **🚀 New to Saiki?** Start with [Getting Started](./getting-started) for a quick introduction
-- **⚡ Want to build something now?** Jump to [Building Applications](./building-applications) for real examples
-- **🎯 Need production patterns?** Go straight to [Advanced Patterns](./advanced-patterns)
-- **🤖 Building multi-agent systems?** Check out [Multi-Agent Systems](./multi-agent-systems) for collaboration patterns
+```typescript
+// interactive-organizer.ts
+import 'dotenv/config';
+import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+import readline from 'readline';
 
-Let's build something amazing! 🎉 
+const agent = await createSaikiAgent(
+  await loadConfigFile('./agents/saiki.yml')
+);
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+console.log("🗂️ Smart File Organizer");
+console.log("Commands: 'analyze', 'organize by type', 'organize by date', 'exit'\n");
+
+function askQuestion() {
+  rl.question("What would you like to do? ", async (input) => {
+    if (input.toLowerCase() === 'exit') {
+      rl.close();
+      return;
+    }
+    
+    let task;
+    switch (input.toLowerCase()) {
+      case 'analyze':
+        task = "Analyze the current directory and tell me what files are here.";
+        break;
+      case 'organize by type':
+        task = "Organize files by type (documents, images, code, etc.). Create folders and move files.";
+        break;
+      case 'organize by date':
+        task = "Organize files by creation date. Create year/month folders and move files.";
+        break;
+      default:
+        task = input;
+    }
+    
+    try {
+      const response = await agent.run(task);
+      console.log(`\n🤖 ${response}\n`);
+    } catch (error) {
+      console.log(`❌ Error: ${error.message}\n`);
+    }
+    
+    askQuestion();
+  });
+}
+
+askQuestion();
+```
+
+## Application 2: Interactive Code Helper
+
+Now let's build something interactive for developers:
+
+```typescript
+// code-helper.ts
+import 'dotenv/config';
+import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+import readline from 'readline';
+
+const agent = await createSaikiAgent(
+  await loadConfigFile('./agents/saiki.yml')
+);
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+console.log("💻 Your Code Helper is ready!");
+console.log("Ask me about code, files, or type 'exit' to quit.\n");
+
+function askQuestion() {
+  rl.question("You: ", async (input) => {
+    if (input.toLowerCase() === 'exit') {
+      rl.close();
+      return;
+    }
+    
+    try {
+      const response = await agent.run(input);
+      console.log(`\n🤖 ${response}\n`);
+    } catch (error) {
+      console.log(`❌ Error: ${error.message}\n`);
+    }
+    
+    askQuestion();
+  });
+}
+
+askQuestion();
+```
+
+**What you're learning:** Adding interaction is just a few lines of code. The agent handles the complexity.
+
+### Specialized Code Helper Configuration
+
+Create a specialized configuration for code assistance:
+
+```yaml
+# agents/code-helper.yml
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
+llm:
+  provider: anthropic
+  model: claude-4-sonnet-20250514
+  apiKey: $ANTHROPIC_API_KEY
+  systemPrompt: |
+    You are a senior software engineer and code reviewer.
+    
+    Your expertise includes:
+    - Code review and best practices
+    - Debugging and troubleshooting
+    - Architecture and design patterns
+    - Security considerations
+    - Performance optimization
+    
+    When helping with code:
+    1. Read and understand the codebase structure first
+    2. Provide specific, actionable feedback
+    3. Explain your reasoning
+    4. Suggest improvements with examples
+    5. Consider security and performance implications
+    
+    Use the filesystem tools to examine code files when needed.
+```
+
+## Application 3: Web API Service
+
+Ready for something more advanced? Let's create a web service:
+
+```typescript
+// web-service.ts
+import express from 'express';
+import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+
+const app = express();
+app.use(express.json());
+
+// Initialize our agent once
+const agent = await createSaikiAgent(
+  await loadConfigFile('./agents/saiki.yml')
+);
+
+// Simple chat endpoint
+app.post('/chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+    const response = await agent.run(message);
+    
+    res.json({ 
+      success: true, 
+      response,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', agent: 'ready' });
+});
+
+// File analysis endpoint
+app.post('/analyze', async (req, res) => {
+  try {
+    const { path = '.' } = req.body;
+    const response = await agent.run(`Analyze the files in ${path} and provide a summary.`);
+    
+    res.json({
+      success: true,
+      analysis: response,
+      path,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.listen(3000, () => {
+  console.log('🚀 Saiki web service running on http://localhost:3000');
+  console.log('Endpoints:');
+  console.log('  POST /chat - Chat with the agent');
+  console.log('  POST /analyze - Analyze files');
+  console.log('  GET /health - Health check');
+});
+```
+
+**What you're learning:** The same agent works everywhere - CLI, web, mobile, anywhere Node.js runs.
+
+### Testing Your Web Service
+
+Test it with curl:
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Chat with the agent
+curl -X POST http://localhost:3000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What files are in the current directory?"}'
+
+# Analyze files
+curl -X POST http://localhost:3000/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"path": "."}'
+```
+
+## Key Patterns You've Learned
+
+### 1. Single Purpose Agents
+Each application has a clear, focused purpose:
+- **File Organizer**: Manages file organization
+- **Code Helper**: Assists with development tasks
+- **Web Service**: Provides API access to agent capabilities
+
+### 2. Configuration Over Code
+Notice how we didn't write complex AI integration code. Instead:
+- **Configure capabilities** in YAML
+- **Use simple API calls** to interact
+- **Let Saiki handle** the complexity
+
+### 3. Consistent API
+The same `agent.run()` call works in:
+- **Command line tools**
+- **Interactive applications**
+- **Web services**
+- **Any Node.js environment**
+
+### 4. Error Handling
+Always wrap agent calls in try-catch blocks:
+```typescript
+try {
+  const response = await agent.run(message);
+  // Handle success
+} catch (error) {
+  // Handle errors gracefully
+}
+```
+
+## Customizing for Your Use Case
+
+### Environment-Specific Configurations
+
+**Development**
+```yaml
+llm:
+  provider: openai
+  model: gpt-4.1-mini  # Faster, cheaper for dev
+  apiKey: $OPENAI_API_KEY
+```
+
+**Production**
+```yaml
+llm:
+  provider: openai
+  model: gpt-4.1  # More capable for production
+  apiKey: $OPENAI_API_KEY
+  temperature: 0.3  # More consistent responses
+```
+
+### Adding More Capabilities
+
+Add new tools by including more MCP servers:
+
+```yaml
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+  
+  puppeteer:
+    type: stdio
+    command: npx
+    args: ["-y", "@truffle-ai/puppeteer-server"]
+    
+  # Add more servers for additional capabilities
+```
+
+## What You've Built
+
+You now have three working applications that demonstrate:
+- ✅ **File management** with AI assistance
+- ✅ **Interactive development** tools
+- ✅ **Web API** integration
+- ✅ **Error handling** and user experience
+- ✅ **Flexible configuration** for different environments
+
+## Next Steps
+
+Ready to take it to the next level?
+
+- **Learn advanced patterns**: Check out [Advanced Patterns](./advanced-patterns) for production-ready techniques
+- **Add more tools**: Explore [MCP servers](../configuring-saiki/mcpServers) for additional capabilities
+- **Deploy your service**: See the [deployment guide](../user-guide/deployment) for production hosting
+- **Join the community**: Share your creations in our [Discord](https://discord.gg/GFzWFAAZcm)
+
+You're well on your way to building amazing AI applications! 🎉 

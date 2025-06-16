@@ -1,8 +1,8 @@
 ---
-sidebar_position: 6
+sidebar_position: 3
 ---
 
-# Multi-Agent Systems with MCP
+# Building Multi-Agent Systems
 
 Learn how to build multi-agent systems where Saiki agents can communicate with each other using the Model Context Protocol (MCP). This powerful pattern enables specialized agents to collaborate and delegate tasks to each other.
 
