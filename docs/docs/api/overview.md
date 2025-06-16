@@ -3,10 +3,9 @@ sidebar_position: 1
 title: "Overview"
 ---
 
-## Overview
 Welcome to the Saiki API documentation! This comprehensive guide covers everything you need to integrate Saiki agents into your applications. 
 
-Saiki provides both **REST API** and **WebSocket API** interfaces when running in web mode (`saiki --mode web`). These APIs allow you to:
+Saiki provides both **REST API** and **WebSocket API** interfaces when running as a server (`saiki --mode server`). These APIs allow you to:
 
 - Send messages to AI agents
 - Manage conversation state  
@@ -19,9 +18,7 @@ Saiki provides both **REST API** and **WebSocket API** interfaces when running i
 
 ### 1. Start Saiki in Web Mode
 ```bash
-saiki --mode web
-# or
-npm start -- --mode web
+saiki --mode server
 ```
 
 ### 2. Make Your First API Call
@@ -189,9 +186,8 @@ curl http://localhost:3001/api/health
 
 ## Next Steps
 
-1. **New to APIs?** Start with [Authentication](./authentication) to understand the basics
-2. **Building a web app?** Check out [REST API](./rest-api) endpoints
-3. **Need real-time updates?** Explore [WebSocket API](./websocket-api)
-4. **Want examples?** Browse [SDKs & Examples](./sdks-examples)
+1. **Building a web app?** Check out [REST API](./rest-api) endpoints
+2. **Need real-time updates?** Explore [WebSocket API](./websocket-api)
+3. **Want examples?** Browse [SDKs & Examples](./sdks-examples)
 
 Ready to build something amazing? Let's dive in! 🚀 

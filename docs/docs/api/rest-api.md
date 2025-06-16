@@ -58,7 +58,7 @@ curl -X POST http://localhost:3001/api/message-sync \
 #### Status Codes
 
 | Code | Description |
-|------|-------------|
+|------|----------|
 | `200` | Success - Message processed |
 | `400` | Bad Request - Invalid message format |
 | `429` | Rate Limit - Too many requests |
