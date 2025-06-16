@@ -4,34 +4,21 @@ sidebar_position: 1
 
 # What is an AI Agent?
 
-An **AI agent** is an autonomous software entity that can perceive its environment, reason about what it observes, and take actions to achieve specific goals—often using artificial intelligence techniques.
+An **AI Agent** is a program that can understand a goal, make a plan, and use a set of tools to execute that plan. Think of it as an autonomous worker that can operate digital tools on your behalf.
+
+At a high level, most AI agents share a common structure:
+
+1.  **Goal:** They are given a high-level objective in natural language (e.g., "summarize this report," "book a flight," "organize my files").
+2.  **Reasoning:** The agent, typically powered by a Large Language Model (LLM), breaks down the goal into a sequence of steps.
+3.  **Tools:** The agent has access to a set of tools (like APIs, web browsers, or file system commands) that it can use to execute the steps.
+4.  **Observation:** After each action, the agent observes the result (e.g., the output of a command, the content of a webpage) and uses that information to decide the next step.
+5.  **Execution:** The agent continues this loop of reasoning, tool use, and observation until the goal is achieved.
 
 ## Key Characteristics
 
-- **Autonomy:** Operates independently, making decisions without constant human intervention.
-- **Perception:** Gathers information from its environment (e.g., via APIs, sensors, or user input).
-- **Reasoning:** Processes information, plans, and makes decisions based on goals and context.
-- **Action:** Executes tasks, commands, or workflows to achieve its objectives.
-- **Learning (optional):** Some agents can adapt and improve over time
+- **Autonomy:** Agents can operate independently to achieve a goal without step-by-step human guidance.
+- **Goal-Oriented:** Their actions are driven by the objective they are trying to achieve.
+- **Tool-Using:** They don't just process information; they take action by using external tools.
+- **Adaptive:** They can react to the results of their actions and adjust their plan accordingly.
 
-## What is Saiki?
-
-Saiki is a framework to help you build customizable, flexible AI Agents.
-
-Saiki AI agents can:
-- Understand natural language instructions from users
-- Select and orchestrate the right tools, apps, or services to fulfill those instructions
-- Automate complex workflows by chaining together multiple actions
-
-**Example:**
-> "Summarize my latest emails and send the highlights to Slack."
-
-A Saiki AI agent will:
-1. Parse your request
-2. Connect to your email and Slack services
-3. Summarize the emails
-4. Send the summary to Slack—all automatically
-
-## Why AI Agents Matter
-
-AI agents make it possible to automate tasks that would otherwise require manual effort or custom scripting. They are the foundation for building intelligent, user-friendly experiences. We think that we are going to be seeing a lot more AI Agents in the coming years! 
+AI agents represent a shift from simple instruction-following programs to more dynamic, goal-oriented systems that can navigate complex digital environments. 
