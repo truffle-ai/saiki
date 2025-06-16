@@ -201,7 +201,7 @@ const config: Config = {
                     items: [
                         {
                             label: 'Website',
-                            href: 'https://truffle.ai',
+                            href: 'https://trytruffle.ai',
                         },
                         {
                             label: 'GitHub',
@@ -209,11 +209,11 @@ const config: Config = {
                         },
                         {
                             label: 'Privacy Policy',
-                            href: 'https://truffle.ai/privacy',
+                            href: 'https://www.trytruffle.ai/privacy',
                         },
                         {
                             label: 'Terms of Service',
-                            href: 'https://truffle.ai/terms',
+                            href: 'https://trytruffle.ai/terms',
                         },
                     ],
                 },
