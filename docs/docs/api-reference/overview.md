@@ -39,8 +39,7 @@ ws.send(JSON.stringify({
 
 ## API Sections
 
-### [Authentication](./authentication)
-Learn about API authentication, rate limiting, and security considerations.
+
 
 ### [REST API](./rest-api)
 Complete reference for all HTTP endpoints:
@@ -63,12 +62,7 @@ Code examples and SDKs for popular languages:
 - cURL examples
 - Integration patterns
 
-### [Error Handling](./error-handling)
-Understanding and handling API errors:
-- Error codes
-- Error responses
-- Retry strategies
-- Debugging tips
+
 
 ## Key Features
 

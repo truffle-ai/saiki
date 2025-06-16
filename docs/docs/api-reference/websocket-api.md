@@ -713,4 +713,4 @@ class ThrottledClient {
 
 - **Need HTTP endpoints?** Check out [REST API](./rest-api)
 - **Want code examples?** Browse [SDKs & Examples](./sdks-examples)
-- **Having issues?** See [Error Handling](./error-handling) 
+ 

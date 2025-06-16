@@ -52,7 +52,7 @@ This allows you to configure saiki CLI to use a different AI agent
 saiki --config-file <path_to_agent_config_file>
 ```
 
-Check [Configuration Guide](../configuring-saiki/overview.md) to understand more about saiki config files
+Check [Configuration Guide](./configuring-saiki/overview) to understand more about saiki config files
 
 #### **Run a specific command with Saiki CLI:**
 
@@ -129,7 +129,7 @@ Add saiki into an existing typescript project
 saiki init-app
 ```
 
-Check [Building with Saiki Guide](../building-with-saiki/) for more information!
+Check [Building with Saiki Guide](../tutorials/building-with-saiki/) for more information!
 
 ## Coming soon!
 

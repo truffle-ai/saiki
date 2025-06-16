@@ -49,7 +49,7 @@ Resources and guidance for continued learning:
 Before you start, make sure you have:
 
 - **Node.js 18+** installed
-- **An API key** from one of the [supported LLM providers](../configuring-saiki/llm/)
+- **An API key** from one of the [supported LLM providers](../../guides/configuring-saiki/llm/)
 - **Basic TypeScript/JavaScript** knowledge
 - **A code editor** (VS Code recommended)
 
