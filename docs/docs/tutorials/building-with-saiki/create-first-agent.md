@@ -146,7 +146,7 @@ npm install -g ts-node
 If you run into issues:
 1. Check the [troubleshooting section](../../guides/configuring-saiki/llm/providers#troubleshooting) in the providers guide
 2. Join our [Discord community](https://discord.gg/GFzWFAAZcm) for help
-3. Look at the [examples repository](../../examples-demos/) for working code
+3. Look at the [examples repository](../../examples-demos/email-slack) for working code
 
 ## What You've Learned
 

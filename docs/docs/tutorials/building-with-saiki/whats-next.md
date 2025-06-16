@@ -73,14 +73,14 @@ Connect with other developers building AI applications:
 ### Explore Examples
 See what others have built and get inspiration:
 
-- **[Examples Repository](../../examples-demos/)** - Working code you can run
+- **[Examples Repository](../../examples-demos/email-slack)** - Working code you can run
 - **Community showcase** in our Discord
 - **Blog posts** and tutorials from the community
 
 ### Read the Advanced Docs
 Dive deeper into Saiki's capabilities:
 
-- **[API Reference](../../api-reference/)** - Complete API documentation
+- **[API Reference](../../api-reference/overview)** - Complete API documentation
 - **[Architecture Overview](../../architecture/overview)** - How Saiki works under the hood
 - **[Contributing Guide](https://github.com/truffle-ai/saiki/blob/main/CONTRIBUTING.md)** - Help improve Saiki
 

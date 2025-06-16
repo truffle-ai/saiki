@@ -139,16 +139,16 @@ const config: Config = {
                         // Note: User updated this link, ensure it's correct after folder moves
                         {
                             label: 'Building with Saiki',
-                            to: '/docs/building-with-saiki',
+                            to: '/docs/tutorials/building-with-saiki/introduction',
                         },
                         {
                             label: 'LLM Providers',
-                            to: '/docs/configuring-saiki/llm/providers',
+                            to: '/docs/guides/configuring-saiki/llm/providers',
                         },
                         // Note: This link will need to be updated after folder moves
                         {
                             label: 'API Reference',
-                            to: '/docs/api',
+                            to: '/docs/api-reference/overview',
                         },
                     ],
                 },
@@ -184,11 +184,11 @@ const config: Config = {
                         */
                         {
                             label: 'Examples',
-                            to: '/docs/getting-started/examples-demos',
+                            to: '/docs/examples-demos/email-slack',
                         },
                         {
                             label: 'Contributing',
-                            to: '/docs/contribution-guide/overview',
+                            href: 'https://github.com/truffle-ai/saiki/blob/main/CONTRIBUTING.md',
                         },
                         {
                             label: 'Changelog',
