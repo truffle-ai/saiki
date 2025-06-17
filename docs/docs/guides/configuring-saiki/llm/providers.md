@@ -247,5 +247,5 @@ apiKey: $OPENAI_API_KEY  # Not: OPENAI_API_KEY
 ## Next Steps
 
 - **Configure your chosen provider**: Use the [Configuration Reference](./configuration) for detailed setup
-- **Start building**: Head to [Building with Saiki](../../building-with-saiki/) to create your first agent
+- **Start building**: Head to [Building with Saiki](../../../tutorials/building-with-saiki/introduction) to create your first agent
 - **Add tools**: Learn about [MCP Server Configuration](../mcpServers) to give your agent capabilities 

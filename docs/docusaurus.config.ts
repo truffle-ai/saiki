@@ -146,7 +146,7 @@ const config: Config = {
                     items: [
                         {
                             label: 'Examples',
-                            to: '/docs/getting-started/examples-demos',
+                            to: '/docs/examples-demos/email-slack',
                         },
                         {
                             label: 'Contributing',
@@ -163,7 +163,7 @@ const config: Config = {
                     items: [
                         {
                             label: 'Website',
-                            href: 'https://truffle.ai',
+                            href: 'https://trytruffle.ai',
                         },
                         {
                             label: 'GitHub',
@@ -171,11 +171,11 @@ const config: Config = {
                         },
                         {
                             label: 'Privacy Policy',
-                            href: 'https://truffle.ai/privacy',
+                            href: 'https://trytruffle.ai/privacy',
                         },
                         {
                             label: 'Terms of Service',
-                            href: 'https://truffle.ai/terms',
+                            href: 'https://trytruffle.ai/terms',
                         },
                     ],
                 },

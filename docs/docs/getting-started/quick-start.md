@@ -54,11 +54,21 @@ saiki
 ```
 This will start a chat session with your agent directly in your terminal. You've now successfully built and run your first Saiki agent!
 
+## Run agent as a server
+
+To run a Saiki agent as a server, use the following command:
+
+```bash
+saiki --mode server
+```
+
+You can now talk to your agent via REST or WebSocket APIs.
+
+Check out the [API Reference](../api-reference/overview) for more details.
+
 ## Next Steps
 
-You've just scratched the surface. Here's where to go next:
-
-- **Dive Deeper into the CLI:** Explore all the available commands in the [User Guide](../guides/user-guide/).
-- **Customize Your Agent:** Learn how to edit your `saiki.yml` in the [Configuring Saiki](../guides/configuring-saiki/) guide.
-- **Understand the Concepts:** Get a firmer grasp on how Saiki works by reading about the [Core Concepts](../concepts/agents-vs-workflows).
-- **Follow a Detailed Tutorial:** Build a more advanced agent in the [First Agent Tutorial](./first-agent-tutorial). 
+- **Learn the Basics:** Check out our [CLI guide](../guides/cli) for more advanced usage
+- **Configure Your Agent:** See [Configuration](../guides/configuring-saiki/overview) to customize your setup
+- **Add Tools:** Learn about [MCP Servers](../guides/configuring-saiki/mcpServers) to enhance your agent's capabilities
+- **Choose Your LLM:** Explore [LLM Providers](../guides/configuring-saiki/llm/providers) for all supported models 

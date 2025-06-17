@@ -1,5 +1,6 @@
 ---
 sidebar_position: 4
+sidebar_label: "What are Tools?"
 ---
 
 # Tools
@@ -12,8 +13,8 @@ sidebar_position: 4
 
 AI agents are powerful because they can go beyond language understanding—they can take real actions in the world. Tools are the bridge between the agent's reasoning and real-world effects.
 
-### How does Saiki use Tools
-Saiki uses tools from MCP servers - MCP servers define the tools, saiki uses them
+### How do Saiki Agents use Tools?
+Saiki agents use tools from MCP servers - MCP servers define the tools, saiki uses them.
 
 ### Examples of Tools in Saiki
 
