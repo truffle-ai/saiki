@@ -40,6 +40,11 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
         for (let i = 0; i < history.length; i++) {
             const msg = history[i];
 
+            // Skip null/undefined messages
+            if (!msg) {
+                continue;
+            }
+
             // Skip system messages
             if (msg.role === 'system') continue;
 

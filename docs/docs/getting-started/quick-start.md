@@ -24,7 +24,7 @@ Start Saiki in interactive mode:
 saiki
 ```
 
-This opens an interactive terminal where you can chat with your AI agent using the default configuration.
+This opens an interactive terminal where you can chat with the default Saiki agent using the default configuration.
 
 ### Single Commands
 
@@ -56,9 +56,21 @@ The web playground provides an interactive way to:
 - Try out different LLMs
 - Save your preferred combinations as AI agents
 
+## Run agent as a server
+
+To run a Saiki agent as a server, use the following command:
+
+```bash
+saiki --mode server
+```
+
+You can now talk to your agent via REST or WebSocket APIs.
+
+Check out the [API Reference](../api-reference/overview) for more details.
+
 ## Next Steps
 
-- **Learn the Basics:** Check out our [CLI guide](../user-guide/cli) for more advanced usage
-- **Configure Your Agent:** See [Configuration](../configuring-saiki/configuration) to customize your setup
-- **Add Tools:** Learn about [MCP Servers](../configuring-saiki/mcpServers) to enhance your agent's capabilities
-- **Choose Your LLM:** Explore [LLM Providers](../configuring-saiki/llm/providers) for all supported models 
+- **Learn the Basics:** Check out our [CLI guide](../guides/cli) for more advanced usage
+- **Configure Your Agent:** See [Configuration](../guides/configuring-saiki/overview) to customize your setup
+- **Add Tools:** Learn about [MCP Servers](../guides/configuring-saiki/mcpServers) to enhance your agent's capabilities
+- **Choose Your LLM:** Explore [LLM Providers](../guides/configuring-saiki/llm/providers) for all supported models 

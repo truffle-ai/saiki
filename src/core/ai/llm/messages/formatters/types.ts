@@ -31,4 +31,12 @@ export interface IMessageFormatter {
      * @returns The formatted system prompt or null/undefined if not needed
      */
     formatSystemPrompt?(systemPrompt: string | null): string | null | undefined;
+
+    /**
+     * Optional method for parsing streaming LLM responses into InternalMessage objects.
+     *
+     * @param response The streaming response from the LLM provider
+     * @returns Promise that resolves to an array of InternalMessage objects
+     */
+    parseStreamResponse?(response: any): Promise<InternalMessage[]>;
 }

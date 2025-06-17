@@ -1,28 +1,30 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { MCPClientManager } from '../../../client/manager.js';
+import { MCPManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
 import { EventEmitter } from 'events';
 import { MessageManager } from '../messages/manager.js';
-import { getMaxTokensForModel } from '../registry.js';
+import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
+import type { SessionEventBus } from '../../../events/index.js';
 
 /**
  * Anthropic implementation of LLMService
+ * Not actively maintained, so might be buggy or outdated
  */
 export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
-    private clientManager: MCPClientManager;
+    private clientManager: MCPManager;
     private messageManager: MessageManager;
-    private eventEmitter: EventEmitter;
+    private sessionEventBus: SessionEventBus;
     private maxIterations: number;
 
     constructor(
-        clientManager: MCPClientManager,
+        clientManager: MCPManager,
         anthropic: Anthropic,
-        agentEventBus: EventEmitter,
+        sessionEventBus: SessionEventBus,
         messageManager: MessageManager,
         model: string,
         maxIterations: number = 10
@@ -31,7 +33,7 @@ export class AnthropicService implements ILLMService {
         this.model = model;
         this.anthropic = anthropic;
         this.clientManager = clientManager;
-        this.eventEmitter = agentEventBus;
+        this.sessionEventBus = sessionEventBus;
         this.messageManager = messageManager;
     }
 
@@ -39,9 +41,13 @@ export class AnthropicService implements ILLMService {
         return this.clientManager.getAllTools();
     }
 
-    async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
+    async completeTask(
+        userInput: string,
+        imageData?: ImageData,
+        stream?: boolean
+    ): Promise<string> {
         // Add user message with optional image data
-        this.messageManager.addUserMessage(userInput, imageData);
+        await this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();
@@ -50,34 +56,41 @@ export class AnthropicService implements ILLMService {
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
         // Notify thinking
-        this.eventEmitter.emit('llmservice:thinking');
+        this.sessionEventBus.emit('llmservice:thinking');
 
         let iterationCount = 0;
         let fullResponse = '';
+        let totalTokens = 0;
 
         try {
             while (iterationCount < this.maxIterations) {
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
 
-                // Compute the system prompt and pass it to message manager to avoid duplicate computation
+                // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = { clientManager: this.clientManager };
+                const { formattedMessages, systemPrompt, tokensUsed } =
+                    await this.messageManager.getFormattedMessagesWithCompression(context);
+
+                // For Anthropic, we need to get the formatted system prompt separately
                 const formattedSystemPrompt =
                     await this.messageManager.getFormattedSystemPrompt(context);
-                const messages = await this.messageManager.getFormattedMessages(
-                    context,
-                    formattedSystemPrompt
-                );
 
-                logger.debug(`Messages: ${JSON.stringify(messages, null, 2)}`);
+                logger.debug(`Messages: ${JSON.stringify(formattedMessages, null, 2)}`);
+                logger.debug(`Estimated tokens being sent to Anthropic: ${tokensUsed}`);
 
                 const response = await this.anthropic.messages.create({
                     model: this.model,
-                    messages: messages,
+                    messages: formattedMessages,
                     system: formattedSystemPrompt,
                     tools: formattedTools,
                     max_tokens: 4096,
                 });
+
+                // Track token usage
+                if (response.usage) {
+                    totalTokens += response.usage.input_tokens + response.usage.output_tokens;
+                }
 
                 // Extract text content and tool uses
                 let textContent = '';
@@ -104,16 +117,26 @@ export class AnthropicService implements ILLMService {
                     }));
 
                     // Add assistant message with all tool calls
-                    this.messageManager.addAssistantMessage(textContent, formattedToolCalls);
+                    await this.messageManager.addAssistantMessage(textContent, formattedToolCalls);
                 } else {
                     // Add regular assistant message
-                    this.messageManager.addAssistantMessage(textContent);
+                    await this.messageManager.addAssistantMessage(textContent);
                 }
 
                 // If no tools were used, we're done
                 if (toolUses.length === 0) {
                     fullResponse += textContent;
-                    this.eventEmitter.emit('llmservice:response', fullResponse);
+
+                    // Update MessageManager with actual token count for hybrid approach
+                    if (totalTokens > 0) {
+                        this.messageManager.updateActualTokenCount(totalTokens);
+                    }
+
+                    this.sessionEventBus.emit('llmservice:response', {
+                        content: fullResponse,
+                        model: this.model,
+                        tokenCount: totalTokens > 0 ? totalTokens : undefined,
+                    });
                     return fullResponse;
                 }
 
@@ -129,40 +152,62 @@ export class AnthropicService implements ILLMService {
                     const toolUseId = toolUse.id;
 
                     // Notify tool call
-                    this.eventEmitter.emit('llmservice:toolCall', toolName, args);
+                    this.sessionEventBus.emit('llmservice:toolCall', {
+                        toolName,
+                        args,
+                        callId: toolUseId,
+                    });
 
                     // Execute tool
                     try {
                         const result = await this.clientManager.executeTool(toolName, args);
 
                         // Add tool result to message manager
-                        this.messageManager.addToolResult(toolUseId, toolName, result);
+                        await this.messageManager.addToolResult(toolUseId, toolName, result);
 
                         // Notify tool result
-                        this.eventEmitter.emit('llmservice:toolResult', toolName, result);
+                        this.sessionEventBus.emit('llmservice:toolResult', {
+                            toolName,
+                            result,
+                            callId: toolUseId,
+                            success: true,
+                        });
                     } catch (error) {
                         // Handle tool execution error
                         const errorMessage = error instanceof Error ? error.message : String(error);
                         logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
 
                         // Add error as tool result
-                        this.messageManager.addToolResult(toolUseId, toolName, {
+                        await this.messageManager.addToolResult(toolUseId, toolName, {
                             error: errorMessage,
                         });
 
-                        this.eventEmitter.emit('llmservice:toolResult', toolName, {
-                            error: errorMessage,
+                        this.sessionEventBus.emit('llmservice:toolResult', {
+                            toolName,
+                            result: { error: errorMessage },
+                            callId: toolUseId,
+                            success: false,
                         });
                     }
                 }
 
                 // Notify thinking for next iteration
-                this.eventEmitter.emit('llmservice:thinking');
+                this.sessionEventBus.emit('llmservice:thinking');
             }
 
             // If we reached max iterations
             logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
-            this.eventEmitter.emit('llmservice:response', fullResponse);
+
+            // Update MessageManager with actual token count for hybrid approach
+            if (totalTokens > 0) {
+                this.messageManager.updateActualTokenCount(totalTokens);
+            }
+
+            this.sessionEventBus.emit('llmservice:response', {
+                content: fullResponse,
+                model: this.model,
+                tokenCount: totalTokens > 0 ? totalTokens : undefined,
+            });
             return (
                 fullResponse ||
                 'Reached maximum number of tool call iterations without a final response.'
@@ -172,18 +217,13 @@ export class AnthropicService implements ILLMService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error in Anthropic service API call: ${errorMessage}`, { error });
 
-            this.eventEmitter.emit(
-                'llmservice:error',
-                error instanceof Error ? error : new Error(errorMessage)
-            );
+            this.sessionEventBus.emit('llmservice:error', {
+                error: error instanceof Error ? error : new Error(errorMessage),
+                context: 'Anthropic API call',
+                recoverable: false,
+            });
             return `Error processing request: ${errorMessage}`;
         }
-    }
-
-    resetConversation(): void {
-        // Reset the message manager
-        this.messageManager.reset();
-        this.eventEmitter.emit('llmservice:conversationReset');
     }
 
     /**
@@ -191,15 +231,15 @@ export class AnthropicService implements ILLMService {
      * @returns Configuration object with provider and model information
      */
     getConfig(): LLMServiceConfig {
-        const configuredMaxTokens = this.messageManager.getMaxTokens();
-        const modelMaxTokens = getMaxTokensForModel('anthropic', this.model);
+        const configuredMaxInputTokens = this.messageManager.getMaxInputTokens();
+        const modelMaxInputTokens = getMaxInputTokensForModel('anthropic', this.model);
 
         return {
             router: 'in-built',
             provider: 'anthropic',
             model: this.model,
-            configuredMaxTokens: configuredMaxTokens,
-            modelMaxTokens,
+            configuredMaxInputTokens: configuredMaxInputTokens,
+            modelMaxInputTokens: modelMaxInputTokens,
         };
     }
 

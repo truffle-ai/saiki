@@ -7,8 +7,9 @@ import InputArea from './InputArea';
 import ConnectServerModal from './ConnectServerModal';
 import ServerRegistryModal from './ServerRegistryModal';
 import ServersPanel from './ServersPanel';
+import SessionPanel from './SessionPanel';
 import { Button } from "./ui/button";
-import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal } from "lucide-react";
+import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2, RefreshCw } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
@@ -22,14 +23,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 
 export default function ChatApp() {
-  const { messages, sendMessage } = useChatContext();
+  const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState, returnToWelcome } = useChatContext();
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [isServerRegistryOpen, setServerRegistryOpen] = useState(false);
   const [isServersPanelOpen, setServersPanelOpen] = useState(false);
+  const [isSessionsPanelOpen, setSessionsPanelOpen] = useState(false);
   const [isExportOpen, setExportOpen] = useState(false);
   const [exportName, setExportName] = useState('saiki-config');
   const [exportError, setExportError] = useState<string | null>(null);
@@ -40,9 +43,20 @@ export default function ChatApp() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
+  // Conversation management states
+  const [isResetDialogOpen, setResetDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     if (isExportOpen) {
-      fetch('/api/config.yaml')
+      // Include current session ID in config export if available
+      const exportUrl = currentSessionId 
+        ? `/api/config.yaml?sessionId=${currentSessionId}`
+        : '/api/config.yaml';
+      
+      fetch(exportUrl)
         .then((res) => {
           if (!res.ok) throw new Error('Failed to fetch configuration');
           return res.text();
@@ -60,18 +74,27 @@ export default function ChatApp() {
       setExportError(null);
       setCopySuccess(false);
     }
-  }, [isExportOpen]);
+  }, [isExportOpen, currentSessionId]);
 
   const handleDownload = useCallback(async () => {
     try {
-      const res = await fetch('/api/config.yaml');
+      const exportUrl = currentSessionId 
+        ? `/api/config.yaml?sessionId=${currentSessionId}`
+        : '/api/config.yaml';
+      
+      const res = await fetch(exportUrl);
       if (!res.ok) throw new Error('Failed to fetch configuration');
       const yamlText = await res.text();
       const blob = new Blob([yamlText], { type: 'application/x-yaml' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${exportName}.yml`;
+      
+      const fileName = currentSessionId
+        ? `${exportName}-${currentSessionId}.yml`
+        : `${exportName}.yml`;
+      link.download = fileName;
+      
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -82,11 +105,15 @@ export default function ChatApp() {
       console.error('Export failed:', err);
       setExportError(err instanceof Error ? err.message : 'Export failed');
     }
-  }, [exportName]);
+  }, [exportName, currentSessionId]);
 
   const handleCopy = useCallback(async () => {
     try {
-      const res = await fetch('/api/config.yaml');
+      const exportUrl = currentSessionId 
+        ? `/api/config.yaml?sessionId=${currentSessionId}`
+        : '/api/config.yaml';
+      
+      const res = await fetch(exportUrl);
       if (!res.ok) throw new Error('Failed to fetch configuration');
       const yamlText = await res.text();
       await navigator.clipboard.writeText(yamlText);
@@ -97,7 +124,7 @@ export default function ChatApp() {
       console.error('Copy failed:', err);
       setExportError(err instanceof Error ? err.message : 'Copy failed');
     }
-  }, [setCopySuccess, setExportError]);
+  }, [setCopySuccess, setExportError, currentSessionId]);
 
   const handleInstallServer = useCallback(async (entry: any) => {
     // This will be implemented to install servers from the registry
@@ -116,6 +143,71 @@ export default function ChatApp() {
       setIsSendingMessage(false);
     }
   }, [sendMessage]);
+
+  const handleSessionChange = useCallback(async (sessionId: string) => {
+    try {
+      await switchSession(sessionId);
+      // Close sessions panel after switching (for mobile experience)
+      setSessionsPanelOpen(false);
+    } catch (error) {
+      console.error('Error switching session:', error);
+    }
+  }, [switchSession]);
+
+  const handleResetConversation = useCallback(async () => {
+    if (!currentSessionId) return;
+    
+    setIsResetting(true);
+    try {
+      const response = await fetch(`/api/sessions/${currentSessionId}/reset`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reset conversation');
+      }
+
+      // Refresh the session to clear messages in the UI
+      await switchSession(currentSessionId);
+      setResetDialogOpen(false);
+    } catch (error) {
+      console.error('Error resetting conversation:', error);
+      // You might want to show a toast notification here
+    } finally {
+      setIsResetting(false);
+    }
+  }, [currentSessionId, switchSession]);
+
+  const handleDeleteConversation = useCallback(async () => {
+    if (!currentSessionId) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/sessions/${currentSessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete conversation');
+      }
+
+      // After deleting, return to welcome state
+      // Don't switch to any specific session, let user start fresh
+      setDeleteDialogOpen(false);
+      returnToWelcome();
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      // You might want to show a toast notification here
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [currentSessionId, returnToWelcome]);
 
   const quickActions = [
     {
@@ -147,18 +239,23 @@ export default function ChatApp() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + J to toggle tools panel
+      // Ctrl/Cmd + J to toggle sessions panel
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
+        e.preventDefault();
+        setSessionsPanelOpen(prev => !prev);
+      }
+      // Ctrl/Cmd + K to toggle tools/servers panel
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'k') {
         e.preventDefault();
         setServersPanelOpen(prev => !prev);
       }
-      // Ctrl/Cmd + Shift + J to open playground
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'j') {
+      // Ctrl/Cmd + L to open playground
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'l') {
         e.preventDefault();
         window.open('/playground', '_blank');
       }
       // Ctrl/Cmd + Shift + E to export config
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'e') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
         e.preventDefault();
         setExportOpen(true);
       }
@@ -170,15 +267,18 @@ export default function ChatApp() {
       // Escape to close panels
       if (e.key === 'Escape') {
         if (isServersPanelOpen) setServersPanelOpen(false);
+        else if (isSessionsPanelOpen) setSessionsPanelOpen(false);
         else if (isServerRegistryOpen) setServerRegistryOpen(false);
         else if (isExportOpen) setExportOpen(false);
         else if (showShortcuts) setShowShortcuts(false);
+        else if (isResetDialogOpen) setResetDialogOpen(false);
+        else if (isDeleteDialogOpen) setDeleteDialogOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts]);
+  }, [isServersPanelOpen, isSessionsPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isResetDialogOpen, isDeleteDialogOpen]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -187,19 +287,41 @@ export default function ChatApp() {
         <header className="shrink-0 border-b border-border/50 bg-background/80 backdrop-blur-xl">
           <div className="flex justify-between items-center px-4 py-3">
             <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3">
                 <div className="flex items-center justify-center w-7 h-7 rounded-lg border border-border/50 text-primary-foreground">
                   <img src="/logo.png" alt="Saiki" className="w-4 h-4" />
                 </div>
                 <h1 className="text-base font-semibold tracking-tight">Saiki</h1>
+              </div>
+              
+              {/* Current Session Indicator - Only show when there's an active session */}
+              {currentSessionId && !isWelcomeState && (
+                <div className="flex items-center space-x-2">
+                  <Badge variant="outline" className="text-xs">
+                    {currentSessionId}
+                  </Badge>
+                </div>
+              )}
             </div>
-          </div>
           
             {/* Minimal Action Bar */}
             <div className="flex items-center space-x-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setSessionsPanelOpen(!isSessionsPanelOpen)}
+                className={cn(
+                  "h-8 px-2 text-xs transition-colors",
+                  isSessionsPanelOpen && "bg-muted"
+                )}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline ml-1.5">Sessions</span>
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
                 onClick={() => setServersPanelOpen(!isServersPanelOpen)}
                 className={cn(
                   "h-8 px-2 text-xs transition-colors",
@@ -208,9 +330,9 @@ export default function ChatApp() {
               >
                 <Server className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline ml-1.5">MCP Servers</span>
-            </Button>
+              </Button>
             
-            <Button 
+              <Button 
                 variant="ghost"
                 size="sm"
                 asChild
@@ -220,34 +342,51 @@ export default function ChatApp() {
                   <Wrench className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline ml-1.5">MCP Playground</span>
                 </Link>
-            </Button>
+              </Button>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  <MoreHorizontal className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setServerRegistryOpen(true)}>
-                  <Server className="h-4 w-4 mr-2" />
-                  Browse MCP Registry
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setExportOpen(true)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Config
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowShortcuts(true)}>
-                  <Keyboard className="h-4 w-4 mr-2" />
-                  Shortcuts
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-                  </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                  >
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setServerRegistryOpen(true)}>
+                    <Server className="h-4 w-4 mr-2" />
+                    Browse MCP Registry
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setExportOpen(true)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Config
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowShortcuts(true)}>
+                    <Keyboard className="h-4 w-4 mr-2" />
+                    Shortcuts
+                  </DropdownMenuItem>
+                  {/* Session Management Actions - Only show when there's an active session */}
+                  {currentSessionId && !isWelcomeState && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setResetDialogOpen(true)}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset Conversation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Conversation
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
         
@@ -255,17 +394,17 @@ export default function ChatApp() {
         <div className="flex-1 flex overflow-hidden">
           {/* Chat Content */}
           <div className="flex-1 flex flex-col">
-            {messages.length === 0 ? (
+            {isWelcomeState || messages.length === 0 ? (
               /* Welcome Screen - Clean Design */
               <div className="flex-1 flex items-center justify-center p-6">
-                <div className="w-full max-w-2xl mx-auto text-center space-y-8">
+                <div className="w-full max-w-md space-y-8">
                   <div className="space-y-4">
                     <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-2xl bg-primary/10 text-primary">
                       <img src="/logo.png" alt="Saiki" className="w-8 h-8" />
-                </div>
+                    </div>
                     <div className="space-y-2">
-                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">Hello, I'm Saiki!</h2>
-                      <p className="text-muted-foreground text-base">
+                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent text-center">Hello, I'm Saiki!</h2>
+                      <p className="text-muted-foreground text-base text-center">
                         Try asking me something or connect new tools to expand what I can do
                       </p>
                     </div>
@@ -273,10 +412,10 @@ export default function ChatApp() {
 
                   {/* Quick Actions Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
-                  {quickActions.map((action, index) => (
-                    <button
-                      key={index}
-                      onClick={action.action}
+                    {quickActions.map((action, index) => (
+                      <button
+                        key={index}
+                        onClick={action.action}
                         className="group p-4 text-left rounded-xl border border-border/50 bg-card hover:bg-muted/50 transition-all duration-200 hover:border-border hover:shadow-minimal"
                       >
                         <div className="flex items-center space-x-3">
@@ -289,14 +428,14 @@ export default function ChatApp() {
                               {action.description}
                             </p>
                           </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 
                   {/* Quick Tips */}
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧J</kbd> for playground</p>
+                  <div className="text-xs text-muted-foreground space-y-1 text-center">
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools/servers, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground</p>
                   </div>
                 </div>
               </div>
@@ -320,6 +459,23 @@ export default function ChatApp() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Sessions Panel - Slide Animation */}
+          <div className={cn(
+            "shrink-0 transition-all duration-300 ease-in-out border-l border-border/50 bg-card",
+            isSessionsPanelOpen ? "w-80" : "w-0 overflow-hidden"
+          )}>
+            {isSessionsPanelOpen && (
+              <SessionPanel
+                isOpen={isSessionsPanelOpen}
+                onClose={() => setSessionsPanelOpen(false)}
+                currentSessionId={currentSessionId}
+                onSessionChange={handleSessionChange}
+                returnToWelcome={returnToWelcome}
+                variant="inline"
+              />
+            )}
           </div>
 
           {/* Servers Panel - Slide Animation */}
@@ -361,6 +517,11 @@ export default function ChatApp() {
               </DialogTitle>
               <DialogDescription>
                 Download your tool configuration for Claude Desktop or other MCP clients
+                {currentSessionId && (
+                  <span className="block mt-1 text-sm text-muted-foreground">
+                    Including session-specific settings for: <span className="font-mono">{currentSessionId}</span>
+                  </span>
+                )}
               </DialogDescription>
             </DialogHeader>
             
@@ -394,7 +555,7 @@ export default function ChatApp() {
                   />
                 </div>
               )}
-        </div>
+            </div>
             
             <DialogFooter>
               <Button variant="outline" onClick={handleCopy} className="flex items-center space-x-2">
@@ -403,6 +564,75 @@ export default function ChatApp() {
               <Button onClick={handleDownload} className="flex items-center space-x-2">
                 <Download className="h-4 w-4" />
                 <span>Download</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Conversation Confirmation Modal */}
+        <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <RefreshCw className="h-5 w-5" />
+                <span>Reset Conversation</span>
+              </DialogTitle>
+              <DialogDescription>
+                This will clear all messages in this conversation while keeping the session active.
+                {currentSessionId && (
+                  <span className="block mt-2 font-medium">
+                    Session: <span className="font-mono">{currentSessionId}</span>
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleResetConversation}
+                disabled={isResetting}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={cn("h-4 w-4", isResetting && "animate-spin")} />
+                <span>{isResetting ? 'Resetting...' : 'Reset Conversation'}</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Conversation Confirmation Modal */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <Trash2 className="h-5 w-5 text-destructive" />
+                <span>Delete Conversation</span>
+              </DialogTitle>
+              <DialogDescription>
+                This will permanently delete this conversation and all its messages. This action cannot be undone.
+                {currentSessionId && (
+                  <span className="block mt-2 font-medium">
+                    Session: <span className="font-mono">{currentSessionId}</span>
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteConversation}
+                disabled={isDeleting}
+                className="flex items-center space-x-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Conversation'}</span>
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -420,18 +650,19 @@ export default function ChatApp() {
             
             <div className="space-y-3">
               {[
-                { key: '⌘ J', desc: 'Toggle tools panel' },
-                { key: '⌘ ⇧ J', desc: 'Open playground' },
-                { key: '⌘ ⇧ E', desc: 'Export config' },
-                { key: '⌘ /', desc: 'Show shortcuts' },
+                { key: '⌘J', desc: 'Toggle sessions panel' },
+                { key: '⌘K', desc: 'Toggle tools panel' },
+                { key: '⌘L', desc: 'Open playground' },
+                { key: '⌘⇧E', desc: 'Export config' },
+                { key: '⌘/', desc: 'Show shortcuts' },
                 { key: 'Esc', desc: 'Close panels' },
               ].map((shortcut, index) => (
                 <div key={index} className="flex justify-between items-center py-1">
                   <span className="text-sm text-muted-foreground">{shortcut.desc}</span>
                   <Badge variant="outline" className="font-mono text-xs">
                     {shortcut.key}
-                </Badge>
-              </div>
+                  </Badge>
+                </div>
               ))}
             </div>
             

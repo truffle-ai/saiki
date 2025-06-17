@@ -23,7 +23,14 @@ build/
 *.swp
 *.swo
 .DS_Store
-.cursor/
+
+# Cursor
+.cursor/mcp.json
+
+## Cursor Task master MCP rules
+.cursor/rules/taskmaster.mdc
+.cursor/rules/dev_workflow.mdc
+.cursor/rules/taskmaster_dev_workflow.mdc
 
 # Logs
 logs/
@@ -38,6 +45,12 @@ logs/
 # Optional eslint cache
 .eslintcache
 
-# Coverage directory
-public/
+# Coverage directory (main public, but allow webui public)
+/public/
+!/src/app/webui/public/
 
+# Test temporary files
+test-temp/
+
+# temporary storage
+.saiki/

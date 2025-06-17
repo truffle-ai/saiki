@@ -4,12 +4,16 @@ sidebar_position: 1
 
 # What is an AI Agent?
 
-An **AI agent** is an autonomous software entity that can perceive its environment, reason about what it observes, and take actions to achieve specific goals—often using artificial intelligence techniques.
+An **AI agent** is an autonomous software entity that can perceive its environment, reason about what it observes, and take actions to achieve specific goals.
+
+AI Agents use LLMs as the backbone to reason about what it observes, and take actions to achieve specific goals.
+
+They use tools to interact with the world, and can use memories to remember what they have done in the past.
 
 ## Key Characteristics
 
 - **Autonomy:** Operates independently, making decisions without constant human intervention.
-- **Perception:** Gathers information from its environment (e.g., via APIs, sensors, or user input).
+- **Perception:** Gathers information from its environment (e.g., via tools, user input, or custom prompts).
 - **Reasoning:** Processes information, plans, and makes decisions based on goals and context.
 - **Action:** Executes tasks, commands, or workflows to achieve its objectives.
 - **Learning (optional):** Some agents can adapt and improve over time
@@ -26,12 +30,17 @@ Saiki AI agents can:
 **Example:**
 > "Summarize my latest emails and send the highlights to Slack."
 
-A Saiki AI agent will:
+A Saiki AI agent hooked up to your email and Slack will:
 1. Parse your request
-2. Connect to your email and Slack services
-3. Summarize the emails
-4. Send the summary to Slack—all automatically
+2. Summarize the emails
+3. Send the summary to Slack — all automatically
 
 ## Why AI Agents Matter
 
-AI agents make it possible to automate tasks that would otherwise require manual effort or custom scripting. They are the foundation for building intelligent, user-friendly experiences. We think that we are going to be seeing a lot more AI Agents in the coming years! 
+Think Jarvis from Iron Man, or TARS from Interstellar.
+
+These AI agents are powerful entities that are extremely helpful in getting things done.
+
+AI agents make it possible to automate tasks that would otherwise require manual effort or custom scripting. They are the foundation for building intelligent, user-friendly experiences. 
+
+We think that we are going to be seeing a lot more AI Agents in the coming years! 

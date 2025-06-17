@@ -1,5 +1,4 @@
 import { LanguageModelV1 } from 'ai';
-import { EventEmitter } from 'events';
 import { ToolSet } from '../../types.js';
 import { ImageData } from '../messages/types.js';
 
@@ -16,10 +15,7 @@ export interface ILLMService {
      * @param imageData Optional image data associated with the user input.
      * @returns A promise that resolves with the final text response from the AI.
      */
-    completeTask(userInput: string, imageData?: ImageData): Promise<string>;
-
-    // Clear conversation history
-    resetConversation(): void;
+    completeTask(userInput: string, imageData?: ImageData, stream?: boolean): Promise<string>;
 
     // Get all available tools
     getAllTools(): Promise<ToolSet>;
@@ -35,7 +31,6 @@ export type LLMServiceConfig = {
     router: string;
     provider: string;
     model: string | LanguageModelV1;
-    configuredMaxTokens?: number | null;
-    modelMaxTokens?: number | null;
-    [key: string]: any;
+    configuredMaxInputTokens?: number | null;
+    modelMaxInputTokens?: number | null;
 };

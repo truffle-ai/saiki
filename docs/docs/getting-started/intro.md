@@ -4,21 +4,21 @@ sidebar_position: 1
 
 # Introduction
 
-<!-- Saiki is an open, modular and extensible AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly, whether that means running a shell command, summarizing a webpage, or calling an API. -->
-
-Saiki is an open-source, modular and extensible framework that lets you build AI Agents and AI powered applications seamlessly. 
+Saiki is an open-source, modular and extensible AI Agent framework that you can use to build AI powered applications seamlessly. 
 
 Why developers choose Saiki:
 
-- **Customizable, Config-Driven Agents**: Create a Saiki agent by creating one config file. Configure your tools, LLM configuration, prompts, context management strategies in one file and re-use that anywhere. 
-- **Feature-rich developer tools**: Saiki has a powerful CLI and web UI playground you can use to build, test and experiment with different AI agents.
-- **First-class MCP support** : Connect to any MCP servers to your Saiki agents to enhance their functionality
-- **Multi-LLM support**: Saiki supports OpenAI, Anthropic, Google and Groq LLMs. Saiki is open
-- **Powerful in-built APIs**: Saiki agents come with powerful in-built APIs - your AI Agent already has most of the functionality you will need. Saiki core library makes it extremely easy to build your own APIs as well.
-- **Use saiki agents in any application**: Saiki agents can be used on telegram, discord, slack, and even as their own MCP servers - all out of the box! 
-- **In-built context management**: Saiki agents have in-built context management to handle the token limits of LLMs. Even this is customizable!
+- **<ins>Customizable, Config-Driven Agents</ins>**: Create a Saiki agent by creating one config file. Configure your tools, LLM configuration, prompts, context management strategies in one file and re-use that anywhere. 
+- **<ins>Feature-rich developer tools</ins>**: Saiki has a powerful CLI and web UI playground you can use to build, test and experiment with different AI agents.
+- **<ins>First-class MCP support</ins>**: Connect any MCP servers to your Saiki agents to enhance their functionality. Saiki supports prompts, resources and tools for all your MCP needs.
+- **<ins>Multi-LLM support</ins>**: Saiki supports OpenAI, Anthropic, Google and Groq LLMs. Use custom models as well! 
+- **<ins>Powerful APIs</ins>**: Saiki agents come with powerful in-built APIs - your AI Agent already has most of the functionality you will need. This includes APIs to change LLMs, connect MCP servers, manage context, start new sessions, configure storage, and more!
+- **<ins>In-built context management</ins>**: Saiki agents have in-built context management to handle the token limits of LLMs. Even this is customizable!
+- **<ins>Long lived agents</ins>**: Saiki agents are designed for long-running tasks and long-lived communications.
+- **<ins>Event driven architecture</ins>**: Saiki agents use an event driven architecture that also allows you to easily integrate agents into your existing systems.
 
 Saiki is the missing natural language layer across your stack. Its powerful in-built features and high customizability means that whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. 
+
 
 ## Ready to Start?
 
@@ -26,13 +26,13 @@ Saiki is the missing natural language layer across your stack. Its powerful in-b
 
 ## Learn More
 
-- **New to AI Agents?** Start with [Basics of AI Agents](../learn/what-is-an-ai-agent.md) to learn the fundamentals
-- **Building Applications?** See the [Building with Saiki Guide](../building-with-saiki/) for patterns and examples
-- **LLM Configuration:** Check out [LLM Providers & Setup Guide](../configuring-saiki/llm/providers) for all supported models
-- **Adding Tools:** Learn about [MCP Server Configuration](../configuring-saiki/mcpServers.md) to enhance your agents
-- **Core Configuration:** Understand [Configuration](../configuring-saiki/configuration.md) for complete setup
-- **System Design:** Explore [Architecture](../architecture/overview.md) for Saiki's high-level design
-- **Get Involved:** See [Contributing Guide](../contribution-guide/overview.md) to help improve Saiki
+- **New to AI Agents?** Start with [Basics of AI Agents](../learn/what-is-an-ai-agent) to learn the fundamentals
+- **Building Applications?** See the [Building with Saiki Guide](../tutorials/building-with-saiki/introduction) for patterns and examples
+- **LLM Configuration:** Check out [LLM Providers & Setup Guide](../guides/configuring-saiki/llm/providers) for all supported models
+- **Adding Tools:** Learn about [MCP Server Configuration](../guides/configuring-saiki/mcpServers) to enhance your agents
+- **Core Configuration:** Understand [Configuration](../guides/configuring-saiki/overview) for complete setup
+- **System Design:** Explore [Architecture](../architecture/overview) for Saiki's high-level design
+- **Get Involved:** See our [Contributing Guide](https://github.com/truffle-ai/saiki/blob/main/CONTRIBUTING.md) to help improve Saiki
 - **Community & Support:** Join our [Discord](https://discord.gg/GFzWFAAZcm) for help and discussions
 
 ### 🤖 LLM-Ready Reference
@@ -104,5 +104,4 @@ saiki "what can you help with?"
 
 ---
 
-Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation!
-Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation!
+Saiki is built by the team at [Truffle AI](https://trytruffle.ai). Join our community and help shape the future of natural language automation!

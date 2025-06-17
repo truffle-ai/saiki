@@ -1,4 +1,4 @@
-import fs from 'fs/promises';
+import { promises as fs } from 'fs';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { AgentConfig } from './schemas.js';
 import { logger } from '../logger/index.js';
@@ -18,6 +18,12 @@ function expandEnvVars(config: any): any {
                 return process.env[v1 || v2] || '';
             }
         );
+
+        // Try to convert numeric strings to numbers
+        if (expanded !== config && /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(expanded.trim())) {
+            return Number(expanded); // handles int, float, sci-notation
+        }
+
         return expanded;
     } else if (Array.isArray(config)) {
         return config.map(expandEnvVars);
@@ -54,8 +60,7 @@ export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
     } catch (error: any) {
         // Include path & cause for better diagnostics
         throw new Error(
-            `Failed to load config file at ${error.path || configPath}: ${error.message}`,
-            { cause: error }
+            `Failed to load config file at ${error.path || configPath}: ${error.message}`
         );
     }
 }
@@ -69,8 +74,7 @@ export async function writeConfigFile(configPath: string, config: AgentConfig) {
         logger.debug(`Wrote saiki config to: ${absolutePath}`);
     } catch (error: any) {
         throw new Error(
-            `Failed to write config file at ${error.path || configPath}: ${error.message}`,
-            { cause: error }
+            `Failed to write config file at ${error.path || configPath}: ${error.message}`
         );
     }
 }

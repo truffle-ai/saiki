@@ -170,15 +170,18 @@ describe('Config Schemas', () => {
             expect(parsed.maxIterations).toBe(50);
         });
 
-        it('applies default providerOptions if not provided', () => {
+        it('handles explicit temperature and maxOutputTokens', () => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
                 apiKey: '123',
+                temperature: 0.7,
+                maxOutputTokens: 4000,
             };
             const parsed = LLMConfigSchema.parse(config);
-            expect(parsed.providerOptions).toEqual({});
+            expect(parsed.temperature).toBe(0.7);
+            expect(parsed.maxOutputTokens).toBe(4000);
         });
 
         it('applies default router if not provided', () => {
@@ -201,23 +204,20 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('accepts valid provider-specific options', () => {
+        it.each([
+            { temperature: -0.1, description: 'below minimum' },
+            { temperature: 1.5, description: 'above maximum' },
+            { temperature: -1, description: 'negative value' },
+            { temperature: 2, description: 'greater than 1' },
+        ])('rejects temperature $description ($temperature)', ({ temperature }) => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
                 systemPrompt: 'Test prompt',
                 apiKey: '123',
-                providerOptions: {
-                    temperature: 0.7,
-                    top_p: 0.9,
-                },
+                temperature,
             };
-            expect(() => LLMConfigSchema.parse(config)).not.toThrow();
-            const parsed = LLMConfigSchema.parse(config);
-            expect(parsed.providerOptions).toEqual({
-                temperature: 0.7,
-                top_p: 0.9,
-            });
+            expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
         it('correctly validates case-insensitive provider names', () => {
@@ -249,59 +249,59 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('accepts if baseURL is set but maxTokens is missing', () => {
+        it('accepts if baseURL is set but maxInputTokens is missing', () => {
             const config = {
                 provider: 'openai',
                 model: 'my-custom-model',
                 systemPrompt: 'Test',
                 apiKey: '123',
                 baseURL: 'https://api.custom.com/v1', // baseURL is set
-                // maxTokens is missing
+                // maxInputTokens is missing
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
 
-        it('accepts valid config with baseURL and maxTokens for openai', () => {
+        it('accepts valid config with baseURL and maxInputTokens for openai', () => {
             const config = {
                 provider: 'openai',
                 model: 'my-company-finetune-v3',
                 systemPrompt: 'Test',
                 apiKey: '123',
                 baseURL: 'https://api.custom.com/v1',
-                maxTokens: 8192,
+                maxInputTokens: 8192,
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
 
-        it('rejects if maxTokens exceeds limit for a known model (no baseURL)', () => {
+        it('rejects if maxInputTokens exceeds limit for a known model (no baseURL)', () => {
             const config = {
                 provider: 'openai',
                 model: 'gpt-4o-mini',
                 systemPrompt: 'Test',
                 apiKey: '123',
-                maxTokens: 200000, // Exceeds the limit
+                maxInputTokens: 200000, // Exceeds the limit
             };
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('accepts maxTokens within limit for a known model (no baseURL)', () => {
+        it('accepts maxInputTokens within limit for a known model (no baseURL)', () => {
             const config = {
                 provider: 'openai',
                 model: 'gpt-4o-mini', // Known model
                 systemPrompt: 'Test',
                 apiKey: '123',
-                maxTokens: 4096, // Within limit
+                maxInputTokens: 4096, // Within limit
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
 
-        it('accepts known model without maxTokens specified (no baseURL)', () => {
+        it('accepts known model without maxInputTokens specified (no baseURL)', () => {
             const config = {
                 provider: 'anthropic',
                 model: 'claude-3-haiku-20240307', // Known model
                 systemPrompt: 'Test',
                 apiKey: '123',
-                // maxTokens is not provided, should be fine
+                // maxInputTokens is not provided, should be fine
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
@@ -446,47 +446,35 @@ describe('Config Schemas', () => {
     });
 
     describe('httpServerConfigSchema', () => {
-        it('accepts valid config', () => {
+        it('accepts valid config with optional fields', () => {
             const validConfig = {
                 type: 'http' as const,
-                baseUrl: 'http://localhost:9000/api',
+                url: 'http://localhost:9000/api',
                 headers: { 'X-API-Key': 'secretkey' },
                 timeout: 20000,
             };
             expect(() => HttpServerConfigSchema.parse(validConfig)).not.toThrow();
         });
 
-        it('applies default headers if not provided', () => {
-            const config = { type: 'http' as const, baseUrl: 'http://localhost:9000/api' };
-            const parsed = HttpServerConfigSchema.parse(config);
-            expect(parsed.headers).toEqual({});
+        it('rejects missing required fields (url)', () => {
+            const missingUrl = { type: 'http' as const };
+            expect(() => HttpServerConfigSchema.parse(missingUrl as any)).toThrow();
         });
 
-        it('applies default timeout if not provided', () => {
-            const config = { type: 'http' as const, baseUrl: 'http://localhost:9000/api' };
-            const parsed = HttpServerConfigSchema.parse(config);
-            expect(parsed.timeout).toBe(30000);
-        });
-
-        it('rejects missing required fields (baseUrl)', () => {
-            const missingBaseUrl = { type: 'http' as const };
-            expect(() => HttpServerConfigSchema.parse(missingBaseUrl as any)).toThrow();
-        });
-
-        it('rejects invalid types for fields (baseUrl, headers, timeout)', () => {
-            const invalidBaseUrlType = { type: 'http' as const, baseUrl: 'not-a-url' };
-            expect(() => HttpServerConfigSchema.parse(invalidBaseUrlType as any)).toThrow(); // Zod's .url() catches this
+        it('rejects invalid types for fields (url, headers, timeout)', () => {
+            const invalidUrlType = { type: 'http' as const, url: 'not-a-url' };
+            expect(() => HttpServerConfigSchema.parse(invalidUrlType as any)).toThrow(); // Zod's .url() catches this
 
             const invalidHeadersType = {
                 type: 'http' as const,
-                baseUrl: 'http://localhost:9000/api',
-                headers: 'X-API-Key: secretkey', // Should be record
+                url: 'http://localhost:9000/api',
+                headers: 'not-an-object',
             };
             expect(() => HttpServerConfigSchema.parse(invalidHeadersType as any)).toThrow();
 
             const invalidTimeoutType = {
                 type: 'http' as const,
-                baseUrl: 'http://localhost:9000/api',
+                url: 'http://localhost:9000/api',
                 timeout: false, // Should be number
             };
             expect(() => HttpServerConfigSchema.parse(invalidTimeoutType as any)).toThrow();
@@ -498,15 +486,13 @@ describe('Config Schemas', () => {
             const validRecord = {
                 server1: { type: 'stdio' as const, command: 'node', args: ['s1.js'] },
                 server2: { type: 'sse' as const, url: 'http://localhost/sse2' },
-                server3: { type: 'http' as const, baseUrl: 'http://localhost/http3' },
+                server3: { type: 'http' as const, url: 'http://localhost/http3' },
             };
             expect(() => ServerConfigsSchema.parse(validRecord)).not.toThrow();
         });
 
-        it('rejects an empty object (due to refine)', () => {
-            expect(() => ServerConfigsSchema.parse({} as any)).toThrow(
-                /At least one MCP server configuration is required/
-            );
+        it('accepts an empty object (no refine validation)', () => {
+            expect(() => ServerConfigsSchema.parse({} as any)).not.toThrow();
         });
 
         it('rejects if any server config in the record is invalid', () => {
@@ -577,7 +563,7 @@ describe('Config Schemas', () => {
         });
 
         it('accepts valid http server config', () => {
-            const httpConf = { type: 'http' as const, baseUrl: 'http://localhost/http' };
+            const httpConf = { type: 'http' as const, url: 'http://localhost/http' };
             expect(() => McpServerConfigSchema.parse(httpConf)).not.toThrow();
         });
 
@@ -597,6 +583,144 @@ describe('Config Schemas', () => {
                 args: 'not-an-array',
             };
             expect(() => McpServerConfigSchema.parse(stdioInvalidArgs as any)).toThrow();
+        });
+    });
+
+    describe('AgentConfigSchema - Sessions Configuration', () => {
+        const baseValidConfig = {
+            mcpServers: {
+                main: { type: 'stdio' as const, command: 'node', args: ['agent-server.js'] },
+            },
+            llm: {
+                provider: 'openai',
+                model: 'o4-mini',
+                systemPrompt: 'You are an agent.',
+                apiKey: '123',
+            },
+        };
+
+        it('applies default sessions config if not provided', () => {
+            const parsed = AgentConfigSchema.parse(baseValidConfig);
+            expect(parsed.sessions).toEqual({
+                maxSessions: 100,
+                sessionTTL: 3600000,
+            });
+        });
+
+        it('accepts valid sessions config', () => {
+            const configWithSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: 50,
+                    sessionTTL: 1800000, // 30 minutes
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithSessions)).not.toThrow();
+            const parsed = AgentConfigSchema.parse(configWithSessions);
+            expect(parsed.sessions.maxSessions).toBe(50);
+            expect(parsed.sessions.sessionTTL).toBe(1800000);
+        });
+
+        it('applies default maxSessions if only sessionTTL is provided', () => {
+            const configWithPartialSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: 7200000, // 2 hours
+                },
+            };
+            const parsed = AgentConfigSchema.parse(configWithPartialSessions);
+            expect(parsed.sessions.maxSessions).toBe(100); // default
+            expect(parsed.sessions.sessionTTL).toBe(7200000);
+        });
+
+        it('applies default sessionTTL if only maxSessions is provided', () => {
+            const configWithPartialSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: 25,
+                },
+            };
+            const parsed = AgentConfigSchema.parse(configWithPartialSessions);
+            expect(parsed.sessions.maxSessions).toBe(25);
+            expect(parsed.sessions.sessionTTL).toBe(3600000); // default
+        });
+
+        it('rejects negative maxSessions', () => {
+            const configWithNegativeMaxSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: -5,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithNegativeMaxSessions)).toThrow();
+        });
+
+        it('rejects zero maxSessions', () => {
+            const configWithZeroMaxSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: 0,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithZeroMaxSessions)).toThrow();
+        });
+
+        it('rejects non-integer maxSessions', () => {
+            const configWithFloatMaxSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: 10.5,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithFloatMaxSessions)).toThrow();
+        });
+
+        it('rejects negative sessionTTL', () => {
+            const configWithNegativeTTL = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: -1000,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithNegativeTTL)).toThrow();
+        });
+
+        it('rejects zero sessionTTL', () => {
+            const configWithZeroTTL = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: 0,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithZeroTTL)).toThrow();
+        });
+
+        it('rejects non-integer sessionTTL', () => {
+            const configWithFloatTTL = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: 1800.5,
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithFloatTTL)).toThrow();
+        });
+
+        it('rejects invalid types for sessions fields', () => {
+            const configWithStringMaxSessions = {
+                ...baseValidConfig,
+                sessions: {
+                    maxSessions: '100', // Should be number
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithStringMaxSessions as any)).toThrow();
+
+            const configWithStringTTL = {
+                ...baseValidConfig,
+                sessions: {
+                    sessionTTL: '3600000', // Should be number
+                },
+            };
+            expect(() => AgentConfigSchema.parse(configWithStringTTL as any)).toThrow();
         });
     });
 });

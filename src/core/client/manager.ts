@@ -7,7 +7,35 @@ import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-pr
 import { ToolSet } from '../ai/types.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
-export class MCPClientManager {
+/**
+ * Centralized manager for Multiple Model Context Protocol (MCP) servers.
+ *
+ * The MCPManager serves as a unified interface for managing connections to multiple MCP servers,
+ * providing access to their tools, prompts, and resources through a single entry point.
+ *
+ * Key responsibilities:
+ * - **Client Management**: Register, connect, disconnect, and remove MCP clients
+ * - **Resource Discovery**: Cache and provide access to tools, prompts, and resources from all connected clients
+ * - **Tool Execution**: Execute tools with built-in confirmation mechanisms for security
+ * - **Connection Handling**: Support both strict and lenient connection modes with error tracking
+ * - **Caching**: Maintain efficient lookup maps for fast access to client capabilities
+ *
+ * The manager supports dynamic client connections, allowing servers to be added or removed at runtime.
+ * It includes robust error handling and maintains connection state for debugging purposes.
+ *
+ * @example
+ * ```typescript
+ * const manager = new MCPManager();
+ * await manager.initializeFromConfig(serverConfigs);
+ *
+ * // Execute a tool from any connected server
+ * const result = await manager.executeTool('my_tool', { param: 'value' });
+ *
+ * // Get all available tools across all servers
+ * const tools = await manager.getAllTools();
+ * ```
+ */
+export class MCPManager {
     private clients: Map<string, IMCPClient> = new Map();
     private connectionErrors: { [key: string]: string } = {};
     private toolToClientMap: Map<string, IMCPClient> = new Map();
@@ -15,7 +43,7 @@ export class MCPClientManager {
     private toolConflicts: Set<string> = new Set();
     private promptToClientMap: Map<string, IMCPClient> = new Map();
     private resourceToClientMap: Map<string, IMCPClient> = new Map();
-    private confirmationProvider?: ToolConfirmationProvider;
+    private confirmationProvider: ToolConfirmationProvider;
 
     // Use a distinctive delimiter that won't appear in normal server/tool names
     private static readonly SERVER_DELIMITER = '__';
@@ -50,7 +78,7 @@ export class MCPClientManager {
 
         [this.toolToClientMap, this.promptToClientMap, this.resourceToClientMap].forEach(
             (cacheMap) => {
-                for (const [key, mappedClient] of cacheMap.entries()) {
+                for (const [key, mappedClient] of Array.from(cacheMap.entries())) {
                     if (mappedClient === client) {
                         cacheMap.delete(key);
                     }
@@ -119,7 +147,10 @@ export class MCPClientManager {
             }
             logger.debug(`Cached tools for client: ${clientName}`);
         } catch (error) {
-            logger.error(`Error retrieving tools for client ${clientName}:`, error);
+            logger.error(
+                `Error retrieving tools for client ${clientName}: ${error instanceof Error ? error.message : String(error)}`
+            );
+            return; // Early return on error, no caching
         }
 
         // Cache prompts, if supported
@@ -134,6 +165,7 @@ export class MCPClientManager {
         }
 
         // Cache resources, if supported
+        // TODO: HF SERVER HAS 100000+ RESOURCES - need to think of a way to make resources/caching optional or better.
         try {
             const resources = await client.listResources();
             resources.forEach((resourceUri) => {
@@ -154,7 +186,7 @@ export class MCPClientManager {
         const allTools: ToolSet = {};
 
         // Add non-conflicted tools directly
-        for (const [toolName, client] of this.toolToClientMap.entries()) {
+        for (const [toolName, client] of Array.from(this.toolToClientMap.entries())) {
             const clientTools = await client.getTools();
             const toolDef = clientTools[toolName];
             if (toolDef) {
@@ -330,6 +362,12 @@ export class MCPClientManager {
         serverConfigs: ServerConfigs,
         connectionMode: 'strict' | 'lenient' = 'lenient'
     ): Promise<void> {
+        // Handle empty server configurations gracefully
+        if (Object.keys(serverConfigs).length === 0) {
+            logger.info('No MCP servers configured - running without external tools');
+            return;
+        }
+
         const successfulConnections: string[] = [];
         const connectionPromises: Promise<void>[] = [];
 
@@ -442,7 +480,7 @@ export class MCPClientManager {
      */
     async disconnectAll(): Promise<void> {
         const disconnectPromises: Promise<void>[] = [];
-        for (const [name, client] of this.clients.entries()) {
+        for (const [name, client] of Array.from(this.clients.entries())) {
             if (client.disconnect) {
                 disconnectPromises.push(
                     client

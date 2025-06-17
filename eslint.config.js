@@ -2,7 +2,6 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
-import nextjs from 'eslint-plugin-next';
 
 export default [
     // Base config for all files
@@ -39,7 +38,15 @@ export default [
                 clearInterval: 'readonly',
                 setInterval: 'readonly',
                 Buffer: 'readonly',
-                URL: 'readonly'
+                URL: 'readonly',
+                AbortController: 'readonly',
+                AbortSignal: 'readonly',
+                structuredClone: 'readonly',
+                NodeJS: 'readonly',
+                CustomEvent: 'readonly',
+                localStorage: 'readonly',
+                FileReader: 'readonly',
+                WebSocket: 'readonly',
             },
         },
         plugins: {
@@ -51,13 +58,8 @@ export default [
             '@typescript-eslint/explicit-module-boundary-types': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+            'no-dupe-class-members': 'off', // Allow TypeScript method overloading
         },
-    },
-
-    // Next.js specific config for WebUI
-    {
-        files: ['src/app/webui/**/*.{js,jsx,ts,tsx}'],
-        ...nextjs.configs['recommended-type-checked'],
     },
 
     // JavaScript Client-side specific config
@@ -95,7 +97,19 @@ export default [
             'node_modules/**',
             'dist/**',
             '.cursor/**',
-            'public/**' // Add public directory to ignores
+            'public/**',
+            'src/app/webui/.next/**',
+            'src/app/webui/out/**',
+            '**/build/**',
+            '**/coverage/**',
+            'test-temp/**',
+            '**/*.min.js',
+            '**/generated/**',
+            'docs/.docusaurus/**',
+            'scripts/dev.js',
+            'scripts/dev-status.js',
+            'src/app/web/client/script.js',
+            'src/app/webui/tailwind.config.js'
         ],
     },
 

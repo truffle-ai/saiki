@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fs from 'fs/promises';
-import path from 'path';
+import { promises as fs } from 'fs';
+import * as path from 'path';
 import { loadConfigFile } from './loader.js';
 
 // Use a temp file next to the loader file
@@ -26,17 +26,16 @@ afterEach(async () => {
 });
 
 describe('loadConfigFile', () => {
-    it('loads and expands environment variables within LLM providerOptions in YAML', async () => {
-        process.env.TEST_VAR = 'value';
+    it('loads and expands environment variables within LLM configuration in YAML', async () => {
+        process.env.TEST_VAR = '0.7';
+        process.env.MAX_TOKENS = '4000';
         const yamlContent = `
 llm:
   provider: 'test-provider'
   model: 'test-model'
   systemPrompt: 'base-prompt' # Added a base system prompt for completeness
-  providerOptions:
-    foo: $TEST_VAR
-    nested:
-      bar: \${TEST_VAR}
+  temperature: \${TEST_VAR}
+  maxOutputTokens: \${MAX_TOKENS}
 mcpServers:
   testServer: # Added a minimal mcpServers entry for schema validity
     type: 'stdio'
@@ -46,9 +45,9 @@ mcpServers:
         await fs.writeFile(tmpFile, yamlContent);
 
         const config = await loadConfigFile(tmpFile);
-        // Access through the valid path, assuming llm and providerOptions exist
-        expect(config.llm?.providerOptions?.foo).toBe('value');
-        expect(config.llm?.providerOptions?.nested?.bar).toBe('value');
+        // Access the new explicit fields
+        expect(config.llm?.temperature).toBe(0.7);
+        expect(config.llm?.maxOutputTokens).toBe(4000);
     });
 
     it('throws error when file cannot be read', async () => {

@@ -17,6 +17,7 @@ import {
     loadConfigFile,
     createSaikiAgent,
 } from '@core/index.js';
+import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startApiAndLegacyWebUIServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
@@ -33,6 +34,8 @@ import { initSaiki, postInitSaiki } from './cli/commands/init.js';
 import { getUserInputToInitSaikiApp } from './cli/commands/init.js';
 import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
 import { startNextJsWebServer } from './web.js';
+import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
+import { createAgentCard } from '@core/config/agentCard.js';
 // Load environment variables
 dotenv.config();
 
@@ -55,7 +58,7 @@ program
     .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
     .option(
         '--mode <mode>',
-        'The application in which saiki should talk to you - cli | web | discord | telegram',
+        'The application in which saiki should talk to you - cli | web | server | discord | telegram | mcp',
         'cli'
     )
     .option('--web-port <port>', 'optional port for the web UI', '3000');
@@ -130,7 +133,7 @@ program
         }
     });
 
-// 4) Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
+// 4) Main saiki CLI - Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
 program
     .argument(
         '[prompt...]',
@@ -143,8 +146,10 @@ program
             // TODO: Add `saiki tell me about your cli` starter prompt
             'Run saiki interactive CLI with `saiki` or run a one-shot prompt with `saiki <prompt>`\n' +
             'Run saiki web UI with `saiki --mode web`\n' +
+            'Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`\n' +
             'Run saiki as a discord bot with `saiki --mode discord`\n' +
-            'Run saiki as a telegram bot with `saiki --mode telegram`\n\n' +
+            'Run saiki as a telegram bot with `saiki --mode telegram`\n' +
+            'Run saiki as an MCP server with `saiki --mode mcp`\n\n' +
             'Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples'
     )
     .action(async (prompt: string[] = []) => {
@@ -176,18 +181,16 @@ program
                 logger.error('Supported models: ' + getAllSupportedModels().join(', '));
                 process.exit(1);
             }
-            const envMap: Record<string, string> = {
-                openai: 'OPENAI_API_KEY',
-                anthropic: 'ANTHROPIC_API_KEY',
-                google: 'GOOGLE_GENERATIVE_AI_API_KEY',
-            };
-            const envVar = envMap[provider as keyof typeof envMap];
-            if (!process.env[envVar]) {
-                logger.error(`Missing ${envVar} for provider '${provider}'`);
+
+            const apiKey = resolveApiKeyForProvider(provider);
+            if (!apiKey) {
+                logger.error(
+                    `Missing API key for provider '${provider}' - please set the appropriate environment variable`
+                );
                 process.exit(1);
             }
             opts.provider = provider;
-            opts.apiKey = process.env[envVar];
+            opts.apiKey = apiKey;
         }
 
         try {
@@ -205,6 +208,9 @@ program
             );
             logger.info(`Initializing Saiki with config: ${configPath}`);
             const cfg = await loadConfigFile(configPath);
+
+            // TODO: process cli config overrides and create a new config here before creating the agent
+            // maybe move the cli overrides into the loading of the config file?
             agent = await createSaikiAgent(
                 cfg,
                 {
@@ -247,12 +253,32 @@ program
                     agent,
                     apiPort,
                     true,
-                    agent.configManager.getConfig().agentCard || {}
+                    agent.getEffectiveConfig().agentCard || {}
                 );
 
                 // Start Next.js web server
                 await startNextJsWebServer(apiUrl, frontPort, nextJSserverURL);
 
+                break;
+            }
+
+            // Start server with REST APIs and WebSockets on port 3001
+            // This also enables saiki to be used as a remote mcp server at localhost:3001/mcp
+            case 'server': {
+                // Start server with REST APIs and WebSockets only
+                const agentCard = agent.getEffectiveConfig().agentCard ?? {};
+                const apiPort = getPort(process.env.API_PORT, 3001, 'API_PORT');
+                const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+
+                logger.info('Starting server (REST APIs + WebSockets)...', null, 'cyanBright');
+                await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
+                logger.info(`Server running at ${apiUrl}`, null, 'green');
+                logger.info('Available endpoints:', null, 'cyan');
+                logger.info('  POST /api/message - Send async message', null, 'gray');
+                logger.info('  POST /api/message-sync - Send sync message', null, 'gray');
+                logger.info('  POST /api/reset - Reset conversation', null, 'gray');
+                logger.info('  GET  /api/mcp/servers - List MCP servers', null, 'gray');
+                logger.info('  WebSocket support available for real-time events', null, 'gray');
                 break;
             }
 
@@ -276,22 +302,43 @@ program
                 }
                 break;
 
+            // TODO: Remove if server mode is stable and supports mcp
+            // Starts saiki as a local mcp server
+            // Use `saiki --mode mcp` to start saiki as a local mcp server
+            // Use `saiki --mode server` to start saiki as a remote server
             case 'mcp': {
-                // Start API server only
-                const webPort = parseInt(opts.webPort, 10);
-                const agentCard = agent.configManager.getConfig().agentCard ?? {};
-                const apiPort = getPort(process.env.API_PORT, webPort + 1, 'API_PORT');
-                const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
+                // Start stdio mcp server only
+                const agentCardConfig = agent.getEffectiveConfig().agentCard ?? {};
 
-                logger.info('Starting API server...', null, 'cyanBright');
-                await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
-                logger.info(`API endpoints available at ${apiUrl}`, null, 'magenta');
+                try {
+                    // Redirect logs to file to prevent interference with stdio transport
+                    const logFile =
+                        process.env.SAIKI_MCP_LOG_FILE ||
+                        path.join(require('os').tmpdir(), 'saiki-mcp.log');
+                    logger.redirectToFile(logFile);
+
+                    const agentCardData = createAgentCard(
+                        {
+                            defaultName: agentCardConfig.name ?? 'saiki',
+                            defaultVersion: agentCardConfig.version ?? '1.0.0',
+                            defaultBaseUrl: 'stdio://local-saiki',
+                        },
+                        agentCardConfig // preserve overrides from saiki.yml
+                    );
+                    // Use stdio transport in mcp mode
+                    const mcpTransport = await createMcpTransport('stdio');
+                    await initializeMcpServer(agent, agentCardData, mcpTransport);
+                } catch (err) {
+                    // Write to stderr instead of stdout to avoid interfering with MCP protocol
+                    process.stderr.write(`MCP server startup failed: ${err}\n`);
+                    process.exit(1);
+                }
                 break;
             }
 
             default:
                 logger.error(
-                    `Unknown mode '${opts.mode}'. Use cli, web, discord, telegram, or mcp.`
+                    `Unknown mode '${opts.mode}'. Use cli, web, server, discord, telegram, or mcp.`
                 );
                 process.exit(1);
         }

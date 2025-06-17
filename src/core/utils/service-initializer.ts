@@ -12,10 +12,10 @@
  *
  * **Override Pattern:**
  * - For advanced, programmatic, or test scenarios, this initializer supports code-level overrides via the `InitializeServicesOptions` type.
- * - These overrides are intended for swapping out top-level services (e.g., injecting a mock MessageManager or LLMService in tests), not for
+ * - These overrides are intended for swapping out top-level services (e.g., injecting a mock SessionManager or ClientManager in tests), not for
  *   overriding every internal dependency. This keeps the override API surface small, maintainable, and focused on real-world needs.
  * - If deeper customization is required (e.g., a custom compression strategy for MessageManager in a test), construct the desired service
- *   yourself and inject it via the appropriate top-level override (e.g., `messageManager`).
+ *   yourself and inject it via the appropriate top-level override (e.g., `sessionManager`).
  *
  * **Best Practice:**
  * - Use the config file for all user-facing and environment-specific configuration, including low-level service details.
@@ -25,29 +25,29 @@
  * This pattern ensures a clean, scalable, and maintainable architecture, balancing flexibility with simplicity.
  */
 
-import { MCPClientManager } from '../client/manager.js';
-import { ILLMService } from '../ai/llm/services/types.js';
-import { createLLMService } from '../ai/llm/services/factory.js';
-import { logger } from '../logger/index.js';
-import { EventEmitter } from 'events';
-import { MessageManager } from '../ai/llm/messages/manager.js';
-import { createMessageManager } from '../ai/llm/messages/factory.js';
+import { MCPManager } from '../client/manager.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
-import { loadConfigFile } from '../config/loader.js';
-import { ConfigManager } from '../config/manager.js';
+import { StaticConfigManager } from '../config/static-config-manager.js';
+import { AgentStateManager } from '../config/agent-state-manager.js';
+import { SessionManager } from '../ai/session/session-manager.js';
+import { createStorageBackends, type StorageBackends } from '../storage/index.js';
+import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/factory.js';
+import { logger } from '../logger/index.js';
 import type { CLIConfigOverrides } from '../config/types.js';
 import type { AgentConfig } from '../config/schemas.js';
+import { AgentEventBus } from '../events/index.js';
+
 /**
- * Type for the core agent services returned by initializeServices
+ * Type for the core agent services returned by createAgentServices
  */
 export type AgentServices = {
-    clientManager: MCPClientManager;
+    clientManager: MCPManager;
     promptManager: PromptManager;
-    llmService: ILLMService;
-    agentEventBus: EventEmitter;
-    messageManager: MessageManager;
-    configManager: ConfigManager;
+    agentEventBus: AgentEventBus;
+    stateManager: AgentStateManager;
+    sessionManager: SessionManager;
+    storage: StorageBackends;
 };
 
 /**
@@ -57,7 +57,7 @@ export type AgentServices = {
  * - The config file (e.g., `saiki.yml`) is the main source of truth for configuring both high-level and low-level service options.
  *   This allows users and operators to declaratively tune the system without code changes.
  * - The `InitializeServicesOptions` type is intended for advanced/test scenarios where you need to override top-level services
- *   (such as injecting a mock MessageManager or LLMService). This keeps the override API surface small and focused.
+ *   (such as injecting a mock SessionManager or ClientManager). This keeps the override API surface small and focused.
  * - For most use cases, do not expose every internal dependency here. If you need to customize internals (e.g., a custom compression strategy),
  *   construct the service yourself and inject it as a top-level override.
  *
@@ -69,10 +69,10 @@ export type AgentServices = {
 export type InitializeServicesOptions = {
     runMode?: 'cli' | 'web'; // Context/mode override
     connectionMode?: 'strict' | 'lenient'; // Connection mode override
-    clientManager?: MCPClientManager; // Inject a custom or mock MCPClientManager
-    llmService?: ILLMService; // Inject a custom or mock LLMService
-    agentEventBus?: EventEmitter; // Inject a custom or mock EventEmitter
-    messageManager?: MessageManager; // Inject a custom or mock MessageManager
+    clientManager?: MCPManager; // Inject a custom or mock MCPManager
+    agentEventBus?: AgentEventBus; // Inject a custom or mock AgentEventBus
+    sessionManager?: SessionManager; // Inject a custom or mock SessionManager
+    storage?: StorageBackends; // Inject a custom or mock storage backends
     // Add more overrides as needed
     // configOverride?: Partial<AgentConfig>; // (optional) for field-level config overrides
 };
@@ -80,10 +80,10 @@ export type InitializeServicesOptions = {
 // High-level factory to load, validate, and wire up all agent services in one call
 /**
  * Loads and validates configuration and initializes all agent services as a single unit.
- * @param configPath Path to the agent config file
+ * @param agentConfig The agent configuration object
  * @param cliArgs Optional overrides from the CLI
  * @param overrides Optional service overrides for testing or advanced scenarios
- * @returns All the initialized services and the config manager
+ * @returns All the initialized services required for a Saiki agent
  */
 export async function createAgentServices(
     agentConfig: AgentConfig,
@@ -91,54 +91,96 @@ export async function createAgentServices(
     overrides?: InitializeServicesOptions
 ): Promise<AgentServices> {
     // 1. Initialize config manager and apply CLI overrides (if provided), then validate
-    const configManager = new ConfigManager(agentConfig);
-    if (cliArgs) {
-        configManager.overrideCLI(cliArgs);
-    }
+    const configManager = new StaticConfigManager(agentConfig, cliArgs);
     configManager.validate();
     const config = configManager.getConfig();
 
     // 2. Initialize shared event bus
-    const agentEventBus = overrides?.agentEventBus ?? new EventEmitter();
+    const agentEventBus: AgentEventBus = overrides?.agentEventBus ?? new AgentEventBus();
     logger.debug('Agent event bus initialized');
 
-    // 3. Initialize client manager
+    // 3. Initialize storage backends (instance-specific, not singleton)
+    logger.debug('Initializing storage backends');
+    const storageResult = overrides?.storage
+        ? { manager: null, backends: overrides.storage }
+        : await createStorageBackends(config.storage);
+    const storage = storageResult.backends;
+
+    logger.debug('Storage backends initialized', {
+        cache: config.storage.cache.type,
+        database: config.storage.database.type,
+    });
+
+    // 4. Initialize client manager with storage-backed allowed tools provider
     const connectionMode = overrides?.connectionMode ?? 'lenient';
     const runMode = overrides?.runMode ?? 'cli';
-    const confirmationProvider = createToolConfirmationProvider(runMode);
-    const clientManager = overrides?.clientManager ?? new MCPClientManager(confirmationProvider);
-    await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
-    logger.debug(
-        overrides?.clientManager
-            ? 'Client manager and MCP servers initialized via override'
-            : 'Client manager and MCP servers initialized'
-    );
 
-    // 4. Initialize prompt manager
+    // Create allowed tools provider with memory configuration
+    // TODO: Implement storage-backed provider when tool persistence is needed
+    const allowedToolsProvider = createAllowedToolsProvider({ type: 'memory' });
+
+    // Create tool confirmation provider
+    const confirmationProvider = createToolConfirmationProvider({
+        runMode,
+        allowedToolsProvider,
+    });
+
+    const clientManager = overrides?.clientManager ?? new MCPManager(confirmationProvider);
+    await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
+
+    const mcpServerCount = Object.keys(config.mcpServers).length;
+    if (mcpServerCount === 0) {
+        logger.info('Agent initialized without MCP servers - only built-in capabilities available');
+    } else {
+        logger.debug(
+            overrides?.clientManager
+                ? 'Client manager and MCP servers initialized via override'
+                : `Client manager initialized with ${mcpServerCount} MCP server(s)`
+        );
+    }
+
+    // 5. Initialize prompt manager
     const promptManager = new PromptManager(config.llm.systemPrompt);
 
-    // 5. Initialize message manager
-    const router = config.llm.router;
-    const messageManager =
-        overrides?.messageManager ?? createMessageManager(config.llm, router, promptManager);
+    // 6. Initialize state manager for runtime state tracking
+    const stateManager = new AgentStateManager(config, agentEventBus);
+    logger.debug('Agent state manager initialized');
 
-    // 6. Initialize LLM service
-    const llmService =
-        overrides?.llmService ??
-        createLLMService(config.llm, router, clientManager, agentEventBus, messageManager);
+    // 7. Initialize session manager
+    const sessionManager =
+        overrides?.sessionManager ??
+        new SessionManager(
+            {
+                stateManager,
+                promptManager,
+                clientManager,
+                agentEventBus,
+                storage, // Add storage backends to session services
+            },
+            {
+                maxSessions: config.sessions?.maxSessions,
+                sessionTTL: config.sessions?.sessionTTL,
+            }
+        );
+
+    // Initialize the session manager with persistent storage
+    if (!overrides?.sessionManager) {
+        await sessionManager.init();
+    }
+
     logger.debug(
-        overrides?.llmService
-            ? 'LLM service provided via override'
-            : `LLM service initialized using router: ${router}`
+        overrides?.sessionManager
+            ? 'Session manager provided via override'
+            : 'Session manager initialized with storage support'
     );
 
-    // 7. Return the full service
+    // 8. Return the core services
     return {
         clientManager,
         promptManager,
-        llmService,
         agentEventBus,
-        messageManager,
-        configManager,
+        stateManager,
+        sessionManager,
+        storage,
     };
 }

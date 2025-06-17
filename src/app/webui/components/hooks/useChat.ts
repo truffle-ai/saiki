@@ -12,7 +12,6 @@ export interface ImagePart {
     base64: string;
     mimeType: string;
 }
-
 // Extend core InternalMessage for WebUI
 export interface Message extends Omit<InternalMessage, 'content'> {
     id: string;
@@ -22,6 +21,9 @@ export interface Message extends Omit<InternalMessage, 'content'> {
     toolName?: string;
     toolArgs?: any;
     toolResult?: any;
+    tokenCount?: number;
+    model?: string;
+    sessionId?: string;
 }
 
 const generateUniqueId = () => `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -93,6 +95,12 @@ export function useChat(wsUrl: string) {
                 }
                 case 'response': {
                     const text = typeof payload.text === 'string' ? payload.text : '';
+                    const tokenCount =
+                        typeof payload.tokenCount === 'number' ? payload.tokenCount : undefined;
+                    const model = typeof payload.model === 'string' ? payload.model : undefined;
+                    const sessionId =
+                        typeof payload.sessionId === 'string' ? payload.sessionId : undefined;
+
                     setMessages((ms) => {
                         // Remove 'thinking' placeholders
                         const cleaned = ms.filter(
@@ -116,11 +124,35 @@ export function useChat(wsUrl: string) {
                             role: 'assistant',
                             content,
                             createdAt: Date.now(),
+                            tokenCount,
+                            model,
+                            sessionId,
                         };
-                        // Clear ref for next response
-                        lastImageUriRef.current = null;
+                        // Check if this response is updating an existing message
+                        const lastMsg = cleaned[cleaned.length - 1];
+                        if (lastMsg && lastMsg.role === 'assistant') {
+                            return [...cleaned.slice(0, -1), newMsg];
+                        }
                         return [...cleaned, newMsg];
                     });
+
+                    // Emit DOM event for other components to listen to
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(
+                            new CustomEvent('saiki:response', {
+                                detail: {
+                                    text,
+                                    sessionId,
+                                    tokenCount,
+                                    model,
+                                    timestamp: Date.now(),
+                                },
+                            })
+                        );
+                    }
+
+                    // Clear the last image for the next message
+                    lastImageUriRef.current = null;
                     break;
                 }
                 case 'conversationReset':
@@ -215,32 +247,53 @@ export function useChat(wsUrl: string) {
     }, [wsUrl]);
 
     const sendMessage = useCallback(
-        (content: string, imageData?: { base64: string; mimeType: string }) => {
+        (
+            content: string,
+            imageData?: { base64: string; mimeType: string },
+            sessionId?: string,
+            stream = false
+        ) => {
             if (wsRef.current?.readyState === globalThis.WebSocket.OPEN) {
-                wsRef.current.send(JSON.stringify({ type: 'message', content, imageData }));
-                setMessages((msgs) => [
-                    ...msgs,
+                const message = {
+                    type: 'message',
+                    content,
+                    imageData,
+                    sessionId,
+                    stream,
+                };
+                wsRef.current.send(JSON.stringify(message));
+
+                // Add user message to local state immediately
+                setMessages((ms) => [
+                    ...ms,
                     {
                         id: generateUniqueId(),
                         role: 'user',
                         content,
-                        imageData,
                         createdAt: Date.now(),
+                        sessionId,
                     },
                 ]);
-            } else {
-                console.error('WebSocket is not open');
+
+                // Emit DOM event for other components to listen to
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(
+                        new CustomEvent('saiki:message', {
+                            detail: { content, sessionId, timestamp: Date.now() },
+                        })
+                    );
+                }
             }
         },
         []
     );
 
-    const reset = useCallback(() => {
+    const reset = useCallback((sessionId?: string) => {
         if (wsRef.current?.readyState === globalThis.WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'reset' }));
+            wsRef.current.send(JSON.stringify({ type: 'reset', sessionId }));
         }
         setMessages([]);
     }, []);
 
-    return { messages, status, sendMessage, reset };
+    return { messages, status, sendMessage, reset, setMessages };
 }

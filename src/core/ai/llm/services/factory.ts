@@ -1,4 +1,4 @@
-import { MCPClientManager } from '../../../client/manager.js';
+import { MCPManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
 import { LLMConfig } from '../../../config/schemas.js';
 import { logger } from '../../../logger/index.js';
@@ -10,7 +10,7 @@ import { VercelLLMService } from './vercel.js';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
 import { LanguageModelV1 } from 'ai';
-import { EventEmitter } from 'events';
+import { SessionEventBus } from '../../../events/index.js';
 import { LLMRouter } from '../types.js';
 import { MessageManager } from '../messages/manager.js';
 import OpenAI from 'openai';
@@ -42,14 +42,14 @@ function extractApiKey(config: LLMConfig): string {
  * Create an instance of one of our in-built LLM services
  * @param config LLM configuration from the config file
  * @param clientManager Client manager instance
- * @param agentEventBus Event emitter instance
+ * @param sessionEventBus Session-level event bus for emitting LLM events
  * @param messageManager Message manager instance
  * @returns ILLMService instance
  */
 function _createInBuiltLLMService(
     config: LLMConfig,
-    clientManager: MCPClientManager,
-    agentEventBus: EventEmitter,
+    clientManager: MCPManager,
+    sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): ILLMService {
     // Extract and validate API key
@@ -65,7 +65,7 @@ function _createInBuiltLLMService(
             return new OpenAIService(
                 clientManager,
                 openai,
-                agentEventBus,
+                sessionEventBus,
                 messageManager,
                 config.model,
                 config.maxIterations
@@ -76,7 +76,7 @@ function _createInBuiltLLMService(
             return new AnthropicService(
                 clientManager,
                 anthropic,
-                agentEventBus,
+                sessionEventBus,
                 messageManager,
                 config.model,
                 config.maxIterations
@@ -95,9 +95,14 @@ function _createVercelModel(llmConfig: LLMConfig): LanguageModelV1 {
     switch (provider.toLowerCase()) {
         case 'openai': {
             const baseURL = getOpenAICompatibleBaseURL(llmConfig);
-            const options: { apiKey: string; baseURL?: string } = { apiKey };
+            const options: {
+                apiKey: string;
+                baseURL?: string;
+                compatibility?: 'strict' | 'compatible';
+            } = { apiKey, compatibility: 'strict' };
             if (baseURL) {
                 options.baseURL = baseURL;
+                options.compatibility = 'compatible';
             }
             return createOpenAI(options)(model);
         }
@@ -132,18 +137,21 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 
 function _createVercelLLMService(
     config: LLMConfig,
-    clientManager: MCPClientManager,
-    agentEventBus: EventEmitter,
+    clientManager: MCPManager,
+    sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): VercelLLMService {
-    const model: LanguageModelV1 = _createVercelModel(config);
+    const model = _createVercelModel(config);
+
     return new VercelLLMService(
         clientManager,
         model,
         config.provider,
-        agentEventBus,
+        sessionEventBus,
         messageManager,
-        config.maxIterations
+        config.maxIterations,
+        config.temperature,
+        config.maxOutputTokens
     );
 }
 
@@ -153,13 +161,13 @@ function _createVercelLLMService(
 export function createLLMService(
     config: LLMConfig,
     router: LLMRouter,
-    clientManager: MCPClientManager,
-    agentEventBus: EventEmitter,
+    clientManager: MCPManager,
+    sessionEventBus: SessionEventBus,
     messageManager: MessageManager
 ): ILLMService {
     if (router === 'vercel') {
-        return _createVercelLLMService(config, clientManager, agentEventBus, messageManager);
+        return _createVercelLLMService(config, clientManager, sessionEventBus, messageManager);
     } else {
-        return _createInBuiltLLMService(config, clientManager, agentEventBus, messageManager);
+        return _createInBuiltLLMService(config, clientManager, sessionEventBus, messageManager);
     }
 }

@@ -11,12 +11,12 @@ export interface ICompressionStrategy {
      *
      * @param history The current conversation history.
      * @param tokenizer The tokenizer used to calculate message tokens.
-     * @param maxTokens The maximum number of tokens allowed in the history.
+     * @param maxInputTokens The maximum number of tokens allowed in the history.
      * @returns The potentially compressed message history.
      */
     compress(
         history: InternalMessage[],
         tokenizer: ITokenizer,
-        maxTokens: number
+        maxInputTokens: number
     ): InternalMessage[];
 }

@@ -1,7 +1,7 @@
-import type { AllowedToolsProvider } from './types.js';
+import type { IAllowedToolsProvider } from './types.js';
 import { getUserId } from '../../../utils/user-info.js';
 
-export class InMemoryAllowedToolsProvider implements AllowedToolsProvider {
+export class InMemoryAllowedToolsProvider implements IAllowedToolsProvider {
     private allowedToolsPerUser: Map<string, Set<string>>;
 
     constructor(allowedToolsMap?: Map<string, Set<string>>) {

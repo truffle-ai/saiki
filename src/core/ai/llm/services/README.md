@@ -91,11 +91,11 @@ Let's look at each step in more detail.
 This is the core step where you tie everything together.
 
 1.  **Create the Service File:** Create `src/ai/llm/services/your-provider.ts`.
-2.  **Implement the Class:** The factory (`factory.ts`) typically handles the instantiation of the `MessageManager` and the provider's SDK client, passing them to your service's constructor along with the `MCPClientManager` and an `EventEmitter`.
+2.  **Implement the Class:** The factory (`factory.ts`) typically handles the instantiation of the `MessageManager` and the provider's SDK client, passing them to your service's constructor along with the `MCPManager` and an `EventEmitter`.
 
 ```typescript
 import YourProviderSDK from '@provider/sdk-library'; // Your provider's SDK
-import { MCPClientManager } from '../../../client/manager.js'; // Use MCPClientManager
+import { MCPManager } from '../../../client/manager.js'; // Use MCPManager
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
@@ -107,13 +107,13 @@ import { ImageData } from '../messages/types.js'; // For potential image support
 export class YourProviderService implements ILLMService {
     private providerClient: YourProviderSDK; // Provider SDK instance (passed in)
     private model: string;                  // Model identifier (passed in)
-    private clientManager: MCPClientManager; // Passed in from factory
+    private clientManager: MCPManager; // Passed in from factory
     private messageManager: MessageManager;  // Passed in from factory
     private eventEmitter: EventEmitter;      // Passed in from factory
     private maxIterations: number;           // Max tool call loops
 
     constructor(
-        clientManager: MCPClientManager,     // Provided by factory
+        clientManager: MCPManager,     // Provided by factory
         providerClient: YourProviderSDK,   // Provided by factory
         agentEventBus: EventEmitter,       // Provided by factory
         messageManager: MessageManager,    // Provided by factory
@@ -134,12 +134,6 @@ export class YourProviderService implements ILLMService {
 
     getAllTools(): Promise<ToolSet> {
         return this.clientManager.getAllTools();
-    }
-
-    resetConversation(): void {
-        this.messageManager.reset(); // Reset keeps the system prompt by default
-        this.eventEmitter.emit('llmservice:conversationReset'); // Use specific event names
-        logger.debug('Conversation reset.');
     }
 
     getConfig(): LLMServiceConfig {

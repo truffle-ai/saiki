@@ -10,6 +10,7 @@ import { Badge } from './ui/badge';
 import { Bot, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Key } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { LLMProvider, LLMConfig } from '../types';
+import { useChatContext } from './hooks/ChatContext';
 
 // Interface for the LLM switch request body
 interface LLMSwitchRequest {
@@ -18,6 +19,7 @@ interface LLMSwitchRequest {
   router: string;
   apiKey?: string;
   baseURL?: string;
+  sessionId?: string;
 }
 
 // Function to validate OpenAI-compatible base URL
@@ -69,6 +71,9 @@ export default function LLMSelector() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [hasExistingApiKey, setHasExistingApiKey] = useState<boolean>(false);
+
+  // Get current session context to ensure model switch applies to the correct session
+  const { currentSessionId } = useChatContext();
 
   // Fetch current LLM config and available providers
   useEffect(() => {
@@ -163,6 +168,12 @@ export default function LLMSelector() {
 
       if (apiKey) requestBody.apiKey = apiKey;
       if (baseURL) requestBody.baseURL = baseURL;
+      
+      // Include current session ID to ensure model switch applies to the correct session
+      // If there's no active session, it will fall back to the default session behavior
+      if (currentSessionId) {
+        requestBody.sessionId = currentSessionId;
+      }
 
       const response = await fetch('/api/llm/switch', {
         method: 'POST',
@@ -172,7 +183,7 @@ export default function LLMSelector() {
 
       const result = await response.json();
 
-      if (response.ok) {
+      if (result.success) {
         setCurrentConfig(result.config);
         setSuccess(result.message);
         setTimeout(() => {
@@ -180,7 +191,21 @@ export default function LLMSelector() {
           setSuccess(null);
         }, 1500);
       } else {
-        setError(result.error || 'Failed to switch LLM');
+        // Handle new structured error format
+        if (result.errors && result.errors.length > 0) {
+          const primaryError = result.errors[0];
+          let errorMessage = primaryError.message;
+          
+          // For API key errors, show the suggested action
+          if (primaryError.type === 'missing_api_key' && primaryError.suggestedAction) {
+            errorMessage += `. ${primaryError.suggestedAction}`;
+          }
+          
+          setError(errorMessage);
+        } else {
+          // Fallback to old format or generic error
+          setError(result.error || 'Failed to switch LLM');
+        }
       }
     } catch (err) {
       setError('Network error while switching LLM');
