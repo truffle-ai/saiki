@@ -1,9 +1,9 @@
 {
-  "label": "Getting Started with Saiki",
+  "label": "Getting Started",
   "position": 1,
   "link": {
     "type": "generated-index",
     "title": "Getting Started",
-    "description": "Quickly set up Saiki and start automating with natural language."
+    "description": "Learn how to build, run, and interact with AI agents using Saiki. These guides provide a hands-on, step-by-step introduction to the core features."
   }
 } 

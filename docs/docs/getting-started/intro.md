@@ -62,7 +62,7 @@ With your agent running, you can control it and integrate it anywhere. The Inter
 
 ## Ready to Start?
 
-**[Get started with Saiki in 5 minutes →](./quick-start.md)**
+**[Installation →](./installation.md)**
 
 ---
 
