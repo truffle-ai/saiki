@@ -199,7 +199,7 @@ export class MCPManager {
             for (const [toolName, client] of serverTools.entries()) {
                 if (this.toolConflicts.has(toolName)) {
                     const sanitizedServerName = this.sanitizeServerName(serverName);
-                    const qualifiedName = `${sanitizedServerName}${MCPClientManager.SERVER_DELIMITER}${toolName}`;
+                    const qualifiedName = `${sanitizedServerName}${MCPManager.SERVER_DELIMITER}${toolName}`;
 
                     const clientTools = await client.getTools();
                     const toolDef = clientTools[toolName];
@@ -226,14 +226,14 @@ export class MCPManager {
     private parseQualifiedToolName(
         toolName: string
     ): { serverName: string; toolName: string } | null {
-        const delimiterIndex = toolName.indexOf(MCPClientManager.SERVER_DELIMITER);
+        const delimiterIndex = toolName.indexOf(MCPManager.SERVER_DELIMITER);
         if (delimiterIndex === -1) {
             return null; // Not a qualified tool name
         }
 
         const serverPrefix = toolName.substring(0, delimiterIndex);
         const actualToolName = toolName.substring(
-            delimiterIndex + MCPClientManager.SERVER_DELIMITER.length
+            delimiterIndex + MCPManager.SERVER_DELIMITER.length
         );
 
         // Find the original server name by matching sanitized names
