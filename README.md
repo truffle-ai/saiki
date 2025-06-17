@@ -295,7 +295,7 @@ For comprehensive guides on building different types of applications with Saiki,
 - **Advanced patterns and best practices**
 - **Multi-agent systems**
 
-See our **[Building with Saiki Developer Guide](https://truffle-ai.github.io/saiki/docs/building-with-saiki)**.
+See our **[Building with Saiki Developer Guide](https://truffle-ai.github.io/saiki/docs/tutorials/building-with-saiki/)**.
 
 ## MCP Server Management
 
@@ -346,18 +346,18 @@ The MCPManager provides a simple, unified interface for connecting to and managi
 Find detailed guides, architecture, and API reference in our comprehensive [documentation](https://truffle-ai.github.io/saiki/docs/getting-started):
 
 - **[Quick Start](https://truffle-ai.github.io/saiki/docs/getting-started/quick-start)** - Get up and running in minutes
-- **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/overview)** - Configure agents, LLMs, and tools
-- **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/building-with-saiki)** - Developer guide with examples and patterns
-- **[Multi-Agent Systems](https://truffle-ai.github.io/saiki/docs/building-with-saiki/multi-agent-systems)** - Agent collaboration patterns
-- **[API Reference](https://truffle-ai.github.io/saiki/docs/api)** - REST APIs, WebSocket, and SDKs
-- **[MCP Manager](https://truffle-ai.github.io/saiki/docs/mcp-manager)** - Standalone MCP server management
+- **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/guides/configuring-saiki/overview)** - Configure agents, LLMs, and tools
+- **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/tutorials/building-with-saiki/)** - Developer guide with examples and patterns
+- **[Multi-Agent Systems](https://truffle-ai.github.io/saiki/docs/tutorials/building-with-saiki/multi-agent-systems)** - Agent collaboration patterns
+- **[API Reference](https://truffle-ai.github.io/saiki/docs/api-reference/)** - REST APIs, WebSocket, and SDKs
+- **[MCP Manager](https://truffle-ai.github.io/saiki/docs/guides/mcp-manager)** - Standalone MCP server management
 - **[Architecture](https://truffle-ai.github.io/saiki/docs/architecture/overview)** - System design and concepts
 
 ### Learning Resources
 
 - **[What is an AI Agent?](https://truffle-ai.github.io/saiki/docs/learn/what-is-an-ai-agent)** - Understanding AI agents
 - **[Model Context Protocol](https://truffle-ai.github.io/saiki/docs/learn/mcp)** - Learn about MCP
-- **[Examples & Demos](https://truffle-ai.github.io/saiki/docs/getting-started/examples-demos)** - See Saiki in action
+- **[Examples & Demos](https://truffle-ai.github.io/saiki/docs/examples-demos/)** - See Saiki in action
 
 ## Contributing
 We welcome contributions! Refer to our [Contributing Guide](https://truffle-ai.github.io/saiki/docs/contribution-guide/overview) for more details.
