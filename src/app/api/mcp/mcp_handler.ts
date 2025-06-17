@@ -78,6 +78,24 @@ export async function initializeMcpServer(
     );
 
     // Register Agent Card data as an MCP Resource
+    initializeAgentCardResource(mcpServer, agentCardData);
+
+    // Connect server to transport AFTER all registrations
+    logger.info(`Initializing MCP protocol server connection...`);
+    await mcpServer.connect(mcpTransport);
+    logger.info(`✅ MCP server protocol connected via transport.`);
+    return mcpServer;
+}
+
+/**
+ * Initializes the Agent Card resource for the MCP server.
+ * @param mcpServer - The MCP server instance.
+ * @param agentCardData - The agent card data to be registered as an MCP resource.
+ */
+export async function initializeAgentCardResource(
+    mcpServer: McpServer,
+    agentCardData: AgentCard
+): Promise<void> {
     const agentCardResourceProgrammaticName = 'agentCard';
     const agentCardResourceUri = 'saiki://agent/card';
     try {
@@ -102,12 +120,6 @@ export async function initializeMcpServer(
             `Error attempting to register MCP Resource '${agentCardResourceProgrammaticName}': ${e.message}. Check SDK.`
         );
     }
-
-    // Connect server to transport AFTER all registrations
-    logger.info(`Initializing MCP protocol server connection...`);
-    await mcpServer.connect(mcpTransport);
-    logger.info(`✅ MCP server protocol connected via transport.`);
-    return mcpServer;
 }
 
 /**
