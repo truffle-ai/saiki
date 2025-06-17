@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/truffle-ai-saiki-badge.png)](https://mseep.ai/app/truffle-ai-saiki)
+
 # Saiki
 
 <p align="center">
