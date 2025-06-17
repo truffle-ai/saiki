@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Quick Start
 
-Get your first Saiki agent running in 5 minutes. This guide will walk you through installing Saiki, creating a new project, and interacting with your agent.
+Get Saiki running in under a minute. This guide walks you through installing the Saiki CLI, setting up your API key, and running your first command.
 
 ### 1. Installation
 
@@ -16,57 +16,34 @@ npm install -g @truffle-ai/saiki
 
 This gives you access to the global `saiki` command.
 
-### 2. Create a Project
+### 2. Set Your API Key
 
-Next, create a new Saiki project. This will set up a directory with a default agent configuration.
+Saiki needs an LLM API key to function. The simplest way to provide it is by setting an environment variable. By default, Saiki uses OpenAI.
 
 ```bash
-saiki init my-first-agent
-cd my-first-agent
+export OPENAI_API_KEY="sk-..."
 ```
 
-This creates a `my-first-agent` directory containing a `saiki.yml` file. This file is the heart of our **Framework**—it defines how your agent will behave.
+Saiki automatically detects and uses this key. For other providers like Anthropic or Google, you can set `ANTHROPIC_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`.
 
-### 3. Configure your API Key
+### 3. Run Your Agent
 
-The default agent is configured to use OpenAI. To run it, you need to provide an API key.
+Now you're ready to interact with Saiki.
 
-Open the `.env` file in your new project and add your OpenAI API key:
-
-```.env
-OPENAI_API_KEY="sk-..."
-```
-
-Saiki's **Runtime** automatically loads variables from this file.
-
-### 4. Run Your Agent
-
-Now you're ready to start your agent. Use the **CLI** to interact with the Saiki **Runtime**.
-
-Run a single command:
+Run a single command for a quick answer:
 ```bash
-saiki "What is the current working directory?"
+saiki "What is the current version of typescript?"
 ```
 
-Or start an interactive session:
+Or start an interactive chat session:
 ```bash
 saiki
 ```
-This will start a chat session with your agent directly in your terminal. You've now successfully built and run your first Saiki agent!
-
-## Run agent as a server
-
-To run a Saiki agent as a server, use the following command:
-
-```bash
-saiki --mode server
-```
-
-You can now talk to your agent via REST or WebSocket APIs.
-
-Check out the [API Reference](../api-reference/overview) for more details.
+This will start a chat session with the default agent directly in your terminal. You've now successfully run Saiki!
 
 ## Next Steps
+
+You've just scratched the surface. Here's what you can do next:
 
 - **Learn the Basics:** Check out our [CLI guide](../guides/cli) for more advanced usage
 - **Configure Your Agent:** See [Configuration](../guides/configuring-saiki/overview) to customize your setup
