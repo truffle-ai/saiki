@@ -194,18 +194,10 @@ In the past few years, we have seen AI products emerge that have primarily been 
 
 My theory is that as AI models get natively better, there will be less need for these workflow driven paradigms for specific problems, and LLMs will be able to do more of the heavy lifting.
 
-AI models will be able to handle more tools and more complex instructions - and more use-cases will shift towards using more autonomous agents. We have already seen reinforcement learning cases where the AI is just given a high level goal, and is able to figure out unique ways of accomplishing the task that humans wouldn't have tried.
-
-However, newer companies and products utilizing AI agents are **dominating** the industry, especially in software development and research.
+AI models will be able to handle more tools and more complex instructions - and more use-cases will shift towards using autonomous agents. We have already seen reinforcement learning cases where the AI is just given a high level goal, and is able to figure out unique ways of accomplishing the task that humans wouldn't have tried.
 
 Google DeepMind recently launched [AlphaEvolve](https://deepmind.google/discover/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/), a coding agent designed to create new algorithms. AlphaEvolve has already discovered multiple new algorithms for matrix multiplication, a fundamental problem in computer science.
 
-Cursor, an AI powered IDE, allows you to code in your IDE by instructing an agent, and lets you use all the popular LLM providers. Cursor hit $100m in annual revenue in December 2024. Then $300m in annual revenue in March 2025, and just recently in June 2025, crossed $500m.
+We're also seeing new AI agent products - IDEs like [Cursor](https://www.cursor.com/) and [Windsurf](https://windsurf.com/) allow users to build software applications by talking to an AI agent.
 
-Cursor is currently valued at $9.9B dollars, and is the fastest growing SaaS company of all time.
-
-![Cursor growth chart](./cursor_growth.png)
-
-We want to enable developers to be able to build the next Cursor.
-
-This is why we're building [Saiki](https://github.com/truffle-ai/saiki) - an open-source AI agent runtime, which helps you customize your LLM, system prompts, tools, among many other things, and allows you to build powerful AI Agents. Check it out and give us a star, it means a lot!
+In the next blog post, I'll demonstrate how you can use [Saiki, our open-source AI agent runtime](https://github.com/truffle-ai/saiki) to build useful AI agents.
