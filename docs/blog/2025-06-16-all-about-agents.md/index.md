@@ -19,19 +19,18 @@ Let's first start with Large Language Models (LLMs), the backbone of AI agents.
 
 LLMs are deep learning models, pre-trained on vast amounts of data, often more than what's available on the entire internet!
 
-LLMs accept some input and try to predict the most likely output.  
-Here the input could be chat message, an image, a voice message or even video.
+At their core, LLMs take in input and predict the most likely output.  
+Here the input could be a chat message, an image, a voice message or even video.
 
 LLMs predict the output token-by-token, which means that at each step of giving you a response, the LLM is predicting what the next token should be. More on this [here](https://x.com/cwolferesearch/status/1879995082285171081).
 
 So when you ask an LLM something like `what is 5+10`, or [`how many r's are there in strawberry?`](https://techcrunch.com/2024/08/27/why-ai-cant-spell-strawberry/), the LLM tries to *guess* what the actual answer should be based on its training data.
 
-LLMs have gotten so good to a point where their grammar and sentence structure are much better than an average human, and also have knowledge of an extremely broad variety of topics.
+LLMs have reached a point where their grammar and sentence structure are much better than a typical human, and also have knowledge of an extremely broad variety of topics.
 
 ChatGPT is the most popular example of an LLM based application, which you've probably used, unless you're living under a rock.
 
 Under the hood, ChatGPT uses LLMs built by OpenAI, like `gpt-4o` or `gpt-4.5` to answer your questions about almost anything.
-
 
 This is why if you ask LLMs questions like `how many r's are there in the word strawberry`, you might see completely incorrect results - [the guessing doesn't always work well](https://www.reddit.com/r/singularity/comments/1enqk04/how_many_rs_in_strawberry_why_is_this_a_very/). This is called [*hallucination*](https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)).
 
@@ -83,8 +82,8 @@ This is an extremely basic example, but the key takeaway here is that by giving 
 
 This is where things get interesting - what if the LLM had a function to book a reservation for you at a restaurant? Or if the LLM had a function to make a payment for you? 
 
-All the LLM would need to do in this case is just use the right function based on the request, and you now have AI powered bookings and payments. 
-There are other complexities like ensuring the LLM uses the right function, and adding the right guardrails and authentication, but we'll not get into that for now.
+All the LLM would need to do in this case is use the right function based on the request, and you now have AI powered bookings and payments. 
+There are other complexities like ensuring the LLM uses the right function, and adding the right guardrails and authentication, but we won't get into that for now.
 
 
 ## LLM workflows and AI Agents
@@ -93,7 +92,7 @@ Now that we've explained how tools and system prompts work, let's dive into how 
 
 Let's look at one specific problem - automating code reviews, and 2 different approaches for how we can solve this problem using LLMs.
 
-I've intentionally left out most of the complexity of actually building this system, just to illustrate the idea of how we can think about this.
+I've intentionally left out most of the complexity of actually building this system to primarily show 2 ways we can think about this problem.
 
 ### Approach 1
 
@@ -104,7 +103,6 @@ Here are 4 important things, among others that I look at when I review code:
 2. **Architecture** - does the code fit the codebase well and will it adapt well to changes we make in the future?
 3. **Testing** - has the code been sufficiently tested? are there more test cases we can come up with?
 4. **Documentation** - has the documentation been updated to account for the code changes?
-
 
 If I wanted to use LLMs to automate this, I could maybe use 1 LLM for each of these sub-tasks? What if I had 4 LLMs - one for each problem? Then the flow could look something like this:
 
@@ -136,13 +134,13 @@ flowchart TD
     LLM4 -->|Missing/Outdated docs| Comment4[📝 Add documentation comments]
 ```
 
-Now that we have this workflow diagram, we can implement code that follows this logic tree.
+With this workflow mapped out, I just need to implement code that follows this logic tree.
 
 ### Approach 2
 
 If I had a developer working for me, I'd just ask them to review the code right? What if I could leverage LLMs in a similar manner?
 
-Let's give an LLM very detailed instructions, and all the tools necessary to complete this review, just like I would for a human. Let's also tell give it a way to reach back out to me if it needs any clarifying information.
+Let's give an LLM very detailed instructions, and all the tools necessary to complete this review, just like I would for a human. Let's also give it a way to reach back out to me if it needs any clarifying information.
 
 LLM-1 - instructed to review the code and given all the necessary tools to do the task.
 
@@ -175,6 +173,8 @@ Let's look at the key differences in the approaches:
 
 Now, we can replace `Approach 1` with the term `LLM Workflow`, and `Approach 2` with the term `AI Agent`
 
+The key takeaway here is that workflows execute steps *we define*, while AI agents *figure out how to accomplish the goal* and can make make decisions dynamically.
+
 ## Which approach is better?
 
 Use an LLM Workflow when:
@@ -187,7 +187,7 @@ Use an LLM Workflow when:
 Use an AI Agent when:
 
  - The problem is vague and complex - requires decision-making, adaptation, or chaining multiple services.
- - The process may change based on context, user input or something else.
+ - The process may change based on context, user input, or something else.
  - Examples: Coding assistant, customer support assistant.
 
 ## Closing thoughts
@@ -202,4 +202,4 @@ Google DeepMind recently launched [AlphaEvolve](https://deepmind.google/discover
 
 We're also seeing new AI agent products - IDEs like [Cursor](https://www.cursor.com/) and [Windsurf](https://windsurf.com/) allow users to build software applications by talking to an AI agent.
 
-In the next blog post, I'll demonstrate how you can use [Saiki, our open-source AI agent runtime](https://github.com/truffle-ai/saiki) to build useful AI agents.
+In the next blog post, we'll walk through how to use [Saiki, our open-source AI agent runtime](https://github.com/truffle-ai/saiki) to build a real AI agent.
