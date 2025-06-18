@@ -8,7 +8,7 @@ import { AgentEventBus } from '@core/events/index.js';
 /**
  * Modern CLI subscriber for inline streaming responses
  */
-class SimpleCLISubscriber implements EventSubscriber {
+class CLISubscriber implements EventSubscriber {
     private isStreamingResponse = false;
     private hasStartedResponse = false;
     private hasReceivedChunks = false; // Track if we actually got chunks
@@ -131,15 +131,15 @@ class SimpleCLISubscriber implements EventSubscriber {
 /**
  * Simple CLI class for streamlined chat experience
  */
-export class SimpleCLI {
+export class CLI {
     private agent: SaikiAgent;
-    private subscriber: SimpleCLISubscriber;
+    private subscriber: CLISubscriber;
     private rl: readline.Interface;
     private isRunning = false;
 
     constructor(agent: SaikiAgent) {
         this.agent = agent;
-        this.subscriber = new SimpleCLISubscriber();
+        this.subscriber = new CLISubscriber();
 
         // Create readline interface
         this.rl = readline.createInterface({
@@ -340,15 +340,15 @@ export class SimpleCLI {
  * Start the interactive CLI mode
  */
 export async function startAiCli(agent: SaikiAgent): Promise<void> {
-    const simpleCli = new SimpleCLI(agent);
+    const cli = new CLI(agent);
 
     // Handle graceful shutdown
     process.on('SIGTERM', () => {
-        simpleCli.cleanup();
+        cli.cleanup();
         process.exit(0);
     });
 
-    await simpleCli.start();
+    await cli.start();
 }
 
 /**
@@ -358,7 +358,7 @@ export async function startAiCli(agent: SaikiAgent): Promise<void> {
  */
 export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promise<void> {
     // Initialize CLI components with the same simplified subscriber
-    const cliSubscriber = new SimpleCLISubscriber();
+    const cliSubscriber = new CLISubscriber();
     cliSubscriber.subscribe(agent.agentEventBus);
 
     // Log connection info
