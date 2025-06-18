@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Installation
 
-This guide will walk you through installing Saiki and setting up your environment to start building AI agents.
+This guide will walk you through installing the Saiki CLI and setting up your environment so you can start running agents.
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/en/download) >= 20.0.0
