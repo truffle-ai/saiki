@@ -81,7 +81,7 @@ export class VercelLLMService implements ILLMService {
         await this.messageManager.addUserMessage(userInput, imageData);
 
         // Get all tools
-        const tools: any = await this.clientManager.getAllTools();
+        const tools = await this.clientManager.getAllTools();
         logger.silly(
             `[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`
         );
