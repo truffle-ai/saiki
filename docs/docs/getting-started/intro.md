@@ -2,62 +2,69 @@
 sidebar_position: 1
 ---
 
-# Introduction: What is Saiki?
+# Introduction
 
-Saiki is an **AI Agent Framework** that comes with its own runtime. It is a complete system designed to give developers everything they need to **build, run, and interact** with sophisticated AI agents.
+Saiki is an **AI Agent Runtime** that orchestrates intelligent, stateful agents capable of reasoning, executing tools, and completing complex tasks. Instead of building agents from scratch—setting up LLM clients, managing state, implementing tool calling, handling sessions—you simply configure them declaratively and let Saiki handle the orchestration.
 
-At its core, Saiki provides a clear and powerful separation between an agent's *definition* (what it is and what it can do) and its *execution* (how it runs and operates). This architectural choice is key to making the development process more intuitive and effective. It allows you to focus on your agent's logic and capabilities without getting bogged down in the complexities of state management and LLM orchestration, resulting in a workflow that is faster, more scalable, and easier to maintain.
+## Why Saiki?
+
+Traditional AI applications are stateless and limited to single interactions. Your agent forgets context, loses track of ongoing tasks, and can't coordinate multiple tools effectively.
+
+**Saiki changes this** by providing a runtime that maintains persistent agent state, handles complex reasoning loops, and manages tool execution—giving you agents that can:
+
+- 🧠 **Remember everything** across conversations and sessions  
+- 🔄 **Work on long-running tasks** without losing progress
+- 🛠️ **Orchestrate multiple tools** to complete complex objectives
+- ⚡ **Scale intelligently** with persistent state management
+
+Think of it as the difference between a stateless chatbot vs. a **persistent AI assistant** that grows smarter with each interaction.
 
 ```mermaid
-graph TD
-    subgraph "Interact"
-        A["<b>Interfaces</b><br><i>(CLI, Web UI, API)</i>"]
+flowchart TD
+    subgraph Config ["Configuration Layer"]
+        A[LLM Config<br/><i>Provider, Model, Prompts</i>]
+        B[MCP Servers<br/><i>Tool Connections</i>]
+        C[Storage<br/><i>Cache & Database</i>]
+        D[Sessions<br/><i>Limits & TTL</i>]
     end
     
-    subgraph "Run"
-        B("<b>Saiki Runtime</b><br><i>(The Engine)</i>")
+    subgraph Runtime ["Runtime Layer"]
+        E[<i>Orchestrates Services<br/>for<br/>Stateful Agent Behavior</i>]
     end
-
-    subgraph "Build"
-        C["<b>The Framework</b><br><i>(saiki.yml & Core Library)</i>"]
+    
+    subgraph Interactive ["Interactive Layer"]
+        F[CLI]
+        G[Web UI]
+        H[API Server]
+        I[SDK/Library]
     end
+    
+    Config --> Runtime
+    Runtime --> Interactive
 
-    A -- "Controls" --> B
-    B -- "Executes" --> C
-
-    classDef darkNode fill:#282a36,stroke:#5eead4,stroke-width:2px,color:#f8f8f2;
-    class A,B,C darkNode;
+    classDef configNode fill:#1a202c,stroke:#4fd1c7,stroke-width:2px,color:#f7fafc
+    classDef runtimeNode fill:#2d3748,stroke:#68d391,stroke-width:2px,color:#f7fafc
+    classDef interactiveNode fill:#2c5282,stroke:#63b3ed,stroke-width:2px,color:#f7fafc
+    
+    class A,B,C,D configNode
+    class E runtimeNode
+    class F,G,H,I interactiveNode
 ```
 
-## 1. Build Agents with the Framework
-First, you define what your agent is and what it can do. The Framework is designed to be flexible, letting you start simple and add power as you go.
+## What You Get
 
-#### Start with `saiki.yml`
-For rapid development, you can define an agent declaratively in a simple YAML file. It's the fastest way to specify its core attributes:
--   **Identity:** Set its purpose with a `systemPrompt`.
--   **Skills:** Grant it `Tools` to work with other systems.
--   **Intelligence:** Choose its `LLM` provider and model.
+Saiki provides everything you need to build sophisticated AI agents:
 
-#### Extend with the Core Library
-For more complex needs, the `@truffle-ai/saiki` library gives you full programmatic control to embed the runtime, create custom logic, and build event-driven workflows.
+- **Persistent Conversations** - Maintain context across sessions with configurable storage backends (Redis, PostgreSQL, SQLite, in-memory)
+- **Multi-Session Support** - Run concurrent conversations with isolation, limits, and automatic cleanup
+- **Model Flexibility** - Use any LLM provider (OpenAI, Anthropic, Google, local) and switch models dynamically
+- **Tool Integration** - Connect to external APIs through Model Context Protocol (MCP) without writing integration code
+- **Multi-Agent Systems** - Run specialized agents that communicate, delegate tasks, and coordinate through emerging protocols like MCP, A2A, etc.
+- **Clean Deployment** - Single-command Docker deployment with built-in health checks and production-ready configuration
+- **Event System** - Real-time events for agent state, tool executions, and LLM interactions
+- **Multiple Interfaces** - Access via CLI, Web UI, REST API, or embed using the SDK/library
 
-## 2. Run Agents with the Runtime
-Once an agent is defined, the **Saiki Runtime** brings it to life. It's the engine that handles all the complex, behind-the-scenes work, allowing you to focus on your agent's logic instead of its operational complexities. Its key responsibilities include:
-
--   **Reasoning & Planning:** The Runtime manages the core reasoning loop. It facilitates the dialogue with the LLM, helps create plans, and enables the agent to reason about the results of its actions.
--   **Tool Orchestration:** It dynamically loads and calls the right tools at the right time. This includes passing the correct arguments and feeding the output back into the reasoning loop, so the agent can make its next move.
--   **Context & State Management:** The Runtime intelligently maintains the agent's state and memory. It tracks conversation history and tool outputs, ensuring the agent has the necessary context for long-running tasks while respecting LLM token limits.
-
-## 3. Interact with Agents via Interfaces
-With your agent running, you can control it and integrate it anywhere. The Interfaces provide both ready-to-use tools and building blocks for custom applications.
--   **CLI:** For interactive chats, one-off commands, and server management.
--   **Web UI:** A visual playground for rapid development and testing.
--   **API Server:** Expose your agent over the network to build custom UIs or integrate Saiki into any application.
-
-## Ready to Start?
-
-**[Installation →](./installation.md)**
 
 ---
 
-Saiki is built by the team at Truffle AI. Join our community and help shape the future of natural language automation! 
+*Saiki is built by the team at Truffle AI. Join our community and help shape the future of intelligent agent orchestration!* 
