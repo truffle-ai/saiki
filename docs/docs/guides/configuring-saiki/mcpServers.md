@@ -49,8 +49,6 @@ mcpServers:
     command: node
     args:
       - dist/src/servers/puppeteerServer.js
-    env:
-      DEBUG: "puppeteer:*"
     timeout: 30000
 ```
 
