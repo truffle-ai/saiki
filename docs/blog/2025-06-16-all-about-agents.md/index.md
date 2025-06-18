@@ -71,7 +71,7 @@ Now when I chat with the LLM, it will talk to me only like a chef!
 Now, we've already established that LLMs can accept input and give back output. But LLMs can do more than that - they can also **take actions**
 
 This is done by giving the LLMs access to `functions`, or `tools`.
-These are defined methods with specific capabilities.
+These are defined methods with specific capabilities, implemented by developers.
 
 Let's revisit the previous case where we asked the LLM to add 2 numbers, this time with function calling.
 
@@ -145,6 +145,8 @@ If I had a developer working for me, I'd just ask them to review the code right?
 Let's give an LLM very detailed instructions, and all the tools necessary to complete this review, just like I would for a human. Let's also tell give it a way to reach back out to me if it needs any clarifying information.
 
 LLM-1 - instructed to review the code and given all the necessary tools to do the task.
+
+In this approach, LLM-1 is not just doing the steps, but it is also *figuring out* what steps to review the PR based on high level instructions.
 
 <!-- ![Code Review Agent](./cr_workflow_2.png) -->
 
