@@ -107,12 +107,14 @@ export async function startAiCli(agent: SaikiAgent) {
             }
 
             if (validLogLevels.includes(lowerInput)) {
+                console.log(`Current log level: ${logger.getLevel()}`);
                 logger.setLevel(lowerInput);
+                console.log(`Log level set to ${lowerInput}`);
                 return true;
             }
 
             if (lowerInput === 'currentloglevel') {
-                logger.info(`Current log level: ${logger.getLevel()}`);
+                console.log(`Current log level: ${logger.getLevel()}`);
                 return true;
             }
 
@@ -125,7 +127,7 @@ export async function startAiCli(agent: SaikiAgent) {
         }
 
         function showHelp() {
-            logger.info(HELP_MESSAGE);
+            console.log(HELP_MESSAGE);
         }
 
         try {
