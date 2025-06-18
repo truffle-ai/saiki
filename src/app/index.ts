@@ -158,10 +158,11 @@ program
                 process.exit(1);
             }
 
-            // Redirect logs to file to prevent interference with stdio transport
-            const logFile =
-                process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp-tools.log');
-            logger.redirectToFile(logFile);
+            //Redirect logs to file to prevent interference with stdio transport
+
+            // const logFile =
+            //     process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp-tools.log');
+            // logger.redirectToFile(logFile);
 
             logger.info(
                 `Starting MCP tool aggregation server: ${options.name} v${options.version}`

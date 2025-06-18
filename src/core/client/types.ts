@@ -1,7 +1,11 @@
 import { McpServerConfig } from '../config/schemas.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ToolSet } from '../ai/types.js';
-import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
+import {
+    GetPromptResult,
+    ReadResourceResult,
+    ListToolsResult,
+} from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * Interface for any provider of tools
@@ -15,6 +19,8 @@ export interface ToolProvider {
  * Interface for MCP clients specifically, that can provide tools
  */
 export interface IMCPClient extends ToolProvider {
+    getToolsInMcpFormat();
+
     // Connection Management
     connect(config: McpServerConfig, serverName: string): Promise<Client>;
     disconnect?(): Promise<void>;
@@ -26,4 +32,7 @@ export interface IMCPClient extends ToolProvider {
     // Resource Management
     listResources(): Promise<string[]>;
     readResource(uri: string): Promise<ReadResourceResult>;
+
+    // MCP Client Management
+    getConnectedClient(): Promise<Client>;
 }

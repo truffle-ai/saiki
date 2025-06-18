@@ -13,7 +13,7 @@ import type {
 import { ToolSet } from '../ai/types.js';
 import { IMCPClient } from './types.js';
 import { resolvePackagePath } from '../utils/path.js';
-import { GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
+import { GetPromptResult, ListToolsResult } from '@modelcontextprotocol/sdk/types.js';
 import { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
 // const DEFAULT_TIMEOUT = 60000; // Commented out or remove if not used elsewhere
@@ -323,6 +323,10 @@ export class MCPClient implements IMCPClient {
             return tools;
         }
         return tools;
+    }
+
+    async getToolsInMcpFormat() {
+        return await this.client.listTools({});
     }
 
     /**

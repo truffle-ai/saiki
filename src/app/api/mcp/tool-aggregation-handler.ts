@@ -4,6 +4,112 @@ import { MCPManager } from '@core/client/manager.js';
 import { logger } from '@core/index.js';
 import { ServerConfigs } from '@core/config/schemas.js';
 import { NoOpConfirmationProvider } from '@core/client/tool-confirmation/noop-confirmation-provider.js';
+import { z } from 'zod';
+
+/**
+ * Converts a JSON Schema object to a Zod raw shape.
+ * This is a simplified converter that handles common MCP tool schemas.
+ */
+function jsonSchemaToZodShape(jsonSchema: any): z.ZodRawShape {
+    if (!jsonSchema || typeof jsonSchema !== 'object' || jsonSchema.type !== 'object') {
+        return {};
+    }
+
+    const shape: z.ZodRawShape = {};
+
+    if (jsonSchema.properties) {
+        for (const [key, property] of Object.entries(jsonSchema.properties)) {
+            const propSchema = property as any;
+            let zodType: z.ZodTypeAny;
+            switch (propSchema.type) {
+                case 'string':
+                    zodType = z.string();
+                    break;
+                case 'number':
+                    zodType = z.number();
+                    break;
+                case 'integer':
+                    zodType = z.number().int();
+                    break;
+                case 'boolean':
+                    zodType = z.boolean();
+                    break;
+                case 'array':
+                    if (propSchema.items) {
+                        const itemType = getZodTypeFromProperty(propSchema.items);
+                        zodType = z.array(itemType);
+                    } else {
+                        zodType = z.array(z.any());
+                    }
+                    break;
+                case 'object':
+                    zodType = z.object(jsonSchemaToZodShape(propSchema));
+                    break;
+                default:
+                    zodType = z.any();
+            }
+
+            // Add description if present using custom metadata
+            if (propSchema.description) {
+                // Try to add description as custom property (this might get picked up by the SDK)
+                (zodType as any)._def.description = propSchema.description;
+                zodType = zodType.describe(propSchema.description);
+            }
+
+            // Make optional if not in required array
+            if (!jsonSchema.required || !jsonSchema.required.includes(key)) {
+                zodType = zodType.optional();
+            }
+
+            shape[key] = zodType;
+        }
+    }
+
+    return shape;
+}
+
+/**
+ * Helper function to get a Zod type from a property schema
+ */
+function getZodTypeFromProperty(propSchema: any): z.ZodTypeAny {
+    let zodType: z.ZodTypeAny;
+
+    switch (propSchema.type) {
+        case 'string':
+            zodType = z.string();
+            break;
+        case 'number':
+            zodType = z.number();
+            break;
+        case 'integer':
+            zodType = z.number().int();
+            break;
+        case 'boolean':
+            zodType = z.boolean();
+            break;
+        case 'object':
+            zodType = z.object(jsonSchemaToZodShape(propSchema));
+            break;
+        case 'array':
+            if (propSchema.items) {
+                zodType = z.array(getZodTypeFromProperty(propSchema.items));
+            } else {
+                zodType = z.array(z.any());
+            }
+            break;
+        default:
+            zodType = z.any();
+    }
+
+    // Add description if present using custom metadata
+    if (propSchema.description) {
+        // Try to add description as custom property (this might get picked up by the SDK)
+        (zodType as any)._def.description = propSchema.description;
+        zodType = zodType.describe(propSchema.description);
+    }
+
+    return zodType;
+}
 
 /**
  * Initializes MCP server for tool aggregation mode.
@@ -35,32 +141,51 @@ export async function initializeMcpToolAggregationServer(
     );
 
     // Get all tools from connected servers and register them
-    const allTools = await mcpManager.getAllTools();
-    logger.info(`Registering ${Object.keys(allTools).length} tools from connected MCP servers`);
+    // TODO: Temporary hacky solution to get the tools from the connected servers, directly using the MCP Client to preserve types
+    // TODO: We should use the MCPManager or MCPClient instead of directly interacting with the raw client to get the tools, but we lose type information and it becomes any type which is hard to work with
+    const mcpClientsMap = mcpManager.getClients();
+    let toolCount = 0;
+    for (const [clientName, client] of mcpClientsMap.entries()) {
+        // Get the actual MCP Client
+        const connectedClient = await client.getConnectedClient();
+        // Get the tools from the MCP client
+        const mcpTools = await connectedClient.listTools({});
 
-    for (const [toolName, toolDef] of Object.entries(allTools)) {
-        logger.debug(`Registering tool: ${toolName}`);
+        logger.debug(`MCP client name: ${clientName}`);
+        logger.debug(`MCP client tools: ${JSON.stringify(mcpTools, null, 2)}`);
 
-        // Register each tool as a pass-through to the original MCP server
-        mcpServer.tool(
-            toolName,
-            toolDef.description || `Tool: ${toolName}`,
-            toolDef.parameters || {},
-            async (args: any) => {
-                logger.info(
-                    `Tool aggregation: executing ${toolName} with args: ${JSON.stringify(args)}`
-                );
-                try {
-                    const result = await mcpManager.executeTool(toolName, args);
-                    logger.info(`Tool aggregation: ${toolName} completed successfully`);
-                    return result;
-                } catch (error) {
-                    logger.error(`Tool aggregation: ${toolName} failed: ${error}`);
-                    throw error;
+        for (const tool of mcpTools.tools) {
+            toolCount++;
+            logger.debug(`Registering tool: ${tool.name}`);
+
+            // Convert JSON Schema to Zod raw shape
+            const zodShape = jsonSchemaToZodShape(tool.inputSchema);
+
+            // Log the tool schema to debug the issue
+            logger.debug(`Tool ${tool.name} zodShape: ${JSON.stringify(zodShape, null, 2)}`);
+
+            mcpServer.tool(
+                tool.name,
+                tool.description || `Tool: ${tool.name}`,
+                zodShape,
+                async (args: any) => {
+                    logger.info(
+                        `Tool aggregation: executing ${tool.name} with args: ${JSON.stringify(args)}`
+                    );
+                    try {
+                        const result = await mcpManager.executeTool(tool.name, args);
+                        logger.info(`Tool aggregation: ${tool.name} completed successfully`);
+                        return result;
+                    } catch (error) {
+                        logger.error(`Tool aggregation: ${tool.name} failed: ${error}`);
+                        throw error;
+                    }
                 }
-            }
-        );
+            );
+        }
     }
+
+    logger.info(`Registered ${toolCount} tools from connected MCP servers`);
 
     // Register resources if available
     try {
@@ -101,9 +226,7 @@ export async function initializeMcpToolAggregationServer(
     // Connect server to transport
     logger.info(`Connecting MCP tool aggregation server...`);
     await mcpServer.connect(mcpTransport);
-    logger.info(
-        `✅ MCP tool aggregation server connected with ${Object.keys(allTools).length} tools exposed`
-    );
+    logger.info(`✅ MCP tool aggregation server connected with ${toolCount} tools exposed`);
 
     return mcpServer;
 }
