@@ -18,7 +18,7 @@ import {
     createSaikiAgent,
 } from '@core/index.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
-import { startAiCli, startHeadlessCli } from './cli/cli.js';
+import { startHeadlessCli, startAiCli } from './cli/cli.js';
 import { startApiAndLegacyWebUIServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
@@ -237,7 +237,7 @@ program
                     await startHeadlessCli(agent, headlessInput);
                     process.exit(0);
                 } else {
-                    await startAiCli(agent); // Interactive CLI
+                    await startAiCli(agent);
                 }
                 break;
 

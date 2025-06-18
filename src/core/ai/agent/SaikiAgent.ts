@@ -119,7 +119,7 @@ export class SaikiAgent {
         userInput: string,
         imageDataInput?: { image: string; mimeType: string },
         sessionId?: string,
-        stream: boolean = false
+        stream: boolean = true
     ): Promise<string | null> {
         try {
             let session: ChatSession;

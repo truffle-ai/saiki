@@ -281,14 +281,9 @@ export class VercelLLMService implements ILLMService {
                     );
                 }
 
-                // Emit response event for step text (without token count until final)
-                if (step.text) {
-                    this.sessionEventBus.emit('llmservice:response', {
-                        content: step.text,
-                        model: this.model.modelId,
-                        tokenCount: totalTokens > 0 ? totalTokens : undefined,
-                    });
-                }
+                // Note: We don't emit llmservice:response here during streaming
+                // because chunks are handled via llmservice:chunk events.
+                // The final response will be emitted in onFinish.
 
                 // Process tool calls (same as generateText)
                 if (step.toolCalls && step.toolCalls.length > 0) {
