@@ -205,7 +205,7 @@ const config: Config = {
             id: 'support_us',
             content:
                 '⭐️ If you like Saiki, give it a star on <a target="_blank" rel="noopener noreferrer" href="https://github.com/truffle-ai/saiki">GitHub</a> and join our <a target="_blank" rel="noopener noreferrer" href="https://discord.gg/GFzWFAAZcm">Discord</a>! ⭐️',
-            backgroundColor: '#6366f1',
+            backgroundColor: '#14b8a6',
             textColor: '#ffffff',
             isCloseable: true,
         },

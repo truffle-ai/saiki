@@ -25,14 +25,8 @@ graph TD
     A -- "Controls" --> B
     B -- "Executes" --> C
 
-    classDef interact fill:#f8cecc,stroke:#b85450,stroke-width:2px;
-    class A interact;
-
-    classDef run fill:#d5e8d4,stroke:#82b366,stroke-width:2px;
-    class B run;
-
-    classDef build fill:#e1d5e7,stroke:#9673a6,stroke-width:2px;
-    class C build;
+    classDef darkNode fill:#282a36,stroke:#5eead4,stroke-width:2px,color:#f8f8f2;
+    class A,B,C darkNode;
 ```
 
 ## 1. Build Agents with the Framework
