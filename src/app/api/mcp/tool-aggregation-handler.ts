@@ -57,8 +57,10 @@ export async function initializeMcpToolAggregationServer(
             // Convert JSON Schema to Zod raw shape
             const zodShape = jsonSchemaToZodShape(tool.inputSchema);
 
-            // Log the tool schema to debug the issue
-            logger.debug(`Tool ${tool.name} zodShape: ${JSON.stringify(zodShape, null, 2)}`);
+            // Log the tool schema to debug the issue (safely handle Zod schema circular references)
+            logger.debug(
+                `Tool ${tool.name} original inputSchema: ${JSON.stringify(tool.inputSchema, null, 2)}`
+            );
 
             mcpServer.tool(
                 tool.name,
