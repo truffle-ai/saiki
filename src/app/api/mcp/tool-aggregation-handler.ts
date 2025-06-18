@@ -13,15 +13,16 @@ import { jsonSchemaToZodShape } from '@core/utils/index.js';
 export async function initializeMcpToolAggregationServer(
     serverConfigs: ServerConfigs,
     mcpTransport: Transport,
-    serverName: string = 'saiki-tools',
-    serverVersion: string = '1.0.0'
+    serverName: string,
+    serverVersion: string,
+    strict: boolean
 ): Promise<McpServer> {
     // Create MCP manager with no confirmation provider (tools are auto-approved)
     const mcpManager = new MCPManager(new NoOpConfirmationProvider());
 
     // Initialize all MCP server connections from config
     logger.info('Connecting to configured MCP servers for tool aggregation...');
-    await mcpManager.initializeFromConfig(serverConfigs, 'lenient');
+    await mcpManager.initializeFromConfig(serverConfigs, strict ? 'strict' : 'lenient');
 
     // Create the aggregation MCP server
     const mcpServer = new McpServer(

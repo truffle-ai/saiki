@@ -41,7 +41,6 @@ import { startNextJsWebServer } from './web.js';
 import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
 import { createAgentCard } from '@core/config/agentCard.js';
 import { initializeMcpToolAggregationServer } from './api/mcp/tool-aggregation-handler.js';
-import { loadSharedConfig } from './utils/shared-config.js';
 
 const program = new Command();
 
@@ -133,6 +132,7 @@ program
     });
 
 // 4) `mcp-tools` SUB-COMMAND
+// This mode simply aggregates and re-expose tools from configured MCP servers (no agent)
 program
     .command('mcp-tools')
     .description(
@@ -144,11 +144,14 @@ program
     .option('--version <version>', 'Version for the MCP server', '1.0.0')
     .action(async (options) => {
         try {
-            // Load shared configuration
-            const { config } = await loadSharedConfig({
-                configFile: options.configFile,
-                strict: options.strict,
-            });
+            // Load and resolve config
+            const configPath = resolvePackagePath(
+                options.configFile || DEFAULT_CONFIG_PATH,
+                (options.configFile || DEFAULT_CONFIG_PATH) === DEFAULT_CONFIG_PATH
+            );
+
+            logger.info(`Loading Saiki config from: ${configPath}`);
+            const config = await loadConfigFile(configPath);
 
             // Validate that MCP servers are configured
             if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
@@ -158,11 +161,12 @@ program
                 process.exit(1);
             }
 
-            //Redirect logs to file to prevent interference with stdio transport
+            // Redirect logs to file to prevent interference with stdio transport
 
-            // const logFile =
-            //     process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp-tools.log');
-            // logger.redirectToFile(logFile);
+            const logFile =
+                process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp-tools.log');
+            logger.info(`Redirecting logs to file: ${logFile}`);
+            logger.redirectToFile(logFile);
 
             logger.info(
                 `Starting MCP tool aggregation server: ${options.name} v${options.version}`
@@ -177,7 +181,8 @@ program
                 config.mcpServers,
                 mcpTransport,
                 options.name,
-                options.version
+                options.version,
+                options.strict
             );
 
             logger.info('MCP tool aggregation server started successfully');
