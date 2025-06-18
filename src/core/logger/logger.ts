@@ -250,8 +250,10 @@ export class Logger {
     setLevel(level: string) {
         if (Object.keys(logLevels).includes(level.toLowerCase())) {
             this.logger.level = level.toLowerCase();
-            // Use console.log instead of debug to ensure visibility regardless of log level
-            console.log(`Log level set to: ${level}`);
+            // Ensure we do not bypass silent / file-only modes
+            if (!this.isSilent) {
+                console.log(`Log level set to: ${level}`);
+            }
         } else {
             this.error(`Invalid log level: ${level}. Using current level: ${this.logger.level}`);
         }
