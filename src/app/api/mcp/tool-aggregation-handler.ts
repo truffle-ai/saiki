@@ -50,6 +50,7 @@ export async function initializeMcpToolAggregationServer(
         logger.debug(`MCP client name: ${clientName}`);
         logger.debug(`MCP client tools: ${JSON.stringify(mcpTools, null, 2)}`);
 
+        // TODO: Handle tool name/server name/prompt name collisions properly
         for (const tool of mcpTools.tools) {
             toolCount++;
             logger.debug(`Registering tool: ${tool.name}`);
@@ -90,15 +91,18 @@ export async function initializeMcpToolAggregationServer(
         const allResources = await mcpManager.listAllResources();
         logger.info(`Registering ${allResources.length} resources from connected MCP servers`);
 
+        // TODO: Properly handle resource name collisions by prefixing with client name
+        let resourceIndex = 0;
         for (const resourceUri of allResources) {
             mcpServer.resource(
-                `resource_${resourceUri.replace(/[^a-zA-Z0-9]/g, '_')}`,
+                `resource_${resourceIndex}_${resourceUri.replace(/[^a-zA-Z0-9]/g, '_')}`,
                 resourceUri,
                 async (uri) => {
                     logger.info(`Resource aggregation: reading ${uri.href}`);
                     return await mcpManager.readResource(uri.href);
                 }
             );
+            resourceIndex++;
         }
     } catch (error) {
         logger.debug(`Skipping resource aggregation: ${error}`);
