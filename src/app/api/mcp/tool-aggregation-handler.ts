@@ -1,0 +1,109 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { MCPManager } from '@core/client/manager.js';
+import { logger } from '@core/index.js';
+import { ServerConfigs } from '@core/config/schemas.js';
+import { NoOpConfirmationProvider } from '@core/client/tool-confirmation/noop-confirmation-provider.js';
+
+/**
+ * Initializes MCP server for tool aggregation mode.
+ * Instead of exposing an AI agent, this directly exposes all tools from connected MCP servers.
+ */
+export async function initializeMcpToolAggregationServer(
+    serverConfigs: ServerConfigs,
+    mcpTransport: Transport,
+    serverName: string = 'saiki-tools',
+    serverVersion: string = '1.0.0'
+): Promise<McpServer> {
+    // Create MCP manager with no confirmation provider (tools are auto-approved)
+    const mcpManager = new MCPManager(new NoOpConfirmationProvider());
+
+    // Initialize all MCP server connections from config
+    logger.info('Connecting to configured MCP servers for tool aggregation...');
+    await mcpManager.initializeFromConfig(serverConfigs, 'lenient');
+
+    // Create the aggregation MCP server
+    const mcpServer = new McpServer(
+        { name: serverName, version: serverVersion },
+        {
+            capabilities: {
+                tools: {},
+                resources: {},
+                prompts: {},
+            },
+        }
+    );
+
+    // Get all tools from connected servers and register them
+    const allTools = await mcpManager.getAllTools();
+    logger.info(`Registering ${Object.keys(allTools).length} tools from connected MCP servers`);
+
+    for (const [toolName, toolDef] of Object.entries(allTools)) {
+        logger.debug(`Registering tool: ${toolName}`);
+
+        // Register each tool as a pass-through to the original MCP server
+        mcpServer.tool(
+            toolName,
+            toolDef.description || `Tool: ${toolName}`,
+            toolDef.parameters || {},
+            async (args: any) => {
+                logger.info(
+                    `Tool aggregation: executing ${toolName} with args: ${JSON.stringify(args)}`
+                );
+                try {
+                    const result = await mcpManager.executeTool(toolName, args);
+                    logger.info(`Tool aggregation: ${toolName} completed successfully`);
+                    return result;
+                } catch (error) {
+                    logger.error(`Tool aggregation: ${toolName} failed: ${error}`);
+                    throw error;
+                }
+            }
+        );
+    }
+
+    // Register resources if available
+    try {
+        const allResources = await mcpManager.listAllResources();
+        logger.info(`Registering ${allResources.length} resources from connected MCP servers`);
+
+        for (const resourceUri of allResources) {
+            mcpServer.resource(
+                `resource_${resourceUri.replace(/[^a-zA-Z0-9]/g, '_')}`,
+                resourceUri,
+                async (uri) => {
+                    logger.info(`Resource aggregation: reading ${uri.href}`);
+                    return await mcpManager.readResource(uri.href);
+                }
+            );
+        }
+    } catch (error) {
+        logger.debug(`Skipping resource aggregation: ${error}`);
+    }
+
+    // Register prompts if available
+    try {
+        const allPrompts = await mcpManager.listAllPrompts();
+        logger.info(`Registering ${allPrompts.length} prompts from connected MCP servers`);
+
+        for (const promptName of allPrompts) {
+            mcpServer.prompt(promptName, `Prompt: ${promptName}`, async (name, args) => {
+                logger.info(
+                    `Prompt aggregation: getting ${name} with args: ${JSON.stringify(args)}`
+                );
+                return await mcpManager.getPrompt(name, args);
+            });
+        }
+    } catch (error) {
+        logger.debug(`Skipping prompt aggregation: ${error}`);
+    }
+
+    // Connect server to transport
+    logger.info(`Connecting MCP tool aggregation server...`);
+    await mcpServer.connect(mcpTransport);
+    logger.info(
+        `✅ MCP tool aggregation server connected with ${Object.keys(allTools).length} tools exposed`
+    );
+
+    return mcpServer;
+}
