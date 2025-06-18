@@ -7,7 +7,7 @@ tags: [agents, workflows, ai]
 
 If you have been remotely exposed to AI, you've probably heard the term AI agent. But what really is an AI agent?
 
-`AI agent` has become a blanket term term that is used in the industry for any automation or software that uses an LLM.
+`AI agent` has become a blanket term that is used in the industry for any automation or software that uses an LLM.
 
 In this post, we'll explore what it really means under the hood from the ground up, and how AI agents are different from LLM workflows
 
@@ -17,7 +17,7 @@ Let's first start with Large Language Models (LLMs), the backbone of AI agents.
 
 ## What are LLMs?
 
-LLMs are deep learning models, pre-trained on extremely large amounts of data. Large typically means more than the entire internet!
+LLMs are deep learning models, pre-trained on vast amounts of data, often more than what's available on the entire internet!
 
 LLMs accept some input and try to predict the most likely output.  
 Here the input could be chat message, an image, a voice message or even video.
@@ -59,7 +59,7 @@ systemPrompt: |
     Only answer food related questions.
 ```
 
-Now when i chat with the LLM, it will talk to me only like a chef!
+Now when I chat with the LLM, it will talk to me only like a chef!
 
 
 ![Conversation 1](./sysprompt_1.png)
@@ -81,7 +81,7 @@ The next time you ask it `What is 5+10` - instead of trying to guess what the an
 
 This is an extremely basic example, but the key takeaway here is that by giving the LLM tools - **LLMs can now take actions on your behalf.**
 
-This is where things get interesting - what if the LLM had a function to book an reservation for you at a restaurant? Or if the LLM had a function to make a payment for you? 
+This is where things get interesting - what if the LLM had a function to book a reservation for you at a restaurant? Or if the LLM had a function to make a payment for you? 
 
 All the LLM would need to do in this case is just use the right function based on the request, and you now have AI powered bookings and payments. 
 There are other complexities like ensuring the LLM uses the right function, and adding the right guardrails and authentication, but we'll not get into that for now.
@@ -142,7 +142,7 @@ Now that we have this workflow diagram, we can implement code that follows this 
 
 If I had a developer working for me, I'd just ask them to review the code right? What if I could leverage LLMs in a similar manner?
 
-Let's give an LLM very detailed instructions, and all the tools necessary to complete this review, just like i would for a human. Let's also tell give it a way to reach back out to me if it needs any clarifying information.
+Let's give an LLM very detailed instructions, and all the tools necessary to complete this review, just like I would for a human. Let's also tell give it a way to reach back out to me if it needs any clarifying information.
 
 LLM-1 - instructed to review the code and given all the necessary tools to do the task.
 
