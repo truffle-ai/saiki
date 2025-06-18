@@ -131,12 +131,14 @@ program
         }
     });
 
-// 4) `mcp-tools` SUB-COMMAND
-// This mode simply aggregates and re-expose tools from configured MCP servers (no agent)
+// 4) `mcp` SUB-COMMAND
+// For now, this mode simply aggregates and re-expose tools from configured MCP servers (no agent)
+// saiki --mode mcp will be moved to this sub-command in the future
 program
-    .command('mcp-tools')
+    .command('mcp')
     .description(
-        'Start Saiki as an MCP server that aggregates and re-exposes tools from configured MCP servers'
+        'Start Saiki as an MCP server. By default, this command aggregates and re-exposes tools from configured MCP servers. \
+        Use `saiki mcp-` to start Saiki as an MCP tool aggregator'
     )
     .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all MCP server connections to succeed')
@@ -164,7 +166,7 @@ program
             // Redirect logs to file to prevent interference with stdio transport
 
             const logFile =
-                process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp-tools.log');
+                process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp.log');
             logger.info(`Redirecting logs to file: ${logFile}`);
             logger.redirectToFile(logFile);
 
@@ -209,8 +211,8 @@ program
             'Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`\n' +
             'Run saiki as a discord bot with `saiki --mode discord`\n' +
             'Run saiki as a telegram bot with `saiki --mode telegram`\n' +
-            'Run saiki as an MCP server with `saiki --mode mcp`\n' +
-            'Run saiki as an MCP tool aggregator with `saiki mcp-tools`\n\n' +
+            'Run saiki agent as an MCP server with `saiki --mode mcp`\n' +
+            'Run saiki as an MCP server aggregator with `saiki mcp`\n\n' +
             'Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples'
     )
     .action(async (prompt: string[] = []) => {

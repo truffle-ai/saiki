@@ -5,7 +5,7 @@ sidebar_label: "Using Saiki to group MCP servers"
 
 # Using Saiki CLI to group MCP servers together
 
-Saiki can operate in **MCP Tools Mode**, where it acts as a local tool aggregation server that groups MCP servers and re-exposes them all under 1 common MCP servdr. 
+Saiki can operate in **MCP Tools Mode**, where it acts as a local tool aggregation server that groups MCP servers and re-exposes them all under 1 common MCP server. 
 
 Unlike the regular MCP server mode where you interact with a Saiki AI agent, this mode provides direct access to the underlying tools without an AI intermediary.
 
@@ -62,7 +62,7 @@ Add the following to your `.cursor/mcp.json` file:
       "args": [
         "-y", 
         "@truffle-ai/saiki", 
-        "mcp-tools",
+        "mcp",
         "-c", 
         "path/to/your/saiki-tools.yml"
       ]
@@ -81,7 +81,7 @@ Or use the default Saiki configuration
       "args": [
         "-y", 
         "@truffle-ai/saiki", 
-        "mcp-tools",
+        "mcp",
       ]
     }
   }
