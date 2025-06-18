@@ -78,7 +78,7 @@ export async function initializeMcpServer(
     );
 
     // Register Agent Card data as an MCP Resource
-    initializeAgentCardResource(mcpServer, agentCardData);
+    await initializeAgentCardResource(mcpServer, agentCardData);
 
     // Connect server to transport AFTER all registrations
     logger.info(`Initializing MCP protocol server connection...`);
