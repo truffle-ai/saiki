@@ -4,14 +4,13 @@ sidebar_position: 3
 
 # Build Your First Agent
 
-In the Quick Start, you interacted with the default Saiki agent. Now, it's time to build your own.
+Now that you have Saiki installed, let's build your first custom agent. This tutorial will guide you through creating a `saiki.yml` file to define an agent with a unique personality and tools.
 
-This tutorial will guide you through creating a `saiki.yml` file to define a custom agent with a unique personality and a new tool. This is the core workflow of building with Saiki.
+### 1. Create Your Agent Configuration
+The heart of a Saiki agent is the `saiki.yml` configuration file. This is where you declaratively define the agent's identity and capabilities.
 
-### 1. Create Your Agent Definition
-The heart of a Saiki agent is the `saiki.yml` file. This is where you use the **Framework** to define its identity and skills.
+Create a new directory for your project and add a basic configuration:
 
-Create a new directory for your project and inside it, create a `saiki.yml` file with the following content:
 ```bash
 mkdir my-pirate-agent
 cd my-pirate-agent
@@ -21,38 +20,43 @@ cd my-pirate-agent
 # saiki.yml
 llm:
   provider: openai
-  model: gpt-4o
+  model: gpt-4.1-mini
   systemPrompt: |
     You are a helpful AI assistant.
 ```
-This is the most basic agent definition. It tells Saiki to use OpenAI's `gpt-4o` model and gives it a simple instruction.
+
+This basic configuration tells the runtime to use OpenAI's `gpt-4.1-mini` model with a simple system prompt.
 
 ### 2. Give Your Agent a Personality
-Let's customize your agent by giving it a distinct personality. Modify the `systemPrompt` to turn it into a pirate.
+Let's customize your agent by giving it a distinct personality. Modify the `systemPrompt` to create a pirate-themed agent:
 
 ```yaml
 # saiki.yml
 llm:
   provider: openai
-  model: gpt-4o
+  model: gpt-4.1-mini
   systemPrompt: |
     Ahoy! Ye be chattin' with a pirate AI. Speak like a pirate in all yer responses, savvy?
 ```
-Now, run your agent from inside the `my-pirate-agent` directory. The `-c` flag tells Saiki to use your local configuration file.
+
+Now run your agent from inside the `my-pirate-agent` directory:
+
 ```bash
 saiki -c saiki.yml "Who are you?"
 ```
-Your agent should now respond like a pirate. You've just changed your agent's behavior without writing a single line of code.
 
-### 3. Give Your Agent a New Tool
-A core feature of Saiki is giving agents `Tools` to interact with the world. Let's give your pirate agent the ability to browse the web.
+Your agent should now respond like a pirate. You've just changed your agent's behavior through declarative configuration—no code required.
 
-Add the `puppeteer` tool to your `saiki.yml` under a new `mcpServers` section:
+### 3. Add Tool Integration
+A core feature of Saiki is connecting agents to external tools through the Model Context Protocol (MCP). Let's give your pirate agent web browsing capabilities.
+
+Add the `puppeteer` tool to your configuration:
+
 ```yaml
 # saiki.yml
 llm:
   provider: openai
-  model: gpt-4o
+  model: gpt-4.1-mini
   systemPrompt: |
     Ahoy! Ye be chattin' with a pirate AI. Speak like a pirate in all yer responses, savvy?
 
@@ -62,23 +66,29 @@ mcpServers:
     command: npx
     args: ["-y", "@truffle-ai/puppeteer-server"]
 ```
-The **Runtime** will automatically install this tool the first time you run the agent.
 
-### 4. Use the New Tool
-Now, let's put your agent's new skill to use. Start an interactive chat session, making sure to point to your local configuration:
+The runtime will automatically handle tool installation and integration when you first run the agent.
+
+### 4. Test Your Enhanced Agent
+Start an interactive session with your enhanced agent:
+
 ```bash
 saiki -c saiki.yml
 ```
-Once the session starts, ask it to do something that requires web access:
+
+Now ask it to use its new web browsing capability:
 > `summarize the main points of the article at https://en.wikipedia.org/wiki/Piracy`
 
-Your agent will now use the `puppeteer` tool to visit the webpage, read the content, and give you a summary (in a pirate voice, of course).
+Your agent will use the puppeteer tool to visit the webpage, read the content, and provide a summary (in pirate voice, of course).
 
 ## Congratulations!
-You've just built and customized your first AI agent. You've learned how to:
-- ✅ Create a custom agent with `saiki.yml`.
-- ✅ Give it a unique personality.
-- ✅ Grant it a new tool to browse the web.
-- ✅ Interact with it using the Saiki CLI.
+You've just built and customized your first AI agent using declarative configuration. You've learned how to:
 
-This is the fundamental development loop of Saiki. You can now explore adding more [tools](../guides/integrations/overview.md) or building more complex behaviors.
+- ✅ Define an agent with `saiki.yml` configuration
+- ✅ Customize agent behavior through system prompts  
+- ✅ Integrate external tools via MCP servers
+- ✅ Run and interact with your agent using the runtime
+
+This is the fundamental development workflow with Saiki: configure declaratively, let the runtime handle orchestration, and focus on your agent's purpose rather than implementation details.
+
+**Next Steps**: Explore adding more [tools](../guides/integrations/overview.md) or building [multi-agent systems](../tutorials/multi-agent-systems.md).

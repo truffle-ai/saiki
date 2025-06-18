@@ -64,6 +64,17 @@ Saiki provides everything you need to build sophisticated AI agents:
 - **Event System** - Real-time events for agent state, tool executions, and LLM interactions
 - **Multiple Interfaces** - Access via CLI, Web UI, REST API, or embed using the SDK/library
 
+## How It Works
+
+:::tip Quick Start
+1. **📝 Configure Your Agent**: Create a `saiki.yml` file defining your agent's purpose and capabilities
+2. **🚀 Start the Runtime**: Launch Saiki to orchestrate your agent with persistent state and tool access  
+3. **💬 Interact**: Use CLI, Web UI, API, or embed directly using the SDK
+:::
+
+## Ready to Build Your First Agent?
+
+**[Install Saiki →](./installation.md)**
 
 ---
 
