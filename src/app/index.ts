@@ -1,7 +1,10 @@
 #!/usr/bin/env node
+// Load environment variables FIRST, before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { existsSync } from 'fs';
 import { Command } from 'commander';
-import dotenv from 'dotenv';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import pkg from '../../package.json' with { type: 'json' };
@@ -36,15 +39,8 @@ import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/p
 import { startNextJsWebServer } from './web.js';
 import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
 import { createAgentCard } from '@core/config/agentCard.js';
-// Load environment variables
-dotenv.config();
 
 const program = new Command();
-
-// Universal stuff
-if (process.env.SAIKI_LOG_LEVEL) {
-    logger.setLevel(process.env.SAIKI_LOG_LEVEL);
-}
 
 // 1) GLOBAL OPTIONS
 program

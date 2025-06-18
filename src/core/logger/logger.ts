@@ -88,10 +88,6 @@ const getDefaultLogLevel = (): string => {
     if (envLevel && Object.keys(logLevels).includes(envLevel.toLowerCase())) {
         return envLevel.toLowerCase();
     }
-    // Enable debug logging if DEBUG environment variable is set
-    if (process.env.DEBUG === 'true' || process.env.DEBUG === '1') {
-        return 'debug';
-    }
     return 'info';
 };
 

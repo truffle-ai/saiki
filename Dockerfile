@@ -57,9 +57,7 @@ COPY --from=builder --chown=saiki:saiki /app/configuration ./configuration
 # Environment variables
 ENV NODE_ENV=production \
     PORT=3000 \
-    CONFIG_FILE=/app/configuration/saiki.yml \
-    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    CONFIG_FILE=/app/configuration/saiki.yml
 
 # Switch to non-root user
 USER saiki
