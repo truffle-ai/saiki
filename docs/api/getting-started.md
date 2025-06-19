@@ -3,7 +3,7 @@ slug: /
 sidebar_position: 1
 ---
 
-# Getting Started with the Saiki APIs
+# Getting Started
 
 Welcome to the Saiki API. This guide will walk you through the essential first steps to begin interacting with your Saiki agent programmatically.
 

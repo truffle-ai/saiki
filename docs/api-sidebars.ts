@@ -19,6 +19,16 @@ const sidebars: SidebarsConfig = {
             ],
         },
         'websocket',
+        {
+            type: 'category',
+            label: 'Node.js SDK',
+            link: {
+                type: 'generated-index',
+                title: 'Node.js SDK API Reference',
+                description: 'Complete technical API reference for the Saiki Node.js SDK.',
+            },
+            items: ['nodejs-sdk', 'saiki-agent', 'utilities', 'events', 'types'],
+        },
     ],
 };
 

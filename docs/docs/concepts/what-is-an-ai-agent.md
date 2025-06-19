@@ -21,7 +21,4 @@ At a high level, most AI agents share a common structure:
 - **Tool-Using:** They don't just process information; they take action by using external tools.
 - **Adaptive:** They can react to the results of their actions and adjust their plan accordingly.
 
-AI agents represent a shift from simple instruction-following programs to more dynamic, goal-oriented systems that can navigate complex digital environments. 
-
-
-// TODO: Link to Blog Post
+AI agents represent a shift from simple instruction-following programs to more dynamic, goal-oriented systems that can navigate complex digital environments. Check out this blog post where we explore this in depth.
