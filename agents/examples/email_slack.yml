@@ -1,0 +1,21 @@
+mcpServers:
+  gmail:
+    type: sse
+    url: "composio-url"
+  slack:
+    type: stdio
+    command: "npx"
+    args:
+      - -y
+      - "@modelcontextprotocol/server-slack"
+    env:
+      SLACK_BOT_TOKEN: "slack-bot-token"
+      SLACK_TEAM_ID: "slack-team-id"
+
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  apiKey: $OPENAI_API_KEY
+  systemPrompt: |
+    Prompt the user to provide the information needed to answer their question or identify them on Slack.
+    Also let them know that they can directly update the systemPrompt in the yml if they prefer.
