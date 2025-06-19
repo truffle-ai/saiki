@@ -5,9 +5,12 @@ export interface Tool {
 }
 
 export interface ToolParameters {
-    type?: string;
+    type?: 'object' | 'string' | 'number' | 'integer' | 'boolean' | 'array';
+    properties?: Record<string, any>;
+    required?: string[];
     description?: string;
     default?: any;
+    [key: string]: any; // Allow additional JSON Schema properties
 }
 
 export interface ToolSet {

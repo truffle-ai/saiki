@@ -26,4 +26,7 @@ export interface IMCPClient extends ToolProvider {
     // Resource Management
     listResources(): Promise<string[]>;
     readResource(uri: string): Promise<ReadResourceResult>;
+
+    // MCP Client Management
+    getConnectedClient(): Promise<Client>;
 }
