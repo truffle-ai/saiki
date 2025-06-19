@@ -33,7 +33,7 @@ llm:
         type: static
         priority: 0
         content: |
-          You are Jarvis, a helpful AI assistant built on the Saiki runtime with access to tools.
+          You are a helpful AI assistant built on the Saiki runtime with access to tools.
           Use these tools when appropriate to answer user queries.
           You can use multiple tools in sequence to solve complex problems.
           After each tool result, determine if you need more information or can provide a final answer.
