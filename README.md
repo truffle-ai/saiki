@@ -142,13 +142,13 @@ saiki
 ### 📧 Send Email Summaries to Slack
 **Task:** `Summarize emails and send highlights to Slack`
 ```bash
-saiki --config-file ./configuration/examples/email_slack.yml
+saiki --agent ./agents/examples/email_slack.yml
 ```
 <img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="600">
 
 ### 📝 Use Notion As A Second Brain
 ```bash
-saiki --config-file ./configuration/examples/notion.yml #Requires setup
+saiki --agent ./agents/examples/notion.yml #Requires setup
 ```
 <img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="600">
 
@@ -177,7 +177,7 @@ Arguments:
 
 Options:
   -v, --version             output the current version
-  -c, --config-file <path>  Path to config file (default: "configuration/saiki.yml")
+  -a, --agent <path>        Path to agent config file (default: "agents/agent.yml")
   -s, --strict              Require all server connections to succeed
   --no-verbose              Disable verbose output
   -m, --model <model>       Specify the LLM model to use.
@@ -193,10 +193,10 @@ Commands:
 
 **Common Examples:**
 
-*   **Specify a custom configuration file:**
+*   **Specify a custom agent:**
     ```bash
-    cp configuration/saiki.yml configuration/custom_config.yml
-    saiki --config-file configuration/custom_config.yml
+    cp agents/agent.yml agents/custom_config.yml
+    saiki --agent agents/custom_config.yml
     ```
 
 *   **Use a specific AI model (if configured):**
@@ -206,7 +206,7 @@ Commands:
 
 ## Configuration
 
-Saiki defines agents using a YAML config file (`configuration/saiki.yml` by default). To configure an agent, use tool servers (MCP servers) and LLM providers.
+Saiki defines agents using a YAML config file (`agents/agent.yml` by default). To configure an agent, use tool servers (MCP servers) and LLM providers.
 
 ```yaml
 mcpServers:
@@ -270,7 +270,7 @@ import 'dotenv/config';
 import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
 
 // Load your agent configuration
-const config = await loadConfigFile('./saiki.yml');
+const config = await loadConfigFile('./agent.yml');
 const agent = await createSaikiAgent(config);
 
 // Use the agent for single tasks

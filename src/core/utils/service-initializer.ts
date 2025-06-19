@@ -6,7 +6,7 @@
  * and configuration across CLI, web, and test environments.
  *
  * **Configuration Pattern:**
- * - The primary source of configuration is the config file (e.g., `saiki.yml`), which allows users to declaratively specify both high-level
+ * - The primary source of configuration is the config file (e.g., `agent.yml`), which allows users to declaratively specify both high-level
  *   and low-level service options (such as compression strategies for MessageManager, LLM provider/model, etc.).
  * - For most use cases, the config file is sufficient and preferred, as it enables environment-specific, auditable, and user-friendly customization.
  *
@@ -54,7 +54,7 @@ export type AgentServices = {
  * Options for overriding or injecting services/config at runtime.
  *
  * **Design Rationale:**
- * - The config file (e.g., `saiki.yml`) is the main source of truth for configuring both high-level and low-level service options.
+ * - The config file (e.g., `agent.yml`) is the main source of truth for configuring both high-level and low-level service options.
  *   This allows users and operators to declaratively tune the system without code changes.
  * - The `InitializeServicesOptions` type is intended for advanced/test scenarios where you need to override top-level services
  *   (such as injecting a mock SessionManager or ClientManager). This keeps the override API surface small and focused.

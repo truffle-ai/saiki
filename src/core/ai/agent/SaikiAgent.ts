@@ -671,7 +671,7 @@ export class SaikiAgent {
  * @example
  * ```typescript
  * // Create agent with configuration file
- * const agent = await createSaikiAgent('./saiki.yml');
+ * const agent = await createSaikiAgent('./agent.yml');
  *
  * // Create agent with config object and CLI overrides
  * const agent = await createSaikiAgent(configObject, { model: 'gpt-4o' });

@@ -49,7 +49,7 @@ program
     .name('saiki')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
     .version(pkg.version, '-v, --version', 'output the current version')
-    .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
+    .option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .option('-m, --model <model>', 'Specify the LLM model to use. ')
@@ -140,7 +140,7 @@ program
         'Start Saiki as an MCP server. By default, this command aggregates and re-exposes tools from configured MCP servers. \
         Use `saiki mcp-` to start Saiki as an MCP tool aggregator'
     )
-    .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
+    .option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all MCP server connections to succeed')
     .option('--name <name>', 'Name for the MCP server', 'saiki-tools')
     .option('--version <version>', 'Version for the MCP server', '1.0.0')
@@ -148,8 +148,8 @@ program
         try {
             // Load and resolve config
             const configPath = resolvePackagePath(
-                options.configFile || DEFAULT_CONFIG_PATH,
-                (options.configFile || DEFAULT_CONFIG_PATH) === DEFAULT_CONFIG_PATH
+                options.agent || DEFAULT_CONFIG_PATH,
+                (options.agent || DEFAULT_CONFIG_PATH) === DEFAULT_CONFIG_PATH
             );
 
             logger.info(`Loading Saiki config from: ${configPath}`);
@@ -265,10 +265,7 @@ program
         // ——— Load config & create agent ———
         let agent: SaikiAgent;
         try {
-            const configPath = resolvePackagePath(
-                opts.configFile,
-                opts.configFile === DEFAULT_CONFIG_PATH
-            );
+            const configPath = resolvePackagePath(opts.agent, opts.agent === DEFAULT_CONFIG_PATH);
             logger.info(`Initializing Saiki with config: ${configPath}`);
             const cfg = await loadConfigFile(configPath);
 
@@ -385,7 +382,7 @@ program
                             defaultVersion: agentCardConfig.version ?? '1.0.0',
                             defaultBaseUrl: 'stdio://local-saiki',
                         },
-                        agentCardConfig // preserve overrides from saiki.yml
+                        agentCardConfig // preserve overrides from agent.yml
                     );
                     // Use stdio transport in mcp mode
                     const mcpTransport = await createMcpTransport('stdio');

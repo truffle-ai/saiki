@@ -43,7 +43,7 @@ Note: if you use a different LLM in your config file, you will need to pass the 
   "mcpServers": {
     "saiki": {
       "command": "npx",
-      "args": ["-y", "@truffle-ai/saiki", "--mode", "mcp", "--config-file", "path/to/your/saiki.yml"],
+      "args": ["-y", "@truffle-ai/saiki", "--mode", "mcp", "--agent", "path/to/your/agent.yml"],
       "env": {
         "OPENAI_API_KEY": "your_openai_api_key"
       }

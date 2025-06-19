@@ -367,7 +367,7 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
 
 ## Step 7: Test Your Implementation
 
-1.  **Configure `saiki.yml`:** Update your configuration file to use your new provider:
+1.  **Configure `agent.yml`:** Update your configuration file to use your new provider:
    ```yaml
    # your-provider configuration
    llm:
