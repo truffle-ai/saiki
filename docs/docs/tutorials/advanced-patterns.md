@@ -552,7 +552,7 @@ These advanced patterns give you:
 
 You're now equipped with production-ready patterns! Here's what to explore next:
 
-- **Deploy your application**: Check out [What's Next](./whats-next) for deployment and scaling guidance
+- **Deploy your application**: Check out the [Deployment Guide](../guides/deployment.md) for deployment and scaling guidance
 - **Join the community**: Share your patterns and learn from others in our [Discord](https://discord.gg/GFzWFAAZcm)
 - **Contribute back**: Help improve Saiki by sharing your experiences and patterns
 

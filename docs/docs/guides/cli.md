@@ -131,7 +131,7 @@ Add saiki into an existing typescript project
 saiki init-app
 ```
 
-Check [Building with Saiki Guide](../tutorials/building-with-saiki/introduction) for more information!
+Check [Building with Saiki Guide](../tutorials/index.md) for more information!
 
 ## Coming soon!
 
