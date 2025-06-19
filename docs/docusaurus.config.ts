@@ -44,8 +44,6 @@ const config: Config = {
                     remarkPlugins: [],
                     rehypePlugins: [],
                 },
-                // BLOG DISABLED: To re-enable, uncomment the section below and related links in navbar/footer.
-                /*
                 blog: {
                     showReadingTime: true,
                     feedOptions: {
@@ -56,8 +54,10 @@ const config: Config = {
                     onInlineTags: 'warn',
                     onInlineAuthors: 'warn',
                     onUntruncatedBlogPosts: 'warn',
+                    blogTitle: 'Saiki Blog',
+                    blogDescription: 'The official blog for AI agents using Saiki',
+                    blogSidebarCount: 'ALL',
                 },
-                */
                 theme: {
                     customCss: './src/css/custom.css',
                 },
@@ -105,13 +105,11 @@ const config: Config = {
                     position: 'left',
                     label: 'Docs',
                 },
-                /*
                 {
                     to: '/blog',
                     label: 'Blog',
                     position: 'left',
                 },
-                */
                 {
                     href: 'https://discord.gg/GFzWFAAZcm',
                     position: 'right',
@@ -176,12 +174,10 @@ const config: Config = {
                 {
                     title: 'Resources',
                     items: [
-                        /*
                         {
                             label: 'Blog',
                             to: '/blog',
                         },
-                        */
                         {
                             label: 'Examples',
                             to: '/docs/examples-demos/email-slack',
