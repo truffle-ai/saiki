@@ -23,6 +23,7 @@ import {
 } from '@core/index.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
+import { startInkCli, startHeadlessInkCli } from './cli/ink-cli.js';
 import { startApiAndLegacyWebUIServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
@@ -59,6 +60,7 @@ program
         'The application in which saiki should talk to you - cli | web | server | discord | telegram | mcp',
         'cli'
     )
+    .option('--ui <ui>', 'CLI interface type (readline|ink)', 'readline')
     .option('--web-port <port>', 'optional port for the web UI', '3000');
 
 // 2) `create-app` SUB-COMMAND
@@ -295,12 +297,22 @@ program
         // ——— Dispatch based on --mode ———
         switch (opts.mode) {
             case 'cli':
-                if (headlessInput) {
-                    // One shot CLI
-                    await startHeadlessCli(agent, headlessInput);
-                    process.exit(0);
+                if (opts.ui === 'ink') {
+                    // Use the new Ink-based CLI
+                    if (headlessInput) {
+                        await startHeadlessInkCli(agent, headlessInput);
+                        process.exit(0);
+                    } else {
+                        await startInkCli(agent); // Interactive Ink CLI
+                    }
                 } else {
-                    await startAiCli(agent); // Interactive CLI
+                    // Use the traditional readline CLI
+                    if (headlessInput) {
+                        await startHeadlessCli(agent, headlessInput);
+                        process.exit(0);
+                    } else {
+                        await startAiCli(agent); // Interactive CLI
+                    }
                 }
                 break;
 
