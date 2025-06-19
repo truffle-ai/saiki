@@ -52,7 +52,7 @@ RUN mkdir -p /app/.saiki/database && \
 COPY --from=builder --chown=saiki:saiki /app/dist ./dist
 COPY --from=builder --chown=saiki:saiki /app/node_modules ./node_modules
 COPY --from=builder --chown=saiki:saiki /app/package.json ./
-COPY --from=builder --chown=saiki:saiki /app/configuration ./configuration
+COPY --from=builder --chown=saiki:saiki /app/agents ./agents
 
 # Environment variables
 ENV NODE_ENV=production \
