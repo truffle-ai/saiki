@@ -14,8 +14,11 @@ import {
  * This represents the current effective configuration, separate from the static baseline.
  */
 export interface AgentRuntimeState {
-    /** Current LLM configuration (includes model, provider, systemPrompt, router, etc.) */
+    /** Current LLM configuration (provider, model, apiKey, router, etc.) */
     llm: LLMConfig;
+
+    /** Current system prompt configuration */
+    systemPrompt: AgentConfig['systemPrompt'];
 
     /** Current MCP server configurations (can be added/removed at runtime) */
     mcpServers: Record<string, McpServerConfig>;
@@ -80,6 +83,7 @@ export class AgentStateManager {
         // Initialize runtime state from static config baseline
         this.runtimeState = {
             llm: structuredClone(staticConfig.llm),
+            systemPrompt: structuredClone(staticConfig.systemPrompt),
             mcpServers: structuredClone(staticConfig.mcpServers),
             runtime: {
                 debugMode: false,
@@ -127,6 +131,7 @@ export class AgentStateManager {
 
         return {
             llm: { ...this.runtimeState.llm, ...override.llm },
+            systemPrompt: this.runtimeState.systemPrompt,
             mcpServers: this.runtimeState.mcpServers, // MCP servers are global, not session-specific
             runtime: { ...this.runtimeState.runtime, ...override.runtime },
             lastModified: override.lastModified,
@@ -150,6 +155,7 @@ export class AgentStateManager {
         return {
             ...this.baselineConfig,
             llm: effectiveState.llm,
+            systemPrompt: effectiveState.systemPrompt,
             mcpServers: effectiveState.mcpServers,
         };
     }
@@ -430,6 +436,7 @@ export class AgentStateManager {
         const exportedConfig: AgentConfig = {
             ...this.baselineConfig,
             llm: structuredClone(this.runtimeState.llm),
+            systemPrompt: this.runtimeState.systemPrompt,
             mcpServers: structuredClone(this.runtimeState.mcpServers),
         };
 
@@ -454,6 +461,7 @@ export class AgentStateManager {
     public resetToBaseline(): void {
         this.runtimeState = {
             llm: structuredClone(this.baselineConfig.llm),
+            systemPrompt: structuredClone(this.baselineConfig.systemPrompt),
             mcpServers: structuredClone(this.baselineConfig.mcpServers),
             runtime: {
                 debugMode: false,
@@ -474,6 +482,8 @@ export class AgentStateManager {
     public hasChangesFromBaseline(): boolean {
         return (
             JSON.stringify(this.runtimeState.llm) !== JSON.stringify(this.baselineConfig.llm) ||
+            JSON.stringify(this.runtimeState.systemPrompt) !==
+                JSON.stringify(this.baselineConfig.systemPrompt) ||
             JSON.stringify(this.runtimeState.mcpServers) !==
                 JSON.stringify(this.baselineConfig.mcpServers) ||
             this.sessionOverrides.size > 0
@@ -486,6 +496,7 @@ export class AgentStateManager {
     public getChangesSummary(): {
         hasChanges: boolean;
         llmChanges: string[];
+        systemPromptChanges: string[];
         mcpServerChanges: string[];
         runtimeChanges: string[];
         sessionOverrides: {
@@ -495,6 +506,7 @@ export class AgentStateManager {
         }[];
     } {
         const llmChanges: string[] = [];
+        const systemPromptChanges: string[] = [];
         const mcpServerChanges: string[] = [];
         const runtimeChanges: string[] = [];
 
@@ -508,11 +520,16 @@ export class AgentStateManager {
         if (baselineLLM.model !== runtimeLLM.model) {
             llmChanges.push(`Model: ${baselineLLM.model} → ${runtimeLLM.model}`);
         }
-        if (JSON.stringify(baselineLLM.systemPrompt) !== JSON.stringify(runtimeLLM.systemPrompt)) {
-            llmChanges.push('System prompt modified');
-        }
         if (baselineLLM.router !== runtimeLLM.router) {
             llmChanges.push(`Router: ${baselineLLM.router} → ${runtimeLLM.router}`);
+        }
+
+        // Check system prompt changes
+        if (
+            JSON.stringify(this.baselineConfig.systemPrompt) !==
+            JSON.stringify(this.runtimeState.systemPrompt)
+        ) {
+            systemPromptChanges.push('System prompt modified');
         }
 
         // Check MCP server changes
@@ -536,6 +553,7 @@ export class AgentStateManager {
 
         const hasChanges =
             llmChanges.length > 0 ||
+            systemPromptChanges.length > 0 ||
             mcpServerChanges.length > 0 ||
             runtimeChanges.length > 0 ||
             sessionOverrides.length > 0;
@@ -543,6 +561,7 @@ export class AgentStateManager {
         return {
             hasChanges,
             llmChanges,
+            systemPromptChanges,
             mcpServerChanges,
             runtimeChanges,
             sessionOverrides,
@@ -568,11 +587,26 @@ export class AgentStateManager {
     /**
      * Quickly update system prompt
      */
-    public updateSystemPrompt(
-        systemPrompt: LLMConfig['systemPrompt'],
-        sessionId?: string
-    ): ValidationResult {
-        return this.updateLLM({ systemPrompt }, sessionId);
+    public updateSystemPrompt(systemPrompt: AgentConfig['systemPrompt']): ValidationResult {
+        const oldValue = this.runtimeState.systemPrompt;
+
+        // Update the system prompt
+        this.runtimeState.systemPrompt = systemPrompt;
+        this.runtimeState.lastModified = new Date();
+
+        this.agentEventBus.emit('saiki:stateChanged', {
+            section: 'systemPrompt',
+            change: 'updated',
+            oldValue,
+            newValue: systemPrompt,
+            sessionId: undefined,
+        });
+
+        logger.info('System prompt updated', {
+            changed: JSON.stringify(oldValue) !== JSON.stringify(systemPrompt),
+        });
+
+        return { isValid: true, errors: [], warnings: [] };
     }
 
     /**
@@ -584,6 +618,14 @@ export class AgentStateManager {
 
     // ============= CONVENIENCE GETTERS =============
     // Use these for common single-section access patterns
+
+    /**
+     * Get the current system prompt configuration.
+     * System prompt is global (not session-specific).
+     */
+    public getSystemPrompt(): Readonly<AgentConfig['systemPrompt']> {
+        return this.runtimeState.systemPrompt;
+    }
 
     /**
      * Get the current effective LLM configuration for a session.

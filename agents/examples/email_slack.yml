@@ -1,3 +1,5 @@
+# Email to Slack Automation Configuration
+# This agent monitors emails and posts summaries to Slack
 mcpServers:
   gmail:
     type: sse
@@ -12,10 +14,13 @@ mcpServers:
       SLACK_BOT_TOKEN: "slack-bot-token"
       SLACK_TEAM_ID: "slack-team-id"
 
+# System prompt - defines the agent's behavior for email processing
+systemPrompt: |
+  Prompt the user to provide the information needed to answer their question or identify them on Slack.
+  Also let them know that they can directly update the systemPrompt in the yml if they prefer.
+
+# LLM Configuration
 llm:
   provider: openai
   model: gpt-4o-mini
   apiKey: $OPENAI_API_KEY
-  systemPrompt: |
-    Prompt the user to provide the information needed to answer their question or identify them on Slack.
-    Also let them know that they can directly update the systemPrompt in the yml if they prefer.
