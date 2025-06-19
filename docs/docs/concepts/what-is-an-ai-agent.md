@@ -22,3 +22,6 @@ At a high level, most AI agents share a common structure:
 - **Adaptive:** They can react to the results of their actions and adjust their plan accordingly.
 
 AI agents represent a shift from simple instruction-following programs to more dynamic, goal-oriented systems that can navigate complex digital environments. 
+
+
+// TODO: Link to Blog Post
