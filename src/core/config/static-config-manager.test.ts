@@ -8,13 +8,13 @@ const clone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 // Use AgentConfig type for baseConfig
 const baseConfig: AgentConfig = {
+    systemPrompt: 'hi',
     mcpServers: {
-        default: { type: 'stdio', command: 'node', args: [] },
+        test: { type: 'stdio', command: 'node', args: ['agent-server.js'] },
     },
     llm: {
         provider: 'openai',
         model: 'o4-mini',
-        systemPrompt: 'hi',
         apiKey: '123',
     },
 };
