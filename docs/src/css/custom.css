@@ -1,14 +1,14 @@
 /**
- * Saiki Documentation - Professional Developer Theme
- * Modern, clean, and developer-focused styling
+ * Saiki Documentation - Clean Teal Theme
+ * Professional, sleek, and developer-focused styling
  */
 
 /* Import better fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
 
-/* Color palette - Professional tech theme */
+/* Color palette - Clean teal theme */
 :root {
-  /* Primary brand colors */
+  /* Primary brand colors - Teal */
   --ifm-color-primary: #14b8a6;
   --ifm-color-primary-dark: #0d9488;
   --ifm-color-primary-darker: #0f766e;
@@ -17,7 +17,7 @@
   --ifm-color-primary-lighter: #99f6e4;
   --ifm-color-primary-lightest: #ccfbf1;
 
-  /* Neutral colors */
+  /* Neutral colors - Clean grays */
   --ifm-color-gray-0: #ffffff;
   --ifm-color-gray-50: #f9fafb;
   --ifm-color-gray-100: #f3f4f6;
@@ -89,9 +89,9 @@
   --ifm-color-primary-lighter: #ccfbf1;
   --ifm-color-primary-lightest: #f0fdfa;
 
-  /* Dark backgrounds */
-  --ifm-background-color: #0f172a;
-  --ifm-background-surface-color: #1e293b;
+  /* Dark backgrounds - NEW NEUTRAL GRAYS */
+  --ifm-background-color: #121212;
+  --ifm-background-surface-color: #181818;
 
   /* Code styling for dark mode */
   --ifm-code-background: rgba(100, 116, 139, 0.2);
@@ -99,11 +99,11 @@
   --docusaurus-highlighted-code-line-bg: rgba(94, 234, 212, 0.2);
 
   /* Navbar dark */
-  --ifm-navbar-background-color: #1e293b;
+  --ifm-navbar-background-color: rgba(24, 24, 24, 0.85); /* #181818 with transparency */
   --ifm-navbar-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
 
   /* Sidebar dark */
-  --ifm-sidebar-background-color: #1e293b;
+  --ifm-sidebar-background-color: #181818;
 
   /* Text colors */
   --ifm-color-content: #cbd5e1;
@@ -123,7 +123,7 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Enhanced typography */
+/* Clean typography */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   letter-spacing: -0.025em;
@@ -146,7 +146,7 @@ h2 {
 }
 
 [data-theme='dark'] h2 {
-  border-bottom-color: var(--ifm-color-gray-700);
+  border-bottom-color: #333333;
 }
 
 h3 {
@@ -155,7 +155,7 @@ h3 {
   color: var(--ifm-color-primary);
 }
 
-/* Enhanced code blocks */
+/* Clean code blocks */
 .prism-code {
   border-radius: var(--ifm-code-border-radius);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -180,7 +180,7 @@ code {
   border-color: var(--ifm-color-gray-600);
 }
 
-/* Enhanced navbar */
+/* Clean navbar */
 .navbar {
   backdrop-filter: blur(12px);
   background-color: rgba(255, 255, 255, 0.9);
@@ -188,8 +188,8 @@ code {
 }
 
 [data-theme='dark'] .navbar {
-  background-color: rgba(30, 41, 59, 0.9);
-  border-bottom-color: var(--ifm-color-gray-700);
+  background-color: rgba(24, 24, 24, 0.85); /* #181818 with transparency */
+  border-bottom-color: #333333;
 }
 
 .navbar__brand {
@@ -202,13 +202,22 @@ code {
   font-weight: 500;
 }
 
+.navbar__link:hover {
+  color: var(--ifm-color-primary);
+}
+
+.navbar__link--active {
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
 /* Enhanced sidebar */
 .theme-doc-sidebar-container {
   border-right: 1px solid var(--ifm-color-gray-200);
 }
 
 [data-theme='dark'] .theme-doc-sidebar-container {
-  border-right-color: var(--ifm-color-gray-700);
+  border-right-color: #333333;
 }
 
 .theme-doc-sidebar-item-category .menu__list-item-collapsible {
@@ -333,8 +342,13 @@ th {
 
 /* Enhanced footer */
 .footer {
-  background: linear-gradient(135deg, var(--ifm-color-gray-900), var(--ifm-color-gray-800));
-  border-top: 1px solid var(--ifm-color-gray-700);
+  background: var(--ifm-color-gray-50);
+  border-top: 1px solid var(--ifm-color-gray-200);
+}
+
+[data-theme='dark'] .footer {
+    background: #181818;
+    border-top: 1px solid #333333;
 }
 
 /* Responsive improvements */
@@ -474,12 +488,12 @@ html {
   width: 24px;
   height: 24px;
   display: flex;
-  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.195.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z'/%3E%3C/svg%3E")
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419-.0189 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1568 2.4189Z'/%3E%3C/svg%3E")
     no-repeat;
 }
 
 [data-theme='dark'] .header-discord-link:before {
-  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' d='M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.195.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z'/%3E%3C/svg%3E")
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' d='M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419-.0189 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1568 2.4189Z'/%3E%3C/svg%3E")
     no-repeat;
 }
 
@@ -635,3 +649,103 @@ html {
     max-width: none !important;
   }
 }
+
+/* API Docs Customizations */
+
+.markdown h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-family: var(--ifm-font-family-base);
+    color: var(--ifm-color-content);
+    margin-top: 3rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.markdown h3 + p > em {
+    color: var(--ifm-color-content-secondary);
+    display: block;
+    margin-bottom: 1.5rem;
+    font-style: normal;
+}
+
+.api-endpoint-header {
+    font-family: var(--ifm-font-family-monospace);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--ifm-card-border-radius);
+    background-color: var(--ifm-background-surface-color);
+    border: 1px solid var(--ifm-color-gray-200);
+}
+
+[data-theme='dark'] .api-endpoint-header {
+    border-color: var(--ifm-color-gray-700);
+}
+
+.api-endpoint-header .api-method {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.api-endpoint-header .post { background-color: #49cc90; }
+.api-endpoint-header .get { background-color: #61affe; }
+.api-endpoint-header .delete { background-color: #f93e3e; }
+.api-endpoint-header .put { background-color: #fca130; }
+
+.api-endpoint-header code {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--ifm-color-danger);
+}
+
+[data-theme='dark'] .api-endpoint-header code {
+    color: var(--ifm-color-primary-light);
+}
+
+.markdown h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--ifm-color-content);
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.markdown h4 + p > strong,
+.markdown div > strong {
+    font-weight: 600;
+    display: block;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.markdown ul {
+    list-style-position: inside;
+}
+
+.markdown li > code,
+.markdown p > code {
+    font-size: 0.85rem;
+}
+
+/* End API Docs Customizations */
+
+.announcementBar_mb4j {
+    padding: 0.75rem var(--ifm-spacing-horizontal);
+}
+
+

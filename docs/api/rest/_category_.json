@@ -1,0 +1,8 @@
+{
+  "label": "REST API",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Explore the Saiki REST API endpoints for programmatic interaction."
+  }
+} 
