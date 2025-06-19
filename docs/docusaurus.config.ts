@@ -35,15 +35,7 @@ const config: Config = {
         [
             'classic',
             {
-                docs: {
-                    sidebarPath: './sidebars.ts',
-                    editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
-                    showLastUpdateAuthor: true,
-                    showLastUpdateTime: true,
-                    breadcrumbs: true,
-                    remarkPlugins: [],
-                    rehypePlugins: [],
-                },
+                docs: false,
                 blog: {
                     showReadingTime: true,
                     feedOptions: {
@@ -133,7 +125,7 @@ const config: Config = {
                         },
                         {
                             label: 'Guides',
-                            to: '/docs/guides',
+                            to: '/docs/category/guides',
                         },
                         {
                             label: 'API Reference',
@@ -175,7 +167,7 @@ const config: Config = {
                         },
                         {
                             label: 'Contributing',
-                            to: '/docs/community/contribution-guide/overview',
+                            href: 'https://github.com/truffle-ai/saiki/blob/main/CONTRIBUTING.md',
                         },
                         {
                             label: 'Changelog',

@@ -91,4 +91,4 @@ You've just built and customized your first AI agent using declarative configura
 
 This is the fundamental development workflow with Saiki: configure declaratively, let the runtime handle orchestration, and focus on your agent's purpose rather than implementation details.
 
-**Next Steps**: Explore adding more [tools](../guides/integrations/overview.md) or building [multi-agent systems](../tutorials/multi-agent-systems.md).
+**Next Steps**: Explore adding more [tools](../concepts/tools.md) or building [multi-agent systems](../tutorials/multi-agent-systems.md).

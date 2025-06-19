@@ -68,4 +68,4 @@ Saiki uses routers to handle LLM requests:
 
 1. **New to LLMs?** Start with the [Configuration Reference](./configuration) to understand the basics
 2. **Looking for a specific provider?** Check the [Providers Guide](./providers) for setup instructions
-3. **Building an agent?** Head to [Building with Saiki](../../../tutorials/building-with-saiki/introduction) for implementation patterns 
+3. **Building an agent?** Head to [Building with Saiki](../../../tutorials/index.md) for implementation patterns 
