@@ -2,21 +2,134 @@
 sidebar_position: 3
 ---
 
-# Deployment guide
+# Deployment Guide
 
-Saiki CLI and web playground allow you to build, run and save long-lived AI Agents.
+Deploy Saiki agents using Docker for local or production environments.
 
-This guide talks about how you can then deploy these AI agents, either locally or into the cloud.
+## Docker Deployment
 
-Currently, Saiki integrates with Docker to deploy long-lived agents anywhere.
+### Quick Start
 
-We are also working on CLI commands and a platform experience to simplify the deployment process!
+1. **Build the Docker image**
+   ```bash
+   docker build -t saiki .
+   ```
 
-## Docker guide 
-Check [README.Docker.md](https://github.com/truffle-ai/saiki/blob/main/README.Docker.md)
+2. **Create environment file**
+   ```bash
+   # .env
+   OPENAI_API_KEY=your_openai_api_key
+   ANTHROPIC_API_KEY=your_anthropic_api_key
+   # Add other API keys as needed
+   ```
 
-## Truffle Platform guide
-Coming Soon!
+3. **Run the container**
+   ```bash
+   docker run --env-file .env -p 3001:3001 saiki
+   ```
 
-<!-- ## CLI guide
-`saiki deploy` - a single way to deploy an AI agent into the cloud -->
+Your Saiki server will be available at `http://localhost:3001` with:
+- ✅ SQLite database connected
+- ✅ MCP servers (filesystem & puppeteer) connected  
+- ✅ REST API + WebSocket endpoints available
+
+### Background Mode
+
+Run Saiki in detached mode:
+
+```bash
+# Start in background
+docker run -d --name saiki-server --env-file .env -p 3001:3001 saiki
+
+# View logs
+docker logs -f saiki-server
+
+# Stop server
+docker stop saiki-server
+```
+
+### Docker Compose
+
+For easier management:
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  saiki:
+    build: .
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    volumes:
+      - saiki_data:/app/.saiki
+    restart: unless-stopped
+
+volumes:
+  saiki_data:
+```
+
+Run with:
+```bash
+docker compose up --build
+```
+
+## Production Setup
+
+### Environment Variables
+
+```bash
+# Production environment variables
+NODE_ENV=production
+PORT=3001
+CONFIG_FILE=/app/configuration/saiki.yml
+```
+
+### Persistent Storage
+
+Mount a volume for persistent data:
+
+```bash
+docker run -d \
+  --name saiki-server \
+  --env-file .env \
+  -p 3001:3001 \
+  -v saiki_data:/app/.saiki \
+  saiki
+```
+
+### Resource Limits
+
+Set memory and CPU limits:
+
+```bash
+docker run -d \
+  --name saiki-server \
+  --env-file .env \
+  --memory=1g \
+  --cpus=1 \
+  -p 3001:3001 \
+  saiki
+```
+
+## API Endpoints
+
+Once deployed, your Saiki server provides:
+
+### REST API
+- `POST /api/message` - Send async message
+- `POST /api/message-sync` - Send sync message  
+- `POST /api/reset` - Reset conversation
+- `GET /api/mcp/servers` - List MCP servers
+- `GET /health` - Health check
+
+### WebSocket
+- Real-time events and streaming responses
+- Connect to `ws://localhost:3001/ws`
+
+
+## Next Steps
+
+- **[Node.js SDK Guide](/docs/guides/nodejs-sdk)** - Integrate Saiki into your applications
+- **[API Reference](/docs/api)** - Complete API documentation
