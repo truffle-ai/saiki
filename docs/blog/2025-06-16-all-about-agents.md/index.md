@@ -173,7 +173,7 @@ Let's look at the key differences in the approaches:
 
 Now, we can replace `Approach 1` with the term `LLM Workflow`, and `Approach 2` with the term `AI Agent`
 
-The key takeaway here is that workflows execute steps *we define*, while AI agents *figure out how to accomplish the goal* and can make make decisions dynamically.
+The key takeaway here is that workflows execute steps *we define*, while AI agents *figure out how to accomplish the goal* and can make decisions dynamically.
 
 ## Which approach is better?
 

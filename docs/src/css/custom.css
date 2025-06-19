@@ -581,7 +581,8 @@ html {
 /* Blog post styling */
 .blog-wrapper {
   margin: 0 auto;
-  
+  /* Keep lines ~90-100 chars for readability on wide screens
+  max-width: min(100%, var(--ifm-container-width)); */
 }
 
 /* Sidebar category improvements */
