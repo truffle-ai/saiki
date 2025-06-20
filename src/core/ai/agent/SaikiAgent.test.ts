@@ -50,7 +50,7 @@ describe('SaikiAgent.switchLLM', () => {
             createSession: vi.fn().mockReturnValue({
                 id: 'default',
                 getLLMService: vi.fn(),
-                getMessageManager: vi.fn(),
+                getContextManager: vi.fn(),
                 run: vi.fn(),
                 reset: vi.fn(),
                 switchLLM: vi.fn(),

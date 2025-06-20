@@ -101,7 +101,7 @@ describe('SessionManager', () => {
                 cleanup: vi.fn().mockResolvedValue(undefined),
                 switchLLM: vi.fn().mockResolvedValue(undefined),
                 getHistory: vi.fn().mockResolvedValue([]),
-                getMessageManager: vi.fn(),
+                getContextManager: vi.fn(),
                 getLLMService: vi.fn(),
                 eventBus: {
                     emit: vi.fn(),

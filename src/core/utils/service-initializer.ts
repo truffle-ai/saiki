@@ -7,14 +7,14 @@
  *
  * **Configuration Pattern:**
  * - The primary source of configuration is the config file (e.g., `agent.yml`), which allows users to declaratively specify both high-level
- *   and low-level service options (such as compression strategies for MessageManager, LLM provider/model, etc.).
+ *   and low-level service options (such as compression strategies for ContextManager, LLM provider/model, etc.).
  * - For most use cases, the config file is sufficient and preferred, as it enables environment-specific, auditable, and user-friendly customization.
  *
  * **Override Pattern:**
  * - For advanced, programmatic, or test scenarios, this initializer supports code-level overrides via the `InitializeServicesOptions` type.
  * - These overrides are intended for swapping out top-level services (e.g., injecting a mock SessionManager or ClientManager in tests), not for
  *   overriding every internal dependency. This keeps the override API surface small, maintainable, and focused on real-world needs.
- * - If deeper customization is required (e.g., a custom compression strategy for MessageManager in a test), construct the desired service
+ * - If deeper customization is required (e.g., a custom compression strategy for ContextManager in a test), construct the desired service
  *   yourself and inject it via the appropriate top-level override (e.g., `sessionManager`).
  *
  * **Best Practice:**

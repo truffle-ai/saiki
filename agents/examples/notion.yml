@@ -1,7 +1,8 @@
-mcpServers:
-  notion:
-    type: sse
-    url: "get-url-from-composio-or-any-other-provider"
+# Refer https://github.com/makenotion/notion-mcp-server for information on how to use notion mcp server
+# mcpServers:
+#   notion:
+#     type: stdio
+#     url: "get-url-from-composio-or-any-other-provider"
 
 # System prompt configuration - defines the agent's behavior and instructions
 systemPrompt: |
@@ -21,10 +22,10 @@ systemPrompt: |
   - Ask for specific details about their Notion workspace
   - Request clarification about their goals or requirements
   - Inquire about their current Notion setup and experience level
-  
+
   Remember to be concise, clear, and focus on practical solutions.
 
 llm:
   provider: openai
   model: gpt-4o-mini
-  apiKey: env:OPENAI_API_KEY
+  apiKey: OPENAI_API_KEY
