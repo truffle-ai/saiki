@@ -47,8 +47,7 @@ import {
   
   // Service types
   AgentServices,
-  InitializeServicesOptions,
-  CLIConfigOverrides
+  InitializeServicesOptions
 } from '@truffle-ai/saiki';
 ```
 
@@ -266,7 +265,6 @@ interface AgentEventMap {
   
   'saiki:stateExported': {
     config: AgentConfig;
-    runtimeSettings: any;
   };
   
   'saiki:stateReset': {
@@ -456,21 +454,6 @@ interface InitializeServicesOptions {
 }
 ```
 
-### `CLIConfigOverrides`
-
-Configuration overrides from CLI arguments.
-
-```typescript
-interface CLIConfigOverrides {
-  model?: string;
-  provider?: string;
-  apiKey?: string;
-  baseURL?: string;
-  temperature?: number;
-  maxTokens?: number;
-  systemPrompt?: string;
-}
-```
 
 ---
 

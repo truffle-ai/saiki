@@ -13,13 +13,13 @@ Complete API reference for the main `SaikiAgent` class.
 Creates a new Saiki agent instance with the provided configuration.
 
 ```typescript
-constructor(config: AgentConfig, overrides?: CLIConfigOverrides)
+constructor(config: AgentConfig, options?: InitializeServicesOptions)
 ```
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `config` | `AgentConfig` | Agent configuration object |
-| `overrides` | `CLIConfigOverrides` | (Optional) Configuration overrides |
+| `options` | `InitializeServicesOptions` | (Optional) Service initialization options |
 
 ### `start`
 
