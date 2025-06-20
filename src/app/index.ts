@@ -21,6 +21,7 @@ import {
     loadAgentConfig,
     createSaikiAgent,
 } from '@core/index.js';
+import { applyCLIOverrides, type CLIConfigOverrides } from './config/cli-overrides.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startApiAndLegacyWebUIServer } from './api/server.js';
@@ -283,21 +284,19 @@ program
             logger.info(`Initializing Saiki with config: ${configPath}`);
             const cfg = await loadAgentConfig(configPath);
 
-            // TODO: process cli config overrides and create a new config here before creating the agent
-            // maybe move the cli overrides into the loading of the config file?
-            agent = new SaikiAgent(
-                cfg,
-                {
-                    model: opts.model,
-                    provider: opts.provider,
-                    router: opts.router,
-                    apiKey: opts.apiKey,
-                },
-                {
-                    connectionMode: opts.strict ? 'strict' : 'lenient',
-                    runMode: opts.mode,
-                }
-            );
+            // Apply CLI overrides to config before passing to core layer
+            const cliOverrides: CLIConfigOverrides = {
+                model: opts.model,
+                provider: opts.provider,
+                router: opts.router,
+                apiKey: opts.apiKey,
+            };
+            const finalConfig = applyCLIOverrides(cfg, cliOverrides);
+
+            agent = new SaikiAgent(finalConfig, {
+                connectionMode: opts.strict ? 'strict' : 'lenient',
+                runMode: opts.mode,
+            });
 
             // Start the agent (initialize async services)
             await agent.start();

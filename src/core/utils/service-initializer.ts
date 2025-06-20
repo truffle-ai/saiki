@@ -28,13 +28,12 @@
 import { MCPManager } from '../client/manager.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
-import { StaticConfigManager } from '../config/static-config-manager.js';
+import { ConfigManager } from '../config/config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager } from '../ai/session/session-manager.js';
 import { createStorageBackends, type StorageBackends, StorageManager } from '../storage/index.js';
 import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/factory.js';
 import { logger } from '../logger/index.js';
-import type { CLIConfigOverrides } from '../config/types.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { AgentEventBus } from '../events/index.js';
 
@@ -81,19 +80,16 @@ export type InitializeServicesOptions = {
 // High-level factory to load, validate, and wire up all agent services in one call
 /**
  * Loads and validates configuration and initializes all agent services as a single unit.
- * @param agentConfig The agent configuration object
- * @param cliArgs Optional overrides from the CLI
+ * @param agentConfig The agent configuration object (already processed with any overrides)
  * @param overrides Optional service overrides for testing or advanced scenarios
  * @returns All the initialized services required for a Saiki agent
  */
 export async function createAgentServices(
     agentConfig: AgentConfig,
-    cliArgs?: CLIConfigOverrides,
     overrides?: InitializeServicesOptions
 ): Promise<AgentServices> {
-    // 1. Initialize config manager and apply CLI overrides (if provided), then validate
-    const configManager = new StaticConfigManager(agentConfig, cliArgs);
-    configManager.validate();
+    // 1. Initialize config manager and validate
+    const configManager = new ConfigManager(agentConfig);
     const config = configManager.getConfig();
 
     // 2. Initialize shared event bus

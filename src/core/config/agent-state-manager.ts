@@ -50,8 +50,7 @@ export interface SessionOverride {
 /**
  * Manages the runtime state of the agent.
  *
- * This class handles dynamic configuration changes that occur during agent execution,
- * while StaticConfigManager handles the initial configuration loading and CLI overrides.
+ * This class handles dynamic configuration changes that occur during agent execution.
  *
  * Key responsibilities:
  * 1. Track runtime changes separate from static config baseline
@@ -69,7 +68,7 @@ export class AgentStateManager {
     /**
      * Initialize AgentStateManager from a processed static configuration.
      *
-     * @param staticConfig The processed configuration from StaticConfigManager
+     * @param staticConfig The processed configuration from ConfigManager
      * @param agentEventBus The agent event bus for emitting state change events
      * @param initialSettings Optional runtime settings to apply immediately
      */

@@ -84,23 +84,17 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             expect(agent.getIsStarted()).toBe(true);
             expect(agent.getIsStopped()).toBe(false);
-            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig, undefined, undefined);
+            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig, undefined);
         });
 
-        test('should start with overrides and options', async () => {
-            const agent = new SaikiAgent(
-                mockConfig,
-                { model: 'gpt-4' },
-                { connectionMode: 'strict' }
-            );
+        test('should start with options', async () => {
+            const agent = new SaikiAgent(mockConfig, { connectionMode: 'strict' });
 
             await agent.start();
 
-            expect(mockCreateAgentServices).toHaveBeenCalledWith(
-                mockConfig,
-                { model: 'gpt-4' },
-                { connectionMode: 'strict' }
-            );
+            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig, {
+                connectionMode: 'strict',
+            });
         });
 
         test('should throw error when starting twice', async () => {

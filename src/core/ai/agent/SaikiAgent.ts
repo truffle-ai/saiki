@@ -1,20 +1,16 @@
 // src/ai/agent/SaikiAgent.ts
 import { MCPManager } from '../../client/manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
-import { StaticConfigManager } from '../../config/static-config-manager.js';
 import { AgentStateManager } from '../../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
-import { loadAgentConfig } from '../../config/loader.js';
 import type { AgentConfig } from '../../config/schemas.js';
-import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 import { AgentEventBus } from '../../events/index.js';
-import { LLMConfigSchema } from '../../config/schemas.js';
-import { buildLLMConfig, type ValidationError } from '../../config/validation-utils.js';
+import { buildLLMConfig } from '../../config/validation-utils.js';
 import type { IMCPClient } from '../../client/types.js';
 
 const requiredServices: (keyof AgentServices)[] = [
@@ -95,16 +91,10 @@ export class SaikiAgent {
 
     // Store config for async initialization
     private config: AgentConfig;
-    private overrides?: CLIConfigOverrides;
     private options?: InitializeServicesOptions;
 
-    constructor(
-        config: AgentConfig,
-        overrides?: CLIConfigOverrides,
-        options?: InitializeServicesOptions
-    ) {
+    constructor(config: AgentConfig, options?: InitializeServicesOptions) {
         this.config = config;
-        this.overrides = overrides;
         this.options = options;
 
         logger.info('SaikiAgent created (call start() to initialize async services).');
@@ -126,7 +116,7 @@ export class SaikiAgent {
             logger.info('Starting SaikiAgent...');
 
             // Initialize all services asynchronously
-            const services = await createAgentServices(this.config, this.overrides, this.options);
+            const services = await createAgentServices(this.config, this.options);
 
             // Validate all required services are provided
             for (const service of requiredServices) {
@@ -833,14 +823,13 @@ export class SaikiAgent {
  * Call agent.start() to initialize async services before using the agent.
  *
  * @param config Agent configuration object
- * @param overrides Optional configuration overrides from CLI or other sources
  * @param options Optional service initialization options
  * @returns SaikiAgent instance (not yet started)
  *
  * @example
  * ```typescript
  * // New pattern: Create agent, then start async services
- * const agent = createSaikiAgent(config);
+ * const agent = createSaikiAgent(config, options);
  * await agent.start();
  *
  * // Use the agent...
@@ -850,7 +839,7 @@ export class SaikiAgent {
  * await agent.stop();
  *
  * // Or use constructor directly
- * const agent = new SaikiAgent(config, overrides, options);
+ * const agent = new SaikiAgent(config, options);
  * await agent.start();
  * // ... use agent ...
  * await agent.stop();
@@ -858,8 +847,7 @@ export class SaikiAgent {
  */
 export function createSaikiAgent(
     config: AgentConfig,
-    overrides?: CLIConfigOverrides,
     options?: InitializeServicesOptions
 ): SaikiAgent {
-    return new SaikiAgent(config, overrides, options);
+    return new SaikiAgent(config, options);
 }
