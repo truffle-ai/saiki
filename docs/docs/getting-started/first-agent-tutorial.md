@@ -18,11 +18,12 @@ cd my-pirate-agent
 
 ```yaml
 # agent.yml
+systemPrompt: |
+  You are a helpful AI assistant.
+
 llm:
   provider: openai
   model: gpt-4.1-mini
-  systemPrompt: |
-    You are a helpful AI assistant.
 ```
 
 This basic configuration tells the runtime to use OpenAI's `gpt-4.1-mini` model with a simple system prompt.
@@ -32,11 +33,12 @@ Let's customize your agent by giving it a distinct personality. Modify the `syst
 
 ```yaml
 # agent.yml
+systemPrompt: |
+  Ahoy! Ye be chattin' with a pirate AI. Speak like a pirate in all yer responses, savvy?
+
 llm:
   provider: openai
   model: gpt-4.1-mini
-  systemPrompt: |
-    Ahoy! Ye be chattin' with a pirate AI. Speak like a pirate in all yer responses, savvy?
 ```
 
 Now run your agent from inside the `my-pirate-agent` directory:
@@ -54,11 +56,12 @@ Add the `puppeteer` tool to your configuration:
 
 ```yaml
 # agent.yml
+systemPrompt: |
+  Ahoy! Ye be chattin' with a pirate AI. Speak like a pirate in all yer responses, savvy?
+
 llm:
   provider: openai
   model: gpt-4.1-mini
-  systemPrompt: |
-    Ahoy! Ye be chattin' with a pirate AI. Speak like a pirate in all yer responses, savvy?
 
 mcpServers:
   puppeteer:

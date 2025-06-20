@@ -13,12 +13,17 @@ export type LLMConfig = {
     provider: string;
     model: string;
     apiKey: string;
-    systemPrompt: string | SystemPromptConfig;
     baseURL?: string;
     maxInputTokens?: number;
     maxOutputTokens?: number;
     temperature?: number;
     router?: 'vercel' | 'in-built';
+};
+
+export type AgentConfig = {
+    systemPrompt: string | SystemPromptConfig;
+    llm: LLMConfig;
+    // ... other agent fields
 };
 
 export interface SystemPromptConfig {
@@ -35,14 +40,13 @@ export interface ContributorConfig {
 }
 ```
 
-## Configuration Fields
+## LLM Configuration Fields
 
 ### Required Fields
 
 - **provider** (string): The LLM provider to use (e.g., `openai`, `anthropic`, `google`, `groq`)
 - **model** (string): The model name (see [Providers Guide](./providers) for full list)
 - **apiKey** (string): API key or environment variable (e.g., `$OPENAI_API_KEY`)
-- **systemPrompt** (string | SystemPromptConfig): System prompt configuration
 
 ### Optional Fields
 
@@ -52,22 +56,25 @@ export interface ContributorConfig {
 - **temperature** (number): Controls randomness in AI responses (0 = deterministic, 1 = very creative)
 - **router** (string): Choose between `vercel` (default) or `in-built` routers
 
-## System Prompt Configuration
+## Agent-Level System Prompt Configuration
+
+⚠️ **Important**: The `systemPrompt` field is configured at the agent level, not within the LLM configuration.
 
 ### Simple String Prompt
 
 The simplest way to configure a system prompt is with a string:
 
 ```yaml
+systemPrompt: |
+  You are a helpful AI assistant with access to tools.
+  Use these tools when appropriate to answer user queries.
+  You can use multiple tools in sequence to solve complex problems.
+  After each tool result, determine if you need more information or can provide a final answer.
+
 llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
-  systemPrompt: |
-    You are Saiki, a helpful AI assistant with access to tools.
-    Use these tools when appropriate to answer user queries.
-    You can use multiple tools in sequence to solve complex problems.
-    After each tool result, determine if you need more information or can provide a final answer.
 ```
 
 ### Advanced SystemPromptConfig
@@ -75,28 +82,29 @@ llm:
 For more complex scenarios, you can use the structured approach:
 
 ```yaml
+systemPrompt:
+  contributors:
+    - id: default
+      type: static
+      priority: 1
+      content: |
+        You are a helpful AI assistant with access to tools.
+        Use these tools when appropriate to answer user queries.
+    - id: date-time
+      type: dynamic
+      priority: 2
+      source: dateTime
+    - id: custom-instructions
+      type: static
+      priority: 3
+      enabled: true
+      content: |
+        Additional custom instructions for this specific agent.
+
 llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
-  systemPrompt:
-    contributors:
-      - id: default
-        type: static
-        priority: 1
-        content: |
-          You are Saiki, a helpful AI assistant with access to tools.
-          Use these tools when appropriate to answer user queries.
-      - id: date-time
-        type: dynamic
-        priority: 2
-        source: dateTime
-      - id: custom-instructions
-        type: static
-        priority: 3
-        enabled: true
-        content: |
-          Additional custom instructions for this specific agent.
 ```
 
 ### System Prompt Contributors
@@ -198,7 +206,6 @@ llm:
 - Always set `provider: openai` for OpenAI-compatible APIs
 - The `maxInputTokens` field is required when using `baseURL`
 - Use `baseURL` to point to the custom endpoint
-- The `model` field should match what the provider expects
 
 ## Router Configuration
 
@@ -236,29 +243,33 @@ llm:
 
 ### Production-Ready Configuration
 ```yaml
+systemPrompt:
+  contributors:
+    - id: core
+      type: static
+      priority: 1
+      content: |
+        You are a helpful AI assistant designed to work with tools and data.
+        Always use available tools when they can help answer user questions.
+        Provide clear, accurate, and helpful responses.
+    - id: timestamp
+      type: dynamic
+      priority: 2
+      source: dateTime
+
 llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
-  router: vercel
-  systemPrompt:
-    contributors:
-      - id: core
-        type: static
-        priority: 1
-        content: |
-          You are Saiki, a helpful AI assistant designed to work with tools and data.
-          Always use available tools when they can help answer user questions.
-          Provide clear, accurate, and helpful responses.
-      - id: timestamp
-        type: dynamic
-        priority: 2
-        source: dateTime
   temperature: 0.3
 ```
 
 ### Local Development Configuration
 ```yaml
+systemPrompt: |
+  You are a helpful AI assistant running locally.
+  Use the available tools to help users with their tasks.
+
 llm:
   provider: openai
   model: llama3.2
@@ -268,9 +279,6 @@ llm:
   maxOutputTokens: 4000
   temperature: 0.7
   router: in-built
-  systemPrompt: |
-    You are a helpful AI assistant running locally.
-    Use the available tools to help users with their tasks.
 ```
 
 ## Next Steps

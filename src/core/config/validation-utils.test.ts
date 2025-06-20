@@ -16,7 +16,6 @@ describe('buildLLMConfig', () => {
         model: 'gpt-4o',
         apiKey: 'sk-1234567890abcdef',
         router: 'vercel',
-        systemPrompt: 'You are a helpful assistant.',
         maxIterations: 50,
     };
 

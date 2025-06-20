@@ -143,11 +143,6 @@ export const LLMConfigSchema = z
             .nonempty()
             .describe("The LLM provider (e.g., 'openai', 'anthropic', 'google', 'groq')"),
         model: z.string().nonempty().describe('The specific model name for the selected provider'),
-        systemPrompt: z
-            .union([z.string(), SystemPromptConfigSchema])
-            .describe(
-                'The system prompt content as a string, or a structured system prompt configuration'
-            ),
         apiKey: z
             .string()
             .min(1)
@@ -502,6 +497,11 @@ export type StorageConfig = z.infer<typeof StorageSchema>;
 export const AgentConfigSchema = z
     .object({
         agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
+        systemPrompt: z
+            .union([z.string(), SystemPromptConfigSchema])
+            .describe(
+                'The system prompt content as a string, or a structured system prompt configuration'
+            ),
         mcpServers: ServerConfigsSchema.optional()
             .default({})
             .describe('Configurations for MCP (Model Context Protocol) servers used by the agent'),

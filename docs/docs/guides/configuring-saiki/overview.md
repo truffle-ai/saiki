@@ -22,31 +22,25 @@ saiki --agent path/to/your-config.yml
 ## Example Configuration File
 
 ```yaml
-# agent.yml
-mcpServers:
-  filesystem:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-filesystem"
-      - .
-  puppeteer:
-    type: stdio
-    command: node
-    args:
-      - dist/src/servers/puppeteerServer.js
+# agent.yml - Basic agent configuration
+systemPrompt: |
+  You are a helpful AI assistant with access to tools.
+  Use these tools when appropriate to answer user queries.
+  You can use multiple tools in sequence to solve complex problems.
+  After each tool result, determine if you need more information or can provide a final answer.
 
 llm:
   provider: openai
   model: gpt-4.1-mini
   # you can update the system prompt to change the behavior of the llm
-  systemPrompt: |
-    You are Saiki, a helpful AI assistant with access to tools.
-    Use these tools when appropriate to answer user queries.
-    You can use multiple tools in sequence to solve complex problems.
-    After each tool result, determine if you need more information or can provide a final answer.
   apiKey: $OPENAI_API_KEY
+
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
 ```
 
 ## Key Sections Explained

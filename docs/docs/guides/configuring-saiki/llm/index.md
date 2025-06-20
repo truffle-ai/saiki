@@ -14,13 +14,14 @@ Saiki supports multiple LLM providers out-of-the-box via the Vercel AI SDK. You 
 
 ### Basic Configuration
 ```yaml
+systemPrompt: |
+  You are a helpful AI assistant with access to tools.
+  Use these tools when appropriate to answer user queries.
+
 llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
-  systemPrompt: |
-    You are Saiki, a helpful AI assistant with access to tools.
-    Use these tools when appropriate to answer user queries.
 ```
 
 ### Environment Variables
