@@ -62,11 +62,11 @@ Note: if you use a different LLM in your config file, you will need to pass the 
 
 **Available Saiki tools:**
 
-By default, Saiki is an AI agent that has tools to:
+By default, Saiki CLI loads an AI agent that has tools to:
 - browse the web
 - search files on your local system
 
-But you can customize the tools by using a custom Saiki configuration file. Check out our [Configuration guide](../configuring-saiki/overview).
+But you can customize the tools by using a custom Saiki agent configuration file. Check out our [Configuration guide](../configuring-saiki/overview).
 
 **Example Usage in Cursor:**
 
