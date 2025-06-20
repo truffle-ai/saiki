@@ -1,6 +1,6 @@
 {
     "name": "@truffle-ai/saiki",
-    "version": "0.2.10",
+    "version": "0.3.0",
     "engines": {
         "node": ">=20.0.0",
         "npm": ">=8.3.0"
