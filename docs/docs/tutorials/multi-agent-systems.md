@@ -163,12 +163,12 @@ That's it! No custom code needed. Just run Saiki with different configs and port
 
 ### Terminal 1: Start the Researcher Agent
 ```bash
-saiki --mode mcp --web-port 3001 -c researcher.yml
+saiki --mode mcp --web-port 3001 --agent researcher.yml
 ```
 
 ### Terminal 2: Start the Writer Agent  
 ```bash
-saiki --mode web --web-port 3002 -c writer.yml
+saiki --mode web --web-port 3002 --agent writer.yml
 ```
 
 ### Terminal 3: Test the System
@@ -244,16 +244,16 @@ mcpServers:
 Then run:
 ```bash
 # Terminal 1: Researcher (MCP server mode)
-saiki --mode mcp --web-port 3001 -c researcher.yml
+saiki --mode mcp --web-port 3001 --agent researcher.yml
 
 # Terminal 2: Fact-checker (MCP server mode)
-saiki --mode mcp --web-port 3003 -c fact-checker.yml
+saiki --mode mcp --web-port 3003 --agent fact-checker.yml
 
 # Terminal 3: Editor (MCP server mode)
-saiki --mode mcp --web-port 3004 -c editor.yml
+saiki --mode mcp --web-port 3004 --agent editor.yml
 
 # Terminal 4: Writer (Web UI for user interaction)
-saiki --mode web --web-port 3002 -c writer.yml
+saiki --mode web --web-port 3002 --agent writer.yml
 ```
 
 ### 2. Bidirectional Communication
@@ -310,12 +310,12 @@ llm:
 Run the system:
 ```bash
 # Start specialized agents (MCP servers)
-saiki --mode mcp --web-port 3001 -c researcher.yml
-saiki --mode mcp --web-port 3002 -c writer.yml  
-saiki --mode mcp --web-port 3003 -c reviewer.yml
+saiki --mode mcp --web-port 3001 --agent researcher.yml
+saiki --mode mcp --web-port 3002 --agent writer.yml  
+saiki --mode mcp --web-port 3003 --agent reviewer.yml
 
 # Start coordinator (Web UI for user interaction)
-saiki --mode web --web-port 3000 -c coordinator.yml
+saiki --mode web --web-port 3000 --agent coordinator.yml
 ```
 
 ## Production Considerations
@@ -334,12 +334,12 @@ module.exports = {
     {
       name: 'researcher-agent',
       script: 'saiki',
-      args: '--mode mcp --web-port 3001 -c researcher.yml'
+      args: '--mode mcp --web-port 3001 --agent researcher.yml'
     },
     {
       name: 'writer-agent', 
       script: 'saiki',
-      args: '--mode web --web-port 3002 -c writer.yml'
+      args: '--mode web --web-port 3002 --agent writer.yml'
     }
   ]
 };
@@ -372,7 +372,7 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - TAVILY_API_KEY=${TAVILY_API_KEY}
-    command: saiki --mode mcp --web-port 3000 -c researcher.yml
+    command: saiki --mode mcp --web-port 3000 --agent researcher.yml
     
   writer:
     build: .
@@ -380,7 +380,7 @@ services:
       - "3002:3000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-    command: saiki --mode web --web-port 3000 -c writer.yml
+    command: saiki --mode web --web-port 3000 --agent writer.yml
     depends_on:
       - researcher
 ```
