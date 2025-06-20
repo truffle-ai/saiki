@@ -58,7 +58,7 @@
     "license": "Elastic-2.0",
     "files": [
         "dist/",
-        "configuration/saiki.yml",
+        "agents/agent.yml",
         "public/"
     ],
     "dependencies": {

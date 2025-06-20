@@ -51,7 +51,7 @@ saiki -m gemini-2.0-flash
 
 This allows you to configure saiki CLI to use a different AI agent
 ```bash
-saiki --config-file <path_to_agent_config_file>
+saiki --agent <path_to_agent_config_file>
 ```
 
 Check [Configuration Guide](./configuring-saiki/overview) to understand more about saiki config files
@@ -80,7 +80,7 @@ saiki --mode telegram
 ```
 To use a specific agent config file for the telegram bot:
 ```bash
-saiki --mode telegram --config-file ./telegram-agent-config.yml
+saiki --mode telegram --agent ./telegram-agent-config.yml
 ```
 
 <!-- Todo: add telegram demo -->
@@ -91,7 +91,7 @@ saiki --mode discord
 ```
 To use a specific agent config file for the discord bot:
 ```bash
-saiki --mode discord --config-file ./discord-agent-config.yml
+saiki --mode discord --agent ./discord-agent-config.yml
 ```
 
 <!-- Todo: add discord demo -->

@@ -160,8 +160,8 @@ export async function postCreateSaiki(projectPath: string, directory: string) {
         `1. Go to the project directory: ${chalk.cyan(`cd ${projectPath}`)}`,
         `2. Run the example: ${chalk.cyan(`npm run dev`)}`,
         `3. Add/update your API key(s) in ${chalk.cyan('.env')}`,
-        `4. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'saiki.yml'))}`,
-        `5. Try out different LLMs and MCP servers in the saiki.yml file`,
+        `4. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'agent.yml'))}`,
+        `5. Try out different LLMs and MCP servers in the agent.yml file`,
         `6. Read more about Saiki: ${chalk.cyan('https://github.com/truffle-ai/saiki')}`,
     ].join('\n');
     p.note(nextSteps, chalk.yellow('Next steps:'));

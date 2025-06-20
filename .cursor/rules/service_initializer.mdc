@@ -4,7 +4,7 @@ globs:
 alwaysApply: false
 ---
 - **Configuration Source of Truth**
-  - The config file (e.g., `saiki.yml`) is the primary source for both high-level and low-level service options (e.g., LLM provider, compression strategies for MessageManager).
+  - The config file (e.g., `agent.yml`) is the primary source for both high-level and low-level service options (e.g., LLM provider, compression strategies for MessageManager).
   - All user-facing and environment-specific configuration should be handled via the config file for clarity, auditability, and ease of use.
 
 - **Override Pattern for Advanced/Test Use**
@@ -20,7 +20,7 @@ alwaysApply: false
 - **Examples**
 ```typescript
 // ✅ DO: Use config for compression strategies
-// In saiki.yml:
+// In agent.yml:
 messages:
   compression:
     - type: middle

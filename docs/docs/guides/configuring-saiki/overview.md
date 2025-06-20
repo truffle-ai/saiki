@@ -13,16 +13,16 @@ We chose `yml` instead of the more popular `json` because of its support for com
 
 ## Where to Place Your Config
 
-By default, Saiki uses a configuration file named `configuration/saiki.yml`. You can also specify a custom config path using the CLI:
+By default, Saiki uses a configuration file named `agents/agent.yml`. You can also specify a custom config path using the CLI:
 
 ```bash
-saiki --config-file path/to/your-config.yml
+saiki --agent path/to/your-config.yml
 ```
 
 ## Example Configuration File
 
 ```yaml
-# saiki.yml
+# agent.yml
 mcpServers:
   filesystem:
     type: stdio
@@ -68,5 +68,5 @@ llm:
 - **Keep your config in version control** (but never commit secrets!). Use `.env` files or CI secrets for sensitive values.
 - **Document your config** for your team. Add comments to your YML files. We chose YML for this reason.
 - **Validate your config** before running Saiki in production.
-- **See the `configuration/examples/` folder for more templates and advanced use cases.**
+- **See the `agents/examples/` folder for more templates and advanced use cases.**
  

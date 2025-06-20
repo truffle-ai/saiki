@@ -15,7 +15,7 @@ Let's build an agent that can organize messy directories:
 import 'dotenv/config';
 import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
 
-const config = await loadConfigFile('./agents/saiki.yml');
+const config = await loadConfigFile('./agents/agent.yml');
 const agent = await createSaikiAgent(config);
 
 console.log("🗂️ Smart File Organizer");
@@ -39,7 +39,7 @@ import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
 import readline from 'readline';
 
 const agent = await createSaikiAgent(
-  await loadConfigFile('./agents/saiki.yml')
+  await loadConfigFile('./agents/agent.yml')
 );
 
 const rl = readline.createInterface({
@@ -97,7 +97,7 @@ import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
 import readline from 'readline';
 
 const agent = await createSaikiAgent(
-  await loadConfigFile('./agents/saiki.yml')
+  await loadConfigFile('./agents/agent.yml')
 );
 
 const rl = readline.createInterface({
@@ -181,7 +181,7 @@ app.use(express.json());
 
 // Initialize our agent once
 const agent = await createSaikiAgent(
-  await loadConfigFile('./agents/saiki.yml')
+  await loadConfigFile('./agents/agent.yml')
 );
 
 // Simple chat endpoint

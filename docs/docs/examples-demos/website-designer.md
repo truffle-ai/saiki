@@ -6,7 +6,7 @@ hide_title: true
 ## Website Designer
 
 ```bash
-saiki --config-file ./configuration/examples/website_designer.yml
+saiki --agent ./agents/examples/website_designer.yml
 ```
 
 **Task:**
