@@ -264,11 +264,11 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
 
     const indexTsLines = [
         "import 'dotenv/config';",
-        "import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';",
+        "import { loadAgentConfig, SaikiAgent } from '@truffle-ai/saiki';",
         '',
         '// 1. Initialize the agent from the config file',
         '// Every agent is defined by its own config file',
-        `const config = await loadConfigFile('${configPath}');`,
+        `const config = await loadAgentConfig('${configPath}');`,
         'const agent = new SaikiAgent(config);',
         '',
         '// 2. Start the agent (initialize async services)',

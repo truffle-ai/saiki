@@ -18,7 +18,7 @@ import {
     getProviderFromModel,
     getAllSupportedModels,
     SaikiAgent,
-    loadConfigFile,
+    loadAgentConfig,
     createSaikiAgent,
 } from '@core/index.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
@@ -167,7 +167,7 @@ program
             );
 
             logger.info(`Loading Saiki config from: ${configPath}`);
-            const config = await loadConfigFile(configPath);
+            const config = await loadAgentConfig(configPath);
 
             // Validate that MCP servers are configured
             if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
@@ -281,7 +281,7 @@ program
         try {
             const configPath = resolvePackagePath(opts.agent, opts.agent === DEFAULT_CONFIG_PATH);
             logger.info(`Initializing Saiki with config: ${configPath}`);
-            const cfg = await loadConfigFile(configPath);
+            const cfg = await loadAgentConfig(configPath);
 
             // TODO: process cli config overrides and create a new config here before creating the agent
             // maybe move the cli overrides into the loading of the config file?

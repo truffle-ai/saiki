@@ -1,11 +1,15 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { LLMConfig, AgentConfig } from '../../config/schemas.js';
 import * as validationUtils from '../../config/validation-utils.js';
 
 // Mock the dependencies
 vi.mock('../../config/validation-utils.js');
 vi.mock('../../logger/index.js');
+vi.mock('../../utils/service-initializer.js');
+
+import { createAgentServices } from '../../utils/service-initializer.js';
+const mockCreateAgentServices = vi.mocked(createAgentServices);
 
 const mockValidationUtils = vi.mocked(validationUtils);
 
@@ -29,7 +33,7 @@ describe('SaikiAgent.switchLLM', () => {
         maxInputTokens: 128000,
     };
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
 
         // Create mock services
@@ -99,6 +103,8 @@ describe('SaikiAgent.switchLLM', () => {
         mockClientManager = {
             connectServer: vi.fn(),
             getAllTools: vi.fn().mockResolvedValue({}),
+            initializeFromConfig: vi.fn().mockResolvedValue(undefined),
+            disconnectAll: vi.fn().mockResolvedValue(undefined),
         };
 
         mockPromptManager = {
@@ -106,18 +112,38 @@ describe('SaikiAgent.switchLLM', () => {
         };
 
         mockStorageManager = {
-            // Add any methods that might be called
+            disconnect: vi.fn().mockResolvedValue(undefined),
         };
 
-        // Create SaikiAgent with all required services
-        agent = new SaikiAgent({
+        const mockServices = {
             clientManager: mockClientManager,
             promptManager: mockPromptManager,
             agentEventBus: mockEventBus,
             stateManager: mockStateManager,
             sessionManager: mockSessionManager,
             storage: mockStorageManager,
-        });
+            storageManager: mockStorageManager,
+        };
+
+        // Mock createAgentServices to return our mock services
+        mockCreateAgentServices.mockResolvedValue(mockServices);
+
+        const mockConfig: AgentConfig = {
+            llm: mockLLMConfig,
+            mcpServers: {},
+            storage: {
+                cache: { type: 'in-memory' },
+                database: { type: 'in-memory' },
+            },
+            sessions: {
+                maxSessions: 10,
+                sessionTTL: 3600,
+            },
+        };
+
+        // Create SaikiAgent with config and start it
+        agent = new SaikiAgent(mockConfig);
+        await agent.start();
 
         // Mock the validation function
         mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, currentConfig) => {

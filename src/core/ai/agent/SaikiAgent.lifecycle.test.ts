@@ -74,38 +74,6 @@ describe('SaikiAgent Lifecycle Management', () => {
             expect(agent.getIsStarted()).toBe(false);
             expect(agent.getIsStopped()).toBe(false);
         });
-
-        test('should create agent with services (backward compatibility)', () => {
-            const agent = new SaikiAgent(mockServices);
-
-            expect(agent.getIsStarted()).toBe(true);
-            expect(agent.getIsStopped()).toBe(false);
-        });
-
-        test('should correctly identify AgentServices vs AgentConfig', () => {
-            // Test with services (should work)
-            expect(() => new SaikiAgent(mockServices)).not.toThrow();
-
-            // Test with config (should work)
-            expect(() => new SaikiAgent(mockConfig)).not.toThrow();
-        });
-
-        test('should validate required services when using services constructor', () => {
-            const incompleteServices = {
-                // Include the required properties for type guard but make clientManager undefined
-                clientManager: undefined,
-                promptManager: mockServices.promptManager,
-                agentEventBus: mockServices.agentEventBus,
-                stateManager: mockServices.stateManager,
-                sessionManager: mockServices.sessionManager,
-                storage: mockServices.storage,
-                storageManager: mockServices.storageManager,
-            };
-
-            expect(() => new SaikiAgent(incompleteServices)).toThrow(
-                'Required service clientManager is missing in SaikiAgent constructor'
-            );
-        });
     });
 
     describe('start() Method', () => {
@@ -149,12 +117,6 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             await expect(agent.start()).rejects.toThrow('Service initialization failed');
             expect(agent.getIsStarted()).toBe(false);
-        });
-
-        test('should not allow start on services-based agent', async () => {
-            const agent = new SaikiAgent(mockServices);
-
-            await expect(agent.start()).rejects.toThrow('Agent is already started');
         });
     });
 
@@ -205,14 +167,6 @@ describe('SaikiAgent Lifecycle Management', () => {
             // Should still try to clean other services
             expect(mockServices.clientManager.disconnectAll).toHaveBeenCalled();
             expect(mockServices.storageManager.disconnect).toHaveBeenCalled();
-        });
-
-        test('should stop services-based agent', async () => {
-            const agent = new SaikiAgent(mockServices);
-
-            await agent.stop();
-
-            expect(agent.getIsStopped()).toBe(true);
         });
     });
 

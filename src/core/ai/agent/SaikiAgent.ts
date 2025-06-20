@@ -8,7 +8,7 @@ import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
-import { loadConfigFile } from '../../config/loader.js';
+import { loadAgentConfig } from '../../config/loader.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import type { CLIConfigOverrides } from '../../config/types.js';
 import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
@@ -99,57 +99,15 @@ export class SaikiAgent {
     private options?: InitializeServicesOptions;
 
     constructor(
-        configOrServices: AgentConfig | AgentServices,
+        config: AgentConfig,
         overrides?: CLIConfigOverrides,
         options?: InitializeServicesOptions
     ) {
-        // Check if first argument is a config or services object
-        if (this.isAgentServices(configOrServices)) {
-            // Old constructor pattern for tests
-            const services = configOrServices;
+        this.config = config;
+        this.overrides = overrides;
+        this.options = options;
 
-            // Validate all required services are provided
-            for (const service of requiredServices) {
-                if (!services[service]) {
-                    throw new Error(
-                        `Required service ${service} is missing in SaikiAgent constructor`
-                    );
-                }
-            }
-
-            // Use Object.assign to set readonly properties
-            Object.assign(this, {
-                clientManager: services.clientManager,
-                promptManager: services.promptManager,
-                agentEventBus: services.agentEventBus,
-                stateManager: services.stateManager,
-                sessionManager: services.sessionManager,
-                services: services,
-            });
-
-            this.isStarted = true; // Already started with services
-            logger.info('SaikiAgent initialized with services.');
-        } else {
-            // New constructor pattern
-            this.config = configOrServices;
-            this.overrides = overrides;
-            this.options = options;
-
-            logger.info('SaikiAgent created (call start() to initialize async services).');
-        }
-    }
-
-    /**
-     * Type guard to check if the argument is AgentServices
-     */
-    private isAgentServices(obj: any): obj is AgentServices {
-        return (
-            obj &&
-            typeof obj === 'object' &&
-            'clientManager' in obj &&
-            'sessionManager' in obj &&
-            'stateManager' in obj
-        );
+        logger.info('SaikiAgent created (call start() to initialize async services).');
     }
 
     /**
