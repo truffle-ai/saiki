@@ -27,7 +27,7 @@ systemPrompt:
       type: static
       priority: 0
       content: |
-        You are Saiki, a helpful AI assistant with access to tools.
+        You are a helpful AI assistant with access to tools.
         Use these tools when appropriate to answer user queries.
         You can use multiple tools in sequence to solve complex problems.
         After each tool result, determine if you need more information or can provide a final answer.
@@ -68,13 +68,7 @@ storage:
 
 ## To use Google Gemini, replace the LLM section with Google Gemini configuration below
 ## Similar for anthropic/groq/etc.
-# systemPrompt: |
-#   You are Saiki, a helpful AI assistant with access to tools.
-#   Use these tools when appropriate to answer user queries.
-#   You can use multiple tools in sequence to solve complex problems.
-#   After each tool result, determine if you need more information or can provide a final answer.
-#
 # llm:
 #   provider: google
 #   model: gemini-2.0-flash
-#   apiKey: $GOOGLE_GENERATIVE_AI_API_KEY 
+#   apiKey: $GOOGLE_GENERATIVE_AI_API_KEY
