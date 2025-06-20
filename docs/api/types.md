@@ -12,7 +12,6 @@ Type definitions and interfaces for the Saiki Node.js SDK.
 import {
   // Main classes
   SaikiAgent,
-  createSaikiAgent,
   
   // Standalone utilities
   MCPManager,
