@@ -7,7 +7,7 @@ vi.mock('../llm/messages/history/factory.js', () => ({
     createDatabaseHistoryProvider: vi.fn(),
 }));
 vi.mock('../llm/messages/factory.js', () => ({
-    createMessageManager: vi.fn(),
+    createContextManager: vi.fn(),
 }));
 vi.mock('../llm/services/factory.js', () => ({
     createLLMService: vi.fn(),
@@ -31,14 +31,14 @@ vi.mock('../../logger/index.js', () => ({
 }));
 
 import { createDatabaseHistoryProvider } from '../llm/messages/history/factory.js';
-import { createMessageManager } from '../llm/messages/factory.js';
+import { createContextManager } from '../llm/messages/factory.js';
 import { createLLMService } from '../llm/services/factory.js';
 import { createTokenizer } from '../llm/tokenizer/factory.js';
 import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
 import { getEffectiveMaxInputTokens } from '../llm/registry.js';
 
 const mockCreateDatabaseHistoryProvider = vi.mocked(createDatabaseHistoryProvider);
-const mockCreateMessageManager = vi.mocked(createMessageManager);
+const mockCreateContextManager = vi.mocked(createContextManager);
 const mockCreateLLMService = vi.mocked(createLLMService);
 const mockCreateTokenizer = vi.mocked(createTokenizer);
 const mockCreateFormatter = vi.mocked(createMessageFormatter);
@@ -48,7 +48,7 @@ describe('ChatSession', () => {
     let chatSession: ChatSession;
     let mockServices: any;
     let mockHistoryProvider: any;
-    let mockMessageManager: any;
+    let mockContextManager: any;
     let mockLLMService: any;
     let mockTokenizer: any;
     let mockFormatter: any;
@@ -76,7 +76,7 @@ describe('ChatSession', () => {
         };
 
         // Mock message manager
-        mockMessageManager = {
+        mockContextManager = {
             addUserMessage: vi.fn(),
             processLLMResponse: vi.fn(),
             getHistory: vi.fn().mockResolvedValue([]),
@@ -154,7 +154,7 @@ describe('ChatSession', () => {
 
         // Set up factory mocks
         mockCreateDatabaseHistoryProvider.mockReturnValue(mockHistoryProvider);
-        mockCreateMessageManager.mockReturnValue(mockMessageManager);
+        mockCreateContextManager.mockReturnValue(mockContextManager);
         mockCreateLLMService.mockReturnValue(mockLLMService);
         mockCreateTokenizer.mockReturnValue(mockTokenizer);
         mockCreateFormatter.mockReturnValue(mockFormatter);
@@ -230,7 +230,7 @@ describe('ChatSession', () => {
             await chatSession.reset();
 
             // Should call resetConversation on message manager
-            expect(mockMessageManager.resetConversation).toHaveBeenCalled();
+            expect(mockContextManager.resetConversation).toHaveBeenCalled();
 
             // Should emit saiki:conversationReset event with session context
             expect(mockServices.agentEventBus.emit).toHaveBeenCalledWith(
@@ -254,7 +254,7 @@ describe('ChatSession', () => {
             await chatSession.switchLLM(newConfig);
 
             // Should call updateConfig with effective maxInputTokens (from getEffectiveMaxInputTokens mock)
-            expect(mockMessageManager.updateConfig).toHaveBeenCalledWith(
+            expect(mockContextManager.updateConfig).toHaveBeenCalledWith(
                 128000, // effective maxInputTokens (mocked return value)
                 undefined, // newTokenizer (no provider change)
                 undefined // newFormatter (no router change)
@@ -293,7 +293,7 @@ describe('ChatSession', () => {
 
             await chatSession.switchLLM(newConfig);
 
-            expect(mockMessageManager.updateConfig).toHaveBeenCalledWith(
+            expect(mockContextManager.updateConfig).toHaveBeenCalledWith(
                 128000, // newMaxInputTokens
                 expect.any(Object), // newTokenizer
                 expect.any(Object) // newFormatter
@@ -333,7 +333,7 @@ describe('ChatSession', () => {
         });
 
         test('should handle message manager creation failures', async () => {
-            mockCreateMessageManager.mockImplementation(() => {
+            mockCreateContextManager.mockImplementation(() => {
                 throw new Error('Message manager creation failed');
             });
 
@@ -399,12 +399,12 @@ describe('ChatSession', () => {
                 { role: 'assistant', content: 'Hi there!' },
             ];
 
-            mockMessageManager.getHistory.mockResolvedValue(mockHistory);
+            mockContextManager.getHistory.mockResolvedValue(mockHistory);
 
             const history = await chatSession.getHistory();
 
             expect(history).toEqual(mockHistory);
-            expect(mockMessageManager.getHistory).toHaveBeenCalled();
+            expect(mockContextManager.getHistory).toHaveBeenCalled();
         });
     });
 
@@ -413,7 +413,7 @@ describe('ChatSession', () => {
             await chatSession.init();
 
             // Verify session-specific message manager creation
-            expect(mockCreateMessageManager).toHaveBeenCalledWith(
+            expect(mockCreateContextManager).toHaveBeenCalledWith(
                 mockLLMConfig,
                 mockLLMConfig.router,
                 mockServices.promptManager,
@@ -428,7 +428,7 @@ describe('ChatSession', () => {
                 mockLLMConfig.router,
                 mockServices.clientManager,
                 chatSession.eventBus, // Session-specific event bus
-                mockMessageManager
+                mockContextManager
             );
 
             // Verify session-specific history provider creation

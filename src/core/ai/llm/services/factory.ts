@@ -12,7 +12,7 @@ import { AnthropicService } from './anthropic.js';
 import { LanguageModelV1 } from 'ai';
 import { SessionEventBus } from '../../../events/index.js';
 import { LLMRouter } from '../types.js';
-import { MessageManager } from '../messages/manager.js';
+import { ContextManager } from '../messages/manager.js';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -43,14 +43,14 @@ function extractApiKey(config: LLMConfig): string {
  * @param config LLM configuration from the config file
  * @param clientManager Client manager instance
  * @param sessionEventBus Session-level event bus for emitting LLM events
- * @param messageManager Message manager instance
+ * @param contextManager Message manager instance
  * @returns ILLMService instance
  */
 function _createInBuiltLLMService(
     config: LLMConfig,
     clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
-    messageManager: MessageManager
+    contextManager: ContextManager
 ): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
@@ -66,7 +66,7 @@ function _createInBuiltLLMService(
                 clientManager,
                 openai,
                 sessionEventBus,
-                messageManager,
+                contextManager,
                 config.model,
                 config.maxIterations
             );
@@ -77,7 +77,7 @@ function _createInBuiltLLMService(
                 clientManager,
                 anthropic,
                 sessionEventBus,
-                messageManager,
+                contextManager,
                 config.model,
                 config.maxIterations
             );
@@ -139,7 +139,7 @@ function _createVercelLLMService(
     config: LLMConfig,
     clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
-    messageManager: MessageManager
+    contextManager: ContextManager
 ): VercelLLMService {
     const model = _createVercelModel(config);
 
@@ -148,7 +148,7 @@ function _createVercelLLMService(
         model,
         config.provider,
         sessionEventBus,
-        messageManager,
+        contextManager,
         config.maxIterations,
         config.temperature,
         config.maxOutputTokens
@@ -163,11 +163,11 @@ export function createLLMService(
     router: LLMRouter,
     clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
-    messageManager: MessageManager
+    contextManager: ContextManager
 ): ILLMService {
     if (router === 'vercel') {
-        return _createVercelLLMService(config, clientManager, sessionEventBus, messageManager);
+        return _createVercelLLMService(config, clientManager, sessionEventBus, contextManager);
     } else {
-        return _createInBuiltLLMService(config, clientManager, sessionEventBus, messageManager);
+        return _createInBuiltLLMService(config, clientManager, sessionEventBus, contextManager);
     }
 }

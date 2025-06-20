@@ -31,7 +31,7 @@ The main components are:
 2.  **Provider Implementations** - Each provider (e.g., OpenAI, Anthropic) has its own implementation of `ILLMService`. These services interact with the provider's specific API.
 3.  **Factory (`factory.ts`)** - Creates the appropriate service (`OpenAIService`, `AnthropicService`, etc.) based on configuration (`LLMConfig`). It also handles API key extraction and can optionally create services compatible with the Vercel AI SDK.
 4.  **Client Manager (`client/manager.ts`)** - Manages the available tools (getting definitions, executing them). LLM services use the `ClientManager` to get tool information and execute tool calls requested by the LLM.
-5.  **Message Manager (`messages/manager.ts`)** - Manages the conversation history, formats messages according to the provider's requirements (using specific formatters), handles system prompts, applies compression strategies, and manages token limits. Each LLM service instance typically has its own `MessageManager`.
+5.  **Message Manager (`messages/manager.ts`)** - Manages the conversation history, formats messages according to the provider's requirements (using specific formatters), handles system prompts, applies compression strategies, and manages token limits. Each LLM service instance typically has its own `ContextManager`.
 6.  **Event Emitter (`EventEmitter`)** - Used by LLM services to emit events during the task completion lifecycle (e.g., `thinking`, `toolCall`, `toolResult`, `response`, `error`). This allows other parts of the application to react to the LLM's progress.
 
 
@@ -42,8 +42,8 @@ Adding a new LLM provider involves these main steps:
 1.  **Choose LLM & Install SDK:** Select the provider and install its Node.js/TypeScript SDK.
 2.  **Implement/Select Formatter:** Ensure a message formatter (`IMessageFormatter`) exists for the provider's API structure.
 3.  **Implement/Select Tokenizer & Utilities:** Ensure a tokenizer (`ITokenizer`) and token limit information (`getMaxTokens`) are available for the chosen model(s).
-4.  **Choose/Implement Compression Strategy(ies):** Decide which context compression strategies (`ICompressionStrategy`) the `MessageManager` should use if the token limit is exceeded.
-5.  **Create `ILLMService` Implementation:** Build the core service class, integrating the SDK, `MessageManager`, `ClientManager`, and handling the API interaction logic.
+4.  **Choose/Implement Compression Strategy(ies):** Decide which context compression strategies (`ICompressionStrategy`) the `ContextManager` should use if the token limit is exceeded.
+5.  **Create `ILLMService` Implementation:** Build the core service class, integrating the SDK, `ContextManager`, `ClientManager`, and handling the API interaction logic.
 6.  **Update Factory:** Modify the `factory.ts` to recognize and instantiate your new service.
 7.  **Test:** Configure and run Saiki to test your new provider integration.
 
@@ -69,29 +69,29 @@ Let's look at each step in more detail.
 
 ## Step 3: Implement/Select Tokenizer (`ITokenizer`) & Utilities
 
-*   **Role:** Counts tokens in text according to the specific model's tokenization scheme. This is crucial for the `MessageManager` to manage the context window and apply compression strategies when the token limit is exceeded.
+*   **Role:** Counts tokens in text according to the specific model's tokenization scheme. This is crucial for the `ContextManager` to manage the context window and apply compression strategies when the token limit is exceeded.
 *   **Location:** `src/ai/llm/tokenizer/`
 *   **Action:**
     1.  **Check/Add Tokenizer Logic:** Find a library or method (often part of the provider's SDK) to count tokens for your model. Integrate this into the `createTokenizer` function in `factory.ts` if possible, associating it with your provider name (e.g., `'your-provider-name'`). Alternatively, you can directly instantiate the tokenizer within your service constructor.
-    2.  **Update `getMaxTokens`:** Add your model's maximum context window size (token limit) to the `getMaxTokens` function in `utils.ts`. This allows the system to calculate appropriate limits for `MessageManager`.
+    2.  **Update `getMaxTokens`:** Add your model's maximum context window size (token limit) to the `getMaxTokens` function in `utils.ts`. This allows the system to calculate appropriate limits for `ContextManager`.
     *   Ensure your tokenizer implementation conforms to the `ITokenizer` interface from `./types.ts` (primarily the `countTokens(text: string): number` method).
 
 ## Step 4: Choose/Implement Compression Strategy(ies) (`ICompressionStrategy`)
 
-*   **Role:** Defines how the `MessageManager` should reduce the token count of the conversation history when it exceeds the `maxTokens` limit. Strategies are applied sequentially until the history fits.
+*   **Role:** Defines how the `ContextManager` should reduce the token count of the conversation history when it exceeds the `maxTokens` limit. Strategies are applied sequentially until the history fits.
 *   **Location:** `src/ai/llm/messages/compression/`
 *   **Action:**
     *   Review the existing strategies: `OldestRemovalStrategy.ts` (removes oldest messages) and `MiddleRemovalStrategy.ts` (attempts to remove messages between the first user message and the latest messages).
-    *   Decide which strategy or sequence of strategies is appropriate for your provider/use case. The default sequence used by `MessageManager` is `[MiddleRemovalStrategy, OldestRemovalStrategy]`.
+    *   Decide which strategy or sequence of strategies is appropriate for your provider/use case. The default sequence used by `ContextManager` is `[MiddleRemovalStrategy, OldestRemovalStrategy]`.
     *   If necessary, implement a custom strategy by creating a class that implements the `ICompressionStrategy` interface from `./types.ts`, defining the `compress(messages: InternalMessage[], maxTokens: number, tokenizer: ITokenizer): InternalMessage[]` method.
-    *   You will pass your chosen strategy instance(s) to the `MessageManager` constructor in the next step.
+    *   You will pass your chosen strategy instance(s) to the `ContextManager` constructor in the next step.
 
 ## Step 5: Create `ILLMService` Implementation
 
 This is the core step where you tie everything together.
 
 1.  **Create the Service File:** Create `src/ai/llm/services/your-provider.ts`.
-2.  **Implement the Class:** The factory (`factory.ts`) typically handles the instantiation of the `MessageManager` and the provider's SDK client, passing them to your service's constructor along with the `MCPManager` and an `EventEmitter`.
+2.  **Implement the Class:** The factory (`factory.ts`) typically handles the instantiation of the `ContextManager` and the provider's SDK client, passing them to your service's constructor along with the `MCPManager` and an `EventEmitter`.
 
 ```typescript
 import YourProviderSDK from '@provider/sdk-library'; // Your provider's SDK
@@ -100,7 +100,7 @@ import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../utils/logger.js';
 import { EventEmitter } from 'events';
-import { MessageManager } from '../messages/manager.js';
+import { ContextManager } from '../messages/manager.js';
 import { getMaxTokens } from '../tokenizer/utils.js';
 import { ImageData } from '../messages/types.js'; // For potential image support
 
@@ -108,7 +108,7 @@ export class YourProviderService implements ILLMService {
     private providerClient: YourProviderSDK; // Provider SDK instance (passed in)
     private model: string;                  // Model identifier (passed in)
     private clientManager: MCPManager; // Passed in from factory
-    private messageManager: MessageManager;  // Passed in from factory
+    private contextManager: ContextManager;  // Passed in from factory
     private eventEmitter: EventEmitter;      // Passed in from factory
     private maxIterations: number;           // Max tool call loops
 
@@ -116,7 +116,7 @@ export class YourProviderService implements ILLMService {
         clientManager: MCPManager,     // Provided by factory
         providerClient: YourProviderSDK,   // Provided by factory
         agentEventBus: EventEmitter,       // Provided by factory
-        messageManager: MessageManager,    // Provided by factory
+        contextManager: ContextManager,    // Provided by factory
         model: string,                     // Provided by factory
         maxIterations: number = 10         // Or a default suitable for the provider
     ) {
@@ -124,10 +124,10 @@ export class YourProviderService implements ILLMService {
         this.providerClient = providerClient;
         this.clientManager = clientManager;
         this.eventEmitter = agentEventBus;   // Use the passed-in emitter
-        this.messageManager = messageManager; // Use the passed-in message manager
+        this.contextManager = contextManager; // Use the passed-in message manager
         this.maxIterations = maxIterations;
 
-        // Initialization logic simplified as MessageManager, etc. are pre-configured
+        // Initialization logic simplified as ContextManager, etc. are pre-configured
         logger.info(`Initialized YourProviderService with model ${this.model}`);
     }
 
@@ -137,7 +137,7 @@ export class YourProviderService implements ILLMService {
     }
 
     getConfig(): LLMServiceConfig {
-        const configuredMaxTokens = this.messageManager.getMaxTokens();
+        const configuredMaxTokens = this.contextManager.getMaxTokens();
         return {
             // Use the provider name registered in the factory
             provider: 'your-provider-name', 
@@ -149,8 +149,8 @@ export class YourProviderService implements ILLMService {
     }
 
     async completeTask(userInput: string, imageData?: ImageData): Promise<string> {
-        // Add user message (potentially with image data) via MessageManager
-        this.messageManager.addUserMessage(userInput, imageData);
+        // Add user message (potentially with image data) via ContextManager
+        this.contextManager.addUserMessage(userInput, imageData);
 
         const rawTools = await this.clientManager.getAllTools();
         // Provider-specific formatting is still needed
@@ -168,13 +168,13 @@ export class YourProviderService implements ILLMService {
                 iterationCount++;
                 logger.debug(`LLM Iteration ${iterationCount}`);
 
-                // Get formatted messages from MessageManager (handles history, compression, formatting)
-                const messages = await this.messageManager.getFormattedMessages({ 
+                // Get formatted messages from ContextManager (handles history, compression, formatting)
+                const messages = await this.contextManager.getFormattedMessages({ 
                     clientManager: this.clientManager // May be needed for certain formatters
                 }); 
                 
                 // Estimate and log token count (optional but useful)
-                const currentTokens = this.messageManager.getTokenCount();
+                const currentTokens = this.contextManager.getTokenCount();
                 logger.debug(`Estimated tokens being sent: ${currentTokens}`);
 
                 logger.silly("Messages sent to provider:", messages);
@@ -184,7 +184,7 @@ export class YourProviderService implements ILLMService {
                 // Adapt based on provider SDK (e.g., chat completions, generateText)
                 const response = await this.providerClient.someApiCall({ 
                     model: this.model,
-                    messages: messages, // Use messages from MessageManager
+                    messages: messages, // Use messages from ContextManager
                     tools: formattedTools, // Send formatted tools
                     tool_choice: 'auto', // Or provider-specific equivalent
                     // ... other provider options
@@ -196,8 +196,8 @@ export class YourProviderService implements ILLMService {
                 const { textContent, toolCalls } = this.parseProviderResponse(response); 
                 logger.silly("Parsed response:", { textContent, toolCalls });
 
-                // Add assistant message via MessageManager (handles text and/or tool calls)
-                this.messageManager.addAssistantMessage(textContent, toolCalls);
+                // Add assistant message via ContextManager (handles text and/or tool calls)
+                this.contextManager.addAssistantMessage(textContent, toolCalls);
 
                 // --- Handle Tool Calls (if any) --- 
                 if (!toolCalls || toolCalls.length === 0) {
@@ -225,8 +225,8 @@ export class YourProviderService implements ILLMService {
                     } catch (e) {
                         const errorMsg = `Invalid arguments format: ${e instanceof Error ? e.message : String(e)}`;
                         logger.error(`Failed to parse arguments for tool ${toolName}: ${toolCall.function.arguments}`, e);
-                        // Add error result via MessageManager
-                        this.messageManager.addToolResult(toolCallId, toolName, { error: errorMsg });
+                        // Add error result via ContextManager
+                        this.contextManager.addToolResult(toolCallId, toolName, { error: errorMsg });
                         this.eventEmitter.emit('llmservice:toolResult', toolName, { error: errorMsg });
                         continue; // Skip execution
                     }
@@ -236,15 +236,15 @@ export class YourProviderService implements ILLMService {
                     try {
                         result = await this.clientManager.executeTool(toolName, args);
                         logger.debug(`Tool ${toolName} executed successfully.`);
-                        // Add success result via MessageManager
-                        this.messageManager.addToolResult(toolCallId, toolName, result);
+                        // Add success result via ContextManager
+                        this.contextManager.addToolResult(toolCallId, toolName, result);
                         this.eventEmitter.emit('llmservice:toolResult', toolName, result);
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : String(error);
                         logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
                         result = { error: errorMessage }; 
-                        // Add error result via MessageManager
-                        this.messageManager.addToolResult(toolCallId, toolName, result);
+                        // Add error result via ContextManager
+                        this.contextManager.addToolResult(toolCallId, toolName, result);
                         this.eventEmitter.emit('llmservice:toolResult', toolName, result);
                     }
                 }
@@ -259,7 +259,7 @@ export class YourProviderService implements ILLMService {
             const maxIterResponse = finalResponseText || 'Reached maximum tool call iterations without a final answer.';
             // Add final assistant message if loop ended due to iterations
             if (!finalResponseText) {
-                 this.messageManager.addAssistantMessage(maxIterResponse);
+                 this.contextManager.addAssistantMessage(maxIterResponse);
             }
             this.eventEmitter.emit('llmservice:response', maxIterResponse);
             return maxIterResponse;
@@ -268,8 +268,8 @@ export class YourProviderService implements ILLMService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`Error during completeTask execution: ${errorMessage}`, { error });
             this.eventEmitter.emit('llmservice:error', error instanceof Error ? error : new Error(errorMessage));
-            // Optionally add an error message to history via MessageManager if desired
-            // this.messageManager.addAssistantMessage(`Error processing request: ${errorMessage}`);
+            // Optionally add an error message to history via ContextManager if desired
+            // this.contextManager.addAssistantMessage(`Error processing request: ${errorMessage}`);
             return `Error processing request: ${errorMessage}`;
         }
     }
@@ -296,9 +296,9 @@ export class YourProviderService implements ILLMService {
          // *** Provider-Specific Parsing Logic Here ***
          // Needs to extract:
          // 1. The main textual response content.
-         // 2. Tool call requests, formatted into the structure MessageManager expects:
+         // 2. Tool call requests, formatted into the structure ContextManager expects:
          //    { id: string, type: 'function', function: { name: string, arguments: string | object } }[]
-         //    (Note: MessageManager's addAssistantMessage handles the internal conversion)
+         //    (Note: ContextManager's addAssistantMessage handles the internal conversion)
          
          // Example structure (adapt heavily based on provider response structure):
          const message = response?.choices?.[0]?.message; // Example for OpenAI-like structure
@@ -327,12 +327,12 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
     ```typescript
     case 'your-provider-name': apiKeyEnvVar = 'YOUR_PROVIDER_API_KEY'; break;
     ```
-4.  **Update `createMessageManager`:** Modify the `createMessageManager` function in `factory.ts` to handle your provider:
+4.  **Update `createContextManager`:** Modify the `createContextManager` function in `factory.ts` to handle your provider:
     *   Ensure `getMaxTokens` is updated for your model(s).
     *   Import and instantiate your `YourProviderMessageFormatter`.
     *   Select appropriate `ICompressionStrategy` instances (or use defaults).
     *   Create the `ITokenizer` for your provider (often via `createTokenizer`).
-    *   Add a `case` for your provider name to return a correctly configured `MessageManager`.
+    *   Add a `case` for your provider name to return a correctly configured `ContextManager`.
         ```typescript
          case 'your-provider-name': {
              const tokenizer = createTokenizer('your-provider-name', config.model);
@@ -345,7 +345,7 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
                  new MiddleRemovalStrategy(), // Example default
                  new OldestRemovalStrategy()
              ]; 
-             return new MessageManager(
+             return new ContextManager(
                  formatter,
                  config.systemPrompt,
                  maxTokensWithMargin,
@@ -360,10 +360,10 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
         ```typescript
          case 'your-provider-name': 
               modelInstance = yourProvider(modelId, { apiKey }); // Pass API key if needed
-              provider = 'your-provider-name'; // Set provider name for MessageManager lookup
+              provider = 'your-provider-name'; // Set provider name for ContextManager lookup
               break; // Don't forget break!
         ```
-    *   Ensure `createMessageManager` can handle the Vercel provider name derived (e.g., using `getProviderFromModel`).
+    *   Ensure `createContextManager` can handle the Vercel provider name derived (e.g., using `getProviderFromModel`).
 
 ## Step 7: Test Your Implementation
 

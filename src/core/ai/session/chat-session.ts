@@ -1,10 +1,10 @@
 import { createDatabaseHistoryProvider } from '../llm/messages/history/factory.js';
-import { createMessageManager } from '../llm/messages/factory.js';
+import { createContextManager } from '../llm/messages/factory.js';
 import { createLLMService } from '../llm/services/factory.js';
 import { createTokenizer } from '../llm/tokenizer/factory.js';
 import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
 import { getEffectiveMaxInputTokens } from '../llm/registry.js';
-import type { MessageManager } from '../llm/messages/manager.js';
+import type { ContextManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
 import type { InternalMessage } from '../llm/messages/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
@@ -31,7 +31,7 @@ import { logger } from '../../logger/index.js';
  *
  * The ChatSession acts as a lightweight wrapper around core Saiki services, providing
  * session-specific instances of:
- * - **MessageManager**: Handles conversation history and message formatting
+ * - **ContextManager**: Handles conversation history and message formatting
  * - **LLMService**: Manages AI model interactions and tool execution
  * - **TypedEventEmitter**: Provides session-scoped event handling
  *
@@ -61,7 +61,7 @@ import { logger } from '../../logger/index.js';
  * ```
  *
  * @see {@link SessionManager} for session lifecycle management
- * @see {@link MessageManager} for conversation history management
+ * @see {@link ContextManager} for conversation history management
  * @see {@link ILLMService} for AI model interaction interface
  */
 export class ChatSession {
@@ -81,15 +81,15 @@ export class ChatSession {
     /**
      * Manages conversation history, message formatting, and token limits for this session.
      *
-     * Each session has its own MessageManager instance with isolated history.
+     * Each session has its own ContextManager instance with isolated history.
      */
-    private messageManager: MessageManager;
+    private contextManager: ContextManager;
 
     /**
      * Handles AI model interactions, tool execution, and response generation for this session.
      *
      * Each session has its own LLMService instance that uses the session's
-     * MessageManager and event bus.
+     * ContextManager and event bus.
      */
     private llmService: ILLMService;
 
@@ -104,7 +104,7 @@ export class ChatSession {
      *
      * Each session creates its own isolated services:
      * - ConversationHistoryProvider (with session-specific storage)
-     * - MessageManager (with session-specific history and event handling)
+     * - ContextManager (with session-specific history and event handling)
      * - LLMService (with session-specific message manager and event bus)
      * - SessionEventBus (session-local event handling with forwarding)
      *
@@ -185,7 +185,7 @@ export class ChatSession {
         );
 
         // Create session-specific message manager
-        this.messageManager = createMessageManager(
+        this.contextManager = createContextManager(
             llmConfig,
             llmConfig.router,
             this.services.promptManager,
@@ -200,7 +200,7 @@ export class ChatSession {
             llmConfig.router,
             this.services.clientManager,
             this.eventBus, // Use session event bus
-            this.messageManager
+            this.contextManager
         );
 
         logger.debug(`ChatSession ${this.id}: Services initialized with storage`);
@@ -265,7 +265,7 @@ export class ChatSession {
      * ```
      */
     public async getHistory() {
-        return await this.messageManager.getHistory();
+        return await this.contextManager.getHistory();
     }
 
     /**
@@ -287,11 +287,11 @@ export class ChatSession {
      * console.log('Conversation history cleared');
      * ```
      *
-     * @see {@link MessageManager.resetConversation} for the underlying implementation
+     * @see {@link ContextManager.resetConversation} for the underlying implementation
      */
     public async reset(): Promise<void> {
-        // Reset history via MessageManager
-        await this.messageManager.resetConversation();
+        // Reset history via ContextManager
+        await this.contextManager.resetConversation();
 
         // Emit agent-level event with session context
         this.services.agentEventBus.emit('saiki:conversationReset', {
@@ -300,12 +300,12 @@ export class ChatSession {
     }
 
     /**
-     * Gets the session's MessageManager instance.
+     * Gets the session's ContextManager instance.
      *
-     * @returns The MessageManager for this session
+     * @returns The ContextManager for this session
      */
-    public getMessageManager(): MessageManager {
-        return this.messageManager;
+    public getContextManager(): ContextManager {
+        return this.contextManager;
     }
 
     /**
@@ -321,7 +321,7 @@ export class ChatSession {
      * Switches the LLM service for this session while preserving conversation history.
      *
      * This method creates a new LLM service with the specified configuration and router,
-     * while maintaining the existing MessageManager and conversation history. This allows
+     * while maintaining the existing ContextManager and conversation history. This allows
      * users to change AI models mid-conversation without losing context.
      *
      * @param newLLMConfig The new LLM configuration to use (includes router)
@@ -339,7 +339,7 @@ export class ChatSession {
      */
     public async switchLLM(newLLMConfig: LLMConfig): Promise<void> {
         try {
-            // Update MessageManager configuration first
+            // Update ContextManager configuration first
             const provider = newLLMConfig.provider.toLowerCase();
             const model = newLLMConfig.model.toLowerCase();
             const router = newLLMConfig.router;
@@ -363,8 +363,8 @@ export class ChatSession {
             // Get effective max tokens for the new config
             const newMaxInputTokens = getEffectiveMaxInputTokens(newLLMConfig);
 
-            // Update MessageManager configuration
-            this.messageManager.updateConfig(newMaxInputTokens, newTokenizer, newFormatter);
+            // Update ContextManager configuration
+            this.contextManager.updateConfig(newMaxInputTokens, newTokenizer, newFormatter);
 
             // Create new LLM service with the same dependencies but new config
             const newLLMService = createLLMService(
@@ -372,14 +372,14 @@ export class ChatSession {
                 router,
                 this.services.clientManager,
                 this.eventBus, // Use session event bus
-                this.messageManager
+                this.contextManager
             );
 
             // Replace the LLM service
             this.llmService = newLLMService;
 
             logger.info(
-                `ChatSession ${this.id}: LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}, MessageManager updated with maxTokens: ${newMaxInputTokens}`
+                `ChatSession ${this.id}: LLM switched to ${newLLMConfig.provider}/${newLLMConfig.model}, ContextManager updated with maxTokens: ${newMaxInputTokens}`
             );
 
             // Emit session-level event
