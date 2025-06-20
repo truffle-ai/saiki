@@ -137,19 +137,33 @@ program
 program
     .command('mcp')
     .description(
-        'Start Saiki as an MCP server. By default, this command aggregates and re-exposes tools from configured MCP servers. \
-        Use `saiki mcp-` to start Saiki as an MCP tool aggregator'
+        'Start Saiki as an MCP server. Use --group-servers to aggregate and re-expose tools from configured MCP servers. \
+        In the future, this command will expose the agent as an MCP server by default.'
     )
-    .option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all MCP server connections to succeed')
+    .option(
+        '--group-servers',
+        'Aggregate and re-expose tools from configured MCP servers (required for now)'
+    )
     .option('--name <name>', 'Name for the MCP server', 'saiki-tools')
     .option('--version <version>', 'Version for the MCP server', '1.0.0')
     .action(async (options) => {
         try {
+            // Validate that --group-servers flag is provided (mandatory for now)
+            if (!options.groupServers) {
+                logger.error(
+                    'The --group-servers flag is required. This command currently only supports aggregating and re-exposing tools from configured MCP servers.'
+                );
+                logger.info('Usage: saiki mcp --group-servers');
+                process.exit(1);
+            }
+
             // Load and resolve config
+            // Get the global agent option from the main program
+            const globalOpts = program.opts();
             const configPath = resolvePackagePath(
-                options.agent || DEFAULT_CONFIG_PATH,
-                (options.agent || DEFAULT_CONFIG_PATH) === DEFAULT_CONFIG_PATH
+                globalOpts.agent || DEFAULT_CONFIG_PATH,
+                (globalOpts.agent || DEFAULT_CONFIG_PATH) === DEFAULT_CONFIG_PATH
             );
 
             logger.info(`Loading Saiki config from: ${configPath}`);
@@ -212,7 +226,7 @@ program
             'Run saiki as a discord bot with `saiki --mode discord`\n' +
             'Run saiki as a telegram bot with `saiki --mode telegram`\n' +
             'Run saiki agent as an MCP server with `saiki --mode mcp`\n' +
-            'Run saiki as an MCP server aggregator with `saiki mcp`\n\n' +
+            'Run saiki as an MCP server aggregator with `saiki mcp --group-servers`\n\n' +
             'Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples'
     )
     .action(async (prompt: string[] = []) => {

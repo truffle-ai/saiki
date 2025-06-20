@@ -63,7 +63,8 @@ Add the following to your `.cursor/mcp.json` file:
         "-y", 
         "@truffle-ai/saiki", 
         "mcp",
-        "-c", 
+        "--group-servers",
+        "-a",
         "path/to/your/saiki-tools.yml"
       ]
     }
@@ -82,6 +83,7 @@ Or use the default Saiki configuration
         "-y", 
         "@truffle-ai/saiki", 
         "mcp",
+        "--group-servers"
       ]
     }
   }
