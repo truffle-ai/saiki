@@ -377,14 +377,12 @@ Low-level factory for creating all agent services with proper dependency injecti
 
 ```typescript
 async createAgentServices(
-  agentConfig: AgentConfig,
-  overrides?: InitializeServicesOptions
+  agentConfig: AgentConfig
 ): Promise<AgentServices>
 ```
 
 **Parameters:**
 - `agentConfig` - Complete agent configuration
-- `overrides` - Optional service instance overrides
 
 **Returns:** `AgentServices` object containing:
 - `clientManager: MCPManager`

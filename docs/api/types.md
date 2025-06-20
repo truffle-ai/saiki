@@ -47,7 +47,6 @@ import {
   
   // Service types
   AgentServices,
-  InitializeServicesOptions
 } from '@truffle-ai/saiki';
 ```
 
@@ -438,22 +437,6 @@ interface AgentServices {
   storage: StorageBackends;
 }
 ```
-
-### `InitializeServicesOptions`
-
-Options for overriding services during initialization.
-
-```typescript
-interface InitializeServicesOptions {
-  runMode?: 'cli' | 'web';
-  connectionMode?: 'strict' | 'lenient';
-  clientManager?: MCPManager;
-  agentEventBus?: AgentEventBus;
-  sessionManager?: SessionManager;
-  storage?: StorageBackends;
-}
-```
-
 
 ---
 

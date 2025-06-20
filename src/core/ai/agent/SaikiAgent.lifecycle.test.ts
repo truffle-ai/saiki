@@ -84,17 +84,19 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             expect(agent.getIsStarted()).toBe(true);
             expect(agent.getIsStopped()).toBe(false);
-            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig, undefined);
+            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig);
         });
 
-        test('should start with options', async () => {
-            const agent = new SaikiAgent(mockConfig, { connectionMode: 'strict' });
+        test('should start with strict connection mode in config', async () => {
+            const configWithStrictMode = {
+                ...mockConfig,
+                mcpConnectionMode: 'strict' as const,
+            };
+            const agent = new SaikiAgent(configWithStrictMode);
 
             await agent.start();
 
-            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig, {
-                connectionMode: 'strict',
-            });
+            expect(mockCreateAgentServices).toHaveBeenCalledWith(configWithStrictMode);
         });
 
         test('should throw error when starting twice', async () => {

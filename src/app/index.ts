@@ -291,12 +291,14 @@ program
                 router: opts.router,
                 apiKey: opts.apiKey,
             };
-            const finalConfig = applyCLIOverrides(cfg, cliOverrides);
+            // Set run mode for tool confirmation provider
+            process.env.SAIKI_RUN_MODE = opts.mode;
 
-            agent = new SaikiAgent(finalConfig, {
-                connectionMode: opts.strict ? 'strict' : 'lenient',
-                runMode: opts.mode,
-            });
+            // Apply CLI overrides and MCP connection mode
+            const finalConfig = applyCLIOverrides(cfg, cliOverrides);
+            finalConfig.mcpConnectionMode = opts.strict ? 'strict' : 'lenient';
+
+            agent = new SaikiAgent(finalConfig);
 
             // Start the agent (initialize async services)
             await agent.start();

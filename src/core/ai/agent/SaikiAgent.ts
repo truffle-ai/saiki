@@ -8,7 +8,6 @@ import { logger } from '../../logger/index.js';
 import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
 import type { AgentConfig } from '../../config/schemas.js';
-import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 import { AgentEventBus } from '../../events/index.js';
 import { buildLLMConfig } from '../../config/validation-utils.js';
 import type { IMCPClient } from '../../client/types.js';
@@ -91,11 +90,9 @@ export class SaikiAgent {
 
     // Store config for async initialization
     private config: AgentConfig;
-    private options?: InitializeServicesOptions;
 
-    constructor(config: AgentConfig, options?: InitializeServicesOptions) {
+    constructor(config: AgentConfig) {
         this.config = config;
-        this.options = options;
 
         logger.info('SaikiAgent created (call start() to initialize async services).');
     }
@@ -116,7 +113,7 @@ export class SaikiAgent {
             logger.info('Starting SaikiAgent...');
 
             // Initialize all services asynchronously
-            const services = await createAgentServices(this.config, this.options);
+            const services = await createAgentServices(this.config);
 
             // Validate all required services are provided
             for (const service of requiredServices) {
@@ -823,13 +820,12 @@ export class SaikiAgent {
  * Call agent.start() to initialize async services before using the agent.
  *
  * @param config Agent configuration object
- * @param options Optional service initialization options
  * @returns SaikiAgent instance (not yet started)
  *
  * @example
  * ```typescript
- * // New pattern: Create agent, then start async services
- * const agent = createSaikiAgent(config, options);
+ * // Create agent, then start async services
+ * const agent = createSaikiAgent(config);
  * await agent.start();
  *
  * // Use the agent...
@@ -839,15 +835,12 @@ export class SaikiAgent {
  * await agent.stop();
  *
  * // Or use constructor directly
- * const agent = new SaikiAgent(config, options);
+ * const agent = new SaikiAgent(config);
  * await agent.start();
  * // ... use agent ...
  * await agent.stop();
  * ```
  */
-export function createSaikiAgent(
-    config: AgentConfig,
-    options?: InitializeServicesOptions
-): SaikiAgent {
-    return new SaikiAgent(config, options);
+export function createSaikiAgent(config: AgentConfig): SaikiAgent {
+    return new SaikiAgent(config);
 }

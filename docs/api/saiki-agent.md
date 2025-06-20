@@ -13,25 +13,22 @@ Complete API reference for the main `SaikiAgent` class.
 Creates a new Saiki agent instance with the provided configuration.
 
 ```typescript
-constructor(config: AgentConfig, options?: InitializeServicesOptions)
+constructor(config: AgentConfig)
 ```
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `config` | `AgentConfig` | Agent configuration object |
-| `options` | `InitializeServicesOptions` | (Optional) Service initialization options |
 
 ### `start`
 
 Initializes and starts the agent with all required services.
 
 ```typescript
-async start(options?: InitializeServicesOptions): Promise<void>
+async start(): Promise<void>
 ```
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `options` | `InitializeServicesOptions` | (Optional) Service initialization options |
+**Parameters:** None
 
 **Example:**
 ```typescript
