@@ -275,7 +275,7 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
         'await agent.start();',
         '',
         '// 3. Run the agent',
-        'const response = await agent.run("Hello saiki! What are the files in this directory");',
+        'const response = await agent.run("What are the files in this directory");',
         'console.log("Agent response:", response);',
         '',
         '// 4. Clean shutdown when done',
