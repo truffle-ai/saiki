@@ -6,24 +6,11 @@
 import type { LLMConfig, AgentConfig } from '@core/index.js';
 
 /**
- * Keys in LLMConfig that can be overridden via CLI
+ * CLI config override type for LLM fields that can be overridden via CLI
  */
-export type LLMOverrideKey = 'provider' | 'model' | 'router' | 'apiKey';
-
-/**
- * CLI config override type for allowed fields
- */
-export type CLIConfigOverrides = Partial<Pick<LLMConfig, LLMOverrideKey>>;
-
-/**
- * Possible sources for configuration field overrides (used for provenance tracking)
- */
-export type Source = 'file' | 'cli' | 'default' | 'runtime';
-
-/**
- * Provenance for CLI-overridable LLM fields only
- */
-export type LLMProvenance = Record<LLMOverrideKey, Source>;
+export type CLIConfigOverrides = Partial<
+    Pick<LLMConfig, 'provider' | 'model' | 'router' | 'apiKey'>
+>;
 
 /**
  * Applies CLI overrides to an agent configuration

@@ -72,9 +72,9 @@ describe('ConfigManager', () => {
         expect(Object.isFrozen(config)).toBe(true);
     });
 
-    test('validate() passes for valid config', () => {
-        const cm = new ConfigManager(clone(baseConfig));
-        expect(() => cm.validate()).not.toThrow();
+    test('constructor validates config automatically', () => {
+        // If constructor doesn't throw, validation passed
+        expect(() => new ConfigManager(clone(baseConfig))).not.toThrow();
     });
 
     describe('validation and error handling', () => {

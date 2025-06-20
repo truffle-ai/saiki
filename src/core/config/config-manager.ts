@@ -8,8 +8,8 @@ declare function structuredClone<T>(value: T): T;
 /**
  * ConfigManager: Handles pure configuration validation and access for the core layer.
  *
- * This class manages configuration that is already processed (no CLI overrides, no provenance tracking).
- * It focuses purely on validation and read-only access to configuration.
+ * This class manages configuration that is already processed and focuses purely on
+ * validation and read-only access to configuration.
  *
  * **What this handles:**
  * - Configuration validation using Zod schemas
@@ -19,9 +19,7 @@ declare function structuredClone<T>(value: T): T;
  *
  * **What this does NOT handle (moved to app layer):**
  * - CLI argument processing
- * - Provenance tracking
  * - Configuration merging logic
- * - Override summaries
  */
 export class ConfigManager {
     private readonly config: AgentConfig;
@@ -66,14 +64,5 @@ export class ConfigManager {
      */
     public getConfig(): Readonly<AgentConfig> {
         return this.config;
-    }
-
-    /**
-     * Validates the current configuration.
-     * Since the config is already validated in the constructor, this is mainly for consistency.
-     */
-    public validate(): void {
-        // Configuration is already validated in constructor
-        logger.debug('Agent configuration validation successful');
     }
 }
