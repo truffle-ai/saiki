@@ -38,16 +38,22 @@ describe('SaikiAgent.switchLLM', () => {
 
         // Create mock services
         mockStateManager = {
-            getRuntimeState: vi.fn().mockReturnValue({
+            getRuntimeConfig: vi.fn().mockReturnValue({
                 llm: mockLLMConfig,
                 mcpServers: {},
-                runtime: { debugMode: false, logLevel: 'info' },
+                storage: {
+                    cache: { type: 'in-memory' },
+                    database: { type: 'in-memory' },
+                },
+                sessions: {
+                    maxSessions: 10,
+                    sessionTTL: 3600,
+                },
             }),
-            getEffectiveState: vi.fn().mockReturnValue({
-                llm: mockLLMConfig,
-            }),
+            getLLMConfig: vi.fn().mockReturnValue(mockLLMConfig),
             updateLLM: vi.fn().mockReturnValue({ isValid: true, errors: [], warnings: [] }),
-            updateLLMConfig: vi.fn().mockResolvedValue(undefined),
+            addMcpServer: vi.fn(),
+            removeMcpServer: vi.fn(),
         };
 
         mockSessionManager = {
@@ -326,11 +332,11 @@ describe('SaikiAgent.switchLLM', () => {
 
         test('should use session-specific state', async () => {
             const sessionLLMConfig = { ...mockLLMConfig, model: 'session-model' };
-            mockStateManager.getEffectiveState.mockReturnValue({ llm: sessionLLMConfig });
+            mockStateManager.getRuntimeConfig.mockReturnValue({ llm: sessionLLMConfig });
 
             await agent.switchLLM({ model: 'gpt-4o' }, 'session1');
 
-            expect(mockStateManager.getEffectiveState).toHaveBeenCalledWith('session1');
+            expect(mockStateManager.getRuntimeConfig).toHaveBeenCalledWith('session1');
             expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({ model: 'gpt-4o' }),
                 sessionLLMConfig

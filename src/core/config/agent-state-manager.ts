@@ -1,11 +1,7 @@
 import { logger } from '../logger/index.js';
 import type { AgentConfig, LLMConfig, McpServerConfig } from './schemas.js';
 import type { AgentEventBus } from '../events/index.js';
-import {
-    validateRuntimeUpdate,
-    validateMcpServerConfig,
-    type ValidationResult,
-} from './validation-utils.js';
+import { validateMcpServerConfig, type ValidationResult } from './validation-utils.js';
 
 /**
  * Session-specific overrides that can differ from the global configuration
@@ -55,23 +51,16 @@ export class AgentStateManager {
     // ============= GETTERS =============
 
     /**
-     * Get the current global runtime configuration
+     * Get runtime configuration for a session (includes session overrides if sessionId provided)
      */
-    public getRuntimeConfig(): Readonly<AgentConfig> {
-        return structuredClone(this.runtimeConfig);
-    }
-
-    /**
-     * Get effective configuration for a session (runtime + session overrides)
-     */
-    public getEffectiveConfig(sessionId?: string): Readonly<AgentConfig> {
+    public getRuntimeConfig(sessionId?: string): Readonly<AgentConfig> {
         if (!sessionId) {
-            return this.getRuntimeConfig();
+            return structuredClone(this.runtimeConfig);
         }
 
         const override = this.sessionOverrides.get(sessionId);
         if (!override) {
-            return this.getRuntimeConfig();
+            return structuredClone(this.runtimeConfig);
         }
 
         return {
@@ -87,27 +76,16 @@ export class AgentStateManager {
      */
     public updateLLM(newConfig: Partial<LLMConfig>, sessionId?: string): ValidationResult {
         // Build the new effective config for validation
-        const currentConfig = sessionId ? this.getEffectiveConfig(sessionId) : this.runtimeConfig;
+        const currentConfig = sessionId ? this.getRuntimeConfig(sessionId) : this.runtimeConfig;
         const updatedConfig: AgentConfig = {
             ...currentConfig,
             llm: { ...currentConfig.llm, ...newConfig },
         };
 
-        // Validate the complete config
-        const validation = validateRuntimeUpdate(updatedConfig);
+        // No additional validation needed - buildLLMConfig() already validated the LLM section
+        // and we're just merging it with the existing valid config
 
-        if (!validation.isValid) {
-            logger.warn('LLM update validation failed', {
-                sessionId,
-                errors: validation.errors.map((e) => e.message),
-                warnings: validation.warnings,
-            });
-            return validation; // Return validation result without making changes
-        }
-
-        const oldValue = sessionId
-            ? this.getEffectiveConfig(sessionId).llm
-            : this.runtimeConfig.llm;
+        const oldValue = sessionId ? this.getRuntimeConfig(sessionId).llm : this.runtimeConfig.llm;
 
         if (sessionId) {
             this.setSessionOverride(sessionId, {
@@ -120,7 +98,7 @@ export class AgentStateManager {
         this.agentEventBus.emit('saiki:stateChanged', {
             field: 'llm',
             oldValue,
-            newValue: sessionId ? this.getEffectiveConfig(sessionId).llm : this.runtimeConfig.llm,
+            newValue: sessionId ? this.getRuntimeConfig(sessionId).llm : this.runtimeConfig.llm,
             sessionId,
         });
 
@@ -128,10 +106,13 @@ export class AgentStateManager {
             sessionId,
             updatedFields: Object.keys(newConfig),
             isSessionSpecific: !!sessionId,
-            warnings: validation.warnings,
         });
 
-        return validation;
+        return {
+            isValid: true,
+            errors: [],
+            warnings: [],
+        };
     }
 
     // ============= MCP SERVER MANAGEMENT =============
@@ -300,6 +281,6 @@ export class AgentStateManager {
      * **Use this for session-specific LLM config** (includes session overrides).
      */
     public getLLMConfig(sessionId?: string): Readonly<LLMConfig> {
-        return this.getEffectiveConfig(sessionId).llm;
+        return this.getRuntimeConfig(sessionId).llm;
     }
 }

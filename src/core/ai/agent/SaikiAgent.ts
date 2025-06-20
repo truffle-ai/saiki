@@ -493,7 +493,7 @@ export class SaikiAgent {
      */
     public getCurrentLLMConfig(): LLMConfig {
         this.ensureStarted();
-        return structuredClone(this.stateManager.getRuntimeState().llm);
+        return structuredClone(this.stateManager.getLLMConfig());
     }
 
     /**
@@ -563,8 +563,8 @@ export class SaikiAgent {
         try {
             // Get current config for the session
             const currentLLMConfig = sessionId
-                ? this.stateManager.getEffectiveState(sessionId).llm
-                : this.stateManager.getEffectiveState().llm;
+                ? this.stateManager.getRuntimeConfig(sessionId).llm
+                : this.stateManager.getRuntimeConfig().llm;
 
             // Build and validate the new configuration
             const result = await buildLLMConfig(llmUpdates, currentLLMConfig);
@@ -803,8 +803,8 @@ export class SaikiAgent {
     public getEffectiveConfig(sessionId?: string): Readonly<AgentConfig> {
         this.ensureStarted();
         return sessionId
-            ? this.stateManager.getEffectiveConfig(sessionId)
-            : this.stateManager.getEffectiveConfig();
+            ? this.stateManager.getRuntimeConfig(sessionId)
+            : this.stateManager.getRuntimeConfig();
     }
 
     // Future methods could encapsulate more complex agent behaviors:

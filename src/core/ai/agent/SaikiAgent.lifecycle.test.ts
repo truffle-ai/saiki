@@ -47,11 +47,19 @@ describe('SaikiAgent Lifecycle Management', () => {
             promptManager: {} as any,
             agentEventBus: {} as any,
             stateManager: {
-                getRuntimeState: vi.fn().mockReturnValue({
+                getRuntimeConfig: vi.fn().mockReturnValue({
                     llm: mockConfig.llm,
                     mcpServers: {},
-                    runtime: { debugMode: false, logLevel: 'info' },
+                    storage: {
+                        cache: { type: 'in-memory' },
+                        database: { type: 'in-memory' },
+                    },
+                    sessions: {
+                        maxSessions: 10,
+                        sessionTTL: 3600,
+                    },
                 }),
+                getLLMConfig: vi.fn().mockReturnValue(mockConfig.llm),
             } as any,
             sessionManager: {
                 cleanup: vi.fn().mockResolvedValue(undefined),
