@@ -285,7 +285,7 @@ program
 
             // TODO: process cli config overrides and create a new config here before creating the agent
             // maybe move the cli overrides into the loading of the config file?
-            agent = await createSaikiAgent(
+            agent = new SaikiAgent(
                 cfg,
                 {
                     model: opts.model,
@@ -298,6 +298,9 @@ program
                     runMode: opts.mode,
                 }
             );
+
+            // Start the agent (initialize async services)
+            await agent.start();
         } catch (err) {
             logger.error((err as Error).message);
             process.exit(1);
