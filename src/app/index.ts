@@ -19,7 +19,6 @@ import {
     getAllSupportedModels,
     SaikiAgent,
     loadAgentConfig,
-    createSaikiAgent,
 } from '@core/index.js';
 import { applyCLIOverrides, type CLIConfigOverrides } from './config/cli-overrides.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';

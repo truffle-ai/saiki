@@ -825,7 +825,7 @@ export class SaikiAgent {
  * @example
  * ```typescript
  * // Create agent, then start async services
- * const agent = createSaikiAgent(config);
+ * const agent = new SaikiAgent(config);
  * await agent.start();
  *
  * // Use the agent...
@@ -834,13 +834,5 @@ export class SaikiAgent {
  * // Clean shutdown when done
  * await agent.stop();
  *
- * // Or use constructor directly
- * const agent = new SaikiAgent(config);
- * await agent.start();
- * // ... use agent ...
- * await agent.stop();
  * ```
  */
-export function createSaikiAgent(config: AgentConfig): SaikiAgent {
-    return new SaikiAgent(config);
-}
