@@ -66,7 +66,7 @@ The simplest way to configure a system prompt is with a string:
 
 ```yaml
 systemPrompt: |
-  You are Saiki, a helpful AI assistant with access to tools.
+  You are a helpful AI assistant with access to tools.
   Use these tools when appropriate to answer user queries.
   You can use multiple tools in sequence to solve complex problems.
   After each tool result, determine if you need more information or can provide a final answer.
@@ -88,7 +88,7 @@ systemPrompt:
       type: static
       priority: 1
       content: |
-        You are Saiki, a helpful AI assistant with access to tools.
+        You are a helpful AI assistant with access to tools.
         Use these tools when appropriate to answer user queries.
     - id: date-time
       type: dynamic
@@ -243,29 +243,33 @@ llm:
 
 ### Production-Ready Configuration
 ```yaml
+systemPrompt:
+  contributors:
+    - id: core
+      type: static
+      priority: 1
+      content: |
+        You are a helpful AI assistant designed to work with tools and data.
+        Always use available tools when they can help answer user questions.
+        Provide clear, accurate, and helpful responses.
+    - id: timestamp
+      type: dynamic
+      priority: 2
+      source: dateTime
+
 llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
-  router: vercel
-  systemPrompt:
-    contributors:
-      - id: core
-        type: static
-        priority: 1
-        content: |
-          You are Saiki, a helpful AI assistant designed to work with tools and data.
-          Always use available tools when they can help answer user questions.
-          Provide clear, accurate, and helpful responses.
-      - id: timestamp
-        type: dynamic
-        priority: 2
-        source: dateTime
   temperature: 0.3
 ```
 
 ### Local Development Configuration
 ```yaml
+systemPrompt: |
+  You are a helpful AI assistant running locally.
+  Use the available tools to help users with their tasks.
+
 llm:
   provider: openai
   model: llama3.2
@@ -275,9 +279,6 @@ llm:
   maxOutputTokens: 4000
   temperature: 0.7
   router: in-built
-  systemPrompt: |
-    You are a helpful AI assistant running locally.
-    Use the available tools to help users with their tasks.
 ```
 
 ## Next Steps

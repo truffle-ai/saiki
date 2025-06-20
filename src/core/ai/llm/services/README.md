@@ -369,13 +369,13 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
 
 1.  **Configure `agent.yml`:** Update your configuration file to use your new provider:
    ```yaml
-   # your-provider configuration
+   systemPrompt: |
+     You are a helpful AI assistant.
+
    llm:
      provider: your-provider-name
      model: your-model-name
      # you can update the system prompt to change the behavior of the llm
-     systemPrompt: |
-       Optional: Your custom system prompt.
      apiKey: $YOUR_PROVIDER_API_KEY
    ```
 2.  **Set API Key:** Ensure the API key is available either directly in the config (not recommended for production) or in your environment variables (e.g., in a `.env` file loaded by your application).
