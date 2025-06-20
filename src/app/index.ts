@@ -1,11 +1,15 @@
 #!/usr/bin/env node
+// Load environment variables FIRST, before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { existsSync } from 'fs';
 import { Command } from 'commander';
-import dotenv from 'dotenv';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import pkg from '../../package.json' with { type: 'json' };
 import path from 'path';
+import os from 'os';
 
 import {
     logger,
@@ -36,22 +40,16 @@ import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/p
 import { startNextJsWebServer } from './web.js';
 import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
 import { createAgentCard } from '@core/config/agentCard.js';
-// Load environment variables
-dotenv.config();
+import { initializeMcpToolAggregationServer } from './api/mcp/tool-aggregation-handler.js';
 
 const program = new Command();
-
-// Universal stuff
-if (process.env.SAIKI_LOG_LEVEL) {
-    logger.setLevel(process.env.SAIKI_LOG_LEVEL);
-}
 
 // 1) GLOBAL OPTIONS
 program
     .name('saiki')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
     .version(pkg.version, '-v, --version', 'output the current version')
-    .option('-c, --config-file <path>', 'Path to config file', DEFAULT_CONFIG_PATH)
+    .option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .option('-m, --model <model>', 'Specify the LLM model to use. ')
@@ -133,7 +131,85 @@ program
         }
     });
 
-// 4) Main saiki CLI - Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
+// 4) `mcp` SUB-COMMAND
+// For now, this mode simply aggregates and re-expose tools from configured MCP servers (no agent)
+// saiki --mode mcp will be moved to this sub-command in the future
+program
+    .command('mcp')
+    .description(
+        'Start Saiki as an MCP server. Use --group-servers to aggregate and re-expose tools from configured MCP servers. \
+        In the future, this command will expose the agent as an MCP server by default.'
+    )
+    .option('-s, --strict', 'Require all MCP server connections to succeed')
+    .option(
+        '--group-servers',
+        'Aggregate and re-expose tools from configured MCP servers (required for now)'
+    )
+    .option('--name <name>', 'Name for the MCP server', 'saiki-tools')
+    .option('--version <version>', 'Version for the MCP server', '1.0.0')
+    .action(async (options) => {
+        try {
+            // Validate that --group-servers flag is provided (mandatory for now)
+            if (!options.groupServers) {
+                logger.error(
+                    'The --group-servers flag is required. This command currently only supports aggregating and re-exposing tools from configured MCP servers.'
+                );
+                logger.info('Usage: saiki mcp --group-servers');
+                process.exit(1);
+            }
+
+            // Load and resolve config
+            // Get the global agent option from the main program
+            const globalOpts = program.opts();
+            const configPath = resolvePackagePath(
+                globalOpts.agent || DEFAULT_CONFIG_PATH,
+                (globalOpts.agent || DEFAULT_CONFIG_PATH) === DEFAULT_CONFIG_PATH
+            );
+
+            logger.info(`Loading Saiki config from: ${configPath}`);
+            const config = await loadConfigFile(configPath);
+
+            // Validate that MCP servers are configured
+            if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
+                logger.error(
+                    'No MCP servers configured. Please configure mcpServers in your config file.'
+                );
+                process.exit(1);
+            }
+
+            // Redirect logs to file to prevent interference with stdio transport
+
+            const logFile =
+                process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp.log');
+            logger.info(`Redirecting logs to file: ${logFile}`);
+            logger.redirectToFile(logFile);
+
+            logger.info(
+                `Starting MCP tool aggregation server: ${options.name} v${options.version}`
+            );
+            logger.info(`Configured MCP servers: ${Object.keys(config.mcpServers).join(', ')}`);
+
+            // Create stdio transport for MCP tool aggregation
+            const mcpTransport = await createMcpTransport('stdio');
+
+            // Initialize tool aggregation server
+            await initializeMcpToolAggregationServer(
+                config.mcpServers,
+                mcpTransport,
+                options.name,
+                options.version,
+                options.strict
+            );
+
+            logger.info('MCP tool aggregation server started successfully');
+        } catch (err) {
+            // Write to stderr to avoid interfering with MCP protocol
+            process.stderr.write(`MCP tool aggregation server startup failed: ${err}\n`);
+            process.exit(1);
+        }
+    });
+
+// 5) Main saiki CLI - Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
 program
     .argument(
         '[prompt...]',
@@ -149,7 +225,8 @@ program
             'Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`\n' +
             'Run saiki as a discord bot with `saiki --mode discord`\n' +
             'Run saiki as a telegram bot with `saiki --mode telegram`\n' +
-            'Run saiki as an MCP server with `saiki --mode mcp`\n\n' +
+            'Run saiki agent as an MCP server with `saiki --mode mcp`\n' +
+            'Run saiki as an MCP server aggregator with `saiki mcp --group-servers`\n\n' +
             'Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples'
     )
     .action(async (prompt: string[] = []) => {
@@ -202,10 +279,7 @@ program
         // ——— Load config & create agent ———
         let agent: SaikiAgent;
         try {
-            const configPath = resolvePackagePath(
-                opts.configFile,
-                opts.configFile === DEFAULT_CONFIG_PATH
-            );
+            const configPath = resolvePackagePath(opts.agent, opts.agent === DEFAULT_CONFIG_PATH);
             logger.info(`Initializing Saiki with config: ${configPath}`);
             const cfg = await loadConfigFile(configPath);
 
@@ -313,8 +387,7 @@ program
                 try {
                     // Redirect logs to file to prevent interference with stdio transport
                     const logFile =
-                        process.env.SAIKI_MCP_LOG_FILE ||
-                        path.join(require('os').tmpdir(), 'saiki-mcp.log');
+                        process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp.log');
                     logger.redirectToFile(logFile);
 
                     const agentCardData = createAgentCard(
@@ -323,7 +396,7 @@ program
                             defaultVersion: agentCardConfig.version ?? '1.0.0',
                             defaultBaseUrl: 'stdio://local-saiki',
                         },
-                        agentCardConfig // preserve overrides from saiki.yml
+                        agentCardConfig // preserve overrides from agent.yml
                     );
                     // Use stdio transport in mcp mode
                     const mcpTransport = await createMcpTransport('stdio');
@@ -344,5 +417,5 @@ program
         }
     });
 
-// 5) PARSE & EXECUTE
+// 6) PARSE & EXECUTE
 program.parseAsync(process.argv);

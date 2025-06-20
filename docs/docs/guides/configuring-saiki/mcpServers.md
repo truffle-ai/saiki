@@ -49,8 +49,6 @@ mcpServers:
     command: node
     args:
       - dist/src/servers/puppeteerServer.js
-    env:
-      DEBUG: "puppeteer:*"
     timeout: 30000
 ```
 
@@ -215,7 +213,7 @@ mcpServers:
 
 ## Additional Resources
 
-- [Saiki GitHub repository examples](https://github.com/truffle-ai/saiki/tree/main/configuration/examples) - More configuration examples
+- [Saiki GitHub repository examples](https://github.com/truffle-ai/saiki/tree/main/agents/examples) - More configuration examples
 - [Model Context Protocol specification](https://spec.modelcontextprotocol.io/) - Official MCP documentation
 - [Available MCP servers](https://github.com/modelcontextprotocol/servers) - Community-maintained server list
 

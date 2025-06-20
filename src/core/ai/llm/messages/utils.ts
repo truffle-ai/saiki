@@ -13,7 +13,7 @@ const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
  * 1. It does not account for provider-specific formatting (uses raw content).
  * 2. It ignores the token cost of images in multimodal messages (counts text only).
  * 3. The overhead is a fixed approximation.
- * For more accurate counting reflecting the final provider payload, use MessageManager.countTotalTokens().
+ * For more accurate counting reflecting the final provider payload, use ContextManager.countTotalTokens().
  *
  * @param history The array of messages to count.
  * @param tokenizer The tokenizer instance to use for counting.

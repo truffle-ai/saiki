@@ -371,7 +371,7 @@ agent.agentEventBus.on('llmservice:toolResult', (data) => {
 
 ## Next Steps
 
-- **[API Reference](/docs/api/nodejs-sdk)** - Detailed method documentation
-- **[MCP Guide](/docs/guides/mcp)** - Learn about Model Context Protocol
+- **[API Reference](/api/nodejs-sdk)** - Detailed method documentation
+- **[MCP Guide](/docs/category/mcp)** - Learn about Model Context Protocol
 - **[Deployment Guide](/docs/guides/deployment)** - Production deployment strategies
-- **[Examples](/docs/examples-demos)** - Complete example applications 
+- **[Examples](/docs/category/examples--demos)** - Complete example applications

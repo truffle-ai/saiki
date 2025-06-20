@@ -14,13 +14,14 @@ Saiki supports multiple LLM providers out-of-the-box via the Vercel AI SDK. You 
 
 ### Basic Configuration
 ```yaml
+systemPrompt: |
+  You are a helpful AI assistant with access to tools.
+  Use these tools when appropriate to answer user queries.
+
 llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
-  systemPrompt: |
-    You are Saiki, a helpful AI assistant with access to tools.
-    Use these tools when appropriate to answer user queries.
 ```
 
 ### Environment Variables
@@ -68,4 +69,4 @@ Saiki uses routers to handle LLM requests:
 
 1. **New to LLMs?** Start with the [Configuration Reference](./configuration) to understand the basics
 2. **Looking for a specific provider?** Check the [Providers Guide](./providers) for setup instructions
-3. **Building an agent?** Head to [Building with Saiki](../../../tutorials/building-with-saiki/introduction) for implementation patterns 
+3. **Building an agent?** Head to [Building with Saiki](../../../tutorials/index.md) for implementation patterns 

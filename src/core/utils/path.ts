@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 /**
  * Default config file path (relative to package root)
  */
-export const DEFAULT_CONFIG_PATH = 'configuration/saiki.yml';
+export const DEFAULT_CONFIG_PATH = 'agents/agent.yml';
 
 /**
  * Generic directory walker that searches up the directory tree
@@ -190,7 +190,7 @@ export function resolvePackagePath(targetPath: string, resolveFromPackageRoot: b
 /**
  * Check if a directory contains a Saiki configuration file
  * @param dirPath Directory to check
- * @returns True if the directory contains configuration/saiki.yml
+ * @returns True if the directory contains agents/agent.yml
  */
 export function hasSaikiConfig(dirPath: string): boolean {
     const configPath = path.join(dirPath, DEFAULT_CONFIG_PATH);
@@ -198,9 +198,9 @@ export function hasSaikiConfig(dirPath: string): boolean {
 }
 
 /**
- * Find Saiki project root by looking for configuration/saiki.yml
+ * Find Saiki project root by looking for agents/agent.yml
  * @param startPath Starting directory path
- * @returns The directory containing configuration/saiki.yml, or null if not found
+ * @returns The directory containing agents/agent.yml, or null if not found
  */
 export function findSaikiProjectByConfig(startPath: string = process.cwd()): string | null {
     return walkUpDirectories(startPath, hasSaikiConfig);
@@ -218,7 +218,7 @@ export async function isSaikiProject(dirPath: string = process.cwd()): Promise<b
         return true;
     }
 
-    // Check for configuration/saiki.yml
+    // Check for agents/agent.yml
     return hasSaikiConfig(dirPath);
 }
 

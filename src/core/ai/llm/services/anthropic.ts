@@ -4,7 +4,7 @@ import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
 import { EventEmitter } from 'events';
-import { MessageManager } from '../messages/manager.js';
+import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import type { SessionEventBus } from '../../../events/index.js';
@@ -17,7 +17,7 @@ export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
     private clientManager: MCPManager;
-    private messageManager: MessageManager;
+    private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
 
@@ -25,7 +25,7 @@ export class AnthropicService implements ILLMService {
         clientManager: MCPManager,
         anthropic: Anthropic,
         sessionEventBus: SessionEventBus,
-        messageManager: MessageManager,
+        contextManager: ContextManager,
         model: string,
         maxIterations: number = 10
     ) {
@@ -34,7 +34,7 @@ export class AnthropicService implements ILLMService {
         this.anthropic = anthropic;
         this.clientManager = clientManager;
         this.sessionEventBus = sessionEventBus;
-        this.messageManager = messageManager;
+        this.contextManager = contextManager;
     }
 
     getAllTools(): Promise<any> {
@@ -47,7 +47,7 @@ export class AnthropicService implements ILLMService {
         stream?: boolean
     ): Promise<string> {
         // Add user message with optional image data
-        await this.messageManager.addUserMessage(userInput, imageData);
+        await this.contextManager.addUserMessage(userInput, imageData);
 
         // Get all tools
         const rawTools = await this.clientManager.getAllTools();
@@ -70,11 +70,11 @@ export class AnthropicService implements ILLMService {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = { clientManager: this.clientManager };
                 const { formattedMessages, systemPrompt, tokensUsed } =
-                    await this.messageManager.getFormattedMessagesWithCompression(context);
+                    await this.contextManager.getFormattedMessagesWithCompression(context);
 
                 // For Anthropic, we need to get the formatted system prompt separately
                 const formattedSystemPrompt =
-                    await this.messageManager.getFormattedSystemPrompt(context);
+                    await this.contextManager.getFormattedSystemPrompt(context);
 
                 logger.debug(`Messages: ${JSON.stringify(formattedMessages, null, 2)}`);
                 logger.debug(`Estimated tokens being sent to Anthropic: ${tokensUsed}`);
@@ -106,7 +106,7 @@ export class AnthropicService implements ILLMService {
 
                 // Process assistant message
                 if (toolUses.length > 0) {
-                    // Transform all tool uses into the format expected by MessageManager
+                    // Transform all tool uses into the format expected by ContextManager
                     const formattedToolCalls = toolUses.map((toolUse) => ({
                         id: toolUse.id,
                         type: 'function' as const,
@@ -117,19 +117,19 @@ export class AnthropicService implements ILLMService {
                     }));
 
                     // Add assistant message with all tool calls
-                    await this.messageManager.addAssistantMessage(textContent, formattedToolCalls);
+                    await this.contextManager.addAssistantMessage(textContent, formattedToolCalls);
                 } else {
                     // Add regular assistant message
-                    await this.messageManager.addAssistantMessage(textContent);
+                    await this.contextManager.addAssistantMessage(textContent);
                 }
 
                 // If no tools were used, we're done
                 if (toolUses.length === 0) {
                     fullResponse += textContent;
 
-                    // Update MessageManager with actual token count for hybrid approach
+                    // Update ContextManager with actual token count for hybrid approach
                     if (totalTokens > 0) {
-                        this.messageManager.updateActualTokenCount(totalTokens);
+                        this.contextManager.updateActualTokenCount(totalTokens);
                     }
 
                     this.sessionEventBus.emit('llmservice:response', {
@@ -163,7 +163,7 @@ export class AnthropicService implements ILLMService {
                         const result = await this.clientManager.executeTool(toolName, args);
 
                         // Add tool result to message manager
-                        await this.messageManager.addToolResult(toolUseId, toolName, result);
+                        await this.contextManager.addToolResult(toolUseId, toolName, result);
 
                         // Notify tool result
                         this.sessionEventBus.emit('llmservice:toolResult', {
@@ -178,7 +178,7 @@ export class AnthropicService implements ILLMService {
                         logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
 
                         // Add error as tool result
-                        await this.messageManager.addToolResult(toolUseId, toolName, {
+                        await this.contextManager.addToolResult(toolUseId, toolName, {
                             error: errorMessage,
                         });
 
@@ -198,9 +198,9 @@ export class AnthropicService implements ILLMService {
             // If we reached max iterations
             logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
 
-            // Update MessageManager with actual token count for hybrid approach
+            // Update ContextManager with actual token count for hybrid approach
             if (totalTokens > 0) {
-                this.messageManager.updateActualTokenCount(totalTokens);
+                this.contextManager.updateActualTokenCount(totalTokens);
             }
 
             this.sessionEventBus.emit('llmservice:response', {
@@ -231,7 +231,7 @@ export class AnthropicService implements ILLMService {
      * @returns Configuration object with provider and model information
      */
     getConfig(): LLMServiceConfig {
-        const configuredMaxInputTokens = this.messageManager.getMaxInputTokens();
+        const configuredMaxInputTokens = this.contextManager.getMaxInputTokens();
         const modelMaxInputTokens = getMaxInputTokensForModel('anthropic', this.model);
 
         return {

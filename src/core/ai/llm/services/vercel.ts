@@ -7,7 +7,7 @@ import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../logger/index.js';
 import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
-import { MessageManager } from '../messages/manager.js';
+import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
@@ -21,7 +21,7 @@ export class VercelLLMService implements ILLMService {
     private model: LanguageModelV1;
     private provider: string;
     private clientManager: MCPManager;
-    private messageManager: MessageManager;
+    private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
     private temperature: number | undefined;
@@ -32,7 +32,7 @@ export class VercelLLMService implements ILLMService {
         model: LanguageModelV1,
         provider: string,
         sessionEventBus: SessionEventBus,
-        messageManager: MessageManager,
+        contextManager: ContextManager,
         maxIterations: number = 10,
         temperature?: number,
         maxOutputTokens?: number
@@ -42,7 +42,7 @@ export class VercelLLMService implements ILLMService {
         this.maxIterations = maxIterations;
         this.clientManager = clientManager;
         this.sessionEventBus = sessionEventBus;
-        this.messageManager = messageManager;
+        this.contextManager = contextManager;
         this.temperature = temperature;
         this.maxOutputTokens = maxOutputTokens;
 
@@ -78,10 +78,10 @@ export class VercelLLMService implements ILLMService {
         logger.debug(
             `VercelLLMService: Adding user message: ${userInput} and imageData: ${imageData}`
         );
-        await this.messageManager.addUserMessage(userInput, imageData);
+        await this.contextManager.addUserMessage(userInput, imageData);
 
         // Get all tools
-        const tools: any = await this.clientManager.getAllTools();
+        const tools = await this.clientManager.getAllTools();
         logger.silly(
             `[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`
         );
@@ -103,7 +103,7 @@ export class VercelLLMService implements ILLMService {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = { clientManager: this.clientManager };
                 const { formattedMessages, systemPrompt, tokensUsed } =
-                    await this.messageManager.getFormattedMessagesWithCompression(context);
+                    await this.contextManager.getFormattedMessagesWithCompression(context);
 
                 logger.debug(
                     `Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`
@@ -215,12 +215,12 @@ export class VercelLLMService implements ILLMService {
             ...(temperature !== undefined && { temperature }),
         });
 
-        // Parse and append each new InternalMessage from the formatter using MessageManager
-        await this.messageManager.processLLMResponse(response);
+        // Parse and append each new InternalMessage from the formatter using ContextManager
+        await this.contextManager.processLLMResponse(response);
 
-        // Update MessageManager with actual token count for hybrid approach
+        // Update ContextManager with actual token count for hybrid approach
         if (totalTokens > 0) {
-            this.messageManager.updateActualTokenCount(totalTokens);
+            this.contextManager.updateActualTokenCount(totalTokens);
         }
 
         // Return the plain text of the response
@@ -354,13 +354,13 @@ export class VercelLLMService implements ILLMService {
             fullResponse += textPart;
         }
 
-        // Process the LLM response through MessageManager using the new stream method
-        await this.messageManager.processLLMStreamResponse(response);
+        // Process the LLM response through ContextManager using the new stream method
+        await this.contextManager.processLLMStreamResponse(response);
 
-        // Update MessageManager with actual token count for hybrid approach
+        // Update ContextManager with actual token count for hybrid approach
         if (totalTokens > 0) {
             logger.debug(`Stream finished, updating actual token count: ${totalTokens}`);
-            this.messageManager.updateActualTokenCount(totalTokens);
+            this.contextManager.updateActualTokenCount(totalTokens);
         }
 
         // Emit final response event with token count
@@ -381,7 +381,7 @@ export class VercelLLMService implements ILLMService {
      * @returns Configuration object with provider and model information
      */
     getConfig(): LLMServiceConfig {
-        const configuredMaxTokens = this.messageManager.getMaxInputTokens();
+        const configuredMaxTokens = this.contextManager.getMaxInputTokens();
         let modelMaxInputTokens: number;
 
         // Fetching max tokens from LLM registry - default to configured max tokens if not found

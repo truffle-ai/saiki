@@ -53,7 +53,28 @@ multi-agent-example/
 Create `researcher.yml`:
 
 ```yaml
-# Researcher Agent - Specializes in information gathering
+# Research Agent Configuration
+systemPrompt: |
+  You are a Research Agent specializing in gathering and analyzing information.
+  
+  Your capabilities include:
+  - Reading and analyzing files using the filesystem tool
+  - Searching the web for current information using tavily-search
+  - Synthesizing research findings into clear summaries
+  
+  When responding to research requests:
+  1. Use your tools to gather relevant information
+  2. Analyze and synthesize the findings
+  3. Provide well-structured, factual responses
+  4. Include sources and evidence when possible
+  
+  Be thorough but concise in your research summaries.
+
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY
+
 mcpServers:
   filesystem:
     type: stdio
@@ -71,26 +92,6 @@ mcpServers:
       - "tavily-mcp@0.1.2"
     env:
       TAVILY_API_KEY: $TAVILY_API_KEY
-
-llm:
-  provider: openai
-  model: gpt-4.1-mini
-  apiKey: $OPENAI_API_KEY
-  systemPrompt: |
-    You are a Research Agent specializing in gathering and analyzing information.
-    
-    Your capabilities include:
-    - Reading and analyzing files using the filesystem tool
-    - Searching the web for current information using tavily-search
-    - Synthesizing research findings into clear summaries
-    
-    When responding to research requests:
-    1. Use your tools to gather relevant information
-    2. Analyze and synthesize the findings
-    3. Provide well-structured, factual responses
-    4. Include sources and evidence when possible
-    
-    Be thorough but concise in your research summaries.
 ```
 
 ## Step 3: Set Up the Writer Agent
@@ -101,6 +102,26 @@ Create `writer.yml`:
 
 ```yaml
 # Writer Agent - Specializes in content creation
+systemPrompt: |
+  You are a Content Writer Agent specializing in creating high-quality written content.
+  
+  Your capabilities include:
+  - Writing articles, blog posts, and documentation
+  - Reading and editing files using the filesystem tool
+  - Collaborating with the Researcher Agent for information gathering
+  
+  When you need research or factual information:
+  1. Use the "researcher" tool to delegate research tasks
+  2. Provide clear, specific research requests
+  3. Incorporate the research findings into your writing
+  
+  Example researcher tool usage:
+  - "Research the latest trends in AI agents"
+  - "Find information about the Model Context Protocol"
+  - "Analyze the contents of the project files for context"
+  
+  Always create well-structured, engaging content that incorporates research findings naturally.
+
 mcpServers:
   filesystem:
     type: stdio
@@ -120,25 +141,6 @@ llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
-  systemPrompt: |
-    You are a Content Writer Agent specializing in creating high-quality written content.
-    
-    Your capabilities include:
-    - Writing articles, blog posts, and documentation
-    - Reading and editing files using the filesystem tool
-    - Collaborating with the Researcher Agent for information gathering
-    
-    When you need research or factual information:
-    1. Use the "researcher" tool to delegate research tasks
-    2. Provide clear, specific research requests
-    3. Incorporate the research findings into your writing
-    
-    Example researcher tool usage:
-    - "Research the latest trends in AI agents"
-    - "Find information about the Model Context Protocol"
-    - "Analyze the contents of the project files for context"
-    
-    Always create well-structured, engaging content that incorporates research findings naturally.
 ```
 
 ## Step 4: Set Up Environment Variables
@@ -163,12 +165,12 @@ That's it! No custom code needed. Just run Saiki with different configs and port
 
 ### Terminal 1: Start the Researcher Agent
 ```bash
-saiki --mode mcp --web-port 3001 -c researcher.yml
+saiki --mode mcp --web-port 3001 --agent researcher.yml
 ```
 
 ### Terminal 2: Start the Writer Agent  
 ```bash
-saiki --mode web --web-port 3002 -c writer.yml
+saiki --mode web --web-port 3002 --agent writer.yml
 ```
 
 ### Terminal 3: Test the System
@@ -244,16 +246,16 @@ mcpServers:
 Then run:
 ```bash
 # Terminal 1: Researcher (MCP server mode)
-saiki --mode mcp --web-port 3001 -c researcher.yml
+saiki --mode mcp --web-port 3001 --agent researcher.yml
 
 # Terminal 2: Fact-checker (MCP server mode)
-saiki --mode mcp --web-port 3003 -c fact-checker.yml
+saiki --mode mcp --web-port 3003 --agent fact-checker.yml
 
 # Terminal 3: Editor (MCP server mode)
-saiki --mode mcp --web-port 3004 -c editor.yml
+saiki --mode mcp --web-port 3004 --agent editor.yml
 
 # Terminal 4: Writer (Web UI for user interaction)
-saiki --mode web --web-port 3002 -c writer.yml
+saiki --mode web --web-port 3002 --agent writer.yml
 ```
 
 ### 2. Bidirectional Communication
@@ -292,11 +294,8 @@ mcpServers:
     type: http
     baseUrl: http://localhost:3003/mcp
 
-llm:
-  provider: openai
-  model: gpt-4.1-mini
-  apiKey: $OPENAI_API_KEY
-  systemPrompt: |
+# Coordinator Agent Configuration
+systemPrompt: |
     You are a Coordinator Agent that orchestrates work between specialized agents.
     
     Your team includes:
@@ -304,18 +303,23 @@ llm:
     - writer: For content creation
     - reviewer: For quality assurance and editing
     
-    When given a task, break it down and delegate to the appropriate agents.
+  When given a task, break it down and delegate to the appropriate agents.
+
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY
 ```
 
 Run the system:
 ```bash
 # Start specialized agents (MCP servers)
-saiki --mode mcp --web-port 3001 -c researcher.yml
-saiki --mode mcp --web-port 3002 -c writer.yml  
-saiki --mode mcp --web-port 3003 -c reviewer.yml
+saiki --mode mcp --web-port 3001 --agent researcher.yml
+saiki --mode mcp --web-port 3002 --agent writer.yml  
+saiki --mode mcp --web-port 3003 --agent reviewer.yml
 
 # Start coordinator (Web UI for user interaction)
-saiki --mode web --web-port 3000 -c coordinator.yml
+saiki --mode web --web-port 3000 --agent coordinator.yml
 ```
 
 ## Production Considerations
@@ -334,12 +338,12 @@ module.exports = {
     {
       name: 'researcher-agent',
       script: 'saiki',
-      args: '--mode mcp --web-port 3001 -c researcher.yml'
+      args: '--mode mcp --web-port 3001 --agent researcher.yml'
     },
     {
       name: 'writer-agent', 
       script: 'saiki',
-      args: '--mode web --web-port 3002 -c writer.yml'
+      args: '--mode web --web-port 3002 --agent writer.yml'
     }
   ]
 };
@@ -372,7 +376,7 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - TAVILY_API_KEY=${TAVILY_API_KEY}
-    command: saiki --mode mcp --web-port 3000 -c researcher.yml
+    command: saiki --mode mcp --web-port 3000 --agent researcher.yml
     
   writer:
     build: .
@@ -380,7 +384,7 @@ services:
       - "3002:3000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-    command: saiki --mode web --web-port 3000 -c writer.yml
+    command: saiki --mode web --web-port 3000 --agent writer.yml
     depends_on:
       - researcher
 ```

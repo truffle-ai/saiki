@@ -122,38 +122,24 @@ describe('Config Schemas', () => {
     });
 
     describe('LlmConfigSchema', () => {
-        it('accepts valid string prompt', () => {
+        it('accepts valid config with minimal fields', () => {
             const good = {
                 provider: 'openai',
                 model: 'o4-mini',
-                systemPrompt: 'Hi',
                 apiKey: 'key',
                 maxIterations: 2,
             };
             expect(() => LLMConfigSchema.parse(good)).not.toThrow();
         });
 
-        it('accepts valid object prompt', () => {
-            const objPrompt = {
-                contributors: [{ id: 'c1', type: 'static', priority: 1, content: 'x' }],
-            };
-            const good = {
-                provider: 'openai',
-                model: 'o4-mini',
-                apiKey: 'key',
-                systemPrompt: objPrompt,
-            };
-            expect(() => LLMConfigSchema.parse(good)).not.toThrow();
-        });
-
         it('rejects unsupported provider', () => {
-            const bad = { provider: 'bad', model: 'x', systemPrompt: 'Hi' };
+            const bad = { provider: 'bad', model: 'x', apiKey: 'key' };
             const error = expect(() => LLMConfigSchema.parse(bad));
             error.toThrow();
         });
 
         it('rejects unsupported model', () => {
-            const badModel = { provider: 'openai', model: 'not-a-model', systemPrompt: 'Hi' };
+            const badModel = { provider: 'openai', model: 'not-a-model', apiKey: 'key' };
             const error = expect(() => LLMConfigSchema.parse(badModel));
             error.toThrow();
         });
@@ -163,7 +149,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
-                systemPrompt: 'Test prompt',
                 apiKey: '123',
             };
             const parsed = LLMConfigSchema.parse(config);
@@ -174,7 +159,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
-                systemPrompt: 'Test prompt',
                 apiKey: '123',
                 temperature: 0.7,
                 maxOutputTokens: 4000,
@@ -188,7 +172,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
-                systemPrompt: 'Test prompt',
                 apiKey: '123',
             };
             const parsed = LLMConfigSchema.parse(config);
@@ -199,7 +182,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
-                systemPrompt: 'Test prompt',
             };
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
@@ -213,7 +195,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'openai',
                 model: 'o4-mini',
-                systemPrompt: 'Test prompt',
                 apiKey: '123',
                 temperature,
             };
@@ -224,7 +205,6 @@ describe('Config Schemas', () => {
             const configMixedCase = {
                 provider: 'OpenAI', // Mixed case
                 model: 'o4-mini',
-                systemPrompt: 'Test prompt for mixed case provider',
                 apiKey: '123',
             };
             expect(() => LLMConfigSchema.parse(configMixedCase)).not.toThrow();
@@ -232,7 +212,6 @@ describe('Config Schemas', () => {
             const configUpperCase = {
                 provider: 'ANTHROPIC', // Upper case
                 model: 'claude-3-opus-20240229', // Valid model for anthropic
-                systemPrompt: 'Test prompt for upper case provider',
                 apiKey: '123',
             };
             expect(() => LLMConfigSchema.parse(configUpperCase)).not.toThrow();
@@ -243,7 +222,6 @@ describe('Config Schemas', () => {
                 provider: 'anthropic',
                 model: 'claude-3-opus-20240229',
                 apiKey: '123',
-                systemPrompt: 'Test',
                 baseURL: 'https://api.custom.com/v1', // baseURL is set but provider is not openai
             };
             expect(() => LLMConfigSchema.parse(config)).toThrow();
@@ -253,7 +231,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'openai',
                 model: 'my-custom-model',
-                systemPrompt: 'Test',
                 apiKey: '123',
                 baseURL: 'https://api.custom.com/v1', // baseURL is set
                 // maxInputTokens is missing
@@ -265,7 +242,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'openai',
                 model: 'my-company-finetune-v3',
-                systemPrompt: 'Test',
                 apiKey: '123',
                 baseURL: 'https://api.custom.com/v1',
                 maxInputTokens: 8192,
@@ -277,7 +253,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'openai',
                 model: 'gpt-4o-mini',
-                systemPrompt: 'Test',
                 apiKey: '123',
                 maxInputTokens: 200000, // Exceeds the limit
             };
@@ -288,7 +263,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'openai',
                 model: 'gpt-4o-mini', // Known model
-                systemPrompt: 'Test',
                 apiKey: '123',
                 maxInputTokens: 4096, // Within limit
             };
@@ -299,7 +273,6 @@ describe('Config Schemas', () => {
             const config = {
                 provider: 'anthropic',
                 model: 'claude-3-haiku-20240307', // Known model
-                systemPrompt: 'Test',
                 apiKey: '123',
                 // maxInputTokens is not provided, should be fine
             };
@@ -505,38 +478,71 @@ describe('Config Schemas', () => {
     });
 
     describe('AgentConfigSchema', () => {
-        it('accepts a complete valid config', () => {
+        it('accepts valid config with string systemPrompt', () => {
             const validAgentConfig = {
+                systemPrompt: 'You are an agent.',
                 mcpServers: {
                     main: { type: 'stdio' as const, command: 'node', args: ['agent-server.js'] },
                 },
                 llm: {
                     provider: 'openai',
                     model: 'o4-mini',
-                    systemPrompt: 'You are an agent.',
                     apiKey: '123',
                 },
             };
             expect(() => AgentConfigSchema.parse(validAgentConfig)).not.toThrow();
         });
 
-        it('rejects if mcpServers is missing', () => {
-            const missingMcp = {
-                llm: { provider: 'openai', model: 'o4-mini', systemPrompt: 'Y' },
+        it('accepts valid config with structured systemPrompt', () => {
+            const objPrompt = {
+                contributors: [
+                    { id: 'c1', type: 'static', priority: 1, content: 'You are helpful' },
+                ],
             };
-            expect(() => AgentConfigSchema.parse(missingMcp as any)).toThrow();
+            const validAgentConfig = {
+                systemPrompt: objPrompt,
+                mcpServers: {
+                    main: { type: 'stdio' as const, command: 'node', args: ['agent-server.js'] },
+                },
+                llm: {
+                    provider: 'openai',
+                    model: 'o4-mini',
+                    apiKey: '123',
+                },
+            };
+            expect(() => AgentConfigSchema.parse(validAgentConfig)).not.toThrow();
         });
 
-        it('rejects if mcpServers is invalid (e.g., empty object)', () => {
-            const invalidMcp = {
-                mcpServers: {}, // ServerConfigsSchema rejects this
-                llm: { provider: 'openai', model: 'o4-mini', systemPrompt: 'Y' },
+        it('rejects config without systemPrompt', () => {
+            const missingSystemPrompt = {
+                mcpServers: {
+                    main: { type: 'stdio' as const, command: 'node', args: ['agent-server.js'] },
+                },
+                llm: { provider: 'openai', model: 'o4-mini', apiKey: 'key' },
             };
-            expect(() => AgentConfigSchema.parse(invalidMcp as any)).toThrow();
+            expect(() => AgentConfigSchema.parse(missingSystemPrompt as any)).toThrow();
+        });
+
+        it('accepts config when mcpServers is missing (uses default)', () => {
+            const missingMcp = {
+                systemPrompt: 'You are helpful',
+                llm: { provider: 'openai', model: 'o4-mini', apiKey: 'key' },
+            };
+            expect(() => AgentConfigSchema.parse(missingMcp as any)).not.toThrow();
+        });
+
+        it('accepts config with empty mcpServers object (valid empty configuration)', () => {
+            const emptyMcp = {
+                systemPrompt: 'You are helpful',
+                mcpServers: {}, // This is valid - no servers configured
+                llm: { provider: 'openai', model: 'o4-mini', apiKey: 'key' },
+            };
+            expect(() => AgentConfigSchema.parse(emptyMcp as any)).not.toThrow();
         });
 
         it('rejects if llm config is missing', () => {
             const missingLlm = {
+                systemPrompt: 'You are helpful',
                 mcpServers: { main: { type: 'stdio' as const, command: 'n', args: ['a'] } },
             };
             expect(() => AgentConfigSchema.parse(missingLlm as any)).toThrow();
@@ -544,8 +550,9 @@ describe('Config Schemas', () => {
 
         it('rejects if llm config is invalid', () => {
             const invalidLlm = {
+                systemPrompt: 'You are helpful',
                 mcpServers: { main: { type: 'stdio' as const, command: 'n', args: ['a'] } },
-                llm: { provider: 'unknownProvider', model: 'm', systemPrompt: 'Y' }, // invalid provider
+                llm: { provider: 'unknownProvider', model: 'm', apiKey: 'key' }, // invalid provider
             };
             expect(() => AgentConfigSchema.parse(invalidLlm as any)).toThrow();
         });
@@ -588,13 +595,13 @@ describe('Config Schemas', () => {
 
     describe('AgentConfigSchema - Sessions Configuration', () => {
         const baseValidConfig = {
+            systemPrompt: 'You are an agent.',
             mcpServers: {
                 main: { type: 'stdio' as const, command: 'node', args: ['agent-server.js'] },
             },
             llm: {
                 provider: 'openai',
                 model: 'o4-mini',
-                systemPrompt: 'You are an agent.',
                 apiKey: '123',
             },
         };

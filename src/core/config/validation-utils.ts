@@ -621,7 +621,6 @@ function buildFinalConfig(
         model: core.model,
         apiKey: core.apiKey,
         router: core.router,
-        systemPrompt: currentConfig.systemPrompt, // Always use current system prompt
         maxIterations:
             updates.maxIterations !== undefined
                 ? updates.maxIterations

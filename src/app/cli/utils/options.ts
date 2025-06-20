@@ -14,7 +14,7 @@ export function validateCliOptions(opts: any): void {
 
     // Base schema for primitive shape
     const cliOptionShape = z.object({
-        configFile: z.string().nonempty('Config file path must not be empty'),
+        agent: z.string().nonempty('Agent config file path must not be empty'),
         strict: z.boolean().optional().default(false),
         verbose: z.boolean().optional().default(true),
         mode: z.enum(['cli', 'web', 'server', 'discord', 'telegram', 'mcp'], {
@@ -76,7 +76,7 @@ export function validateCliOptions(opts: any): void {
 
     // Execute validation
     cliOptionSchema.parse({
-        configFile: opts.configFile,
+        agent: opts.agent,
         strict: opts.strict,
         verbose: opts.verbose,
         mode: opts.mode.toLowerCase(),

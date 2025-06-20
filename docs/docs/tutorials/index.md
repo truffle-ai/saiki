@@ -15,7 +15,7 @@ Let's build an agent that can organize messy directories:
 import 'dotenv/config';
 import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
 
-const config = await loadConfigFile('./agents/saiki.yml');
+const config = await loadConfigFile('./agents/agent.yml');
 const agent = await createSaikiAgent(config);
 
 console.log("🗂️ Smart File Organizer");
@@ -39,7 +39,7 @@ import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
 import readline from 'readline';
 
 const agent = await createSaikiAgent(
-  await loadConfigFile('./agents/saiki.yml')
+  await loadConfigFile('./agents/agent.yml')
 );
 
 const rl = readline.createInterface({
@@ -97,7 +97,7 @@ import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
 import readline from 'readline';
 
 const agent = await createSaikiAgent(
-  await loadConfigFile('./agents/saiki.yml')
+  await loadConfigFile('./agents/agent.yml')
 );
 
 const rl = readline.createInterface({
@@ -142,29 +142,30 @@ mcpServers:
     type: stdio
     command: npx
     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+  
+systemPrompt: |
+  You are a senior software engineer and code reviewer.
+  
+  Your expertise includes:
+  - Code review and best practices
+  - Debugging and troubleshooting
+  - Architecture and design patterns
+  - Security considerations
+  - Performance optimization
+  
+  When helping with code:
+  1. Read and understand the codebase structure first
+  2. Provide specific, actionable feedback
+  3. Explain your reasoning
+  4. Suggest improvements with examples
+  5. Consider security and performance implications
+  
+  Use the filesystem tools to examine code files when needed.
 
 llm:
   provider: anthropic
   model: claude-4-sonnet-20250514
   apiKey: $ANTHROPIC_API_KEY
-  systemPrompt: |
-    You are a senior software engineer and code reviewer.
-    
-    Your expertise includes:
-    - Code review and best practices
-    - Debugging and troubleshooting
-    - Architecture and design patterns
-    - Security considerations
-    - Performance optimization
-    
-    When helping with code:
-    1. Read and understand the codebase structure first
-    2. Provide specific, actionable feedback
-    3. Explain your reasoning
-    4. Suggest improvements with examples
-    5. Consider security and performance implications
-    
-    Use the filesystem tools to examine code files when needed.
 ```
 
 ## Application 3: Web API Service
@@ -181,7 +182,7 @@ app.use(express.json());
 
 // Initialize our agent once
 const agent = await createSaikiAgent(
-  await loadConfigFile('./agents/saiki.yml')
+  await loadConfigFile('./agents/agent.yml')
 );
 
 // Simple chat endpoint
@@ -344,8 +345,8 @@ You now have three working applications that demonstrate:
 Ready to take it to the next level?
 
 - **Learn advanced patterns**: Check out [Advanced Patterns](./advanced-patterns) for production-ready techniques
-- **Add more tools**: Explore [MCP servers](../../guides/configuring-saiki/mcpServers) for additional capabilities
-- **Deploy your service**: See the [deployment guide](../../guides/deployment) for production hosting
+- **Add more tools**: Explore [MCP servers](../guides/configuring-saiki/mcpServers) for additional capabilities
+- **Deploy your service**: See the [deployment guide](../guides/deployment) for production hosting
 - **Join the community**: Share your creations in our [Discord](https://discord.gg/GFzWFAAZcm)
 
 You're well on your way to building amazing AI applications! 🎉 

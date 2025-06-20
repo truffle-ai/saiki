@@ -36,7 +36,20 @@ const config: Config = {
             'classic',
             {
                 docs: false,
-                blog: false,
+                blog: {
+                    showReadingTime: true,
+                    feedOptions: {
+                        type: ['rss', 'atom'],
+                        xslt: true,
+                    },
+                    editUrl: 'https://github.com/truffle-ai/saiki/tree/main/docs/',
+                    onInlineTags: 'warn',
+                    onInlineAuthors: 'warn',
+                    onUntruncatedBlogPosts: 'warn',
+                    blogTitle: 'Saiki Blog',
+                    blogDescription: 'The official blog for AI agents using Saiki',
+                    blogSidebarCount: 'ALL',
+                },
                 theme: {
                     customCss: './src/css/custom.css',
                 },
@@ -112,7 +125,7 @@ const config: Config = {
                         },
                         {
                             label: 'Guides',
-                            to: '/docs/guides',
+                            to: '/docs/category/guides',
                         },
                         {
                             label: 'API Reference',
@@ -144,6 +157,10 @@ const config: Config = {
                 {
                     title: 'Resources',
                     items: [
+                        {
+                            label: 'Blog',
+                            to: '/blog',
+                        },
                         {
                             label: 'Examples',
                             to: '/docs/examples-demos/email-slack',

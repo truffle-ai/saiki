@@ -142,13 +142,13 @@ saiki
 ### 📧 Send Email Summaries to Slack
 **Task:** `Summarize emails and send highlights to Slack`
 ```bash
-saiki --config-file ./configuration/examples/email_slack.yml
+saiki --agent ./agents/examples/email_slack.yml
 ```
 <img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="600">
 
 ### 📝 Use Notion As A Second Brain
 ```bash
-saiki --config-file ./configuration/examples/notion.yml #Requires setup
+saiki --agent ./agents/examples/notion.yml #Requires setup
 ```
 <img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="600">
 
@@ -177,7 +177,7 @@ Arguments:
 
 Options:
   -v, --version             output the current version
-  -c, --config-file <path>  Path to config file (default: "configuration/saiki.yml")
+  -a, --agent <path>        Path to agent config file (default: "agents/agent.yml")
   -s, --strict              Require all server connections to succeed
   --no-verbose              Disable verbose output
   -m, --model <model>       Specify the LLM model to use.
@@ -193,10 +193,10 @@ Commands:
 
 **Common Examples:**
 
-*   **Specify a custom configuration file:**
+*   **Specify a custom agent:**
     ```bash
-    cp configuration/saiki.yml configuration/custom_config.yml
-    saiki --config-file configuration/custom_config.yml
+    cp agents/agent.yml agents/custom_config.yml
+    saiki --agent agents/custom_config.yml
     ```
 
 *   **Use a specific AI model (if configured):**
@@ -206,7 +206,7 @@ Commands:
 
 ## Configuration
 
-Saiki defines agents using a YAML config file (`configuration/saiki.yml` by default). To configure an agent, use tool servers (MCP servers) and LLM providers.
+Saiki defines agents using a YAML config file (`agents/agent.yml` by default). To configure an agent, use tool servers (MCP servers) and LLM providers.
 
 ```yaml
 mcpServers:
@@ -270,7 +270,7 @@ import 'dotenv/config';
 import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
 
 // Load your agent configuration
-const config = await loadConfigFile('./saiki.yml');
+const config = await loadConfigFile('./agent.yml');
 const agent = await createSaikiAgent(config);
 
 // Use the agent for single tasks
@@ -295,7 +295,7 @@ For comprehensive guides on building different types of applications with Saiki,
 - **Advanced patterns and best practices**
 - **Multi-agent systems**
 
-See our **[Building with Saiki Developer Guide](https://truffle-ai.github.io/saiki/docs/building-with-saiki)**.
+See our **[Building with Saiki Developer Guide](https://truffle-ai.github.io/saiki/docs/tutorials/building-with-saiki/)**.
 
 ## MCP Server Management
 
@@ -346,18 +346,18 @@ The MCPManager provides a simple, unified interface for connecting to and managi
 Find detailed guides, architecture, and API reference in our comprehensive [documentation](https://truffle-ai.github.io/saiki/docs/getting-started):
 
 - **[Quick Start](https://truffle-ai.github.io/saiki/docs/getting-started/quick-start)** - Get up and running in minutes
-- **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/overview)** - Configure agents, LLMs, and tools
-- **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/building-with-saiki)** - Developer guide with examples and patterns
-- **[Multi-Agent Systems](https://truffle-ai.github.io/saiki/docs/building-with-saiki/multi-agent-systems)** - Agent collaboration patterns
-- **[API Reference](https://truffle-ai.github.io/saiki/docs/api)** - REST APIs, WebSocket, and SDKs
-- **[MCP Manager](https://truffle-ai.github.io/saiki/docs/mcp-manager)** - Standalone MCP server management
+- **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/guides/configuring-saiki/overview)** - Configure agents, LLMs, and tools
+- **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/tutorials/building-with-saiki/)** - Developer guide with examples and patterns
+- **[Multi-Agent Systems](https://truffle-ai.github.io/saiki/docs/tutorials/building-with-saiki/multi-agent-systems)** - Agent collaboration patterns
+- **[API Reference](https://truffle-ai.github.io/saiki/docs/api-reference/)** - REST APIs, WebSocket, and SDKs
+- **[MCP Manager](https://truffle-ai.github.io/saiki/docs/guides/mcp-manager)** - Standalone MCP server management
 - **[Architecture](https://truffle-ai.github.io/saiki/docs/architecture/overview)** - System design and concepts
 
 ### Learning Resources
 
 - **[What is an AI Agent?](https://truffle-ai.github.io/saiki/docs/learn/what-is-an-ai-agent)** - Understanding AI agents
 - **[Model Context Protocol](https://truffle-ai.github.io/saiki/docs/learn/mcp)** - Learn about MCP
-- **[Examples & Demos](https://truffle-ai.github.io/saiki/docs/getting-started/examples-demos)** - See Saiki in action
+- **[Examples & Demos](https://truffle-ai.github.io/saiki/docs/examples-demos/)** - See Saiki in action
 
 ## Contributing
 We welcome contributions! Refer to our [Contributing Guide](https://truffle-ai.github.io/saiki/docs/contribution-guide/overview) for more details.

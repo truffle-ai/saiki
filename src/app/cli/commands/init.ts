@@ -188,8 +188,8 @@ export async function postInitSaiki(directory: string) {
     const nextSteps = [
         `1. Run the example: ${chalk.cyan(`node --loader ts-node/esm ${path.join(directory, 'saiki', 'saiki-example.ts')}`)}`,
         `2. Add/update your API key(s) in ${chalk.cyan('.env')}`,
-        `3. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'saiki.yml'))}`,
-        `4. Try out different LLMs and MCP servers in the saiki.yml file`,
+        `3. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'agent.yml'))}`,
+        `4. Try out different LLMs and MCP servers in the agent.yml file`,
         `5. Read more about Saiki: ${chalk.cyan('https://github.com/truffle-ai/saiki')}`,
     ].join('\n');
     p.note(nextSteps, chalk.yellow('Next steps:'));
@@ -228,9 +228,9 @@ export async function createSaikiConfigFile(directory: string): Promise<string> 
     const pkgJsonPath = require.resolve('@truffle-ai/saiki/package.json');
     const pkgDir = path.dirname(pkgJsonPath);
     // Build path to the configuration template inside the package
-    const templateConfigSrc = path.join(pkgDir, 'configuration', 'saiki.yml');
+    const templateConfigSrc = path.join(pkgDir, 'agents', 'agent.yml');
     // Path to the destination config file
-    const destConfigPath = path.join(directory, 'saiki.yml');
+    const destConfigPath = path.join(directory, 'agent.yml');
     // Copy the config file from the Saiki package
     await fsExtra.copy(templateConfigSrc, destConfigPath);
     return destConfigPath;
@@ -260,7 +260,7 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
     // Extract the base directory from the given path (e.g., "src" from "src/saiki")
     const baseDir = path.dirname(directory);
 
-    const configPath = `./${path.join(baseDir, 'saiki/agents/saiki.yml')}`;
+    const configPath = `./${path.join(baseDir, 'saiki/agents/agent.yml')}`;
 
     const indexTsLines = [
         "import 'dotenv/config';",
