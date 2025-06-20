@@ -103,7 +103,7 @@ saiki --mode mcp
 
 With this, you can now connect this agent to Cursor, claude desktop, or even other Saiki agents!
 
-Check [Using saiki as an MCP Server](./saiki-agent-as-mcp-server.md) to understand more about MCP servers.
+Check [Using saiki as an MCP Server](./mcp/saiki-agent-as-mcp-server.md) to understand more about MCP servers.
 
 
 #### **Change log level for saiki CLI**
