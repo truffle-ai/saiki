@@ -74,20 +74,22 @@ mcpServers:
 ### Using Specialized Agents
 ```typescript
 // specialized-agents.ts
-import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';
 
 class AgentOrchestrator {
   private codeReviewer: any;
   private docWriter: any;
   
   async initialize() {
-    this.codeReviewer = await createSaikiAgent(
+    this.codeReviewer = new SaikiAgent(
       await loadConfigFile('./agents/code-reviewer.yml')
     );
+    await this.codeReviewer.start();
     
-    this.docWriter = await createSaikiAgent(
+    this.docWriter = new SaikiAgent(
       await loadConfigFile('./agents/documentation-writer.yml')
     );
+    await this.docWriter.start();
   }
   
   async reviewCode(filePath: string) {
@@ -114,6 +116,11 @@ class AgentOrchestrator {
     );
     
     return { review, docs };
+  }
+  
+  async cleanup() {
+    await this.codeReviewer.stop();
+    await this.docWriter.stop();
   }
 }
 ```
@@ -471,7 +478,8 @@ class AgentWorkflow {
   
   async addAgent(name: string, configPath: string) {
     const config = await loadConfigFile(configPath);
-    const agent = await createSaikiAgent(config);
+    const agent = new SaikiAgent(config);
+    await agent.start();
     this.agents.set(name, agent);
   }
   
@@ -515,6 +523,13 @@ class AgentWorkflow {
       }
     }
   }
+  
+  async cleanup() {
+    for (const [name, agent] of this.agents) {
+      await agent.stop();
+    }
+    this.agents.clear();
+  }
 }
 
 // Usage
@@ -539,6 +554,9 @@ const results = await workflow.executeWorkflow([
     dependencies: ['analyzer', 'reviewer']
   }
 ]);
+
+// Clean up when done
+await workflow.cleanup();
 ```
 
 ## What You've Learned

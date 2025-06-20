@@ -13,10 +13,13 @@ Let's build an agent that can organize messy directories:
 ```typescript
 // file-organizer.ts
 import 'dotenv/config';
-import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';
 
 const config = await loadConfigFile('./agents/agent.yml');
-const agent = await createSaikiAgent(config);
+const agent = new SaikiAgent(config);
+
+// Start the agent
+await agent.start();
 
 console.log("🗂️ Smart File Organizer");
 console.log("I can help organize your files by type, date, or project.\n");
@@ -24,6 +27,9 @@ console.log("I can help organize your files by type, date, or project.\n");
 const task = "Look at the current directory and suggest how to organize these files. Create folders if needed.";
 const response = await agent.run(task);
 console.log(response);
+
+// Clean shutdown
+await agent.stop();
 ```
 
 **What you're learning:** Single-purpose agents with clear objectives work best.
@@ -35,12 +41,12 @@ Let's add some user input:
 ```typescript
 // interactive-organizer.ts
 import 'dotenv/config';
-import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';
 import readline from 'readline';
 
-const agent = await createSaikiAgent(
-  await loadConfigFile('./agents/agent.yml')
-);
+const config = await loadConfigFile('./agents/agent.yml');
+const agent = new SaikiAgent(config);
+await agent.start();
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -84,6 +90,14 @@ function askQuestion() {
 }
 
 askQuestion();
+
+// Cleanup on exit
+process.on('SIGINT', async () => {
+  console.log('\nShutting down...');
+  await agent.stop();
+  rl.close();
+  process.exit(0);
+});
 ```
 
 ## Application 2: Interactive Code Helper
@@ -93,12 +107,13 @@ Now let's build something interactive for developers:
 ```typescript
 // code-helper.ts
 import 'dotenv/config';
-import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';
 import readline from 'readline';
 
-const agent = await createSaikiAgent(
+const agent = new SaikiAgent(
   await loadConfigFile('./agents/agent.yml')
 );
+await agent.start();
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -127,6 +142,14 @@ function askQuestion() {
 }
 
 askQuestion();
+
+// Cleanup on exit
+process.on('SIGINT', async () => {
+  console.log('\nShutting down...');
+  await agent.stop();
+  rl.close();
+  process.exit(0);
+});
 ```
 
 **What you're learning:** Adding interaction is just a few lines of code. The agent handles the complexity.
@@ -175,15 +198,16 @@ Ready for something more advanced? Let's create a web service:
 ```typescript
 // web-service.ts
 import express from 'express';
-import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';
 
 const app = express();
 app.use(express.json());
 
 // Initialize our agent once
-const agent = await createSaikiAgent(
+const agent = new SaikiAgent(
   await loadConfigFile('./agents/agent.yml')
 );
+await agent.start();
 
 // Simple chat endpoint
 app.post('/chat', async (req, res) => {
@@ -229,12 +253,21 @@ app.post('/analyze', async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
+const server = app.listen(3000, () => {
   console.log('🚀 Saiki web service running on http://localhost:3000');
   console.log('Endpoints:');
   console.log('  POST /chat - Chat with the agent');
   console.log('  POST /analyze - Analyze files');
   console.log('  GET /health - Health check');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('Shutting down gracefully...');
+  server.close(async () => {
+    await agent.stop();
+    process.exit(0);
+  });
 });
 ```
 

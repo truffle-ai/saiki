@@ -377,16 +377,12 @@ Low-level factory for creating all agent services with proper dependency injecti
 
 ```typescript
 async createAgentServices(
-  agentConfig: AgentConfig,
-  cliArgs?: CLIConfigOverrides,
-  overrides?: InitializeServicesOptions
+  agentConfig: AgentConfig
 ): Promise<AgentServices>
 ```
 
 **Parameters:**
 - `agentConfig` - Complete agent configuration
-- `cliArgs` - Optional CLI argument overrides
-- `overrides` - Optional service instance overrides
 
 **Returns:** `AgentServices` object containing:
 - `clientManager: MCPManager`
@@ -401,7 +397,7 @@ async createAgentServices(
 ```typescript
 import { createAgentServices } from '@truffle-ai/saiki';
 
-const services = await createAgentServices(config, overrides, options);
+const services = await createAgentServices(config, options);
 
 // Access individual services
 const { clientManager, sessionManager, stateManager } = services;

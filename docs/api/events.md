@@ -269,9 +269,10 @@ Fired when a tool execution completes.
 ### Basic Event Listening
 
 ```typescript
-import { createSaikiAgent } from '@truffle-ai/saiki';
+import { SaikiAgent } from '@truffle-ai/saiki';
 
-const agent = await createSaikiAgent(config);
+const agent = new SaikiAgent(config);
+await agent.start();
 
 // Listen to agent-level events
 agent.agentEventBus.on('saiki:conversationReset', (data) => {
@@ -391,6 +392,10 @@ sessionBus.on('llmservice:thinking', () => {
 
 // Emit custom events
 agentBus.emit('saiki:conversationReset', { sessionId: 'test-session' });
+
+// Don't forget to clean up when done
+// agentBus.removeAllListeners();
+// sessionBus.removeAllListeners();
 ```
 
 ---

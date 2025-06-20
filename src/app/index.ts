@@ -18,9 +18,9 @@ import {
     getProviderFromModel,
     getAllSupportedModels,
     SaikiAgent,
-    loadConfigFile,
-    createSaikiAgent,
+    loadAgentConfig,
 } from '@core/index.js';
+import { applyCLIOverrides, type CLIConfigOverrides } from './config/cli-overrides.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startApiAndLegacyWebUIServer } from './api/server.js';
@@ -167,7 +167,7 @@ program
             );
 
             logger.info(`Loading Saiki config from: ${configPath}`);
-            const config = await loadConfigFile(configPath);
+            const config = await loadAgentConfig(configPath);
 
             // Validate that MCP servers are configured
             if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
@@ -281,23 +281,26 @@ program
         try {
             const configPath = resolvePackagePath(opts.agent, opts.agent === DEFAULT_CONFIG_PATH);
             logger.info(`Initializing Saiki with config: ${configPath}`);
-            const cfg = await loadConfigFile(configPath);
+            const cfg = await loadAgentConfig(configPath);
 
-            // TODO: process cli config overrides and create a new config here before creating the agent
-            // maybe move the cli overrides into the loading of the config file?
-            agent = await createSaikiAgent(
-                cfg,
-                {
-                    model: opts.model,
-                    provider: opts.provider,
-                    router: opts.router,
-                    apiKey: opts.apiKey,
-                },
-                {
-                    connectionMode: opts.strict ? 'strict' : 'lenient',
-                    runMode: opts.mode,
-                }
-            );
+            // Apply CLI overrides to config before passing to core layer
+            const cliOverrides: CLIConfigOverrides = {
+                model: opts.model,
+                provider: opts.provider,
+                router: opts.router,
+                apiKey: opts.apiKey,
+            };
+            // Set run mode for tool confirmation provider
+            process.env.SAIKI_RUN_MODE = opts.mode;
+
+            // Apply CLI overrides and MCP connection mode
+            const finalConfig = applyCLIOverrides(cfg, cliOverrides);
+            finalConfig.mcpConnectionMode = opts.strict ? 'strict' : 'lenient';
+
+            agent = new SaikiAgent(finalConfig);
+
+            // Start the agent (initialize async services)
+            await agent.start();
         } catch (err) {
             logger.error((err as Error).message);
             process.exit(1);

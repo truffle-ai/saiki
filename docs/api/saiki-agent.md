@@ -6,27 +6,48 @@ sidebar_position: 1
 
 Complete API reference for the main `SaikiAgent` class.
 
-## Factory Function
+## Constructor and Lifecycle
 
-### `createSaikiAgent`
+### `constructor`
 
-Creates and initializes a new Saiki agent with all required services.
+Creates a new Saiki agent instance with the provided configuration.
 
 ```typescript
-function createSaikiAgent(
-  config: AgentConfig,
-  overrides?: CLIConfigOverrides,
-  options?: InitializeServicesOptions
-): Promise<SaikiAgent>
+constructor(config: AgentConfig)
 ```
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `config` | `AgentConfig` | Agent configuration object |
-| `overrides` | `CLIConfigOverrides` | (Optional) Configuration overrides |
-| `options` | `InitializeServicesOptions` | (Optional) Service initialization options |
 
-**Returns:** `Promise<SaikiAgent>`
+### `start`
+
+Initializes and starts the agent with all required services.
+
+```typescript
+async start(): Promise<void>
+```
+
+**Parameters:** None
+
+**Example:**
+```typescript
+const agent = new SaikiAgent(config);
+await agent.start();
+```
+
+### `stop`
+
+Stops the agent and cleans up all resources.
+
+```typescript
+async stop(): Promise<void>
+```
+
+**Example:**
+```typescript
+await agent.stop();
+```
 
 ---
 
@@ -54,8 +75,13 @@ async run(
 
 **Returns:** `Promise<string | null>` - AI response or null
 
+**Example:**
 ```typescript
+const agent = new SaikiAgent(config);
+await agent.start();
 const response = await agent.run("Explain quantum computing");
+// ... use agent ...
+await agent.stop();
 ```
 
 ---

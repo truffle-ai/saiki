@@ -16,7 +16,6 @@ npm install @truffle-ai/saiki
 
 ```typescript
 import {
-  createSaikiAgent,
   SaikiAgent,
   MCPManager,
   Logger,
@@ -31,7 +30,7 @@ import {
 
 ### [SaikiAgent Class](./saiki-agent)
 Complete API reference for the main `SaikiAgent` class:
-- Factory function (`createSaikiAgent`)
+- Constructor and lifecycle methods (`new SaikiAgent()`, `start()`, `stop()`)
 - Core methods (`run`, session management)
 - Configuration management
 - MCP server integration

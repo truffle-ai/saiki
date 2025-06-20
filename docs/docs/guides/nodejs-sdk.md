@@ -36,16 +36,17 @@ npm install @truffle-ai/saiki
 ### Basic Agent Setup
 
 ```typescript
-import { createSaikiAgent } from '@truffle-ai/saiki';
+import { SaikiAgent } from '@truffle-ai/saiki';
 
 // Create agent with minimal configuration
-const agent = await createSaikiAgent({
+const agent = new SaikiAgent({
   llm: {
     provider: 'openai',
     model: 'gpt-4o',
     apiKey: process.env.OPENAI_API_KEY
   }
 });
+await agent.start();
 
 // Start a conversation
 const response = await agent.run('Hello! What can you help me with?');
@@ -55,7 +56,7 @@ console.log(response);
 ### Adding MCP Tools
 
 ```typescript
-const agent = await createSaikiAgent({
+const agent = new SaikiAgent({
   llm: {
     provider: 'openai',
     model: 'gpt-4o',
@@ -74,6 +75,7 @@ const agent = await createSaikiAgent({
     }
   }
 });
+await agent.start();
 
 // Now the agent can use filesystem and web search tools
 const response = await agent.run('List the files in this directory and search for recent AI news');
@@ -88,7 +90,8 @@ const response = await agent.run('List the files in this directory and search fo
 
 ```typescript
 // Create an agent (one per application typically)
-const agent = await createSaikiAgent(config);
+const agent = new SaikiAgent(config);
+await agent.start();
 
 // Create multiple sessions for different conversations
 const userSession = await agent.createSession('user-123');
@@ -124,17 +127,18 @@ agent.agentEventBus.on('llmservice:toolCall', (data) => {
 ### Multi-User Chat Application
 
 ```typescript
-import { createSaikiAgent } from '@truffle-ai/saiki';
+import { SaikiAgent } from '@truffle-ai/saiki';
 
 class ChatApplication {
   private agent: SaikiAgent;
   private userSessions = new Map<string, string>();
 
   async initialize() {
-    this.agent = await createSaikiAgent({
+    this.agent = new SaikiAgent({
       llm: { provider: 'openai', model: 'gpt-4o', apiKey: process.env.OPENAI_API_KEY },
       mcpServers: { /* your tools */ }
     });
+    await this.agent.start();
 
     // Set up event monitoring
     this.agent.agentEventBus.on('llmservice:response', (data) => {
@@ -168,7 +172,8 @@ class AdaptiveAgent {
   private agent: SaikiAgent;
 
   async initialize() {
-    this.agent = await createSaikiAgent(baseConfig);
+    this.agent = new SaikiAgent(baseConfig);
+    await this.agent.start();
   }
 
   async addCapability(name: string, serverConfig: McpServerConfig) {
@@ -199,13 +204,14 @@ class PersistentChatBot {
   private agent: SaikiAgent;
 
   async initialize() {
-    this.agent = await createSaikiAgent({
+    this.agent = new SaikiAgent({
       llm: { /* config */ },
       storage: {
         cache: { type: 'redis', url: 'redis://localhost:6379' },
         database: { type: 'postgresql', url: process.env.DATABASE_URL }
       }
     });
+    await this.agent.start();
   }
 
   async resumeConversation(userId: string) {
@@ -285,7 +291,8 @@ const productionStorage = {
 ### Graceful Degradation
 
 ```typescript
-const agent = await createSaikiAgent(config);
+const agent = new SaikiAgent(config);
+await agent.start();
 
 // Handle MCP connection failures
 agent.agentEventBus.on('saiki:mcpServerConnected', (data) => {
@@ -310,18 +317,20 @@ agent.agentEventBus.on('llmservice:error', (data) => {
 
 ```typescript
 try {
-  const agent = await createSaikiAgent({
+  const agent = new SaikiAgent({
     llm: primaryLLMConfig,
     mcpServers: allServers
   });
+  await agent.start();
 } catch (error) {
   console.warn('⚠️ Full setup failed, using minimal config');
   
   // Fallback to basic configuration
-  const agent = await createSaikiAgent({
+  const agent = new SaikiAgent({
     llm: fallbackLLMConfig,
     mcpServers: {} // No external tools
   });
+  await agent.start();
 }
 ```
 
@@ -331,10 +340,11 @@ try {
 
 ```typescript
 // Proper cleanup
-const agent = await createSaikiAgent(config);
+const agent = new SaikiAgent(config);
+await agent.start();
 
 process.on('SIGTERM', async () => {
-  await agent.clientManager.disconnectAll();
+  await agent.stop();
   process.exit(0);
 });
 ```
@@ -343,13 +353,14 @@ process.on('SIGTERM', async () => {
 
 ```typescript
 // Set session TTL to prevent memory leaks
-const agent = await createSaikiAgent({
+const agent = new SaikiAgent({
   // ... other config
   sessions: {
     maxSessions: 1000,
     sessionTTL: 24 * 60 * 60 * 1000 // 24 hours
   }
 });
+await agent.start();
 ```
 
 ### 3. Monitoring and Observability

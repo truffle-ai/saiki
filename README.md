@@ -267,15 +267,21 @@ Saiki can be easily integrated into your applications as a powerful AI agent lib
 
 ```typescript
 import 'dotenv/config';
-import { loadConfigFile, createSaikiAgent } from '@truffle-ai/saiki';
+import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';
 
 // Load your agent configuration
 const config = await loadConfigFile('./agent.yml');
-const agent = await createSaikiAgent(config);
+const agent = new SaikiAgent(config);
+
+// Start the agent (initialize async services)
+await agent.start();
 
 // Use the agent for single tasks
 const result = await agent.run("Analyze the files in this directory and create a summary");
 console.log(result);
+
+// Clean shutdown when done
+await agent.stop();
 
 // Or have conversations
 const response1 = await agent.run("What files are in the current directory?");
