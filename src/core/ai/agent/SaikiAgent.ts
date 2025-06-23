@@ -1,20 +1,15 @@
 // src/ai/agent/SaikiAgent.ts
 import { MCPManager } from '../../client/manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
-import { StaticConfigManager } from '../../config/static-config-manager.js';
 import { AgentStateManager } from '../../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
-import { loadConfigFile } from '../../config/loader.js';
 import type { AgentConfig } from '../../config/schemas.js';
-import type { CLIConfigOverrides } from '../../config/types.js';
-import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 import { AgentEventBus } from '../../events/index.js';
-import { LLMConfigSchema } from '../../config/schemas.js';
-import { buildLLMConfig, type ValidationError } from '../../config/validation-utils.js';
+import { buildLLMConfig } from '../../config/validation-utils.js';
 import type { IMCPClient } from '../../client/types.js';
 
 const requiredServices: (keyof AgentServices)[] = [
@@ -49,8 +44,9 @@ const requiredServices: (keyof AgentServices)[] = [
  *
  * @example
  * ```typescript
- * // Create agent
- * const agent = await createSaikiAgent(config);
+ * // Create and start agent
+ * const agent = new SaikiAgent(config);
+ * await agent.start();
  *
  * // Process user messages
  * const response = await agent.run("Hello, how are you?");
@@ -64,6 +60,9 @@ const requiredServices: (keyof AgentServices)[] = [
  *
  * // Connect MCP servers
  * await agent.connectMcpServer('filesystem', { command: 'mcp-filesystem' });
+ *
+ * // Gracefully stop the agent when done
+ * await agent.stop();
  * ```
  */
 export class SaikiAgent {
@@ -72,12 +71,12 @@ export class SaikiAgent {
      * This gives users the option to use methods of the services directly if they know what they are doing
      * But the main recommended entry points/functions would still be the wrapper methods we define below
      */
-    public readonly clientManager: MCPManager;
-    public readonly promptManager: PromptManager;
-    public readonly agentEventBus: AgentEventBus;
-    public readonly stateManager: AgentStateManager;
-    public readonly sessionManager: SessionManager;
-    public readonly services: AgentServices;
+    public readonly clientManager!: MCPManager;
+    public readonly promptManager!: PromptManager;
+    public readonly agentEventBus!: AgentEventBus;
+    public readonly stateManager!: AgentStateManager;
+    public readonly sessionManager!: SessionManager;
+    public readonly services!: AgentServices;
 
     // Default session for backward compatibility
     private defaultSession: ChatSession | null = null;
@@ -85,22 +84,160 @@ export class SaikiAgent {
     // Current default session ID for loadSession functionality
     private currentDefaultSessionId: string = 'default';
 
-    constructor(services: AgentServices) {
-        // Validate all required services are provided
-        for (const service of requiredServices) {
-            if (!services[service]) {
-                throw new Error(`Required service ${service} is missing in SaikiAgent constructor`);
-            }
+    // Track initialization state
+    private isStarted: boolean = false;
+    private isStopped: boolean = false;
+
+    // Store config for async initialization
+    private config: AgentConfig;
+
+    constructor(config: AgentConfig) {
+        this.config = config;
+
+        logger.info('SaikiAgent created (call start() to initialize async services).');
+    }
+
+    /**
+     * Starts the agent by initializing all async services.
+     * This method handles storage backends, MCP connections, session manager initialization, and other async operations.
+     * Must be called before using any agent functionality.
+     *
+     * @throws Error if agent is already started or initialization fails
+     */
+    public async start(): Promise<void> {
+        if (this.isStarted) {
+            throw new Error('Agent is already started');
         }
 
-        this.clientManager = services.clientManager;
-        this.promptManager = services.promptManager;
-        this.agentEventBus = services.agentEventBus;
-        this.stateManager = services.stateManager;
-        this.sessionManager = services.sessionManager;
-        this.services = services;
+        try {
+            logger.info('Starting SaikiAgent...');
 
-        logger.info('SaikiAgent initialized.');
+            // Initialize all services asynchronously
+            const services = await createAgentServices(this.config);
+
+            // Validate all required services are provided
+            for (const service of requiredServices) {
+                if (!services[service]) {
+                    throw new Error(`Required service ${service} is missing during agent start`);
+                }
+            }
+
+            // Use Object.assign to set readonly properties
+            Object.assign(this, {
+                clientManager: services.clientManager,
+                promptManager: services.promptManager,
+                agentEventBus: services.agentEventBus,
+                stateManager: services.stateManager,
+                sessionManager: services.sessionManager,
+                services: services,
+            });
+
+            this.isStarted = true;
+            logger.info('SaikiAgent started successfully.');
+        } catch (error) {
+            logger.error('Failed to start SaikiAgent', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Stops the agent and gracefully shuts down all services.
+     * This method handles disconnecting MCP clients, cleaning up sessions, closing storage connections,
+     * and releasing all resources. The agent cannot be restarted after being stopped.
+     *
+     * @throws Error if agent has not been started or shutdown fails
+     */
+    public async stop(): Promise<void> {
+        if (this.isStopped) {
+            logger.warn('Agent is already stopped');
+            return;
+        }
+
+        if (!this.isStarted) {
+            throw new Error('Agent must be started before it can be stopped');
+        }
+
+        try {
+            logger.info('Stopping SaikiAgent...');
+
+            const shutdownErrors: Error[] = [];
+
+            // 1. Clean up session manager (stop accepting new sessions, clean existing ones)
+            try {
+                if (this.sessionManager) {
+                    await this.sessionManager.cleanup();
+                    logger.debug('SessionManager cleaned up successfully');
+                }
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                shutdownErrors.push(new Error(`SessionManager cleanup failed: ${err.message}`));
+            }
+
+            // 2. Disconnect all MCP clients
+            try {
+                if (this.clientManager) {
+                    await this.clientManager.disconnectAll();
+                    logger.debug('MCPManager disconnected all clients successfully');
+                }
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                shutdownErrors.push(new Error(`MCPManager disconnect failed: ${err.message}`));
+            }
+
+            // 3. Close storage backends
+            try {
+                if (this.services?.storageManager) {
+                    await this.services.storageManager.disconnect();
+                    logger.debug('Storage manager disconnected successfully');
+                }
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                shutdownErrors.push(new Error(`Storage disconnect failed: ${err.message}`));
+            }
+
+            this.isStopped = true;
+            this.isStarted = false;
+
+            if (shutdownErrors.length > 0) {
+                const errorMessages = shutdownErrors.map((e) => e.message).join('; ');
+                logger.warn(`SaikiAgent stopped with some errors: ${errorMessages}`);
+                // Still consider it stopped, but log the errors
+            } else {
+                logger.info('SaikiAgent stopped successfully.');
+            }
+        } catch (error) {
+            logger.error('Failed to stop SaikiAgent', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Checks if the agent has been started.
+     * @returns true if agent is started, false otherwise
+     */
+    public getIsStarted(): boolean {
+        return this.isStarted;
+    }
+
+    /**
+     * Checks if the agent has been stopped.
+     * @returns true if agent is stopped, false otherwise
+     */
+    public getIsStopped(): boolean {
+        return this.isStopped;
+    }
+
+    /**
+     * Ensures the agent is started before executing operations.
+     * @throws Error if agent is not started or has been stopped
+     */
+    private ensureStarted(): void {
+        if (this.isStopped) {
+            throw new Error('Agent has been stopped and cannot be used');
+        }
+        if (!this.isStarted) {
+            throw new Error('Agent must be started before use. Call agent.start() first.');
+        }
     }
 
     // ============= CORE AGENT FUNCTIONALITY =============
@@ -121,6 +258,7 @@ export class SaikiAgent {
         sessionId?: string,
         stream: boolean = false
     ): Promise<string | null> {
+        this.ensureStarted();
         try {
             let session: ChatSession;
 
@@ -175,6 +313,7 @@ export class SaikiAgent {
      * @returns The created or existing ChatSession
      */
     public async createSession(sessionId?: string): Promise<ChatSession> {
+        this.ensureStarted();
         return await this.sessionManager.createSession(sessionId);
     }
 
@@ -184,6 +323,7 @@ export class SaikiAgent {
      * @returns The ChatSession if found, undefined otherwise
      */
     public async getSession(sessionId: string): Promise<ChatSession | undefined> {
+        this.ensureStarted();
         return await this.sessionManager.getSession(sessionId);
     }
 
@@ -192,6 +332,7 @@ export class SaikiAgent {
      * @returns Array of session IDs
      */
     public async listSessions(): Promise<string[]> {
+        this.ensureStarted();
         return await this.sessionManager.listSessions();
     }
 
@@ -200,6 +341,7 @@ export class SaikiAgent {
      * @param sessionId The session ID to delete
      */
     public async deleteSession(sessionId: string): Promise<void> {
+        this.ensureStarted();
         // If deleting the currently loaded default session, clear our reference
         if (sessionId === this.currentDefaultSessionId) {
             this.defaultSession = null;
@@ -221,6 +363,7 @@ export class SaikiAgent {
      * @returns The session metadata or undefined if session doesn't exist
      */
     public async getSessionMetadata(sessionId: string): Promise<SessionMetadata | undefined> {
+        this.ensureStarted();
         return await this.sessionManager.getSessionMetadata(sessionId);
     }
 
@@ -231,6 +374,7 @@ export class SaikiAgent {
      * @throws Error if session doesn't exist
      */
     public async getSessionHistory(sessionId: string) {
+        this.ensureStarted();
         const session = await this.sessionManager.getSession(sessionId);
         if (!session) {
             throw new Error(`Session '${sessionId}' not found`);
@@ -258,6 +402,7 @@ export class SaikiAgent {
      * ```
      */
     public async loadSession(sessionId: string | null = null): Promise<void> {
+        this.ensureStarted();
         if (sessionId === null) {
             this.currentDefaultSessionId = 'default';
             this.defaultSession = null; // Clear cached session to force reload
@@ -293,6 +438,7 @@ export class SaikiAgent {
      * @returns The current default ChatSession
      */
     public async getDefaultSession(): Promise<ChatSession> {
+        this.ensureStarted();
         if (!this.defaultSession || this.defaultSession.id !== this.currentDefaultSessionId) {
             this.defaultSession = await this.sessionManager.createSession(
                 this.currentDefaultSessionId
@@ -307,6 +453,7 @@ export class SaikiAgent {
      * @param sessionId Optional session ID. If not provided, resets the currently loaded default session.
      */
     public async resetConversation(sessionId?: string): Promise<void> {
+        this.ensureStarted();
         try {
             const targetSessionId = sessionId || this.currentDefaultSessionId;
 
@@ -345,7 +492,8 @@ export class SaikiAgent {
      * @returns Current LLM configuration
      */
     public getCurrentLLMConfig(): LLMConfig {
-        return structuredClone(this.stateManager.getRuntimeState().llm);
+        this.ensureStarted();
+        return structuredClone(this.stateManager.getLLMConfig());
     }
 
     /**
@@ -398,6 +546,7 @@ export class SaikiAgent {
             suggestedAction?: string;
         }>;
     }> {
+        this.ensureStarted();
         // Basic validation
         if (!llmUpdates.model && !llmUpdates.provider) {
             return {
@@ -414,8 +563,8 @@ export class SaikiAgent {
         try {
             // Get current config for the session
             const currentLLMConfig = sessionId
-                ? this.stateManager.getEffectiveState(sessionId).llm
-                : this.stateManager.getEffectiveState().llm;
+                ? this.stateManager.getRuntimeConfig(sessionId).llm
+                : this.stateManager.getRuntimeConfig().llm;
 
             // Build and validate the new configuration
             const result = await buildLLMConfig(llmUpdates, currentLLMConfig);
@@ -551,6 +700,7 @@ export class SaikiAgent {
      * @param config The configuration object for the server.
      */
     public async connectMcpServer(name: string, config: McpServerConfig): Promise<void> {
+        this.ensureStarted();
         try {
             // Add to runtime state first with validation
             const validation = this.stateManager.addMcpServer(name, config);
@@ -593,6 +743,7 @@ export class SaikiAgent {
      * @param name The name of the server to remove.
      */
     public async removeMcpServer(name: string): Promise<void> {
+        this.ensureStarted();
         // Disconnect the client first
         await this.clientManager.removeClient(name);
 
@@ -608,6 +759,7 @@ export class SaikiAgent {
      * @returns The result of the tool execution
      */
     public async executeMcpTool(toolName: string, args: any): Promise<any> {
+        this.ensureStarted();
         return await this.clientManager.executeTool(toolName, args);
     }
 
@@ -617,6 +769,7 @@ export class SaikiAgent {
      * @returns Promise resolving to a map of tool names to tool definitions
      */
     public async getAllMcpTools(): Promise<any> {
+        this.ensureStarted();
         return await this.clientManager.getAllTools();
     }
 
@@ -626,6 +779,7 @@ export class SaikiAgent {
      * @returns Map of client names to client instances
      */
     public getMcpClients(): Map<string, IMCPClient> {
+        this.ensureStarted();
         return this.clientManager.getClients();
     }
 
@@ -635,6 +789,7 @@ export class SaikiAgent {
      * @returns Record of failed connection names to error messages
      */
     public getMcpFailedConnections(): Record<string, string> {
+        this.ensureStarted();
         return this.clientManager.getFailedConnections();
     }
 
@@ -646,9 +801,10 @@ export class SaikiAgent {
      * @returns The effective configuration object
      */
     public getEffectiveConfig(sessionId?: string): Readonly<AgentConfig> {
+        this.ensureStarted();
         return sessionId
-            ? this.stateManager.getEffectiveConfig(sessionId)
-            : this.stateManager.getEffectiveConfig();
+            ? this.stateManager.getRuntimeConfig(sessionId)
+            : this.stateManager.getRuntimeConfig();
     }
 
     // Future methods could encapsulate more complex agent behaviors:
@@ -659,42 +815,24 @@ export class SaikiAgent {
 }
 
 /**
- * Factory function to create a new SaikiAgent instance with properly initialized services.
- * This is the recommended way to create new agent instances.
+ * Helper function to create a new SaikiAgent instance following the new sync/async pattern.
+ * This creates the agent with the sync constructor and returns it (not started).
+ * Call agent.start() to initialize async services before using the agent.
  *
- * @param config Agent configuration object or path to config file
- * @param overrides Optional configuration overrides from CLI or other sources
- * @param options Optional service initialization options
- * @returns Promise that resolves to initialized SaikiAgent instance
- * @throws Error if initialization fails
+ * @param config Agent configuration object
+ * @returns SaikiAgent instance (not yet started)
  *
  * @example
  * ```typescript
- * // Create agent with configuration file
- * const agent = await createSaikiAgent('./agent.yml');
+ * // Create agent, then start async services
+ * const agent = new SaikiAgent(config);
+ * await agent.start();
  *
- * // Create agent with config object and CLI overrides
- * const agent = await createSaikiAgent(configObject, { model: 'gpt-4o' });
+ * // Use the agent...
+ * const response = await agent.run("Hello!");
  *
- * // Create agent with custom service options
- * const agent = await createSaikiAgent(configObject, undefined, {
- *   skipMcpConnections: true
- * });
+ * // Clean shutdown when done
+ * await agent.stop();
+ *
  * ```
  */
-export async function createSaikiAgent(
-    config: AgentConfig,
-    overrides?: CLIConfigOverrides,
-    options?: InitializeServicesOptions
-): Promise<SaikiAgent> {
-    try {
-        logger.info('Creating SaikiAgent...');
-        const services = await createAgentServices(config, overrides, options);
-        const agent = new SaikiAgent(services);
-        logger.info('SaikiAgent created successfully.');
-        return agent;
-    } catch (error) {
-        logger.error('Failed to create SaikiAgent', error);
-        throw error;
-    }
-}

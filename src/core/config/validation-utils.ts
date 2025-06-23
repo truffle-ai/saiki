@@ -10,9 +10,9 @@ import {
     getDefaultModelForProvider,
     getEffectiveMaxInputTokens,
 } from '../ai/llm/registry.js';
-import type { LLMConfig, McpServerConfig } from './schemas.js';
+import type { LLMConfig, McpServerConfig, AgentConfig } from './schemas.js';
 import { LLMConfigSchema, McpServerConfigSchema } from './schemas.js';
-import type { AgentRuntimeState, AgentStateManager } from './agent-state-manager.js';
+import type { AgentStateManager } from './agent-state-manager.js';
 import { resolveApiKeyForProvider } from '../utils/api-key-resolver.js';
 import { logger } from '../logger/index.js';
 import { ZodError } from 'zod';
@@ -149,80 +149,6 @@ export function validateLLMSwitchRequest(request: {
     }
 
     return validateLLMCore(request);
-}
-
-/**
- * Validates runtime settings updates
- */
-export function validateRuntimeUpdate(
-    update: Partial<AgentRuntimeState['runtime']>
-): ValidationResult {
-    const errors: ValidationError[] = [];
-
-    if (update.debugMode !== undefined && typeof update.debugMode !== 'boolean') {
-        errors.push({
-            type: 'general',
-            message: 'debugMode must be a boolean',
-        });
-    }
-
-    if (update.logLevel !== undefined) {
-        const validLogLevels = ['error', 'warn', 'info', 'debug'];
-        if (typeof update.logLevel !== 'string' || !validLogLevels.includes(update.logLevel)) {
-            errors.push({
-                type: 'general',
-                message: `logLevel must be one of: ${validLogLevels.join(', ')}`,
-            });
-        }
-    }
-
-    return {
-        isValid: errors.length === 0,
-        errors,
-        warnings: [],
-    };
-}
-
-/**
- * Validates an entire runtime state configuration
- */
-export function validateRuntimeState(state: AgentRuntimeState): ValidationResult {
-    const errors: ValidationError[] = [];
-    const warnings: string[] = [];
-
-    // Validate LLM config using core validation
-    const llmErrors = validateLLMCore(state.llm);
-    errors.push(...llmErrors);
-
-    // Additional LLM-specific validation
-    if (!state.llm.provider || !state.llm.model) {
-        errors.push({
-            type: 'general',
-            message: 'Provider and model are required',
-        });
-    }
-
-    if (state.llm.apiKey && state.llm.apiKey.length < 10) {
-        warnings.push('API key seems too short - please verify it is correct');
-    }
-
-    if (state.llm.maxInputTokens !== undefined && state.llm.maxInputTokens <= 0) {
-        errors.push({
-            type: 'invalid_max_tokens',
-            message: 'maxInputTokens must be a positive number',
-        });
-    }
-
-    // Validate runtime settings
-    const runtimeValidation = validateRuntimeUpdate(state.runtime);
-    errors.push(...runtimeValidation.errors);
-    warnings.push(...runtimeValidation.warnings);
-
-    return {
-        isValid: errors.length === 0,
-        errors,
-        warnings,
-    };
 }
 
 /**

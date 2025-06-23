@@ -264,18 +264,24 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
 
     const indexTsLines = [
         "import 'dotenv/config';",
-        "import { loadConfigFile, SaikiAgent, createSaikiAgent } from '@truffle-ai/saiki';",
+        "import { loadAgentConfig, SaikiAgent } from '@truffle-ai/saiki';",
         '',
         '// 1. Initialize the agent from the config file',
         '// Every agent is defined by its own config file',
-        `const config = await loadConfigFile('${configPath}');`,
-        'export const agent = await createSaikiAgent(config);',
+        `const config = await loadAgentConfig('${configPath}');`,
+        'const agent = new SaikiAgent(config);',
         '',
-        '// 2. Run the agent',
-        'const response = await agent.run("Hello saiki! What are the files in this directory");',
+        '// 2. Start the agent (initialize async services)',
+        'await agent.start();',
+        '',
+        '// 3. Run the agent',
+        'const response = await agent.run("What are the files in this directory");',
         'console.log("Agent response:", response);',
         '',
-        '// 3. Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki',
+        '// 4. Clean shutdown when done',
+        'await agent.stop();',
+        '',
+        '// 5. Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki',
     ];
     const indexTsContent = indexTsLines.join('\n');
     const outputPath = path.join(directory, 'saiki-example.ts');

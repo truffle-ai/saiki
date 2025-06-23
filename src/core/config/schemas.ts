@@ -505,6 +505,13 @@ export const AgentConfigSchema = z
         mcpServers: ServerConfigsSchema.optional()
             .default({})
             .describe('Configurations for MCP (Model Context Protocol) servers used by the agent'),
+        mcpConnectionMode: z
+            .enum(['strict', 'lenient'])
+            .optional()
+            .default('lenient')
+            .describe(
+                'MCP connection mode: strict requires all servers to connect successfully, lenient allows partial failures'
+            ),
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 
         // Storage configuration

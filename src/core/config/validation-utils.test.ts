@@ -2,7 +2,6 @@ import { describe, test, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     buildLLMConfig,
     validateLLMSwitchRequest,
-    validateRuntimeUpdate,
     validateMcpServerConfig,
 } from './validation-utils.js';
 import type { LLMConfig, McpServerConfig } from './schemas.js';
@@ -344,40 +343,6 @@ describe('validateLLMSwitchRequest', () => {
         const routerError = errors.find((e) => e.type === 'unsupported_router');
         expect(routerError).toBeDefined();
         expect(routerError.message).toBe('Router must be either "vercel" or "in-built"');
-    });
-});
-
-describe('validateRuntimeUpdate', () => {
-    test('should validate valid runtime update', () => {
-        const result = validateRuntimeUpdate({
-            debugMode: true,
-            logLevel: 'debug',
-        });
-
-        expect(result.isValid).toBe(true);
-        expect(result.errors).toEqual([]);
-    });
-
-    test('should error on invalid debugMode', () => {
-        const result = validateRuntimeUpdate({
-            debugMode: 'true' as any,
-        });
-
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('general');
-        expect(result.errors[0].message).toBe('debugMode must be a boolean');
-    });
-
-    test('should error on invalid logLevel', () => {
-        const result = validateRuntimeUpdate({
-            logLevel: 'invalid' as any,
-        });
-
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('general');
-        expect(result.errors[0].message).toBe('logLevel must be one of: error, warn, info, debug');
     });
 });
 
