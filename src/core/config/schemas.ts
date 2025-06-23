@@ -304,6 +304,13 @@ export const StdioServerConfigSchema = z
             .optional()
             .default(30000)
             .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
+        connectionMode: z
+            .enum(['strict', 'lenient'])
+            .optional()
+            .default('lenient')
+            .describe(
+                'Connection mode: "strict" requires successful connection, "lenient" allows failures, defaults to "lenient"'
+            ),
     })
     .strict();
 export type StdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
@@ -324,6 +331,13 @@ export const SseServerConfigSchema = z
             .optional()
             .default(30000)
             .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
+        connectionMode: z
+            .enum(['strict', 'lenient'])
+            .optional()
+            .default('lenient')
+            .describe(
+                'Connection mode: "strict" requires successful connection, "lenient" allows failures, defaults to "lenient"'
+            ),
     })
     .strict();
 export type SseServerConfig = z.infer<typeof SseServerConfigSchema>;
@@ -344,6 +358,13 @@ export const HttpServerConfigSchema = z
             .optional()
             .default(30000)
             .describe('Timeout in milliseconds for HTTP requests, defaults to 30000ms'),
+        connectionMode: z
+            .enum(['strict', 'lenient'])
+            .optional()
+            .default('lenient')
+            .describe(
+                'Connection mode: "strict" requires successful connection, "lenient" allows failures, defaults to "lenient"'
+            ),
     })
     .strict();
 export type HttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
@@ -505,13 +526,6 @@ export const AgentConfigSchema = z
         mcpServers: ServerConfigsSchema.optional()
             .default({})
             .describe('Configurations for MCP (Model Context Protocol) servers used by the agent'),
-        mcpConnectionMode: z
-            .enum(['strict', 'lenient'])
-            .optional()
-            .default('lenient')
-            .describe(
-                'MCP connection mode: strict requires all servers to connect successfully, lenient allows partial failures'
-            ),
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 
         // Storage configuration

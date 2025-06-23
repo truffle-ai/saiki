@@ -293,9 +293,16 @@ program
             // Set run mode for tool confirmation provider
             process.env.SAIKI_RUN_MODE = opts.mode;
 
-            // Apply CLI overrides and MCP connection mode
+            // Apply CLI overrides
             const finalConfig = applyCLIOverrides(cfg, cliOverrides);
-            finalConfig.mcpConnectionMode = opts.strict ? 'strict' : 'lenient';
+
+            // Apply --strict flag to all server configs
+            if (opts.strict && finalConfig.mcpServers) {
+                for (const [serverName, serverConfig] of Object.entries(finalConfig.mcpServers)) {
+                    // All server config types have connectionMode field
+                    serverConfig.connectionMode = 'strict';
+                }
+            }
 
             agent = new SaikiAgent(finalConfig);
 
