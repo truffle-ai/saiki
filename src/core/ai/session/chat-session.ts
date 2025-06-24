@@ -83,7 +83,7 @@ export class ChatSession {
      *
      * Each session has its own ContextManager instance with isolated history.
      */
-    private contextManager: ContextManager;
+    private contextManager!: ContextManager;
 
     /**
      * Handles AI model interactions, tool execution, and response generation for this session.
@@ -91,7 +91,7 @@ export class ChatSession {
      * Each session has its own LLMService instance that uses the session's
      * ContextManager and event bus.
      */
-    private llmService: ILLMService;
+    private llmService!: ILLMService;
 
     /**
      * Map of event forwarder functions for cleanup.
