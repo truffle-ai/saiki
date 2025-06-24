@@ -392,7 +392,10 @@ program
             // Use `saiki --mode server` to start saiki as a remote server
             case 'mcp': {
                 // Start stdio mcp server only
-                const agentCardConfig = agent.getEffectiveConfig().agentCard ?? {};
+                const agentCardConfig = agent.getEffectiveConfig().agentCard || {
+                    name: 'saiki',
+                    version: '1.0.0',
+                };
 
                 try {
                     // Redirect logs to file to prevent interference with stdio transport
