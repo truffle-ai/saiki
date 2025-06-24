@@ -1,7 +1,7 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
 - **All code changes must be verified before completion**
   - The agent **MUST run** the following commands and ensure they exit with status `0`:
