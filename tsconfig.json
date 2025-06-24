@@ -14,7 +14,7 @@
         },
         "outDir": "./dist",
         "rootDir": ".",
-        "strict": false,
+        "strict": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
