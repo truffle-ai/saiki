@@ -172,12 +172,12 @@ In Approach 2 - we gave the LLM some instructions and tools, and passed on the h
 
 Let's look at the key differences in the approaches:
 
-| Feature                | Approach 1                 | Approach 2                         |
-|------------------------|------------------------------------------|--------------------------------------|
-| Autonomy | Low (follows set steps) | High (makes decisions)                   |              |
-| Adaptability           | Rigid, limited to defined flow          | Can handle unexpected situations      |
-| Use of Tools/Services  | Calls tools in a fixed order     | Orchestrates multiple tools/services   |
-| User Interaction       |  Usually no dynamic interaction    | Can ask clarifying questions, replan       |
+| Feature               | Approach 1 (LLM Workflow)      | Approach 2 (AI Agent)          |
+| --------------------- | ------------------------------ | -------------------------------- |
+| Autonomy              | Low – follows set steps        | High – makes decisions           |
+| Adaptability          | Rigid, limited to defined flow | Handles unexpected situations    |
+| Tool / Service usage  | Fixed call order               | Orchestrates multiple services   |
+| User interaction      | None / minimal                 | Can ask clarifying questions     |
 
 
 Now, we can replace `Approach 1` with the term `LLM Workflow`, and `Approach 2` with the term `AI Agent`
