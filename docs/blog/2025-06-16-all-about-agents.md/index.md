@@ -3,7 +3,7 @@ slug: ai-agents-vs-llm-workflows
 title: Intro to AI agents
 description: Explain AI Agents from first priniciples and how they compare to traditional LLM workflows, when to use each, and why autonomy matters.
 authors: rahul
-tags: [agents, workflows, ai]
+tags: [ai-agents, llm-workflows, llm, autonomous-ai, saiki]
 keywords:
   - ai agents
   - llm workflows
