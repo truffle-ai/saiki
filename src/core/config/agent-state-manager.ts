@@ -7,7 +7,11 @@ import type {
     McpServerConfig,
 } from './schemas.js';
 import type { AgentEventBus } from '../events/index.js';
-import { validateMcpServerConfig, type ValidationResult } from './validation-utils.js';
+import {
+    validateMcpServerConfig,
+    type ValidationResult,
+    type McpServerValidationResult,
+} from './validation-utils.js';
 
 /**
  * Session-specific overrides that can differ from the global configuration
@@ -126,7 +130,10 @@ export class AgentStateManager {
     /**
      * Add or update an MCP server configuration at runtime.
      */
-    public addMcpServer(serverName: string, serverConfig: McpServerConfig): ValidationResult {
+    public addMcpServer(
+        serverName: string,
+        serverConfig: McpServerConfig
+    ): McpServerValidationResult {
         logger.debug(`Adding/updating MCP server: ${serverName}`);
 
         // Validate the server configuration
