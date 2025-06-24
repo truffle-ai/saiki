@@ -6,7 +6,6 @@ import { LLMRouter } from '../types.js';
 import { createMessageFormatter } from './formatters/factory.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getEffectiveMaxInputTokens } from '../registry.js';
-import { getMaxInputTokensForModel } from '../registry.js';
 import { SessionEventBus } from '../../../events/index.js';
 import { logger } from '../../../logger/index.js';
 

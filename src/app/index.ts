@@ -298,7 +298,7 @@ program
 
             // Apply --strict flag to all server configs
             if (opts.strict && finalConfig.mcpServers) {
-                for (const [serverName, serverConfig] of Object.entries(finalConfig.mcpServers)) {
+                for (const [_serverName, serverConfig] of Object.entries(finalConfig.mcpServers)) {
                     // All server config types have connectionMode field
                     serverConfig.connectionMode = 'strict';
                 }

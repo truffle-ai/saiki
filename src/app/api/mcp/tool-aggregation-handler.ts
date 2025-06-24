@@ -15,7 +15,7 @@ export async function initializeMcpToolAggregationServer(
     mcpTransport: Transport,
     serverName: string,
     serverVersion: string,
-    strict: boolean
+    _strict: boolean
 ): Promise<McpServer> {
     // Create MCP manager with no confirmation provider (tools are auto-approved)
     const mcpManager = new MCPManager(new NoOpConfirmationProvider());

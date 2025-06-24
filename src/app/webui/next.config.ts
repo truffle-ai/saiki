@@ -1,5 +1,4 @@
 import type { NextConfig } from 'next';
-import path from 'path';
 import os from 'os';
 
 // Determine allowed development origins (local network IPs on port 3000)
@@ -13,7 +12,7 @@ Object.values(interfaces).forEach((list) =>
     })
 );
 
-const isDev = process.env.NODE_ENV === 'development';
+const _isDev = process.env.NODE_ENV === 'development';
 const isStandalone = process.env.BUILD_STANDALONE === 'true';
 
 const nextConfig: NextConfig = {

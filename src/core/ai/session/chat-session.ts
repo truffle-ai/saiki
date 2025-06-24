@@ -6,7 +6,6 @@ import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
 import { getEffectiveMaxInputTokens } from '../llm/registry.js';
 import type { ContextManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
-import type { InternalMessage } from '../llm/messages/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { MCPManager } from '../../client/manager.js';
 import type { ValidatedLLMConfig } from '../../config/schemas.js';

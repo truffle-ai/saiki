@@ -44,7 +44,7 @@ export class OpenAIService implements ILLMService {
     async completeTask(
         userInput: string,
         imageData?: ImageData,
-        stream?: boolean
+        _stream?: boolean
     ): Promise<string> {
         // Add user message with optional image data
         await this.contextManager.addUserMessage(userInput, imageData);
@@ -249,8 +249,11 @@ export class OpenAIService implements ILLMService {
             try {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = { clientManager: this.clientManager };
-                const { formattedMessages, systemPrompt, tokensUsed } =
-                    await this.contextManager.getFormattedMessagesWithCompression(context);
+                const {
+                    formattedMessages,
+                    systemPrompt: _systemPrompt,
+                    tokensUsed,
+                } = await this.contextManager.getFormattedMessagesWithCompression(context);
 
                 logger.silly(
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`

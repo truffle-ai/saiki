@@ -3,7 +3,6 @@ import { MCPManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
-import { EventEmitter } from 'events';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
@@ -44,7 +43,7 @@ export class AnthropicService implements ILLMService {
     async completeTask(
         userInput: string,
         imageData?: ImageData,
-        stream?: boolean
+        _stream?: boolean
     ): Promise<string> {
         // Add user message with optional image data
         await this.contextManager.addUserMessage(userInput, imageData);
@@ -69,8 +68,11 @@ export class AnthropicService implements ILLMService {
 
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = { clientManager: this.clientManager };
-                const { formattedMessages, systemPrompt, tokensUsed } =
-                    await this.contextManager.getFormattedMessagesWithCompression(context);
+                const {
+                    formattedMessages,
+                    systemPrompt: _systemPrompt,
+                    tokensUsed,
+                } = await this.contextManager.getFormattedMessagesWithCompression(context);
 
                 // For Anthropic, we need to get the formatted system prompt separately
                 const formattedSystemPrompt =

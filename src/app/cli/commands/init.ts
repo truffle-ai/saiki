@@ -9,7 +9,7 @@ import { createRequire } from 'module';
 import { findProjectRoot } from '../utils/path.js';
 import { getDefaultModelForProvider, LLMProvider, logger } from '@core/index.js';
 import { parseDocument } from 'yaml';
-import { PROVIDER_API_KEY_MAP, getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
+import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
 
 const require = createRequire(import.meta.url);
 

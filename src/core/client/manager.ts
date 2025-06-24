@@ -255,7 +255,7 @@ export class MCPManager {
                 .then(() => {
                     successfulConnections.push(name);
                 })
-                .catch((error) => {
+                .catch((_error) => {
                     logger.debug(`Handled connection error for '${name}' during initialization.`);
                 });
             connectionPromises.push(connectPromise);

@@ -34,7 +34,7 @@ export class CLIConfirmationProvider implements ToolConfirmationProvider {
     async requestConfirmation(
         toolDetails: ToolExecutionDetails,
         userId?: string,
-        callbacks?: {
+        _callbacks?: {
             displayDetails?: (details: ToolExecutionDetails) => void;
             collectInput?: () => Promise<string | boolean>;
             parseResponse?: (response: any) => boolean;

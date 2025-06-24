@@ -1,7 +1,4 @@
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { CoreMessage, generateText, LanguageModelV1, streamText } from 'ai';
-import { z } from 'zod';
+import { generateText, LanguageModelV1, streamText } from 'ai';
 import { MCPManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../logger/index.js';
@@ -105,8 +102,11 @@ export class VercelLLMService implements ILLMService {
 
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = { clientManager: this.clientManager };
-                const { formattedMessages, systemPrompt, tokensUsed } =
-                    await this.contextManager.getFormattedMessagesWithCompression(context);
+                const {
+                    formattedMessages,
+                    systemPrompt: _systemPrompt,
+                    tokensUsed,
+                } = await this.contextManager.getFormattedMessagesWithCompression(context);
 
                 logger.debug(
                     `Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`
