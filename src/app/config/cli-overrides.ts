@@ -4,13 +4,14 @@
  */
 
 import { AgentConfigSchema } from '@core/index.js';
-import type { ValidatedLLMConfig, ValidatedAgentConfig, AgentConfig } from '@core/index.js';
+import type { LLMConfig, ValidatedAgentConfig, AgentConfig } from '@core/index.js';
 
 /**
  * CLI config override type for LLM fields that can be overridden via CLI
+ * Uses input type (LLMConfig) since these represent user-provided CLI arguments
  */
 export type CLIConfigOverrides = Partial<
-    Pick<ValidatedLLMConfig, 'provider' | 'model' | 'router' | 'apiKey'>
+    Pick<LLMConfig, 'provider' | 'model' | 'router' | 'apiKey'>
 >;
 
 /**
