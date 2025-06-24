@@ -189,7 +189,7 @@ export class ChatSession {
         // so router should always be defined (has default in schema)
         this.contextManager = createContextManager(
             llmConfig,
-            llmConfig.router!,
+            llmConfig.router,
             this.services.promptManager,
             this.eventBus, // Use session event bus
             historyProvider,
@@ -199,7 +199,7 @@ export class ChatSession {
         // Create session-specific LLM service
         this.llmService = createLLMService(
             llmConfig,
-            llmConfig.router!,
+            llmConfig.router,
             this.services.clientManager,
             this.eventBus, // Use session event bus
             this.contextManager
@@ -360,7 +360,7 @@ export class ChatSession {
 
             if (providerChanged || routerChanged) {
                 // NOTE: router comes from validated config, should always be defined
-                newFormatter = createMessageFormatter(provider, router!);
+                newFormatter = createMessageFormatter(provider, router);
             }
 
             // Get effective max tokens for the new config
@@ -372,7 +372,7 @@ export class ChatSession {
             // Create new LLM service with the same dependencies but new config
             const newLLMService = createLLMService(
                 newLLMConfig,
-                router!,
+                router,
                 this.services.clientManager,
                 this.eventBus, // Use session event bus
                 this.contextManager
