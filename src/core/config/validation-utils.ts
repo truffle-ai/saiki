@@ -10,7 +10,13 @@ import {
     getDefaultModelForProvider,
     getEffectiveMaxInputTokens,
 } from '../ai/llm/registry.js';
-import type { LLMConfig, McpServerConfig, AgentConfig } from './schemas.js';
+import type {
+    ValidatedLLMConfig,
+    ValidatedMcpServerConfig,
+    ValidatedAgentConfig,
+    LLMConfig,
+    McpServerConfig,
+} from './schemas.js';
 import { LLMConfigSchema, McpServerConfigSchema } from './schemas.js';
 import type { AgentStateManager } from './agent-state-manager.js';
 import { resolveApiKeyForProvider } from '../utils/api-key-resolver.js';
@@ -58,7 +64,7 @@ export interface ValidationResult {
  * Result of LLM configuration validation with the validated config
  */
 export interface LLMConfigResult extends ValidationResult {
-    config: LLMConfig;
+    config: ValidatedLLMConfig;
 }
 
 /**
@@ -161,7 +167,7 @@ export async function buildValidatedLLMConfig(
     stateManager: AgentStateManager,
     sessionId?: string
 ): Promise<{
-    config: LLMConfig;
+    config: ValidatedLLMConfig;
     configWarnings: string[];
     isValid: boolean;
     errors: ValidationError[];
@@ -492,7 +498,7 @@ function buildFinalConfig(
     currentConfig: LLMConfig,
     errors: ValidationError[],
     warnings: string[]
-): LLMConfig {
+): ValidatedLLMConfig {
     // Base URL
     let baseURL: string | undefined;
     if (updates.baseURL !== undefined) {

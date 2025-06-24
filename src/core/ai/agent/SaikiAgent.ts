@@ -5,7 +5,12 @@ import { AgentStateManager } from '../../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
-import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
+import {
+    ValidatedMcpServerConfig,
+    ValidatedLLMConfig,
+    LLMConfig,
+    McpServerConfig,
+} from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import { AgentEventBus } from '../../events/index.js';
@@ -491,7 +496,7 @@ export class SaikiAgent {
      * Gets the current LLM configuration.
      * @returns Current LLM configuration
      */
-    public getCurrentLLMConfig(): LLMConfig {
+    public getCurrentLLMConfig(): ValidatedLLMConfig {
         this.ensureStarted();
         return structuredClone(this.stateManager.getLLMConfig());
     }
@@ -534,7 +539,7 @@ export class SaikiAgent {
         sessionId?: string
     ): Promise<{
         success: boolean;
-        config?: LLMConfig;
+        config?: ValidatedLLMConfig;
         message?: string;
         warnings?: string[];
         errors?: Array<{
@@ -623,12 +628,12 @@ export class SaikiAgent {
      * @returns Promise resolving to switch result
      */
     private async performLLMSwitch(
-        validatedConfig: LLMConfig,
+        validatedConfig: ValidatedLLMConfig,
         sessionScope?: string,
         configWarnings: string[] = []
     ): Promise<{
         success: boolean;
-        config?: LLMConfig;
+        config?: ValidatedLLMConfig;
         message?: string;
         warnings?: string[];
         errors?: Array<{

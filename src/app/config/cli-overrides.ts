@@ -3,13 +3,14 @@
  * This file handles CLI argument processing and config merging logic
  */
 
-import type { LLMConfig, AgentConfig } from '@core/index.js';
+import { AgentConfigSchema } from '@core/index.js';
+import type { ValidatedLLMConfig, ValidatedAgentConfig, AgentConfig } from '@core/index.js';
 
 /**
  * CLI config override type for LLM fields that can be overridden via CLI
  */
 export type CLIConfigOverrides = Partial<
-    Pick<LLMConfig, 'provider' | 'model' | 'router' | 'apiKey'>
+    Pick<ValidatedLLMConfig, 'provider' | 'model' | 'router' | 'apiKey'>
 >;
 
 /**
@@ -24,13 +25,14 @@ export type CLIConfigOverrides = Partial<
 export function applyCLIOverrides(
     baseConfig: AgentConfig,
     cliOverrides?: CLIConfigOverrides
-): AgentConfig {
+): ValidatedAgentConfig {
     if (!cliOverrides) {
-        return baseConfig;
+        // Parse through schema to apply defaults and convert input to output type
+        return AgentConfigSchema.parse(baseConfig);
     }
 
-    // Create a deep copy of the base config
-    const mergedConfig: AgentConfig = JSON.parse(JSON.stringify(baseConfig));
+    // Create a deep copy of the base config for modification
+    const mergedConfig = JSON.parse(JSON.stringify(baseConfig));
 
     // Apply CLI overrides to LLM config
     if (cliOverrides.provider) {
@@ -46,5 +48,6 @@ export function applyCLIOverrides(
         mergedConfig.llm.apiKey = cliOverrides.apiKey;
     }
 
-    return mergedConfig;
+    // Parse through schema to apply defaults and validate
+    return AgentConfigSchema.parse(mergedConfig);
 }
