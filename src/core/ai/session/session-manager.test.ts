@@ -764,7 +764,7 @@ describe('SessionManager', () => {
 
             // Access the interval function and call it directly to test error handling
             const setIntervalCall = setIntervalSpy.mock.calls[0];
-            const cleanupFunction = setIntervalCall?.[0] as Function;
+            const cleanupFunction = setIntervalCall?.[0] as () => Promise<void>;
 
             // This should not throw
             await expect(cleanupFunction()).resolves.toBeUndefined();
