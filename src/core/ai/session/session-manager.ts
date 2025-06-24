@@ -45,7 +45,7 @@ export class SessionManager {
     private readonly sessionTTL: number;
     private initialized = false;
     private cleanupInterval?: NodeJS.Timeout;
-    private initializationPromise: Promise<void>;
+    private initializationPromise!: Promise<void>;
     // Add a Map to track ongoing session creation operations to prevent race conditions
     private readonly pendingCreations = new Map<string, Promise<ChatSession>>();
 
@@ -601,7 +601,7 @@ export class SessionManager {
         // Stop periodic cleanup
         if (this.cleanupInterval) {
             clearInterval(this.cleanupInterval);
-            this.cleanupInterval = undefined;
+            delete this.cleanupInterval;
             logger.debug('Periodic session cleanup stopped');
         }
 
