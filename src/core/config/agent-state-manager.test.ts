@@ -11,23 +11,27 @@ describe('AgentStateManager Events', () => {
     beforeEach(() => {
         eventBus = new AgentEventBus();
         mockConfig = {
+            systemPrompt: 'You are a helpful assistant',
             mcpServers: {
                 test: {
                     type: 'stdio',
                     command: 'test',
                     args: [],
+                    env: {},
+                    timeout: 30000,
+                    connectionMode: 'lenient',
                 },
             },
             llm: {
                 provider: 'openai',
                 model: 'gpt-4',
-                systemPrompt: 'test',
                 apiKey: 'test-key',
                 router: 'in-built',
+                maxIterations: 50,
             },
             storage: {
-                cache: { type: 'memory' },
-                database: { type: 'memory' },
+                cache: { type: 'in-memory' },
+                database: { type: 'in-memory' },
             },
             sessions: {
                 maxSessions: 100,
@@ -59,6 +63,9 @@ describe('AgentStateManager Events', () => {
             type: 'stdio' as const,
             command: 'new-server',
             args: [],
+            env: {},
+            timeout: 30000,
+            connectionMode: 'lenient' as const,
         };
 
         stateManager.addMcpServer('new-server', newServerConfig);
