@@ -1,21 +1,28 @@
 ---
-slug: agents-vs-workflows
+slug: ai-agents-vs-llm-workflows
 title: Intro to AI agents
+description: Explain AI Agents from first priniciples and how they compare to traditional LLM workflows, when to use each, and why autonomy matters.
 authors: rahul
 tags: [agents, workflows, ai]
+keywords:
+  - ai agents
+  - llm workflows
+  - autonomous ai
+  - code review automation
+  - saiki open-source runtime
 ---
 
 If you have been remotely exposed to AI, you've probably heard the term AI agent. But what really is an AI agent?
 
 `AI agent` has become a blanket term that is used in the industry for any automation or software that uses an LLM.
 
-In this post, we'll explore what it really means under the hood from the ground up, and how AI agents are different from LLM workflows
+In this post, we'll explore what AI Agent really means under the hood from the ground up, and how AI agents are different from LLM workflows, when to use each, and why autonomy matters.
 
 <!--truncate-->
 
 Let's first start with Large Language Models (LLMs), the backbone of AI agents.
 
-## What are LLMs?
+## What Are LLMs?
 
 LLMs are deep learning models, pre-trained on vast amounts of data, often more than what's available on the entire internet!
 
@@ -34,7 +41,7 @@ Under the hood, ChatGPT uses LLMs built by OpenAI, like `gpt-4o` or `gpt-4.5` to
 
 This is why if you ask LLMs questions like `how many r's are there in the word strawberry`, you might see completely incorrect results - [the guessing doesn't always work well](https://www.reddit.com/r/singularity/comments/1enqk04/how_many_rs_in_strawberry_why_is_this_a_very/). This is called [*hallucination*](https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)).
 
-## System prompts
+## System Prompts
 
 Well we know that LLMs have an incredibly large knowledge base, but what if we wanted the LLM to specifically just do one thing - like give me food recipes.
 LLMs allow you to customize their base instructions (aka system prompts).
@@ -66,11 +73,12 @@ Now when I chat with the LLM, it will talk to me only like a chef!
 
 
 
-## Function calling in LLMs
+## Function Calling In LLMs
 Now, we've already established that LLMs can accept input and give back output. But LLMs can do more than that - they can also **take actions**
 
 This is done by giving the LLMs access to `functions`, or `tools`.
 These are defined methods with specific capabilities, implemented by developers.
+This process is giving the LLMs access to `functions` is called [function_calling](https://platform.openai.com/docs/guides/function-calling)
 
 Let's revisit the previous case where we asked the LLM to add 2 numbers, this time with function calling.
 
@@ -86,7 +94,7 @@ All the LLM would need to do in this case is use the right function based on the
 There are other complexities like ensuring the LLM uses the right function, and adding the right guardrails and authentication, but we won't get into that for now.
 
 
-## LLM workflows and AI Agents
+## LLM Workflows and AI Agents
 
 Now that we've explained how tools and system prompts work, let's dive into how LLMs can be used to automate tasks.
 
@@ -175,7 +183,7 @@ Now, we can replace `Approach 1` with the term `LLM Workflow`, and `Approach 2` 
 
 The key takeaway here is that workflows execute steps *we define*, while AI agents *figure out how to accomplish the goal* and can make decisions dynamically.
 
-## Which approach is better?
+## Which Approach Is Better?
 
 Use an LLM Workflow when:
 
@@ -190,7 +198,7 @@ Use an AI Agent when:
  - The process may change based on context, user input, or something else.
  - Examples: Coding assistant, customer support assistant.
 
-## Closing thoughts
+## Closing Thoughts
 
 In the past few years, we have seen AI products emerge that have primarily been LLM workflows or lightweight wrappers around LLM APIs. The general trend is that these companies do well for a short while until the models natively get better, then the products fade away. 
 
