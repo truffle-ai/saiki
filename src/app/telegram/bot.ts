@@ -81,7 +81,8 @@ export function startTelegramBot(agent: SaikiAgent) {
             console.error('Error handling callback query', error);
             // Attempt to notify user of the error
             try {
-                await ctx.reply(`Error processing request: ${error.message}`);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                await ctx.reply(`Error processing request: ${errorMessage}`);
             } catch (e) {
                 console.error('Failed to send error message for callback query', e);
             }
@@ -92,9 +93,10 @@ export function startTelegramBot(agent: SaikiAgent) {
     bot.command('ask', async (ctx) => {
         const question = ctx.match;
         if (!question) {
-            return ctx.reply('Please provide a question, e.g. `/ask How do I ...?`', {
+            ctx.reply('Please provide a question, e.g. `/ask How do I ...?`', {
                 parse_mode: 'Markdown',
             });
+            return;
         }
         try {
             await ctx.replyWithChatAction('typing');
@@ -106,14 +108,17 @@ export function startTelegramBot(agent: SaikiAgent) {
             }
         } catch (err) {
             console.error('Error handling /ask command', err);
-            await ctx.reply(`Error: ${err.message}`);
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            await ctx.reply(`Error: ${errorMessage}`);
         }
     });
 
     // Inline query handler
     bot.on('inline_query', async (ctx) => {
         const query = ctx.inlineQuery.query;
-        if (!query) return;
+        if (!query) {
+            return;
+        }
 
         const userId = ctx.inlineQuery.from.id;
         const queryText = query.trim();
@@ -123,21 +128,23 @@ export function startTelegramBot(agent: SaikiAgent) {
         // Debounce: return cached results if query repeated within interval
         const cached = inlineQueryCache[cacheKey];
         if (cached && now - cached.timestamp < INLINE_QUERY_DEBOUNCE_INTERVAL) {
-            return ctx.answerInlineQuery(cached.results);
+            ctx.answerInlineQuery(cached.results);
+            return;
         }
 
         // Concurrency cap
         if (currentInlineQueries >= MAX_CONCURRENT_INLINE_QUERIES) {
             // Too many concurrent inline queries; respond with empty list
-            return ctx.answerInlineQuery([]);
+            ctx.answerInlineQuery([]);
+            return;
         }
 
         currentInlineQueries++;
         try {
             const queryTimeout = 15000; // 15 seconds timeout
-            const resultText = await Promise.race<string>([
+            const resultText = await Promise.race([
                 agent.run(query),
-                new Promise((_, reject) =>
+                new Promise<string>((_, reject) =>
                     setTimeout(() => reject(new Error('Query timed out')), queryTimeout)
                 ),
             ]);
@@ -146,8 +153,8 @@ export function startTelegramBot(agent: SaikiAgent) {
                     type: 'article' as const,
                     id: ctx.inlineQuery.id,
                     title: 'AI Answer',
-                    input_message_content: { message_text: resultText },
-                    description: resultText.substring(0, 100),
+                    input_message_content: { message_text: resultText || 'No response' },
+                    description: (resultText || 'No response').substring(0, 100),
                 },
             ];
             // Cache the results
@@ -163,7 +170,7 @@ export function startTelegramBot(agent: SaikiAgent) {
                         id: ctx.inlineQuery.id,
                         title: 'Error processing query',
                         input_message_content: {
-                            message_text: `Sorry, I encountered an error: ${error.message}`,
+                            message_text: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`,
                         },
                         description: 'Error occurred while processing your request',
                     },
@@ -183,8 +190,8 @@ export function startTelegramBot(agent: SaikiAgent) {
 
         try {
             // Detect image messages
-            if (ctx.message.photo) {
-                const photo = ctx.message.photo[ctx.message.photo.length - 1];
+            if (ctx.message.photo && ctx.message.photo.length > 0) {
+                const photo = ctx.message.photo[ctx.message.photo.length - 1]!;
                 const file = await ctx.api.getFile(photo.file_id);
                 const fileUrl = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
                 const { base64, mimeType } = await downloadFileAsBase64(fileUrl);
@@ -194,7 +201,8 @@ export function startTelegramBot(agent: SaikiAgent) {
         } catch (err) {
             console.error('Failed to process attached image in Telegram bot', err);
             try {
-                await ctx.reply(`🖼️ Error downloading or processing image: ${err.message}`);
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                await ctx.reply(`🖼️ Error downloading or processing image: ${errorMessage}`);
             } catch (sendError) {
                 console.error('Failed to send image error message to user', sendError);
             }
@@ -218,10 +226,11 @@ export function startTelegramBot(agent: SaikiAgent) {
         try {
             await ctx.replyWithChatAction('typing');
             const responseText = await agent.run(userText || '', imageDataInput);
-            await ctx.reply(responseText);
+            await ctx.reply(responseText || 'No response generated');
         } catch (error) {
             console.error('Error handling Telegram message', error);
-            await ctx.reply(`Error: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            await ctx.reply(`Error: ${errorMessage}`);
         } finally {
             agentEventBus.off('llmservice:toolCall', toolCallHandler);
         }
