@@ -337,6 +337,51 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     }
 
     // Configuration export endpoint
+    /**
+     * Helper function to redact sensitive environment variables
+     */
+    function redactEnvValue(value: any): any {
+        if (value && typeof value === 'string' && value.length > 0) {
+            return '[REDACTED]';
+        }
+        return value;
+    }
+
+    /**
+     * Helper function to redact environment variables in a server config
+     */
+    function redactServerEnvVars(serverConfig: any): any {
+        if (!serverConfig.env) {
+            return serverConfig;
+        }
+
+        const redactedEnv: Record<string, any> = {};
+        for (const [key, value] of Object.entries(serverConfig.env)) {
+            redactedEnv[key] = redactEnvValue(value);
+        }
+
+        return {
+            ...serverConfig,
+            env: redactedEnv,
+        };
+    }
+
+    /**
+     * Helper function to redact all MCP servers configuration
+     */
+    function redactMcpServersConfig(mcpServers: any): Record<string, any> {
+        if (!mcpServers) {
+            return {};
+        }
+
+        const redactedServers: Record<string, any> = {};
+        for (const [name, serverConfig] of Object.entries(mcpServers)) {
+            redactedServers[name] = redactServerEnvVars(serverConfig);
+        }
+
+        return redactedServers;
+    }
+
     app.get('/api/config.yaml', async (req, res) => {
         try {
             const sessionId = req.query.sessionId as string | undefined;
@@ -349,32 +394,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     ...config.llm,
                     apiKey: config.llm.apiKey ? '[REDACTED]' : undefined,
                 },
-                mcpServers: config.mcpServers
-                    ? Object.fromEntries(
-                          Object.entries(config.mcpServers).map(
-                              ([name, serverConfig]: [string, any]) => [
-                                  name,
-                                  {
-                                      ...serverConfig,
-                                      env: serverConfig.env
-                                          ? Object.fromEntries(
-                                                Object.entries(serverConfig.env).map(
-                                                    ([key, value]) => [
-                                                        key,
-                                                        value &&
-                                                        typeof value === 'string' &&
-                                                        value.length > 0
-                                                            ? '[REDACTED]'
-                                                            : value,
-                                                    ]
-                                                )
-                                            )
-                                          : undefined,
-                                  },
-                              ]
-                          )
-                      )
-                    : {},
+                mcpServers: redactMcpServersConfig(config.mcpServers),
             };
 
             const yamlStr = yamlStringify(maskedConfig);
