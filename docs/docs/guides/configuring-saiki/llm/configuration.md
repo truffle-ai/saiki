@@ -24,7 +24,6 @@ export type LLMConfig = {
 export type AgentConfig = {
     systemPrompt?: string | SystemPromptConfig;
     llm: LLMConfig;
-    mcpServers?: Record<string, McpServerConfig>;
     // ... other agent fields
 };
 

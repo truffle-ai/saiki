@@ -55,6 +55,12 @@
 - **Clean commit messages** - Focus on technical changes and business value
 - **Descriptive PR titles** - Should clearly indicate the change without AI attribution
 
+### Documentation Standards
+- **Always request user review before committing documentation changes** - Documentation impacts user experience and should be user-approved
+- **Never auto-commit documentation updates** - Present proposed changes to user first, even for seemingly obvious updates
+- **Keep documentation user-focused** - Avoid exposing internal implementation complexity to end users
+- **Separate documentation commits** - Make documentation changes in separate commits from code changes when possible
+
 ## Application Architecture
 
 ### API Layer (`src/app/api/`)
