@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SessionManager, type SessionMetadata } from './session-manager.js';
 import { ChatSession } from './chat-session.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { ValidatedLLMConfig } from '../../config/schemas.js';
 
 // Mock dependencies
 vi.mock('./chat-session.js');
@@ -17,7 +17,7 @@ describe('SessionManager', () => {
     let mockServices: any;
     let mockStorageManager: any;
 
-    const mockLLMConfig: LLMConfig = {
+    const mockLLMConfig: ValidatedLLMConfig = {
         provider: 'openai',
         model: 'gpt-4',
         apiKey: 'test-key',
@@ -474,7 +474,7 @@ describe('SessionManager', () => {
         });
 
         test('should switch LLM for default session', async () => {
-            const newLLMConfig: LLMConfig = {
+            const newLLMConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',
@@ -496,7 +496,7 @@ describe('SessionManager', () => {
 
         test('should switch LLM for specific session', async () => {
             const sessionId = 'test-session';
-            const newLLMConfig: LLMConfig = {
+            const newLLMConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',
@@ -517,7 +517,7 @@ describe('SessionManager', () => {
         });
 
         test('should handle LLM switch for non-existent session', async () => {
-            const newLLMConfig: LLMConfig = {
+            const newLLMConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',
@@ -530,7 +530,7 @@ describe('SessionManager', () => {
 
         test('should handle partial failures when switching LLM for all sessions', async () => {
             const sessionIds = ['session:session-1', 'session:session-2'];
-            const newLLMConfig: LLMConfig = {
+            const newLLMConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',

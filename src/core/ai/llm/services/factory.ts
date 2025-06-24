@@ -1,6 +1,6 @@
 import { MCPManager } from '../../../client/manager.js';
 import { ILLMService } from './types.js';
-import { LLMConfig } from '../../../config/schemas.js';
+import { ValidatedLLMConfig } from '../../../config/schemas.js';
 import { logger } from '../../../logger/index.js';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -21,7 +21,7 @@ import Anthropic from '@anthropic-ai/sdk';
  * @param config LLM configuration from the config file
  * @returns Valid API key or throws an error
  */
-function extractApiKey(config: LLMConfig): string {
+function extractApiKey(config: ValidatedLLMConfig): string {
     const provider = config.provider;
 
     // Get API key from config (already expanded)
@@ -47,7 +47,7 @@ function extractApiKey(config: LLMConfig): string {
  * @returns ILLMService instance
  */
 function _createInBuiltLLMService(
-    config: LLMConfig,
+    config: ValidatedLLMConfig,
     clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager
@@ -87,7 +87,7 @@ function _createInBuiltLLMService(
     }
 }
 
-function _createVercelModel(llmConfig: LLMConfig): LanguageModelV1 {
+function _createVercelModel(llmConfig: ValidatedLLMConfig): LanguageModelV1 {
     const provider = llmConfig.provider;
     const model = llmConfig.model;
     const apiKey = extractApiKey(llmConfig);
@@ -124,7 +124,7 @@ function _createVercelModel(llmConfig: LLMConfig): LanguageModelV1 {
  * @param llmConfig LLM configuration from the config file
  * @returns Base URL or empty string if not found
  */
-function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
+function getOpenAICompatibleBaseURL(llmConfig: ValidatedLLMConfig): string {
     if (llmConfig.baseURL) {
         return llmConfig.baseURL.replace(/\/$/, '');
     }
@@ -136,7 +136,7 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 }
 
 function _createVercelLLMService(
-    config: LLMConfig,
+    config: ValidatedLLMConfig,
     clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager
@@ -159,7 +159,7 @@ function _createVercelLLMService(
  * Enum/type for LLM routing backend selection.
  */
 export function createLLMService(
-    config: LLMConfig,
+    config: ValidatedLLMConfig,
     router: LLMRouter,
     clientManager: MCPManager,
     sessionEventBus: SessionEventBus,

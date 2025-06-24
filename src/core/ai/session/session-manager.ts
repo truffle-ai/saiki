@@ -5,7 +5,7 @@ import { MCPManager } from '../../client/manager.js';
 import { AgentEventBus } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { LLMConfig, ValidatedLLMConfig } from '../../config/schemas.js';
 import type { StorageBackends } from '../../storage/index.js';
 
 export interface SessionMetadata {
@@ -460,7 +460,7 @@ export class SessionManager {
      * @returns Result object with success message and any warnings
      */
     public async switchLLMForAllSessions(
-        newLLMConfig: LLMConfig
+        newLLMConfig: ValidatedLLMConfig
     ): Promise<{ message: string; warnings: string[] }> {
         await this.ensureInitialized();
 
@@ -471,7 +471,7 @@ export class SessionManager {
             const session = await this.getSession(sId);
             if (session) {
                 try {
-                    // Validate for this specific session
+                    // Update LLM with validated config
                     const sessionValidation = this.services.stateManager.updateLLM(
                         newLLMConfig,
                         sId
@@ -521,7 +521,7 @@ export class SessionManager {
      * @returns Result object with success message and any warnings
      */
     public async switchLLMForSpecificSession(
-        newLLMConfig: LLMConfig,
+        newLLMConfig: ValidatedLLMConfig,
         sessionId: string
     ): Promise<{ message: string; warnings: string[] }> {
         const session = await this.getSession(sessionId);
@@ -549,7 +549,7 @@ export class SessionManager {
      * @returns Result object with success message and any warnings
      */
     public async switchLLMForDefaultSession(
-        newLLMConfig: LLMConfig
+        newLLMConfig: ValidatedLLMConfig
     ): Promise<{ message: string; warnings: string[] }> {
         const defaultSession = await this.getDefaultSession();
 

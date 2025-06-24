@@ -5,7 +5,12 @@ import { AgentStateManager } from '../../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
-import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
+import {
+    ValidatedMcpServerConfig,
+    ValidatedLLMConfig,
+    LLMConfig,
+    McpServerConfig,
+} from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import { AgentEventBus } from '../../events/index.js';
@@ -490,8 +495,16 @@ export class SaikiAgent {
     /**
      * Gets the current LLM configuration.
      * @returns Current LLM configuration
+     *
+     * TODO: USER-FACING API DECISION NEEDED
+     * Should this return:
+     * 1. ValidatedLLMConfig (with all defaults applied, internal representation)
+     * 2. LLMConfig (input type, matches what users expect to see)
+     *
+     * Currently returning ValidatedLLMConfig for consistency with internal state,
+     * but this means required fields that were optional in input appear required.
      */
-    public getCurrentLLMConfig(): LLMConfig {
+    public getCurrentLLMConfig(): ValidatedLLMConfig {
         this.ensureStarted();
         return structuredClone(this.stateManager.getLLMConfig());
     }
@@ -499,6 +512,14 @@ export class SaikiAgent {
     /**
      * Switches the LLM service while preserving conversation history.
      * This is a comprehensive method that handles ALL validation, configuration building, and switching internally.
+     *
+     * TODO: USER-FACING API DECISION NEEDED
+     * Current design:
+     * - Input: Partial<LLMConfig> (allows optional fields like maxIterations?, router?)
+     * - Output: ValidatedLLMConfig (internal representation with all defaults applied)
+     *
+     * Question: Should the returned 'config' be LLMConfig (input type) to match
+     * user expectations, or ValidatedLLMConfig (internal type) for accuracy?
      *
      * Key features:
      * - Accepts partial LLM configuration object
@@ -534,7 +555,7 @@ export class SaikiAgent {
         sessionId?: string
     ): Promise<{
         success: boolean;
-        config?: LLMConfig;
+        config?: ValidatedLLMConfig;
         message?: string;
         warnings?: string[];
         errors?: Array<{
@@ -623,12 +644,12 @@ export class SaikiAgent {
      * @returns Promise resolving to switch result
      */
     private async performLLMSwitch(
-        validatedConfig: LLMConfig,
+        validatedConfig: ValidatedLLMConfig,
         sessionScope?: string,
         configWarnings: string[] = []
     ): Promise<{
         success: boolean;
-        config?: LLMConfig;
+        config?: ValidatedLLMConfig;
         message?: string;
         warnings?: string[];
         errors?: Array<{
@@ -701,6 +722,12 @@ export class SaikiAgent {
     /**
      * Connects a new MCP server and adds it to the runtime configuration.
      * This method handles both adding the server to runtime state and establishing the connection.
+     *
+     * TODO: USER-FACING API DECISION NEEDED
+     * Currently accepts McpServerConfig (input type with optional fields like timeout?, env?)
+     * This is appropriate for user-facing API as users expect to provide minimal config.
+     * Internal validation will apply defaults and convert to ValidatedMcpServerConfig.
+     *
      * @param name The name of the server to connect.
      * @param config The configuration object for the server.
      */

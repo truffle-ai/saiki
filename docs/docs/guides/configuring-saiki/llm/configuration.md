@@ -18,10 +18,11 @@ export type LLMConfig = {
     maxOutputTokens?: number;
     temperature?: number;
     router?: 'vercel' | 'in-built';
+    maxIterations?: number;
 };
 
 export type AgentConfig = {
-    systemPrompt: string | SystemPromptConfig;
+    systemPrompt?: string | SystemPromptConfig;
     llm: LLMConfig;
     // ... other agent fields
 };
@@ -55,6 +56,7 @@ export interface ContributorConfig {
 - **maxOutputTokens** (number): Maximum tokens for AI response generation
 - **temperature** (number): Controls randomness in AI responses (0 = deterministic, 1 = very creative)
 - **router** (string): Choose between `vercel` (default) or `in-built` routers
+- **maxIterations** (number): Maximum number of tool execution iterations before stopping (prevents infinite loops)
 
 ## Agent-Level System Prompt Configuration
 

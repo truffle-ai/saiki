@@ -10,7 +10,13 @@ import {
     getDefaultModelForProvider,
     getEffectiveMaxInputTokens,
 } from '../ai/llm/registry.js';
-import type { LLMConfig, McpServerConfig, AgentConfig } from './schemas.js';
+import type {
+    ValidatedLLMConfig,
+    ValidatedMcpServerConfig,
+    ValidatedAgentConfig,
+    LLMConfig,
+    McpServerConfig,
+} from './schemas.js';
 import { LLMConfigSchema, McpServerConfigSchema } from './schemas.js';
 import type { AgentStateManager } from './agent-state-manager.js';
 import { resolveApiKeyForProvider } from '../utils/api-key-resolver.js';
@@ -58,7 +64,7 @@ export interface ValidationResult {
  * Result of LLM configuration validation with the validated config
  */
 export interface LLMConfigResult extends ValidationResult {
-    config: LLMConfig;
+    config: ValidatedLLMConfig;
 }
 
 /**
@@ -161,7 +167,7 @@ export async function buildValidatedLLMConfig(
     stateManager: AgentStateManager,
     sessionId?: string
 ): Promise<{
-    config: LLMConfig;
+    config: ValidatedLLMConfig;
     configWarnings: string[];
     isValid: boolean;
     errors: ValidationError[];
@@ -169,8 +175,10 @@ export async function buildValidatedLLMConfig(
     const result = await buildLLMConfig(updates, currentConfig);
 
     if (!result.isValid) {
+        // Parse currentConfig through schema to get validated type
+        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
         return {
-            config: currentConfig,
+            config: validatedCurrentConfig,
             configWarnings: result.warnings,
             isValid: false,
             errors: result.errors,
@@ -180,8 +188,10 @@ export async function buildValidatedLLMConfig(
     // Update state manager with the validated config
     const stateValidation = stateManager.updateLLM(result.config, sessionId);
     if (!stateValidation.isValid) {
+        // Parse currentConfig through schema to get validated type
+        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
         return {
-            config: currentConfig,
+            config: validatedCurrentConfig,
             configWarnings: [...result.warnings, ...stateValidation.warnings],
             isValid: false,
             errors: stateValidation.errors,
@@ -217,13 +227,15 @@ export async function buildLLMConfig(
     // Step 1: Determine model
     const model = resolveModel(updates, currentConfig, errors);
     if (errors.length > 0) {
-        return { config: currentConfig, isValid: false, errors, warnings };
+        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
+        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
     }
 
     // Step 2: Determine provider
     const provider = resolveProvider(updates, currentConfig, model, errors, warnings);
     if (errors.length > 0) {
-        return { config: currentConfig, isValid: false, errors, warnings };
+        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
+        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
     }
 
     // Step 3: Validate model/provider compatibility and fix if needed
@@ -236,19 +248,22 @@ export async function buildLLMConfig(
         warnings
     );
     if (errors.length > 0) {
-        return { config: currentConfig, isValid: false, errors, warnings };
+        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
+        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
     }
 
     // Step 4: Determine router
     const router = resolveRouter(updates, currentConfig, finalProvider, errors, warnings);
     if (errors.length > 0) {
-        return { config: currentConfig, isValid: false, errors, warnings };
+        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
+        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
     }
 
     // Step 5: Determine API key
     const apiKey = await resolveApiKey(updates, currentConfig, finalProvider, errors, warnings);
     if (errors.length > 0) {
-        return { config: currentConfig, isValid: false, errors, warnings };
+        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
+        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
     }
 
     // Step 6: Build remaining fields
@@ -260,7 +275,8 @@ export async function buildLLMConfig(
         warnings
     );
     if (errors.length > 0) {
-        return { config: currentConfig, isValid: false, errors, warnings };
+        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
+        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
     }
 
     // Step 7: Final schema validation
@@ -271,7 +287,8 @@ export async function buildLLMConfig(
             message: `${err.path.join('.')}: ${err.message}`,
         }));
         errors.push(...schemaErrors);
-        return { config: currentConfig, isValid: false, errors, warnings };
+        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
+        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
     }
 
     logger.debug(
@@ -422,7 +439,7 @@ function resolveRouter(
     }
 
     // Try to keep current router if compatible with new provider
-    if (isRouterSupportedForProvider(provider, currentConfig.router)) {
+    if (currentConfig.router && isRouterSupportedForProvider(provider, currentConfig.router)) {
         return currentConfig.router;
     }
 
@@ -492,7 +509,7 @@ function buildFinalConfig(
     currentConfig: LLMConfig,
     errors: ValidationError[],
     warnings: string[]
-): LLMConfig {
+): ValidatedLLMConfig {
     // Base URL
     let baseURL: string | undefined;
     if (updates.baseURL !== undefined) {
@@ -570,13 +587,23 @@ function buildFinalConfig(
 }
 
 /**
- * Validate an MCP server configuration
+ * Result type for MCP server validation
+ */
+export interface McpServerValidationResult {
+    isValid: boolean;
+    errors: ValidationError[];
+    warnings: string[];
+    config: ValidatedMcpServerConfig | undefined;
+}
+
+/**
+ * Validate an MCP server configuration and apply schema defaults
  */
 export function validateMcpServerConfig(
     serverName: string,
     serverConfig: McpServerConfig,
     existingServerNames: string[] = []
-): ValidationResult {
+): McpServerValidationResult {
     const errors: ValidationError[] = [];
     const warnings: string[] = [];
 
@@ -658,9 +685,28 @@ export function validateMcpServerConfig(
         }
     }
 
+    // If validation passed, parse through schema to apply defaults
+    let validatedConfig: ValidatedMcpServerConfig | undefined;
+    if (errors.length === 0) {
+        try {
+            validatedConfig = McpServerConfigSchema.parse(serverConfig);
+        } catch (schemaError) {
+            if (schemaError instanceof ZodError) {
+                for (const issue of schemaError.errors) {
+                    errors.push({
+                        type: 'schema_validation',
+                        message: `Schema parsing failed: ${issue.message}`,
+                        field: issue.path.join('.'),
+                    });
+                }
+            }
+        }
+    }
+
     return {
         isValid: errors.length === 0,
         errors,
         warnings,
+        config: validatedConfig,
     };
 }

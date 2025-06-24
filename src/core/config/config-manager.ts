@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { logger } from '../logger/index.js';
 import { AgentConfigSchema } from './schemas.js';
-import type { AgentConfig } from './schemas.js';
+import type { ValidatedAgentConfig, AgentConfig } from './schemas.js';
 
 declare function structuredClone<T>(value: T): T;
 
@@ -22,7 +22,7 @@ declare function structuredClone<T>(value: T): T;
  * - Configuration merging logic
  */
 export class ConfigManager {
-    private readonly config: AgentConfig;
+    private readonly config: ValidatedAgentConfig;
 
     constructor(config: AgentConfig) {
         logger.debug('Loading agent configuration...');
@@ -41,7 +41,7 @@ export class ConfigManager {
      * @param config Raw configuration object
      * @returns Validated configuration with defaults applied
      */
-    private validateAndApplyDefaults(config: AgentConfig): AgentConfig {
+    private validateAndApplyDefaults(config: AgentConfig): ValidatedAgentConfig {
         try {
             logger.debug('Agent configuration validation successful');
             return AgentConfigSchema.parse(config);
@@ -62,7 +62,7 @@ export class ConfigManager {
      * Gets the validated configuration (read-only).
      * @returns Immutable configuration object
      */
-    public getConfig(): Readonly<AgentConfig> {
+    public getConfig(): Readonly<ValidatedAgentConfig> {
         return this.config;
     }
 }

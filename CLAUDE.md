@@ -48,7 +48,18 @@
 - **Strict null safety** - Handle null/undefined cases explicitly
 - **Proper error handling** - Use type guards and proper error messages
 - **Consistent return patterns** - All API endpoints return responses consistently
-- **No any types** - Use proper typing throughout
+- **Avoid `any` types** - Use specific types unless absolutely necessary (rare exceptions in tests)
+
+### Git and PR Standards
+- **Never include "Generated with Claude Code" footers** - In commit messages, PR descriptions, or any documentation
+- **Clean commit messages** - Focus on technical changes and business value
+- **Descriptive PR titles** - Should clearly indicate the change without AI attribution
+
+### Documentation Standards
+- **Always request user review before committing documentation changes** - Documentation impacts user experience and should be user-approved
+- **Never auto-commit documentation updates** - Present proposed changes to user first, even for seemingly obvious updates
+- **Keep documentation user-focused** - Avoid exposing internal implementation complexity to end users
+- **Separate documentation commits** - Make documentation changes in separate commits from code changes when possible
 
 ## Application Architecture
 

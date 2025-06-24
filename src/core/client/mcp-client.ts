@@ -34,7 +34,7 @@ export class MCPClient implements IMCPClient {
     private timeout: number = 60000; // Default timeout value
 
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
-        this.timeout = config.timeout; // Rely on Zod default for timeout
+        this.timeout = config.timeout ?? 30000; // Use config timeout or Zod schema default
         if (config.type === 'stdio') {
             const stdioConfig: StdioServerConfig = config;
 

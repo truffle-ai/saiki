@@ -1,14 +1,24 @@
 import { logger } from '../logger/index.js';
-import type { AgentConfig, LLMConfig, McpServerConfig } from './schemas.js';
+import type {
+    ValidatedAgentConfig,
+    ValidatedLLMConfig,
+    ValidatedMcpServerConfig,
+    LLMConfig,
+    McpServerConfig,
+} from './schemas.js';
 import type { AgentEventBus } from '../events/index.js';
-import { validateMcpServerConfig, type ValidationResult } from './validation-utils.js';
+import {
+    validateMcpServerConfig,
+    type ValidationResult,
+    type McpServerValidationResult,
+} from './validation-utils.js';
 
 /**
  * Session-specific overrides that can differ from the global configuration
  */
 export interface SessionOverride {
     /** Override LLM config for this session */
-    llm?: Partial<LLMConfig>;
+    llm?: Partial<ValidatedLLMConfig>;
 }
 
 /**
@@ -25,8 +35,8 @@ export interface SessionOverride {
  * 6. Maintain effective configuration for each session
  */
 export class AgentStateManager {
-    private runtimeConfig: AgentConfig;
-    private readonly baselineConfig: AgentConfig;
+    private runtimeConfig: ValidatedAgentConfig;
+    private readonly baselineConfig: ValidatedAgentConfig;
     private sessionOverrides: Map<string, SessionOverride> = new Map();
 
     /**
@@ -36,7 +46,7 @@ export class AgentStateManager {
      * @param agentEventBus The agent event bus for emitting state change events
      */
     constructor(
-        staticConfig: AgentConfig,
+        staticConfig: ValidatedAgentConfig,
         private agentEventBus: AgentEventBus
     ) {
         this.baselineConfig = structuredClone(staticConfig);
@@ -53,7 +63,7 @@ export class AgentStateManager {
     /**
      * Get runtime configuration for a session (includes session overrides if sessionId provided)
      */
-    public getRuntimeConfig(sessionId?: string): Readonly<AgentConfig> {
+    public getRuntimeConfig(sessionId?: string): Readonly<ValidatedAgentConfig> {
         if (!sessionId) {
             return structuredClone(this.runtimeConfig);
         }
@@ -74,10 +84,10 @@ export class AgentStateManager {
     /**
      * Update the LLM configuration (globally or for a specific session)
      */
-    public updateLLM(newConfig: Partial<LLMConfig>, sessionId?: string): ValidationResult {
+    public updateLLM(newConfig: Partial<ValidatedLLMConfig>, sessionId?: string): ValidationResult {
         // Build the new effective config for validation
         const currentConfig = sessionId ? this.getRuntimeConfig(sessionId) : this.runtimeConfig;
-        const updatedConfig: AgentConfig = {
+        const updatedConfig: ValidatedAgentConfig = {
             ...currentConfig,
             llm: { ...currentConfig.llm, ...newConfig },
         };
@@ -120,7 +130,10 @@ export class AgentStateManager {
     /**
      * Add or update an MCP server configuration at runtime.
      */
-    public addMcpServer(serverName: string, serverConfig: McpServerConfig): ValidationResult {
+    public addMcpServer(
+        serverName: string,
+        serverConfig: McpServerConfig
+    ): McpServerValidationResult {
         logger.debug(`Adding/updating MCP server: ${serverName}`);
 
         // Validate the server configuration
@@ -145,7 +158,8 @@ export class AgentStateManager {
         }
 
         const isUpdate = serverName in this.runtimeConfig.mcpServers;
-        this.runtimeConfig.mcpServers[serverName] = serverConfig;
+        // Use the validated config with defaults applied from validation result
+        this.runtimeConfig.mcpServers[serverName] = validation.config!;
 
         const eventName = isUpdate ? 'saiki:mcpServerUpdated' : 'saiki:mcpServerAdded';
         this.agentEventBus.emit(eventName, { serverName, config: serverConfig });
@@ -245,8 +259,8 @@ export class AgentStateManager {
      * Export current runtime state as config.
      * This allows users to save their runtime modifications as a new agent config.
      */
-    public exportAsConfig(): AgentConfig {
-        const exportedConfig: AgentConfig = {
+    public exportAsConfig(): ValidatedAgentConfig {
+        const exportedConfig: ValidatedAgentConfig = {
             ...this.baselineConfig,
             llm: structuredClone(this.runtimeConfig.llm),
             systemPrompt: this.runtimeConfig.systemPrompt,
@@ -280,7 +294,7 @@ export class AgentStateManager {
      * Get the current effective LLM configuration for a session.
      * **Use this for session-specific LLM config** (includes session overrides).
      */
-    public getLLMConfig(sessionId?: string): Readonly<LLMConfig> {
+    public getLLMConfig(sessionId?: string): Readonly<ValidatedLLMConfig> {
         return this.getRuntimeConfig(sessionId).llm;
     }
 }
