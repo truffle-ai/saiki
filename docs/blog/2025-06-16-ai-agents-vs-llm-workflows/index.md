@@ -1,9 +1,9 @@
 ---
 slug: ai-agents-vs-llm-workflows
-title: Intro to AI agents
-description: Explain AI Agents from first priniciples and how they compare to traditional LLM workflows, when to use each, and why autonomy matters.
+title: AI Agents vs LLM Workflows – Why Autonomy Matters
+description: Learn what AI agents are, how they differ from traditional LLM workflows, and when to use each approach.
 authors: rahul
-tags: [ai-agents, llm-workflows, llm, autonomous-ai, saiki]
+tags: [ai-agents, llm-workflows, autonomous-ai, saiki]
 keywords:
   - ai agents
   - llm workflows
@@ -16,7 +16,7 @@ If you have been remotely exposed to AI, you've probably heard the term AI agent
 
 `AI agent` has become a blanket term that is used in the industry for any automation or software that uses an LLM.
 
-In this post, we'll explore what AI Agent really means under the hood from the ground up, and how AI agents are different from LLM workflows, when to use each, and why autonomy matters.
+In this post, we’ll break down what an **AI agent** is from first principles, then compare **AI agents vs LLM workflows**—when to use each and why autonomy matters.
 
 <!--truncate-->
 
@@ -73,12 +73,13 @@ Now when I chat with the LLM, it will talk to me only like a chef!
 
 
 
-## Function Calling In LLMs
+## Function Calling in LLMs
 Now, we've already established that LLMs can accept input and give back output. But LLMs can do more than that - they can also **take actions**
 
-This is done by giving the LLMs access to `functions`, or `tools`.
+This is done by giving the LLM access to `functions`, or `tools`.
 These are defined methods with specific capabilities, implemented by developers.
-This process is giving the LLMs access to `functions` is called [function_calling](https://platform.openai.com/docs/guides/function-calling)
+
+This process of giving the LLM access to `functions` is called [function_calling](https://platform.openai.com/docs/guides/function-calling)
 
 Let's revisit the previous case where we asked the LLM to add 2 numbers, this time with function calling.
 
@@ -90,7 +91,7 @@ This is an extremely basic example, but the key takeaway here is that by giving 
 
 This is where things get interesting - what if the LLM had a function to book a reservation for you at a restaurant? Or if the LLM had a function to make a payment for you? 
 
-All the LLM would need to do in this case is use the right function based on the request, and you now have AI powered bookings and payments. 
+All the LLM would need to do in this case is use the right function based on the request, and you now have AI-powered bookings and payments. 
 There are other complexities like ensuring the LLM uses the right function, and adding the right guardrails and authentication, but we won't get into that for now.
 
 
@@ -210,4 +211,4 @@ Google DeepMind recently launched [AlphaEvolve](https://deepmind.google/discover
 
 We're also seeing new AI agent products - IDEs like [Cursor](https://www.cursor.com/) and [Windsurf](https://windsurf.com/) allow users to build software applications by talking to an AI agent.
 
-In the next blog post, we'll walk through how to use [Saiki, our open-source AI agent runtime](https://github.com/truffle-ai/saiki) to build a real AI agent.
+In a later blog post, we'll walk through how to use [Saiki, our open-source AI agent runtime](/docs/getting-started/intro) to build a real AI agent.
