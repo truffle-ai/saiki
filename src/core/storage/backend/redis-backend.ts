@@ -17,8 +17,8 @@ export class RedisBackend implements CacheBackend {
         if (this.connected) return;
 
         this.redis = new Redis({
-            host: this.config.host,
-            port: this.config.port,
+            ...(this.config.host && { host: this.config.host }),
+            ...(this.config.port && { port: this.config.port }),
             ...(this.config.password && { password: this.config.password }),
             db: this.config.database || 0,
             family: 4, // IPv4 by default
