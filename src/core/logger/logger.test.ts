@@ -14,7 +14,7 @@ describe('Logger utilities', () => {
 
     beforeEach(() => {
         spyLog = vi.spyOn(console, 'log').mockImplementation(() => {});
-        spyStdErrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+        spyStdErrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true) as any;
     });
 
     it('getDefaultLogLevel falls back to "info"', () => {

@@ -35,7 +35,7 @@ export async function createMcpTransport(
             return new StreamableHTTPServerTransport({
                 sessionIdGenerator: randomUUID,
                 enableJsonResponse: true,
-            });
+            }) as Transport;
     }
 }
 
@@ -68,9 +68,9 @@ export async function initializeMcpServer(
             );
             const text = await agent.run(message);
             logger.info(
-                `MCP tool '${toolName}' sending response: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`
+                `MCP tool '${toolName}' sending response: ${text?.substring(0, 100)}${(text?.length ?? 0) > 100 ? '...' : ''}`
             );
-            return { content: [{ type: 'text', text }] }; // Output structure
+            return { content: [{ type: 'text', text: text ?? '' }] }; // Output structure
         }
     );
     logger.info(

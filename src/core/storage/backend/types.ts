@@ -27,7 +27,7 @@ export interface StorageBackends {
  */
 export class StorageError extends Error {
     constructor(
-        message: string,
+        override message: string,
         public readonly operation: string,
         public readonly cause?: Error
     ) {
