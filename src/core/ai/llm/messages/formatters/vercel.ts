@@ -134,11 +134,14 @@ export class VercelMessageFormatter implements IMessageFormatter {
                         }
                         text = combined || null;
                     }
-                    internal.push({
+                    const assistantMessage: any = {
                         role: 'assistant',
                         content: text,
-                        toolCalls: calls.length ? calls : undefined,
-                    });
+                    };
+                    if (calls.length > 0) {
+                        assistantMessage.toolCalls = calls;
+                    }
+                    internal.push(assistantMessage);
                     break;
                 }
                 case 'tool':
@@ -197,16 +200,19 @@ export class VercelMessageFormatter implements IMessageFormatter {
                             : toolCall.function.arguments,
                 });
             }
-            return {
-                content: contentParts,
-                function_call: {
-                    name: msg.toolCalls[0].function.name,
-                    arguments:
-                        typeof msg.toolCalls[0].function.arguments === 'string'
-                            ? msg.toolCalls[0].function.arguments
-                            : JSON.stringify(msg.toolCalls[0].function.arguments),
-                },
-            };
+            const firstToolCall = msg.toolCalls?.[0];
+            if (firstToolCall) {
+                return {
+                    content: contentParts,
+                    function_call: {
+                        name: firstToolCall.function.name,
+                        arguments:
+                            typeof firstToolCall.function.arguments === 'string'
+                                ? firstToolCall.function.arguments
+                                : JSON.stringify(firstToolCall.function.arguments),
+                    },
+                };
+            }
         }
         return { content: msg.content };
     }
