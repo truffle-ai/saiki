@@ -9,7 +9,6 @@ This page covers all the technical details of configuring LLMs in Saiki.
 ## Type Definition
 
 ```typescript
-// Input types (for configuration files and user-facing APIs)
 export type LLMConfig = {
     provider: string;
     model: string;
@@ -26,29 +25,7 @@ export type AgentConfig = {
     systemPrompt?: string | SystemPromptConfig;
     llm: LLMConfig;
     mcpServers?: Record<string, McpServerConfig>;
-    storage?: StorageConfig;
-    sessions?: SessionsConfig;
-};
-
-// Validated types (used internally after schema parsing with defaults applied)
-export type ValidatedLLMConfig = {
-    provider: string;
-    model: string;
-    apiKey: string;
-    maxIterations: number;    // Required with default value
-    router: 'vercel' | 'in-built';  // Required with default value
-    baseURL?: string;
-    maxInputTokens?: number;
-    maxOutputTokens?: number;
-    temperature?: number;
-};
-
-export type ValidatedAgentConfig = {
-    systemPrompt: string | SystemPromptConfig;  // Required with default
-    llm: ValidatedLLMConfig;
-    mcpServers: Record<string, ValidatedMcpServerConfig>;  // Required with default {}
-    storage: ValidatedStorageConfig;  // Required with default
-    sessions: ValidatedSessionsConfig;  // Required with default
+    // ... other agent fields
 };
 
 export interface SystemPromptConfig {
@@ -63,46 +40,6 @@ export interface ContributorConfig {
     content?: string; // for static
     source?: string; // for dynamic
 }
-```
-
-### Understanding Input vs Validated Types
-
-Saiki uses a two-tier type system powered by Zod schemas:
-
-- **Input Types** (`AgentConfig`, `LLMConfig`): Used for configuration files, API parameters, and user-facing interfaces. Fields with defaults are optional.
-- **Validated Types** (`ValidatedAgentConfig`, `ValidatedLLMConfig`): Used internally after schema validation with all defaults applied. Previously optional fields become required.
-
-**Key Benefits:**
-- ✅ Configuration files can omit fields that have sensible defaults
-- ✅ TypeScript correctly shows optional vs required fields
-- ✅ Internal code works with fully populated, validated configurations
-- ✅ Type safety throughout the application
-
-**Example:**
-```typescript
-// In your config file - fields with defaults are optional
-const userConfig: AgentConfig = {
-    llm: {
-        provider: "openai",
-        model: "gpt-4o-mini", 
-        apiKey: "$OPENAI_API_KEY"
-        // router and maxIterations are optional - defaults will be applied
-    }
-};
-
-// Internally after validation - all fields are present
-const validatedConfig: ValidatedAgentConfig = {
-    llm: {
-        provider: "openai",
-        model: "gpt-4o-mini",
-        apiKey: "$OPENAI_API_KEY",
-        router: "vercel",      // Applied from default
-        maxIterations: 50      // Applied from default
-    },
-    mcpServers: {},           // Applied from default
-    storage: { /* defaults */ },
-    sessions: { /* defaults */ }
-};
 ```
 
 ## LLM Configuration Fields
