@@ -22,7 +22,6 @@ describe('SessionManager', () => {
         model: 'gpt-4',
         apiKey: 'test-key',
         router: 'in-built',
-        systemPrompt: 'You are a helpful assistant',
         maxIterations: 50,
         maxInputTokens: 128000,
     };
@@ -540,12 +539,14 @@ describe('SessionManager', () => {
             mockStorageManager.database.list.mockResolvedValue(sessionIds);
 
             // Mock validation failure for one session
-            mockServices.stateManager.updateLLM.mockImplementation((config, sessionId) => {
-                if (sessionId === 'session-2') {
-                    return { isValid: false, errors: ['Validation failed'], warnings: [] };
+            mockServices.stateManager.updateLLM.mockImplementation(
+                (config: any, sessionId: string) => {
+                    if (sessionId === 'session-2') {
+                        return { isValid: false, errors: ['Validation failed'], warnings: [] };
+                    }
+                    return { isValid: true, errors: [], warnings: [] };
                 }
-                return { isValid: true, errors: [], warnings: [] };
-            });
+            );
 
             // Create sessions
             for (const sessionKey of sessionIds) {
@@ -622,9 +623,9 @@ describe('SessionManager', () => {
             const sessions = await Promise.all(promises);
 
             // All should have the same session ID
-            expect(sessions[0].id).toBe(sessions[1].id);
-            expect(sessions[1].id).toBe(sessions[2].id);
-            expect(sessions[0].id).toBe(sessionId);
+            expect(sessions[0]?.id).toBe(sessions[1]?.id);
+            expect(sessions[1]?.id).toBe(sessions[2]?.id);
+            expect(sessions[0]?.id).toBe(sessionId);
 
             // Verify all sessions are properly created
             expect(sessions[0]).toBeDefined();
@@ -763,7 +764,7 @@ describe('SessionManager', () => {
 
             // Access the interval function and call it directly to test error handling
             const setIntervalCall = setIntervalSpy.mock.calls[0];
-            const cleanupFunction = setIntervalCall[0] as Function;
+            const cleanupFunction = setIntervalCall?.[0] as Function;
 
             // This should not throw
             await expect(cleanupFunction()).resolves.toBeUndefined();
