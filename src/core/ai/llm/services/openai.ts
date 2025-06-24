@@ -271,7 +271,7 @@ export class OpenAIService implements ILLMService {
                 );
 
                 // Get the response message
-                const message = response.choices[0].message;
+                const message = response.choices[0]?.message;
                 if (!message) {
                     throw new Error('Received empty message from OpenAI API');
                 }
