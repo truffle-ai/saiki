@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentStateManager } from './agent-state-manager.js';
 import { AgentEventBus } from '../events/index.js';
+import { AgentConfigSchema } from './schemas.js';
 import type { AgentConfig } from './schemas.js';
 
 describe('AgentStateManager Events', () => {
@@ -24,7 +25,7 @@ describe('AgentStateManager Events', () => {
             },
             llm: {
                 provider: 'openai',
-                model: 'gpt-4',
+                model: 'gpt-4o',
                 apiKey: 'test-key',
                 router: 'in-built',
                 maxIterations: 50,
@@ -38,19 +39,21 @@ describe('AgentStateManager Events', () => {
                 sessionTTL: 3600000,
             },
         };
-        stateManager = new AgentStateManager(mockConfig as any, eventBus); // Test mock has all required fields
+        // Parse through schema to validate and apply defaults, converting input to ValidatedAgentConfig
+        const validatedConfig = AgentConfigSchema.parse(mockConfig);
+        stateManager = new AgentStateManager(validatedConfig, eventBus);
     });
 
     it('emits saiki:stateChanged when LLM config is updated', () => {
         const eventSpy = vi.fn();
         eventBus.on('saiki:stateChanged', eventSpy);
 
-        stateManager.updateLLM({ model: 'gpt-4o' });
+        stateManager.updateLLM({ model: 'gpt-4o-mini' });
 
         expect(eventSpy).toHaveBeenCalledWith({
             field: 'llm',
-            oldValue: expect.objectContaining({ model: 'gpt-4' }),
-            newValue: expect.objectContaining({ model: 'gpt-4o' }),
+            oldValue: expect.objectContaining({ model: 'gpt-4o' }),
+            newValue: expect.objectContaining({ model: 'gpt-4o-mini' }),
             sessionId: undefined,
         });
     });
