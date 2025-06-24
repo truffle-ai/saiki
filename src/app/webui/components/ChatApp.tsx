@@ -212,7 +212,7 @@ export default function ChatApp() {
   const quickActions = [
     {
       title: "What can you do?",
-      description: "See my current capabilities",
+      description: "See current capabilities",
       action: () => handleSend("What tools and capabilities do you have available right now?"),
       icon: "🤔"
     },
@@ -403,9 +403,9 @@ export default function ChatApp() {
                       <img src="/logo.png" alt="Saiki" className="w-8 h-8" />
                     </div>
                     <div className="space-y-2">
-                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent text-center">Hello, I'm Saiki!</h2>
+                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent text-center">Hello, Welcome to Saiki!</h2>
                       <p className="text-muted-foreground text-base text-center">
-                        Try asking me something or connect new tools to expand what I can do
+                        Ask anything or connect new tools to expand what you can do.
                       </p>
                     </div>
                   </div>
