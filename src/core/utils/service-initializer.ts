@@ -73,7 +73,6 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
     });
 
     // 4. Initialize client manager with storage-backed allowed tools provider
-    const connectionMode = config.mcpConnectionMode ?? 'lenient';
     const runMode = (process.env.SAIKI_RUN_MODE as 'cli' | 'web') ?? 'cli';
 
     // Create allowed tools provider with memory configuration
@@ -87,7 +86,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
     });
 
     const clientManager = new MCPManager(confirmationProvider);
-    await clientManager.initializeFromConfig(config.mcpServers, connectionMode);
+    await clientManager.initializeFromConfig(config.mcpServers);
 
     const mcpServerCount = Object.keys(config.mcpServers).length;
     if (mcpServerCount === 0) {

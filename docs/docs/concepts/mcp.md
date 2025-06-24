@@ -35,6 +35,7 @@ mcpServers:
       - -y
       - "@modelcontextprotocol/server-filesystem"
       - .
+    connectionMode: strict  # Ensure this tool is always available
 ```
 
 This tells your Saiki agent to connect to the filesystem MCP server, which then advertises its capabilities to the agent.

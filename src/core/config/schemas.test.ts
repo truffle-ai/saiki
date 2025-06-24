@@ -312,6 +312,48 @@ describe('Config Schemas', () => {
             expect(parsed.timeout).toBe(30000);
         });
 
+        it('applies default connectionMode if not provided', () => {
+            const config = {
+                type: 'stdio',
+                command: 'node',
+                args: ['server.js'],
+            };
+            const parsed = StdioServerConfigSchema.parse(config);
+            expect(parsed.connectionMode).toBe('lenient');
+        });
+
+        it('accepts valid connectionMode values', () => {
+            const strictConfig = {
+                type: 'stdio',
+                command: 'node',
+                args: ['server.js'],
+                connectionMode: 'strict',
+            };
+            expect(() => StdioServerConfigSchema.parse(strictConfig)).not.toThrow();
+            const parsedStrict = StdioServerConfigSchema.parse(strictConfig);
+            expect(parsedStrict.connectionMode).toBe('strict');
+
+            const lenientConfig = {
+                type: 'stdio',
+                command: 'node',
+                args: ['server.js'],
+                connectionMode: 'lenient',
+            };
+            expect(() => StdioServerConfigSchema.parse(lenientConfig)).not.toThrow();
+            const parsedLenient = StdioServerConfigSchema.parse(lenientConfig);
+            expect(parsedLenient.connectionMode).toBe('lenient');
+        });
+
+        it('rejects invalid connectionMode values', () => {
+            const invalidConfig = {
+                type: 'stdio',
+                command: 'node',
+                args: ['server.js'],
+                connectionMode: 'invalid',
+            };
+            expect(() => StdioServerConfigSchema.parse(invalidConfig as any)).toThrow();
+        });
+
         it('rejects missing required fields (command, args)', () => {
             const missingCommand = {
                 type: 'stdio',
@@ -395,6 +437,44 @@ describe('Config Schemas', () => {
             expect(() => SseServerConfigSchema.parse(missingUrl as any)).toThrow();
         });
 
+        it('applies default connectionMode if not provided', () => {
+            const config = {
+                type: 'sse',
+                url: 'http://localhost:8080/events',
+            };
+            const parsed = SseServerConfigSchema.parse(config);
+            expect(parsed.connectionMode).toBe('lenient');
+        });
+
+        it('accepts valid connectionMode values', () => {
+            const strictConfig = {
+                type: 'sse',
+                url: 'http://localhost:8080/events',
+                connectionMode: 'strict',
+            };
+            expect(() => SseServerConfigSchema.parse(strictConfig)).not.toThrow();
+            const parsedStrict = SseServerConfigSchema.parse(strictConfig);
+            expect(parsedStrict.connectionMode).toBe('strict');
+
+            const lenientConfig = {
+                type: 'sse',
+                url: 'http://localhost:8080/events',
+                connectionMode: 'lenient',
+            };
+            expect(() => SseServerConfigSchema.parse(lenientConfig)).not.toThrow();
+            const parsedLenient = SseServerConfigSchema.parse(lenientConfig);
+            expect(parsedLenient.connectionMode).toBe('lenient');
+        });
+
+        it('rejects invalid connectionMode values', () => {
+            const invalidConfig = {
+                type: 'sse',
+                url: 'http://localhost:8080/events',
+                connectionMode: 'invalid',
+            };
+            expect(() => SseServerConfigSchema.parse(invalidConfig as any)).toThrow();
+        });
+
         it('rejects invalid types for fields (url, headers, timeout)', () => {
             const invalidUrlType = {
                 type: 'sse',
@@ -432,6 +512,44 @@ describe('Config Schemas', () => {
         it('rejects missing required fields (url)', () => {
             const missingUrl = { type: 'http' as const };
             expect(() => HttpServerConfigSchema.parse(missingUrl as any)).toThrow();
+        });
+
+        it('applies default connectionMode if not provided', () => {
+            const config = {
+                type: 'http' as const,
+                url: 'http://localhost:9000/api',
+            };
+            const parsed = HttpServerConfigSchema.parse(config);
+            expect(parsed.connectionMode).toBe('lenient');
+        });
+
+        it('accepts valid connectionMode values', () => {
+            const strictConfig = {
+                type: 'http' as const,
+                url: 'http://localhost:9000/api',
+                connectionMode: 'strict',
+            };
+            expect(() => HttpServerConfigSchema.parse(strictConfig)).not.toThrow();
+            const parsedStrict = HttpServerConfigSchema.parse(strictConfig);
+            expect(parsedStrict.connectionMode).toBe('strict');
+
+            const lenientConfig = {
+                type: 'http' as const,
+                url: 'http://localhost:9000/api',
+                connectionMode: 'lenient',
+            };
+            expect(() => HttpServerConfigSchema.parse(lenientConfig)).not.toThrow();
+            const parsedLenient = HttpServerConfigSchema.parse(lenientConfig);
+            expect(parsedLenient.connectionMode).toBe('lenient');
+        });
+
+        it('rejects invalid connectionMode values', () => {
+            const invalidConfig = {
+                type: 'http' as const,
+                url: 'http://localhost:9000/api',
+                connectionMode: 'invalid',
+            };
+            expect(() => HttpServerConfigSchema.parse(invalidConfig as any)).toThrow();
         });
 
         it('rejects invalid types for fields (url, headers, timeout)', () => {

@@ -19,12 +19,12 @@ describe('SaikiAgent Lifecycle Management', () => {
         vi.resetAllMocks();
 
         mockConfig = {
+            systemPrompt: 'You are a helpful assistant',
             llm: {
                 provider: 'openai',
                 model: 'gpt-4o',
                 apiKey: 'test-key',
                 router: 'vercel',
-                systemPrompt: 'You are a helpful assistant',
                 maxIterations: 50,
                 maxInputTokens: 128000,
             },
@@ -95,16 +95,23 @@ describe('SaikiAgent Lifecycle Management', () => {
             expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig);
         });
 
-        test('should start with strict connection mode in config', async () => {
-            const configWithStrictMode = {
+        test('should start with per-server connection modes in config', async () => {
+            const configWithServerModes = {
                 ...mockConfig,
-                mcpConnectionMode: 'strict' as const,
+                mcpServers: {
+                    filesystem: {
+                        type: 'stdio' as const,
+                        command: 'npx',
+                        args: ['@modelcontextprotocol/server-filesystem', '.'],
+                        connectionMode: 'strict' as const,
+                    },
+                },
             };
-            const agent = new SaikiAgent(configWithStrictMode);
+            const agent = new SaikiAgent(configWithServerModes);
 
             await agent.start();
 
-            expect(mockCreateAgentServices).toHaveBeenCalledWith(configWithStrictMode);
+            expect(mockCreateAgentServices).toHaveBeenCalledWith(configWithServerModes);
         });
 
         test('should throw error when starting twice', async () => {

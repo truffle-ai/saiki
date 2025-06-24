@@ -227,14 +227,10 @@ export class MCPManager {
 
     /**
      * Initialize clients from server configurations
-     * @param serverConfigs Server configurations
-     * @param connectionMode Whether to enforce all connections must succeed
+     * @param serverConfigs Server configurations with individual connection modes
      * @returns Promise resolving when initialization is complete
      */
-    async initializeFromConfig(
-        serverConfigs: ServerConfigs,
-        connectionMode: 'strict' | 'lenient' = 'lenient'
-    ): Promise<void> {
+    async initializeFromConfig(serverConfigs: ServerConfigs): Promise<void> {
         // Handle empty server configurations gracefully
         if (Object.keys(serverConfigs).length === 0) {
             logger.info('No MCP servers configured - running without external tools');
@@ -243,8 +239,18 @@ export class MCPManager {
 
         const successfulConnections: string[] = [];
         const connectionPromises: Promise<void>[] = [];
+        const strictServers: string[] = [];
+        const lenientServers: string[] = [];
 
+        // Categorize servers by their connection mode
         for (const [name, config] of Object.entries(serverConfigs)) {
+            const effectiveMode = config.connectionMode || 'lenient';
+            if (effectiveMode === 'strict') {
+                strictServers.push(name);
+            } else {
+                lenientServers.push(name);
+            }
+
             const connectPromise = this.connectServer(name, config)
                 .then(() => {
                     successfulConnections.push(name);
@@ -257,21 +263,19 @@ export class MCPManager {
 
         await Promise.all(connectionPromises);
 
-        const requiredSuccessfulConnections =
-            connectionMode === 'strict'
-                ? Object.keys(serverConfigs).length
-                : Math.min(1, Object.keys(serverConfigs).length);
-
-        if (this.clients.size < requiredSuccessfulConnections) {
-            const errorSummary = Object.entries(this.getFailedConnections())
-                .map(([server, error]) => `${server}: ${error}`)
+        // Check strict servers - all must succeed
+        const failedStrictServers = strictServers.filter(
+            (name) => !successfulConnections.includes(name)
+        );
+        if (failedStrictServers.length > 0) {
+            const strictErrors = failedStrictServers
+                .map((name) => `${name}: ${this.connectionErrors[name] || 'Unknown error'}`)
                 .join('; ');
-            throw new Error(
-                connectionMode === 'strict'
-                    ? `Failed to connect to all required servers. Errors: ${errorSummary}`
-                    : `Failed to connect to at least one server. Errors: ${errorSummary}`
-            );
+            throw new Error(`Failed to connect to required strict servers: ${strictErrors}`);
         }
+
+        // Lenient servers are allowed to fail without throwing errors
+        // No additional validation needed for lenient servers
     }
 
     /**
