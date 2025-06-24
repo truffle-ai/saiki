@@ -50,6 +50,11 @@
 - **Consistent return patterns** - All API endpoints return responses consistently
 - **Avoid `any` types** - Use specific types unless absolutely necessary (rare exceptions in tests)
 
+### Git and PR Standards
+- **Never include "Generated with Claude Code" footers** - In commit messages, PR descriptions, or any documentation
+- **Clean commit messages** - Focus on technical changes and business value
+- **Descriptive PR titles** - Should clearly indicate the change without AI attribution
+
 ## Application Architecture
 
 ### API Layer (`src/app/api/`)
