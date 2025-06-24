@@ -124,7 +124,8 @@ export class SQLiteBackend implements DatabaseBackend {
             verbose: sqliteOptions.verbose
                 ? (message?: unknown, ...additionalArgs: unknown[]) => {
                       logger.debug(
-                          typeof message === 'string' || typeof message === 'object'
+                          typeof message === 'string' ||
+                              (typeof message === 'object' && message !== null)
                               ? message
                               : String(message),
                           ...additionalArgs

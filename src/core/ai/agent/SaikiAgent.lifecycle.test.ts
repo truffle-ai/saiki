@@ -41,7 +41,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
         mockServices = {
             clientManager: {
-                disconnectAll: vi.fn().mockResolvedValue(undefined),
+                disconnectAll: vi.fn(),
                 initializeFromConfig: vi.fn().mockResolvedValue(undefined),
             } as any,
             promptManager: {} as any,
@@ -62,17 +62,22 @@ describe('SaikiAgent Lifecycle Management', () => {
                 getLLMConfig: vi.fn().mockReturnValue(mockConfig.llm),
             } as any,
             sessionManager: {
-                cleanup: vi.fn().mockResolvedValue(undefined),
+                cleanup: vi.fn(),
                 init: vi.fn().mockResolvedValue(undefined),
                 createSession: vi.fn().mockResolvedValue({ id: 'test-session' }),
             } as any,
             storage: {} as any,
             storageManager: {
-                disconnect: vi.fn().mockResolvedValue(undefined),
+                disconnect: vi.fn(),
             } as any,
         };
 
         mockCreateAgentServices.mockResolvedValue(mockServices);
+
+        // Set up default behaviors for mock functions that will be overridden in tests
+        (mockServices.sessionManager.cleanup as any).mockResolvedValue(undefined);
+        (mockServices.clientManager.disconnectAll as any).mockResolvedValue(undefined);
+        (mockServices.storageManager!.disconnect as any).mockResolvedValue(undefined);
     });
 
     describe('Constructor Patterns', () => {
@@ -103,6 +108,8 @@ describe('SaikiAgent Lifecycle Management', () => {
                         type: 'stdio' as const,
                         command: 'npx',
                         args: ['@modelcontextprotocol/server-filesystem', '.'],
+                        env: {},
+                        timeout: 30000,
                         connectionMode: 'strict' as const,
                     },
                 },
@@ -142,7 +149,7 @@ describe('SaikiAgent Lifecycle Management', () => {
             expect(agent.getIsStopped()).toBe(true);
             expect(mockServices.sessionManager.cleanup).toHaveBeenCalled();
             expect(mockServices.clientManager.disconnectAll).toHaveBeenCalled();
-            expect(mockServices.storageManager.disconnect).toHaveBeenCalled();
+            expect(mockServices.storageManager!.disconnect).toHaveBeenCalled();
         });
 
         test('should throw error when stopping before start', async () => {
@@ -167,7 +174,7 @@ describe('SaikiAgent Lifecycle Management', () => {
             await agent.start();
 
             // Make session cleanup fail
-            mockServices.sessionManager.cleanup.mockRejectedValue(
+            (mockServices.sessionManager.cleanup as any).mockRejectedValue(
                 new Error('Session cleanup failed')
             );
 
@@ -177,7 +184,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             // Should still try to clean other services
             expect(mockServices.clientManager.disconnectAll).toHaveBeenCalled();
-            expect(mockServices.storageManager.disconnect).toHaveBeenCalled();
+            expect(mockServices.storageManager!.disconnect).toHaveBeenCalled();
         });
     });
 
@@ -271,17 +278,17 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             const cleanupOrder: string[] = [];
 
-            mockServices.sessionManager.cleanup.mockImplementation(() => {
+            (mockServices.sessionManager.cleanup as any).mockImplementation(() => {
                 cleanupOrder.push('sessions');
                 return Promise.resolve();
             });
 
-            mockServices.clientManager.disconnectAll.mockImplementation(() => {
+            (mockServices.clientManager.disconnectAll as any).mockImplementation(() => {
                 cleanupOrder.push('clients');
                 return Promise.resolve();
             });
 
-            mockServices.storageManager.disconnect.mockImplementation(() => {
+            (mockServices.storageManager!.disconnect as any).mockImplementation(() => {
                 cleanupOrder.push('storage');
                 return Promise.resolve();
             });

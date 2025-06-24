@@ -37,18 +37,25 @@ describe('MCPManager Connection Mode Tests', () => {
                     type: 'stdio',
                     command: 'node',
                     args: ['strict-server.js'],
+                    env: {},
+                    timeout: 30000,
                     connectionMode: 'strict',
                 },
                 lenientServer: {
                     type: 'stdio',
                     command: 'node',
                     args: ['lenient-server.js'],
+                    env: {},
+                    timeout: 30000,
                     connectionMode: 'lenient',
                 },
                 defaultServer: {
                     type: 'stdio',
                     command: 'node',
                     args: ['default-server.js'],
+                    env: {},
+                    timeout: 30000,
+                    connectionMode: 'lenient',
                     // connectionMode defaults to 'lenient'
                 },
             };
@@ -90,6 +97,8 @@ describe('MCPManager Connection Mode Tests', () => {
                     type: 'stdio',
                     command: 'node',
                     args: ['strict-server.js'],
+                    env: {},
+                    timeout: 30000,
                     connectionMode: 'strict',
                 },
             };
@@ -126,6 +135,8 @@ describe('MCPManager Connection Mode Tests', () => {
                     type: 'stdio',
                     command: 'node',
                     args: ['lenient-server.js'],
+                    env: {},
+                    timeout: 30000,
                     connectionMode: 'lenient',
                 },
             };
@@ -160,6 +171,9 @@ describe('MCPManager Connection Mode Tests', () => {
                     type: 'stdio',
                     command: 'node',
                     args: ['default-server.js'],
+                    env: {},
+                    timeout: 30000,
+                    connectionMode: 'lenient',
                     // connectionMode not specified, should default to 'lenient'
                 },
             };
@@ -194,17 +208,23 @@ describe('MCPManager Connection Mode Tests', () => {
                     type: 'stdio',
                     command: 'node',
                     args: ['stdio-server.js'],
+                    env: {},
+                    timeout: 30000,
                     connectionMode: 'strict',
                 },
                 sseServer: {
                     type: 'sse',
                     url: 'http://localhost:8080/events',
+                    timeout: 30000,
                     connectionMode: 'lenient',
+                    headers: {},
                 },
                 httpServer: {
                     type: 'http',
                     url: 'http://localhost:9000/api',
+                    timeout: 30000,
                     connectionMode: 'strict',
+                    headers: {},
                 },
             };
 

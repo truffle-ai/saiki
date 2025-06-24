@@ -158,9 +158,11 @@ export async function initSaiki(
         logger.debug(`Saiki config file created at ${configPath}`);
 
         // update saiki config file based on llmProvider
-        logger.debug(`Updating saiki config file based on llmProvider: ${llmProvider}`);
-        await updateSaikiConfigFile(configPath, llmProvider);
-        logger.debug(`Saiki config file updated with llmProvider: ${llmProvider}`);
+        if (llmProvider) {
+            logger.debug(`Updating saiki config file based on llmProvider: ${llmProvider}`);
+            await updateSaikiConfigFile(configPath, llmProvider);
+            logger.debug(`Saiki config file updated with llmProvider: ${llmProvider}`);
+        }
         // create saiki example file if requested
         if (createExampleFile) {
             logger.debug('Creating saiki example file...');
@@ -352,7 +354,7 @@ export async function updateEnvFile(
     const currentValues: Record<string, string> = {};
     envLines.forEach((line) => {
         const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && saikiEnvKeys.includes(match[1])) {
+        if (match && match[1] && match[2] !== undefined && saikiEnvKeys.includes(match[1])) {
             currentValues[match[1]] = match[2];
         }
     });
@@ -388,12 +390,12 @@ export async function updateEnvFile(
 
         // Find the end of the section
         let sectionEnd = headerIndex + 1;
-        while (sectionEnd < envLines.length && envLines[sectionEnd].trim() !== '') {
+        while (sectionEnd < envLines.length && envLines[sectionEnd]?.trim() !== '') {
             sectionEnd++;
         }
 
         // Skip the blank line after the section if present
-        if (sectionEnd < envLines.length && envLines[sectionEnd].trim() === '') {
+        if (sectionEnd < envLines.length && envLines[sectionEnd]?.trim() === '') {
             sectionEnd++;
         }
 
@@ -410,7 +412,7 @@ export async function updateEnvFile(
     const existingEnvVars: Record<string, string> = {};
     contentLines.forEach((line) => {
         const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && saikiEnvKeys.includes(match[1])) {
+        if (match && match[1] && match[2] !== undefined && saikiEnvKeys.includes(match[1])) {
             existingEnvVars[match[1]] = match[2];
         }
     });
@@ -418,7 +420,7 @@ export async function updateEnvFile(
     // Ensure exactly one blank line before adding the new section
     if (contentLines.length > 0) {
         // If the last line is not blank, add a blank line
-        if (contentLines[contentLines.length - 1].trim() !== '') {
+        if (contentLines[contentLines.length - 1]?.trim() !== '') {
             contentLines.push('');
         }
     } else {

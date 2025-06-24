@@ -524,7 +524,14 @@ function buildFinalConfig(
             maxInputTokens = updates.maxInputTokens;
         }
     } else {
-        const effectiveMaxInputTokens = getEffectiveMaxInputTokens(core);
+        const effectiveMaxInputTokens = getEffectiveMaxInputTokens({
+            ...core,
+            maxIterations: updates.maxIterations ?? currentConfig.maxIterations,
+            maxInputTokens: currentConfig.maxInputTokens,
+            maxOutputTokens: currentConfig.maxOutputTokens,
+            temperature: currentConfig.temperature,
+            baseURL: currentConfig.baseURL,
+        });
         const modelChanged = core.model !== currentConfig.model;
 
         if (modelChanged) {

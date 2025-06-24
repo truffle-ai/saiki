@@ -59,7 +59,6 @@ describe('ChatSession', () => {
         model: 'gpt-4',
         apiKey: 'test-key',
         router: 'in-built',
-        systemPrompt: 'You are a helpful assistant',
         maxIterations: 50,
         maxInputTokens: 128000,
     };

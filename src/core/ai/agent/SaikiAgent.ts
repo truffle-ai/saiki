@@ -574,15 +574,19 @@ export class SaikiAgent {
                 return {
                     success: false,
                     errors: result.errors.map((err) => ({
-                        type: err.type,
+                        type: err.type as string,
                         message: err.message,
-                        provider: err.provider,
-                        model: err.model,
-                        router: err.router,
-                        suggestedAction:
-                            err.type === 'missing_api_key'
-                                ? `Please set the ${err.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
-                                : err.suggestedAction,
+                        ...(err.provider && { provider: err.provider }),
+                        ...(err.model && { model: err.model }),
+                        ...(err.router && { router: err.router }),
+                        ...((err.type === 'missing_api_key'
+                            ? `Please set the ${err.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
+                            : err.suggestedAction) && {
+                            suggestedAction:
+                                err.type === 'missing_api_key'
+                                    ? `Please set the ${err.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
+                                    : err.suggestedAction,
+                        }),
                     })),
                     warnings: result.warnings,
                 };
@@ -591,8 +595,9 @@ export class SaikiAgent {
             // Perform the actual LLM switch with validated config
             return await this.performLLMSwitch(result.config, sessionId, result.warnings);
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error('Error switching LLM', {
-                error: error.message,
+                error: errorMessage,
                 config: llmUpdates,
                 sessionScope: sessionId,
             });
@@ -601,7 +606,7 @@ export class SaikiAgent {
                 errors: [
                     {
                         type: 'general',
-                        message: error.message,
+                        message: errorMessage,
                     },
                 ],
             };
@@ -641,12 +646,12 @@ export class SaikiAgent {
             return {
                 success: false,
                 errors: stateValidation.errors.map((err) => ({
-                    type: err.type,
+                    type: err.type as string,
                     message: err.message,
-                    provider: err.provider,
-                    model: err.model,
-                    router: err.router,
-                    suggestedAction: err.suggestedAction,
+                    ...(err.provider && { provider: err.provider }),
+                    ...(err.model && { model: err.model }),
+                    ...(err.router && { router: err.router }),
+                    ...(err.suggestedAction && { suggestedAction: err.suggestedAction }),
                 })),
             };
         }
@@ -687,7 +692,7 @@ export class SaikiAgent {
             success: true,
             config: validatedConfig,
             message: switchResult.message,
-            warnings: allWarnings.length > 0 ? allWarnings : undefined,
+            ...(allWarnings.length > 0 && { warnings: allWarnings }),
         };
     }
 

@@ -1,0 +1,27 @@
+---
+description: Mandatory local validation rules requiring all code changes to pass build, test, lint, and typecheck commands before completion 
+globs: ["**/*.ts", "**/*.js", "**/*.tsx", "**/*.jsx"]
+alwaysApply: false
+---
+- **All code changes must be verified before completion**
+  - The agent **MUST run** the following commands and ensure they exit with status `0`:
+    - `npm run build`  – compiles the project bundle
+    - `npm run test`   – executes the full test suite
+    - `npm run lint`   – checks for ESLint violations
+    - `npm run typecheck` – runs the strict TypeScript type checker
+  - If any command fails, the agent should:
+    1. Stop further edits aimed at feature implementation.
+    2. Diagnose and fix the underlying issue.
+    3. Re-run the failing command(s) until all four commands pass or ask the user for guidance after 3 failed attempts.
+
+- **CI-parity in local validation**
+  - Treat these commands as the minimum gate equivalent to CI checks.
+  - New files must include any required test cases to keep coverage intact.
+
+- **Examples**
+  ```bash
+  # ✅ DO: Validate before finishing a task
+  npm run build && npm run test && npm run lint && npm run typecheck
+
+  # ❌ DON'T: Submit or mark a task done without running these validations
+  ```

@@ -367,7 +367,11 @@ export class ContextManager {
         const messageParts: InternalMessage['content'] = imageData
             ? [
                   { type: 'text', text: textContent },
-                  { type: 'image', image: imageData.image, mimeType: imageData.mimeType },
+                  {
+                      type: 'image',
+                      image: imageData.image,
+                      mimeType: imageData.mimeType || 'image/jpeg',
+                  },
               ]
             : [{ type: 'text', text: textContent }];
         logger.debug(
@@ -393,7 +397,11 @@ export class ContextManager {
             throw new Error('addAssistantMessage: Must provide content or toolCalls.');
         }
         // Further validation happens within addMessage
-        await this.addMessage({ role: 'assistant', content, toolCalls });
+        await this.addMessage({
+            role: 'assistant' as const,
+            content,
+            ...(toolCalls && toolCalls.length > 0 && { toolCalls }),
+        });
     }
 
     /**
@@ -421,7 +429,7 @@ export class ContextManager {
                 {
                     type: 'image',
                     image: getImageData(imagePart),
-                    mimeType: imagePart.mimeType,
+                    mimeType: imagePart.mimeType || 'image/jpeg',
                 },
             ];
         } else if (typeof result === 'string') {

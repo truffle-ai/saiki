@@ -28,7 +28,6 @@ describe('SaikiAgent.switchLLM', () => {
         model: 'gpt-4o',
         apiKey: 'test-key',
         router: 'vercel',
-        systemPrompt: 'You are a helpful assistant',
         maxIterations: 50,
         maxInputTokens: 128000,
     };
@@ -135,6 +134,7 @@ describe('SaikiAgent.switchLLM', () => {
         mockCreateAgentServices.mockResolvedValue(mockServices);
 
         const mockConfig: AgentConfig = {
+            systemPrompt: 'You are a helpful AI assistant.',
             llm: mockLLMConfig,
             mcpServers: {},
             storage: {
@@ -172,8 +172,10 @@ describe('SaikiAgent.switchLLM', () => {
             expect(result.success).toBe(false);
             expect(result.errors).toBeDefined();
             expect(result.errors!).toHaveLength(1);
-            expect(result.errors![0].type).toBe('general');
-            expect(result.errors![0].message).toBe('At least model or provider must be specified');
+            expect(result.errors?.[0]?.type).toBe('general');
+            expect(result.errors?.[0]?.message).toBe(
+                'At least model or provider must be specified'
+            );
         });
 
         test('should handle validation failure', async () => {
@@ -194,8 +196,8 @@ describe('SaikiAgent.switchLLM', () => {
             expect(result.success).toBe(false);
             expect(result.errors).toBeDefined();
             expect(result.errors!).toHaveLength(1);
-            expect(result.errors![0].type).toBe('invalid_model');
-            expect(result.errors![0].message).toBe('Invalid model');
+            expect(result.errors?.[0]?.type).toBe('invalid_model');
+            expect(result.errors?.[0]?.message).toBe('Invalid model');
         });
     });
 
@@ -205,7 +207,7 @@ describe('SaikiAgent.switchLLM', () => {
 
             expect(result.success).toBe(true);
             expect(result.config).toBeDefined();
-            expect(result.config!.model).toBe('gpt-4o-mini');
+            expect(result.config?.model).toBe('gpt-4o-mini');
             expect(result.message).toContain(
                 'Successfully switched to openai/gpt-4o using vercel router'
             );
@@ -326,8 +328,8 @@ describe('SaikiAgent.switchLLM', () => {
             expect(result.success).toBe(false);
             expect(result.errors).toBeDefined();
             expect(result.errors!).toHaveLength(1);
-            expect(result.errors![0].type).toBe('general');
-            expect(result.errors![0].message).toBe('Session nonexistent not found');
+            expect(result.errors?.[0]?.type).toBe('general');
+            expect(result.errors?.[0]?.message).toBe('Session nonexistent not found');
         });
 
         test('should use session-specific state', async () => {
@@ -475,8 +477,8 @@ describe('SaikiAgent.switchLLM', () => {
             expect(result.success).toBe(false);
             expect(result.errors).toBeDefined();
             expect(result.errors!).toHaveLength(1);
-            expect(result.errors![0].type).toBe('general');
-            expect(result.errors![0].message).toBe('Validation failed');
+            expect(result.errors?.[0]?.type).toBe('general');
+            expect(result.errors?.[0]?.message).toBe('Validation failed');
         });
 
         test('should handle state manager validation errors', async () => {
@@ -503,8 +505,8 @@ describe('SaikiAgent.switchLLM', () => {
 
             expect(result.success).toBe(false);
             expect(result.errors).toHaveLength(1);
-            expect(result.errors[0].type).toBe('missing_api_key');
-            expect(result.errors[0].message).toBe('API key required');
+            expect(result.errors?.[0]?.type).toBe('missing_api_key');
+            expect(result.errors?.[0]?.message).toBe('API key required');
         });
 
         test('should handle session manager errors', async () => {
@@ -515,8 +517,8 @@ describe('SaikiAgent.switchLLM', () => {
 
             expect(result.success).toBe(false);
             expect(result.errors).toHaveLength(1);
-            expect(result.errors[0].type).toBe('general');
-            expect(result.errors[0].message).toBe('Session error');
+            expect(result.errors?.[0]?.type).toBe('general');
+            expect(result.errors?.[0]?.message).toBe('Session error');
         });
     });
 });

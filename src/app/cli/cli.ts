@@ -152,7 +152,8 @@ export async function startAiCli(agent: SaikiAgent) {
             rl.close();
         }
     } catch (error) {
-        logger.error(`Error during CLI initialization: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error(`Error during CLI initialization: ${errorMessage}`);
         process.exit(1); // Exit with error code if CLI setup fails
     }
 }

@@ -82,7 +82,7 @@ export class AnthropicService implements ILLMService {
                 const response = await this.anthropic.messages.create({
                     model: this.model,
                     messages: formattedMessages,
-                    system: formattedSystemPrompt,
+                    ...(formattedSystemPrompt && { system: formattedSystemPrompt }),
                     tools: formattedTools,
                     max_tokens: 4096,
                 });

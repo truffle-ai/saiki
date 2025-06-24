@@ -58,13 +58,16 @@ export class VercelLLMService implements ILLMService {
     formatTools(tools: ToolSet): VercelToolSet {
         logger.debug(`Formatting tools for vercel`);
         return Object.keys(tools).reduce<VercelToolSet>((acc, toolName) => {
-            acc[toolName] = {
-                description: tools[toolName].description,
-                parameters: jsonSchema(tools[toolName].parameters as any),
-                execute: async (args: any) => {
-                    return await this.clientManager.executeTool(toolName, args);
-                },
-            };
+            const tool = tools[toolName];
+            if (tool) {
+                acc[toolName] = {
+                    parameters: jsonSchema(tool.parameters as any),
+                    execute: async (args: any) => {
+                        return await this.clientManager.executeTool(toolName, args);
+                    },
+                    ...(tool.description && { description: tool.description }),
+                };
+            }
             return acc;
         }, {});
     }
