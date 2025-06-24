@@ -23,6 +23,7 @@ jobs:
       contents: read
       pull-requests: write  # Allow Claude to post review comments
       issues: write         # Allow Claude to create/comment on issues
+      id-token: write
 
     steps:
       - name: Checkout repository
