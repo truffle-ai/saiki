@@ -14,29 +14,12 @@ describe('ConfigManager', () => {
                 type: 'stdio',
                 command: 'node',
                 args: ['agent-server.js'],
-                // TODO: These fields have defaults in Zod schema but TypeScript requires them
-                // Need to investigate why Zod optional().default() fields aren't truly optional in TS types
-                env: {},
-                timeout: 30000,
-                connectionMode: 'lenient',
             },
         },
         llm: {
             provider: 'openai',
             model: 'o4-mini',
             apiKey: 'SET_YOUR_API_KEY_HERE',
-            // TODO: Check if these should have defaults in schema to make them truly optional
-            maxIterations: 50,
-            router: 'vercel',
-        },
-        // TODO: Investigate if storage/sessions should be optional with defaults or required
-        storage: {
-            cache: { type: 'in-memory' },
-            database: { type: 'in-memory' },
-        },
-        sessions: {
-            maxSessions: 10,
-            sessionTTL: 3600,
         },
     };
 

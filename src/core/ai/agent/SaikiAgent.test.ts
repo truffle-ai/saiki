@@ -153,13 +153,27 @@ describe('SaikiAgent.switchLLM', () => {
 
         // Mock the validation function - return ValidatedLLMConfig with all required fields
         mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, currentConfig) => {
+            const resultConfig = {
+                ...mockLLMConfig,
+                ...updates,
+            };
             return {
                 config: {
-                    ...mockLLMConfig,
-                    // Ensure required fields are present (defaults applied)
-                    maxIterations: mockLLMConfig.maxIterations ?? 50,
-                    router: mockLLMConfig.router ?? 'vercel',
-                    ...updates, // Apply the updates so router is properly set
+                    provider: resultConfig.provider,
+                    model: resultConfig.model,
+                    apiKey: resultConfig.apiKey,
+                    // Ensure required fields have values (ValidatedLLMConfig)
+                    maxIterations: resultConfig.maxIterations ?? 50,
+                    router: resultConfig.router ?? 'vercel',
+                    // Optional fields
+                    ...(resultConfig.baseURL && { baseURL: resultConfig.baseURL }),
+                    ...(resultConfig.maxInputTokens && {
+                        maxInputTokens: resultConfig.maxInputTokens,
+                    }),
+                    ...(resultConfig.maxOutputTokens && {
+                        maxOutputTokens: resultConfig.maxOutputTokens,
+                    }),
+                    ...(resultConfig.temperature && { temperature: resultConfig.temperature }),
                 },
                 isValid: true,
                 errors: [],

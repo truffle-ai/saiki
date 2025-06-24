@@ -14,6 +14,23 @@ describe('CLI Overrides', () => {
                 type: 'stdio',
                 command: 'node',
                 args: ['agent-server.js'],
+            },
+        },
+        llm: {
+            provider: 'openai',
+            model: 'gpt-4o',
+            apiKey: 'file-api-key',
+        },
+    };
+
+    // Expected config after applying defaults through schema
+    const expectedConfigWithDefaults = {
+        systemPrompt: 'hi',
+        mcpServers: {
+            test: {
+                type: 'stdio' as const,
+                command: 'node',
+                args: ['agent-server.js'],
                 env: {},
                 timeout: 30000,
                 connectionMode: 'lenient' as const,
@@ -23,12 +40,16 @@ describe('CLI Overrides', () => {
             provider: 'openai',
             model: 'gpt-4o',
             apiKey: 'file-api-key',
-            router: 'vercel',
             maxIterations: 50,
+            router: 'vercel' as const,
         },
         storage: {
-            cache: { type: 'in-memory' },
-            database: { type: 'in-memory' },
+            cache: {
+                type: 'in-memory' as const,
+            },
+            database: {
+                type: 'in-memory' as const,
+            },
         },
         sessions: {
             maxSessions: 100,
@@ -38,7 +59,7 @@ describe('CLI Overrides', () => {
 
     test('applies CLI overrides correctly', () => {
         const cliOverrides: CLIConfigOverrides = {
-            model: 'gpt-4o-mini',
+            model: 'claude-3-5-sonnet-20240620',
             provider: 'anthropic',
             router: 'in-built',
             apiKey: 'cli-api-key',
@@ -46,7 +67,7 @@ describe('CLI Overrides', () => {
 
         const result = applyCLIOverrides(clone(baseConfig), cliOverrides);
 
-        expect(result.llm.model).toBe('gpt-4o-mini');
+        expect(result.llm.model).toBe('claude-3-5-sonnet-20240620');
         expect(result.llm.provider).toBe('anthropic');
         expect(result.llm.router).toBe('in-built');
         expect(result.llm.apiKey).toBe('cli-api-key');
@@ -66,25 +87,25 @@ describe('CLI Overrides', () => {
         expect(result.llm.apiKey).toBe('file-api-key'); // Original
     });
 
-    test('returns original config when no overrides provided', () => {
+    test('returns config with defaults when no overrides provided', () => {
         const result = applyCLIOverrides(clone(baseConfig), undefined);
 
-        expect(result).toEqual(baseConfig);
+        expect(result).toEqual(expectedConfigWithDefaults);
         expect(result).not.toBe(baseConfig); // Should be a copy
     });
 
-    test('returns original config when empty overrides provided', () => {
+    test('returns config with defaults when empty overrides provided', () => {
         const result = applyCLIOverrides(clone(baseConfig), {});
 
-        expect(result).toEqual(baseConfig);
+        expect(result).toEqual(expectedConfigWithDefaults);
         expect(result).not.toBe(baseConfig); // Should be a copy
     });
 
     test('does not mutate original config', () => {
         const originalConfig = clone(baseConfig);
         const cliOverrides: CLIConfigOverrides = {
-            model: 'new-model',
-            provider: 'new-provider',
+            model: 'gpt-4o-mini',
+            provider: 'openai',
         };
 
         applyCLIOverrides(originalConfig, cliOverrides);
@@ -96,27 +117,31 @@ describe('CLI Overrides', () => {
 
     test('preserves all non-LLM config fields', () => {
         const cliOverrides: CLIConfigOverrides = {
-            model: 'new-model',
+            model: 'gpt-4o-mini',
         };
 
         const result = applyCLIOverrides(clone(baseConfig), cliOverrides);
 
-        // Non-LLM fields should be preserved
+        // Non-LLM fields should be preserved (with defaults applied)
         expect(result.systemPrompt).toBe(baseConfig.systemPrompt);
-        expect(result.mcpServers).toEqual(baseConfig.mcpServers);
+        expect(result.mcpServers?.test?.type).toBe('stdio');
+        if (result.mcpServers?.test?.type === 'stdio') {
+            expect(result.mcpServers.test.command).toBe('node');
+            expect(result.mcpServers.test.args).toEqual(['agent-server.js']);
+        }
     });
 
     test('handles undefined values in overrides gracefully', () => {
         const cliOverrides: CLIConfigOverrides = {
-            model: 'new-model',
+            model: 'gpt-4o-mini',
             // provider, router, apiKey intentionally omitted to test undefined handling
         };
 
         const result = applyCLIOverrides(clone(baseConfig), cliOverrides);
 
-        expect(result.llm.model).toBe('new-model'); // Applied
+        expect(result.llm.model).toBe('gpt-4o-mini'); // Applied
         expect(result.llm.provider).toBe('openai'); // Original (undefined ignored)
-        expect(result.llm.router).toBe('vercel'); // Original (undefined ignored)
+        expect(result.llm.router).toBe('vercel'); // Default (undefined ignored)
         expect(result.llm.apiKey).toBe('file-api-key'); // Original (undefined ignored)
     });
 });
