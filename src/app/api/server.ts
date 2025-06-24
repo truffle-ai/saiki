@@ -349,24 +349,32 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     ...config.llm,
                     apiKey: config.llm.apiKey ? '[REDACTED]' : undefined,
                 },
-                mcpServers: Object.fromEntries(
-                    Object.entries(config.mcpServers).map(([name, serverConfig]: [string, any]) => [
-                        name,
-                        {
-                            ...serverConfig,
-                            env: serverConfig.env
-                                ? Object.fromEntries(
-                                      Object.entries(serverConfig.env).map(([key, value]) => [
-                                          key,
-                                          value && typeof value === 'string' && value.length > 0
-                                              ? '[REDACTED]'
-                                              : value,
-                                      ])
-                                  )
-                                : undefined,
-                        },
-                    ])
-                ),
+                mcpServers: config.mcpServers
+                    ? Object.fromEntries(
+                          Object.entries(config.mcpServers).map(
+                              ([name, serverConfig]: [string, any]) => [
+                                  name,
+                                  {
+                                      ...serverConfig,
+                                      env: serverConfig.env
+                                          ? Object.fromEntries(
+                                                Object.entries(serverConfig.env).map(
+                                                    ([key, value]) => [
+                                                        key,
+                                                        value &&
+                                                        typeof value === 'string' &&
+                                                        value.length > 0
+                                                            ? '[REDACTED]'
+                                                            : value,
+                                                    ]
+                                                )
+                                            )
+                                          : undefined,
+                                  },
+                              ]
+                          )
+                      )
+                    : {},
             };
 
             const yamlStr = yamlStringify(maskedConfig);
