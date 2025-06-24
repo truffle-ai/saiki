@@ -1,7 +1,7 @@
 ---
-description: 
-globs: 
-alwaysApply: true
+description: Mandatory local validation rules requiring all code changes to pass build, test, lint, and typecheck commands before completion 
+globs: ["**/*.ts", "**/*.js", "**/*.tsx", "**/*.jsx"]
+alwaysApply: false
 ---
 - **All code changes must be verified before completion**
   - The agent **MUST run** the following commands and ensure they exit with status `0`:
