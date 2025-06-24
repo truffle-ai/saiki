@@ -14,6 +14,9 @@ describe('CLI Overrides', () => {
                 type: 'stdio',
                 command: 'node',
                 args: ['agent-server.js'],
+                env: {},
+                timeout: 30000,
+                connectionMode: 'lenient' as const,
             },
         },
         llm: {
@@ -21,6 +24,15 @@ describe('CLI Overrides', () => {
             model: 'gpt-4o',
             apiKey: 'file-api-key',
             router: 'vercel',
+            maxIterations: 50,
+        },
+        storage: {
+            cache: { type: 'in-memory' },
+            database: { type: 'in-memory' },
+        },
+        sessions: {
+            maxSessions: 100,
+            sessionTTL: 3600000,
         },
     };
 
@@ -97,9 +109,7 @@ describe('CLI Overrides', () => {
     test('handles undefined values in overrides gracefully', () => {
         const cliOverrides: CLIConfigOverrides = {
             model: 'new-model',
-            provider: undefined,
-            router: undefined,
-            apiKey: undefined,
+            // provider, router, apiKey intentionally omitted to test undefined handling
         };
 
         const result = applyCLIOverrides(clone(baseConfig), cliOverrides);
