@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { LLMConfig, AgentConfig } from '../../config/schemas.js';
+import type { LLMConfig, ValidatedLLMConfig, AgentConfig } from '../../config/schemas.js';
 import * as validationUtils from '../../config/validation-utils.js';
 
 // Mock the dependencies
@@ -151,11 +151,14 @@ describe('SaikiAgent.switchLLM', () => {
         agent = new SaikiAgent(mockConfig);
         await agent.start();
 
-        // Mock the validation function
+        // Mock the validation function - return ValidatedLLMConfig with all required fields
         mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, currentConfig) => {
             return {
                 config: {
                     ...mockLLMConfig,
+                    // Ensure required fields are present (defaults applied)
+                    maxIterations: mockLLMConfig.maxIterations ?? 50,
+                    router: mockLLMConfig.router ?? 'vercel',
                     ...updates, // Apply the updates so router is properly set
                 },
                 isValid: true,
@@ -180,7 +183,7 @@ describe('SaikiAgent.switchLLM', () => {
 
         test('should handle validation failure', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: mockLLMConfig,
+                config: mockLLMConfig as any, // Type assertion since this is a test mock
                 isValid: false,
                 errors: [
                     {
@@ -232,7 +235,7 @@ describe('SaikiAgent.switchLLM', () => {
 
         test('should include warnings in response', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: { ...mockLLMConfig, model: 'gpt-4o' },
+                config: { ...mockLLMConfig, model: 'gpt-4o' } as any,
                 isValid: true,
                 errors: [],
                 warnings: ['Config warning'],
@@ -439,7 +442,7 @@ describe('SaikiAgent.switchLLM', () => {
     describe('Warning Collection', () => {
         test('should collect and deduplicate warnings', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: { ...mockLLMConfig, model: 'gpt-4o-mini' },
+                config: { ...mockLLMConfig, model: 'gpt-4o-mini' } as any,
                 isValid: true,
                 errors: [],
                 warnings: ['Config warning', 'Duplicate warning'],
@@ -483,7 +486,7 @@ describe('SaikiAgent.switchLLM', () => {
 
         test('should handle state manager validation errors', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: mockLLMConfig,
+                config: mockLLMConfig as any, // Type assertion since this is a test mock
                 isValid: true,
                 errors: [],
                 warnings: [],
