@@ -1,0 +1,84 @@
+name: Code Quality Check
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  lint-backend:
+    name: "Backend ESLint"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Backend ESLint
+        run: npm run lint -- --max-warnings 0
+
+  lint-frontend:
+    name: "Frontend ESLint"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install WebUI dependencies
+        run: cd src/app/webui && npm ci
+
+      - name: Run Frontend ESLint
+        run: cd src/app/webui && npm run lint -- --max-warnings 0
+
+  typecheck-backend:
+    name: "Backend TypeScript"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript check
+        run: npm run typecheck
+
+  typecheck-frontend:
+    name: "Frontend TypeScript"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install WebUI dependencies
+        run: cd src/app/webui && npm ci
+
+      - name: TypeCheck Frontend (via build)
+        run: cd src/app/webui && npm run build
