@@ -1,6 +1,6 @@
 ---
 slug: agents-vs-workflows
-title: All about AI agents
+title: Intro to AI agents
 authors: rahul
 tags: [agents, workflows, ai]
 ---
