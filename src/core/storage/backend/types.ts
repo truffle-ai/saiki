@@ -29,7 +29,7 @@ export class StorageError extends Error {
     constructor(
         override message: string,
         public readonly operation: string,
-        public readonly cause?: Error
+        public override readonly cause?: Error
     ) {
         super(message);
         this.name = 'StorageError';
