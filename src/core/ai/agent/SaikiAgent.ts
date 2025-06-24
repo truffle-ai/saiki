@@ -5,12 +5,7 @@ import { AgentStateManager } from '../../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
-import {
-    ValidatedMcpServerConfig,
-    ValidatedLLMConfig,
-    LLMConfig,
-    McpServerConfig,
-} from '../../config/schemas.js';
+import { ValidatedLLMConfig, LLMConfig, McpServerConfig } from '../../config/schemas.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import { AgentEventBus } from '../../events/index.js';

@@ -42,7 +42,7 @@ async function findAndDeleteFiles(
                 }
             }
         }
-    } catch (err: unknown) {
+    } catch (_err: unknown) {
         console.log(`⚠️  Could not access directory: ${path.relative(rootDir, dir)}`);
     }
 }

@@ -3,8 +3,6 @@ import { logger } from '../logger/index.js';
 import { AgentConfigSchema } from './schemas.js';
 import type { ValidatedAgentConfig, AgentConfig } from './schemas.js';
 
-declare function structuredClone<T>(value: T): T;
-
 /**
  * ConfigManager: Handles pure configuration validation and access for the core layer.
  *

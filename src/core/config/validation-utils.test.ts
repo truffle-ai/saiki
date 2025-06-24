@@ -1,4 +1,4 @@
-import { describe, test, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, it, expect, vi, beforeEach } from 'vitest';
 import {
     buildLLMConfig,
     validateLLMSwitchRequest,

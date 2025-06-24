@@ -1,11 +1,5 @@
 import { logger } from '../logger/index.js';
-import type {
-    ValidatedAgentConfig,
-    ValidatedLLMConfig,
-    ValidatedMcpServerConfig,
-    LLMConfig,
-    McpServerConfig,
-} from './schemas.js';
+import type { ValidatedAgentConfig, ValidatedLLMConfig, McpServerConfig } from './schemas.js';
 import type { AgentEventBus } from '../events/index.js';
 import {
     validateMcpServerConfig,
@@ -87,7 +81,7 @@ export class AgentStateManager {
     public updateLLM(newConfig: Partial<ValidatedLLMConfig>, sessionId?: string): ValidationResult {
         // Build the new effective config for validation
         const currentConfig = sessionId ? this.getRuntimeConfig(sessionId) : this.runtimeConfig;
-        const updatedConfig: ValidatedAgentConfig = {
+        const _updatedConfig: ValidatedAgentConfig = {
             ...currentConfig,
             llm: { ...currentConfig.llm, ...newConfig },
         };

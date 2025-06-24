@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { SessionManager, type SessionMetadata } from './session-manager.js';
+import { SessionManager } from './session-manager.js';
 import { ChatSession } from './chat-session.js';
 import type { ValidatedLLMConfig } from '../../config/schemas.js';
 

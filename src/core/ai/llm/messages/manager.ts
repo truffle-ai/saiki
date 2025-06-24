@@ -450,7 +450,7 @@ export class ContextManager {
      *
      * @param prompt The system prompt text
      */
-    setSystemPrompt(prompt: string): void {
+    setSystemPrompt(_prompt: string): void {
         // This method is no longer used with systemPromptContributors
     }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
-import { Bot, Context, InlineKeyboard } from 'grammy';
+import { Bot, InlineKeyboard } from 'grammy';
 import https from 'https';
 import { SaikiAgent } from '@core/index.js';
 

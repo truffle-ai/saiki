@@ -1,5 +1,5 @@
 import express from 'express';
-import type { Express, Request, Response } from 'express';
+import type { Express } from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
@@ -20,12 +20,8 @@ import os from 'os';
 import { resolvePackagePath } from '@core/index.js';
 import {
     LLM_REGISTRY,
-    getSupportedModels,
-    getSupportedProviders,
     getSupportedRoutersForProvider,
     supportsBaseURL,
-    isValidProvider,
-    getEffectiveMaxInputTokens,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
 
@@ -309,8 +305,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         },
         overrides
     );
-    const agentName = agentCardData.name;
-    const agentVersion = agentCardData.version;
+    const _agentName = agentCardData.name;
+    const _agentVersion = agentCardData.version;
 
     // Setup A2A routes
     setupA2ARoutes(app, agentCardData);

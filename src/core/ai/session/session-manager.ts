@@ -5,7 +5,7 @@ import { MCPManager } from '../../client/manager.js';
 import { AgentEventBus } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
-import type { LLMConfig, ValidatedLLMConfig } from '../../config/schemas.js';
+import type { ValidatedLLMConfig } from '../../config/schemas.js';
 import type { StorageBackends } from '../../storage/index.js';
 
 export interface SessionMetadata {

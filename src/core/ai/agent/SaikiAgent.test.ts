@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { LLMConfig, ValidatedLLMConfig, AgentConfig } from '../../config/schemas.js';
+import type { LLMConfig, AgentConfig } from '../../config/schemas.js';
 import * as validationUtils from '../../config/validation-utils.js';
 
 // Mock the dependencies
@@ -152,7 +152,7 @@ describe('SaikiAgent.switchLLM', () => {
         await agent.start();
 
         // Mock the validation function - return ValidatedLLMConfig with all required fields
-        mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, currentConfig) => {
+        mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, _currentConfig) => {
             const resultConfig = {
                 ...mockLLMConfig,
                 ...updates,

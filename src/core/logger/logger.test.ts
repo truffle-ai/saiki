@@ -10,11 +10,11 @@ beforeEach(() => {
 
 describe('Logger utilities', () => {
     let spyLog: ReturnType<typeof vi.spyOn>;
-    let spyStdErrWrite: ReturnType<typeof vi.spyOn>;
+    let _spyStdErrWrite: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
         spyLog = vi.spyOn(console, 'log').mockImplementation(() => {});
-        spyStdErrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true) as any;
+        _spyStdErrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true) as any;
     });
 
     it('getDefaultLogLevel falls back to "info"', () => {

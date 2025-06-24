@@ -13,7 +13,6 @@ import {
 import type {
     ValidatedLLMConfig,
     ValidatedMcpServerConfig,
-    ValidatedAgentConfig,
     LLMConfig,
     McpServerConfig,
 } from './schemas.js';
@@ -328,7 +327,7 @@ function resolveProvider(
     currentConfig: LLMConfig,
     model: string,
     errors: ValidationError[],
-    warnings: string[]
+    _warnings: string[]
 ): string {
     if (updates.provider !== undefined) {
         // Explicit provider provided
@@ -359,7 +358,7 @@ function resolveProvider(
                 logger.info(`Inferred provider '${inferredProvider}' from model '${model}'`);
             }
             return inferredProvider;
-        } catch (error) {
+        } catch (_error) {
             errors.push({
                 type: 'general',
                 message: `Could not infer provider from model '${model}'. Please specify provider explicitly.`,

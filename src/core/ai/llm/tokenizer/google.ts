@@ -1,4 +1,4 @@
-import { ITokenizer, TokenizationError } from './types.js';
+import { ITokenizer } from './types.js';
 
 /**
  * Tokenizer for Google Gemini models - CURRENTLY USING APPROXIMATION.
