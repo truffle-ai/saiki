@@ -28,7 +28,6 @@ describe('SaikiAgent.switchLLM', () => {
         model: 'gpt-4o',
         apiKey: 'test-key',
         router: 'vercel',
-        systemPrompt: 'You are a helpful assistant',
         maxIterations: 50,
         maxInputTokens: 128000,
     };
