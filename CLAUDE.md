@@ -54,6 +54,9 @@
 - **Never include "Generated with Claude Code" footers** - In commit messages, PR descriptions, or any documentation
 - **Clean commit messages** - Focus on technical changes and business value
 - **Descriptive PR titles** - Should clearly indicate the change without AI attribution
+- **NEVER use `git add .`** - Always specify exact files: `git add file1.ts file2.ts`
+- **Stage only relevant changes** - Only add files that were actually modified for the current task
+- **Avoid untracked files** - Never commit untracked files unless explicitly intended by user
 
 ### Documentation Standards
 - **Always request user review before committing documentation changes** - Documentation impacts user experience and should be user-approved

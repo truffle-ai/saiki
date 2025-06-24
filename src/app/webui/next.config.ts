@@ -12,7 +12,6 @@ Object.values(interfaces).forEach((list) =>
     })
 );
 
-const _isDev = process.env.NODE_ENV === 'development';
 const isStandalone = process.env.BUILD_STANDALONE === 'true';
 
 const nextConfig: NextConfig = {
