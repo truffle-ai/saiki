@@ -68,8 +68,8 @@ systemPrompt: |
 Now when I chat with the LLM, it will talk to me only like a chef!
 
 
-![Conversation 1](./sysprompt_1.png)
-![Conversation 2](./sysprompt_2.png)
+![Conversation 1](./sysprompt_1.webp)
+![Conversation 2](./sysprompt_2.webp)
 
 
 
