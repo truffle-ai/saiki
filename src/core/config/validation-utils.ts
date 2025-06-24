@@ -576,13 +576,13 @@ function buildFinalConfig(
 }
 
 /**
- * Validate an MCP server configuration
+ * Validate an MCP server configuration and apply schema defaults
  */
 export function validateMcpServerConfig(
     serverName: string,
     serverConfig: McpServerConfig,
     existingServerNames: string[] = []
-): ValidationResult {
+): ValidationResult & { config?: ValidatedMcpServerConfig } {
     const errors: ValidationError[] = [];
     const warnings: string[] = [];
 
@@ -664,9 +664,28 @@ export function validateMcpServerConfig(
         }
     }
 
+    // If validation passed, parse through schema to apply defaults
+    let validatedConfig: ValidatedMcpServerConfig | undefined;
+    if (errors.length === 0) {
+        try {
+            validatedConfig = McpServerConfigSchema.parse(serverConfig);
+        } catch (schemaError) {
+            if (schemaError instanceof ZodError) {
+                for (const issue of schemaError.errors) {
+                    errors.push({
+                        type: 'schema_validation',
+                        message: `Schema parsing failed: ${issue.message}`,
+                        field: issue.path.join('.'),
+                    });
+                }
+            }
+        }
+    }
+
     return {
         isValid: errors.length === 0,
         errors,
         warnings,
+        config: validatedConfig,
     };
 }

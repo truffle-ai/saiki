@@ -5,7 +5,7 @@ import { MCPManager } from '../../client/manager.js';
 import { AgentEventBus } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { LLMConfig, ValidatedLLMConfig } from '../../config/schemas.js';
 import type { StorageBackends } from '../../storage/index.js';
 
 export interface SessionMetadata {
@@ -472,8 +472,11 @@ export class SessionManager {
             if (session) {
                 try {
                     // Validate for this specific session
+                    // TODO: SESSION-MANAGER API DECISION NEEDED
+                    // Should switchLLMForAllSessions accept LLMConfig (input) or ValidatedLLMConfig?
+                    // Currently accepting LLMConfig but AgentStateManager expects ValidatedLLMConfig
                     const sessionValidation = this.services.stateManager.updateLLM(
-                        newLLMConfig,
+                        newLLMConfig as ValidatedLLMConfig, // Cast - assumes caller provided validated config
                         sId
                     );
                     if (sessionValidation.isValid) {

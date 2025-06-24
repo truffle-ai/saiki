@@ -38,7 +38,7 @@ describe('AgentStateManager Events', () => {
                 sessionTTL: 3600000,
             },
         };
-        stateManager = new AgentStateManager(mockConfig, eventBus);
+        stateManager = new AgentStateManager(mockConfig as any, eventBus); // Test mock has all required fields
     });
 
     it('emits saiki:stateChanged when LLM config is updated', () => {

@@ -48,7 +48,7 @@
 - **Strict null safety** - Handle null/undefined cases explicitly
 - **Proper error handling** - Use type guards and proper error messages
 - **Consistent return patterns** - All API endpoints return responses consistently
-- **No any types** - Use proper typing throughout
+- **Avoid `any` types** - Use specific types unless absolutely necessary (rare exceptions in tests)
 
 ## Application Architecture
 

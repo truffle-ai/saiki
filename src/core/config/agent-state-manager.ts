@@ -151,7 +151,8 @@ export class AgentStateManager {
         }
 
         const isUpdate = serverName in this.runtimeConfig.mcpServers;
-        this.runtimeConfig.mcpServers[serverName] = serverConfig;
+        // Use the validated config with defaults applied from validation result
+        this.runtimeConfig.mcpServers[serverName] = validation.config!;
 
         const eventName = isUpdate ? 'saiki:mcpServerUpdated' : 'saiki:mcpServerAdded';
         this.agentEventBus.emit(eventName, { serverName, config: serverConfig });
