@@ -180,7 +180,7 @@ export class WebSocketEventSubscriber implements EventSubscriber {
     cleanup(): void {
         if (this.abortController) {
             this.abortController.abort();
-            this.abortController = undefined;
+            delete (this as any).abortController;
         }
 
         // Close all WebSocket connections
