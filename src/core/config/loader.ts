@@ -55,7 +55,9 @@ export async function loadAgentConfig(configPath: string): Promise<AgentConfig> 
             const expandedConfig = expandEnvVars(config);
             return expandedConfig;
         } catch (parseError) {
-            throw new Error(`Failed to parse YAML: ${parseError.message}`);
+            throw new Error(
+                `Failed to parse YAML: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+            );
         }
     } catch (error: any) {
         // Include path & cause for better diagnostics
