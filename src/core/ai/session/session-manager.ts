@@ -460,7 +460,7 @@ export class SessionManager {
      * @returns Result object with success message and any warnings
      */
     public async switchLLMForAllSessions(
-        newLLMConfig: LLMConfig
+        newLLMConfig: ValidatedLLMConfig
     ): Promise<{ message: string; warnings: string[] }> {
         await this.ensureInitialized();
 
@@ -471,12 +471,9 @@ export class SessionManager {
             const session = await this.getSession(sId);
             if (session) {
                 try {
-                    // Validate for this specific session
-                    // TODO: SESSION-MANAGER API DECISION NEEDED
-                    // Should switchLLMForAllSessions accept LLMConfig (input) or ValidatedLLMConfig?
-                    // Currently accepting LLMConfig but AgentStateManager expects ValidatedLLMConfig
+                    // Update LLM with validated config
                     const sessionValidation = this.services.stateManager.updateLLM(
-                        newLLMConfig as ValidatedLLMConfig, // Cast - assumes caller provided validated config
+                        newLLMConfig,
                         sId
                     );
                     if (sessionValidation.isValid) {
@@ -524,7 +521,7 @@ export class SessionManager {
      * @returns Result object with success message and any warnings
      */
     public async switchLLMForSpecificSession(
-        newLLMConfig: LLMConfig,
+        newLLMConfig: ValidatedLLMConfig,
         sessionId: string
     ): Promise<{ message: string; warnings: string[] }> {
         const session = await this.getSession(sessionId);
@@ -552,7 +549,7 @@ export class SessionManager {
      * @returns Result object with success message and any warnings
      */
     public async switchLLMForDefaultSession(
-        newLLMConfig: LLMConfig
+        newLLMConfig: ValidatedLLMConfig
     ): Promise<{ message: string; warnings: string[] }> {
         const defaultSession = await this.getDefaultSession();
 

@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatSession } from './chat-session.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { ValidatedLLMConfig } from '../../config/schemas.js';
 
 // Mock all dependencies
 vi.mock('../llm/messages/history/factory.js', () => ({
@@ -54,7 +54,7 @@ describe('ChatSession', () => {
     let mockFormatter: any;
 
     const sessionId = 'test-session-123';
-    const mockLLMConfig: LLMConfig = {
+    const mockLLMConfig: ValidatedLLMConfig = {
         provider: 'openai',
         model: 'gpt-4',
         apiKey: 'test-key',
@@ -245,7 +245,7 @@ describe('ChatSession', () => {
         });
 
         test('should optimize LLM switching by only creating new components when necessary', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 maxInputTokens: 256000, // Only change maxInputTokens
             };
@@ -261,7 +261,7 @@ describe('ChatSession', () => {
         });
 
         test('should create new tokenizer when provider changes', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',
@@ -273,7 +273,7 @@ describe('ChatSession', () => {
         });
 
         test('should create new formatter when router changes', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 router: 'vercel',
             };
@@ -284,7 +284,7 @@ describe('ChatSession', () => {
         });
 
         test('should update message manager configuration during LLM switch', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',
@@ -300,7 +300,7 @@ describe('ChatSession', () => {
         });
 
         test('should emit LLM switched event with correct metadata', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',
@@ -350,7 +350,7 @@ describe('ChatSession', () => {
         test('should handle LLM switch failures and propagate errors', async () => {
             await chatSession.init();
 
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'invalid-provider' as any,
             };

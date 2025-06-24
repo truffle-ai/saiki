@@ -9,7 +9,7 @@ import type { ILLMService } from '../llm/services/types.js';
 import type { InternalMessage } from '../llm/messages/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { MCPManager } from '../../client/manager.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { ValidatedLLMConfig } from '../../config/schemas.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
 import type { StorageBackends } from '../../storage/backend/types.js';
 import {
@@ -339,7 +339,7 @@ export class ChatSession {
      * });
      * ```
      */
-    public async switchLLM(newLLMConfig: LLMConfig): Promise<void> {
+    public async switchLLM(newLLMConfig: ValidatedLLMConfig): Promise<void> {
         try {
             // Update ContextManager configuration first
             const provider = newLLMConfig.provider.toLowerCase();
