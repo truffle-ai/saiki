@@ -311,11 +311,12 @@ program
 
             // If running in CLI mode, attach the interactive confirmation handler
             if (opts.mode === 'cli') {
-                const { CLIConfirmationHandler } = await import(
+                const { CLIToolConfirmationSubscriber } = await import(
                     './cli/tool-confirmation/cli-confirmation-handler.js'
                 );
-                // Instantiation registers itself with the provider; no need to store reference
-                new CLIConfirmationHandler(agent.getToolConfirmationProvider() as any);
+                // Subscribe to tool confirmation events via AgentEventBus
+                const cliSubscriber = new CLIToolConfirmationSubscriber();
+                cliSubscriber.subscribe(agent.agentEventBus);
                 logger.info('Setting up CLI event subscriptions...');
             }
         } catch (err) {

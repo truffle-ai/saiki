@@ -1,44 +1,26 @@
 import type { IAllowedToolsProvider } from './types.js';
-import { getUserId } from '../../../utils/user-info.js';
 
 export class InMemoryAllowedToolsProvider implements IAllowedToolsProvider {
-    private allowedToolsPerUser: Map<string, Set<string>>;
+    private allowedTools: Set<string>;
 
-    constructor(allowedToolsMap?: Map<string, Set<string>>) {
-        this.allowedToolsPerUser = allowedToolsMap ?? new Map();
+    constructor(allowedTools?: Set<string>) {
+        this.allowedTools = allowedTools ?? new Set();
     }
 
-    // if userId is not provided, use getUserId() as the default
-    private getAllowedSet(userId: string): Set<string> {
-        const effectiveUserId = userId ?? getUserId();
-        if (!this.allowedToolsPerUser.has(effectiveUserId)) {
-            this.allowedToolsPerUser.set(effectiveUserId, new Set());
-        }
-        return this.allowedToolsPerUser.get(effectiveUserId)!;
-    }
-
-    // If userId is omitted, use getUserId() as the default
     async allowTool(toolName: string): Promise<void> {
-        const effectiveUserId = getUserId();
-        this.getAllowedSet(effectiveUserId).add(toolName);
+        this.allowedTools.add(toolName);
     }
 
-    // If userId is omitted, use getUserId() as the default
     async disallowTool(toolName: string): Promise<void> {
-        const effectiveUserId = getUserId();
-        this.getAllowedSet(effectiveUserId).delete(toolName);
+        this.allowedTools.delete(toolName);
     }
 
-    // If userId is omitted, use getUserId() as the default
     async isToolAllowed(toolName: string): Promise<boolean> {
-        const effectiveUserId = getUserId();
-        return this.getAllowedSet(effectiveUserId).has(toolName);
+        return this.allowedTools.has(toolName);
     }
 
-    // If userId is omitted, use getUserId() as the default
     async getAllowedTools(): Promise<Set<string>> {
-        const effectiveUserId = getUserId();
         // Return a copy to prevent external mutation
-        return new Set(this.getAllowedSet(effectiveUserId));
+        return new Set(this.allowedTools);
     }
 }

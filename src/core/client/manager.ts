@@ -380,14 +380,4 @@ export class MCPManager {
         this.resourceToClientMap.clear();
         logger.info('Disconnected all clients and cleared caches.');
     }
-
-    /**
-     * Get the tool confirmation provider instance used by this manager. This is
-     * useful for application layers (API server, WebUI, etc.) that need to
-     * listen to confirmation requests or forward user responses back to the
-     * provider.
-     */
-    public getConfirmationProvider(): ToolConfirmationProvider {
-        return this.confirmationProvider;
-    }
 }

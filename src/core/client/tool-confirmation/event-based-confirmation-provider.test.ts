@@ -2,14 +2,17 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { EventBasedConfirmationProvider } from './event-based-confirmation-provider.js';
 import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
 import { ToolConfirmationEvent } from './types.js';
+import { AgentEventBus } from '../../events/index.js';
 
 describe('EventBasedConfirmationProvider', () => {
     let provider: EventBasedConfirmationProvider;
     let allowedToolsProvider: InMemoryAllowedToolsProvider;
+    let agentEventBus: AgentEventBus;
 
     beforeEach(() => {
         allowedToolsProvider = new InMemoryAllowedToolsProvider();
-        provider = new EventBasedConfirmationProvider(allowedToolsProvider);
+        agentEventBus = new AgentEventBus();
+        provider = new EventBasedConfirmationProvider(allowedToolsProvider, agentEventBus);
     });
 
     afterEach(() => {
@@ -28,9 +31,13 @@ describe('EventBasedConfirmationProvider', () => {
         });
 
         it('should create provider with custom timeout', () => {
-            const customProvider = new EventBasedConfirmationProvider(allowedToolsProvider, {
-                confirmationTimeout: 5000,
-            });
+            const customProvider = new EventBasedConfirmationProvider(
+                allowedToolsProvider,
+                agentEventBus,
+                {
+                    confirmationTimeout: 5000,
+                }
+            );
             expect(customProvider).toBeInstanceOf(EventBasedConfirmationProvider);
         });
     });
@@ -49,7 +56,7 @@ describe('EventBasedConfirmationProvider', () => {
 
         it('should emit toolConfirmationRequest event for non-allowed tools', async () => {
             const eventSpy = vi.fn();
-            provider.on('toolConfirmationRequest', eventSpy);
+            agentEventBus.on('saiki:toolConfirmationRequest', eventSpy);
 
             // Start confirmation request but don't wait for it
             const confirmationPromise = provider.requestConfirmation({

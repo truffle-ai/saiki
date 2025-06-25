@@ -23,6 +23,7 @@ import {
     AllowedToolsConfig,
 } from './allowed-tools-provider/factory.js';
 import type { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
+import { AgentEventBus } from '../../events/index.js';
 
 export type ToolConfirmationMode = 'event-based' | 'auto-approve' | 'auto-deny';
 
@@ -31,6 +32,7 @@ export interface ToolConfirmationOptions {
     allowedToolsProvider?: IAllowedToolsProvider | undefined;
     allowedToolsConfig?: AllowedToolsConfig | undefined;
     confirmationTimeout?: number | undefined;
+    agentEventBus?: AgentEventBus | undefined;
 }
 
 export function createToolConfirmationProvider(
@@ -41,6 +43,7 @@ export function createToolConfirmationProvider(
         allowedToolsProvider,
         allowedToolsConfig,
         confirmationTimeout,
+        agentEventBus,
     } = options;
 
     // Build allowedToolsProvider if config is provided and provider isn't
@@ -56,8 +59,12 @@ export function createToolConfirmationProvider(
 
     switch (mode) {
         case 'event-based':
+            if (!agentEventBus) {
+                throw new Error('AgentEventBus is required for event-based tool confirmation mode');
+            }
             return new EventBasedConfirmationProvider(
                 toolsProvider,
+                agentEventBus,
                 confirmationTimeout ? { confirmationTimeout } : {}
             );
         case 'auto-approve':
@@ -68,20 +75,4 @@ export function createToolConfirmationProvider(
         default:
             throw new Error(`Unknown tool confirmation mode: ${mode}`);
     }
-}
-
-// Legacy function for backward compatibility - to be removed
-export function createToolConfirmationProviderLegacy(options: {
-    runMode: 'cli' | 'web' | 'discord' | 'telegram' | 'mcp' | 'server';
-    allowedToolsProvider?: IAllowedToolsProvider;
-    allowedToolsConfig?: AllowedToolsConfig;
-}): ToolConfirmationProvider {
-    // Map legacy run modes to new confirmation modes
-    const mode: ToolConfirmationMode = options.runMode === 'cli' ? 'event-based' : 'auto-approve';
-
-    return createToolConfirmationProvider({
-        mode,
-        allowedToolsProvider: options.allowedToolsProvider || undefined,
-        allowedToolsConfig: options.allowedToolsConfig || undefined,
-    });
 }

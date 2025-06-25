@@ -8,29 +8,37 @@ import {
     ToolConfirmationEvent,
     ToolConfirmationResponse,
 } from '../../../core/client/tool-confirmation/types.js';
-import { EventBasedConfirmationProvider } from '../../../core/client/tool-confirmation/event-based-confirmation-provider.js';
+import { AgentEventBus } from '../../../core/events/index.js';
+import { EventSubscriber } from '../../api/types.js';
 
 /**
- * CLI-specific handler for tool confirmation events
- * Listens to events from EventBasedConfirmationProvider and handles CLI-specific user interaction
+ * CLI-specific subscriber for tool confirmation events
+ * Implements EventSubscriber pattern to listen to AgentEventBus for tool confirmation requests
  */
-export class CLIConfirmationHandler {
+export class CLIToolConfirmationSubscriber implements EventSubscriber {
     private settingsProvider: SettingsProvider;
-    private provider: EventBasedConfirmationProvider;
+    private agentEventBus?: AgentEventBus;
 
-    constructor(provider: EventBasedConfirmationProvider, settingsProvider?: SettingsProvider) {
-        this.provider = provider;
+    constructor(settingsProvider?: SettingsProvider) {
         this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider();
 
         // Ensure tool approval is required by default in CLI
         void this.settingsProvider.updateUserSettings('default', { toolApprovalRequired: true });
-
-        // Listen to confirmation request events
-        this.provider.on('toolConfirmationRequest', this.handleConfirmationRequest.bind(this));
     }
 
     /**
-     * Handle tool confirmation request events from the core provider
+     * Subscribe to tool confirmation events on the AgentEventBus
+     */
+    subscribe(eventBus: AgentEventBus): void {
+        this.agentEventBus = eventBus;
+        this.agentEventBus.on(
+            'saiki:toolConfirmationRequest',
+            this.handleConfirmationRequest.bind(this)
+        );
+    }
+
+    /**
+     * Handle tool confirmation request events from the AgentEventBus
      */
     private async handleConfirmationRequest(event: ToolConfirmationEvent): Promise<void> {
         try {
@@ -44,7 +52,7 @@ export class CLIConfirmationHandler {
                 logger.debug(
                     `Tool '${event.toolName}' execution is automatically approved by settings`
                 );
-                await this.provider.handleConfirmationResponse({
+                this.sendConfirmationResponse({
                     executionId: event.executionId,
                     approved: true,
                 });
@@ -57,14 +65,14 @@ export class CLIConfirmationHandler {
             // Collect user input with arrow key navigation
             const approved = await this.collectArrowKeyInput();
 
-            // Send response back to provider
+            // Send response back via AgentEventBus
             const response: ToolConfirmationResponse = {
                 executionId: event.executionId,
                 approved,
                 rememberChoice: false, // Don't auto-remember approved tools for CLI
             };
 
-            await this.provider.handleConfirmationResponse(response);
+            this.sendConfirmationResponse(response);
 
             if (!approved) {
                 logger.warn(`Tool '${event.toolName}' execution denied`);
@@ -72,11 +80,22 @@ export class CLIConfirmationHandler {
         } catch (error) {
             logger.error(`Error handling tool confirmation request: ${error}`);
             // Send denial response on error
-            await this.provider.handleConfirmationResponse({
+            this.sendConfirmationResponse({
                 executionId: event.executionId,
                 approved: false,
             });
         }
+    }
+
+    /**
+     * Send confirmation response via AgentEventBus
+     */
+    private sendConfirmationResponse(response: ToolConfirmationResponse): void {
+        if (!this.agentEventBus) {
+            logger.error('AgentEventBus not available for sending confirmation response');
+            return;
+        }
+        this.agentEventBus.emit('saiki:toolConfirmationResponse', response);
     }
 
     /**
@@ -194,9 +213,11 @@ export class CLIConfirmationHandler {
     }
 
     /**
-     * Cleanup handler
+     * Cleanup event listeners and resources
      */
-    destroy(): void {
-        this.provider.removeAllListeners('toolConfirmationRequest');
+    cleanup(): void {
+        if (this.agentEventBus) {
+            this.agentEventBus.removeAllListeners('saiki:toolConfirmationRequest');
+        }
     }
 }

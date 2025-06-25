@@ -36,8 +36,6 @@ export interface ToolConfirmationProvider {
 
     // Only implemented by event-based providers – kept here for convenience
     handleConfirmationResponse?(response: ToolConfirmationResponse): Promise<void>;
-
-    on?(event: 'toolConfirmationRequest', listener: (event: ToolConfirmationEvent) => void): any;
 }
 
 /**
@@ -47,4 +45,5 @@ export interface ToolExecutionDetails {
     toolName: string;
     args: any;
     description?: string;
+    sessionId?: string;
 }

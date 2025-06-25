@@ -834,16 +834,6 @@ export class SaikiAgent {
             : this.stateManager.getRuntimeConfig();
     }
 
-    /**
-     * Expose the ToolConfirmationProvider so that application layers can listen
-     * to confirmation events or forward user responses without having to dig
-     * through internal classes.
-     */
-    public getToolConfirmationProvider() {
-        this.ensureStarted();
-        return this.clientManager.getConfirmationProvider();
-    }
-
     // Future methods could encapsulate more complex agent behaviors:
     // - Multi-step task execution with progress tracking
     // - Memory and context management across sessions

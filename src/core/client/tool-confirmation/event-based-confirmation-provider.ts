@@ -1,22 +1,19 @@
-import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 import {
     ToolConfirmationProvider,
     ToolExecutionDetails,
-    ToolConfirmationEvent,
     ToolConfirmationResponse,
 } from './types.js';
 import { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
 import { logger } from '@core/logger/logger.js';
+import { AgentEventBus } from '../../events/index.js';
 
 /**
- * Event-based tool confirmation provider that emits events for confirmation requests
- * and waits for responses. This decouples the core logic from UI-specific implementations.
+ * Event-based tool confirmation provider that uses the official AgentEventBus
+ * to emit events for confirmation requests and wait for responses.
+ * This decouples the core logic from UI-specific implementations.
  */
-export class EventBasedConfirmationProvider
-    extends EventEmitter
-    implements ToolConfirmationProvider
-{
+export class EventBasedConfirmationProvider implements ToolConfirmationProvider {
     private pendingConfirmations = new Map<
         string,
         {
@@ -26,15 +23,23 @@ export class EventBasedConfirmationProvider
         }
     >();
     private confirmationTimeout: number;
+    private agentEventBus: AgentEventBus;
 
     constructor(
         public allowedToolsProvider: IAllowedToolsProvider,
+        agentEventBus: AgentEventBus,
         options: {
             confirmationTimeout?: number;
         } = {}
     ) {
-        super();
+        this.agentEventBus = agentEventBus;
         this.confirmationTimeout = options.confirmationTimeout ?? 30000; // 30 seconds default
+
+        // Listen for confirmation responses from application layers
+        this.agentEventBus.on(
+            'saiki:toolConfirmationResponse',
+            this.handleConfirmationResponse.bind(this)
+        );
     }
 
     async requestConfirmation(details: ToolExecutionDetails): Promise<boolean> {
@@ -45,12 +50,13 @@ export class EventBasedConfirmationProvider
         }
 
         const executionId = randomUUID();
-        const event: ToolConfirmationEvent = {
+        const event = {
             toolName: details.toolName,
             args: details.args,
             description: details.description,
             executionId,
             timestamp: new Date(),
+            sessionId: details.sessionId, // Add session context for session-specific logic
         };
 
         logger.info(
@@ -79,8 +85,8 @@ export class EventBasedConfirmationProvider
                 toolName: details.toolName,
             });
 
-            // Emit the confirmation request event
-            this.emit('toolConfirmationRequest', event);
+            // Emit the confirmation request event via AgentEventBus
+            this.agentEventBus.emit('saiki:toolConfirmationRequest', event);
         });
     }
 
