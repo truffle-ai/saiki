@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { EventBasedConfirmationProvider } from './event-based-confirmation-provider.js';
 import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
-import { ToolConfirmationEvent, ToolConfirmationResponse } from './types.js';
+import { ToolConfirmationEvent } from './types.js';
 
 describe('EventBasedConfirmationProvider', () => {
     let provider: EventBasedConfirmationProvider;
@@ -97,7 +97,7 @@ describe('EventBasedConfirmationProvider', () => {
             // Wait for event to be emitted
             await new Promise((resolve) => setTimeout(resolve, 10));
 
-            const event: ToolConfirmationEvent = eventSpy.mock.calls[0][0];
+            const event: ToolConfirmationEvent = eventSpy.mock.calls[0]?.[0]!;
 
             // Send approval response
             await provider.handleConfirmationResponse({
@@ -122,7 +122,7 @@ describe('EventBasedConfirmationProvider', () => {
             // Wait for event to be emitted
             await new Promise((resolve) => setTimeout(resolve, 10));
 
-            const event: ToolConfirmationEvent = eventSpy.mock.calls[0][0];
+            const event: ToolConfirmationEvent = eventSpy.mock.calls[0]?.[0]!;
 
             // Send denial response
             await provider.handleConfirmationResponse({
@@ -177,7 +177,7 @@ describe('EventBasedConfirmationProvider', () => {
             // Wait for event to be emitted
             await new Promise((resolve) => setTimeout(resolve, 10));
 
-            const event: ToolConfirmationEvent = eventSpy.mock.calls[0][0];
+            const event: ToolConfirmationEvent = eventSpy.mock.calls[0]?.[0]!;
 
             // Send approval response with remember choice
             await provider.handleConfirmationResponse({
@@ -209,7 +209,7 @@ describe('EventBasedConfirmationProvider', () => {
             // Wait for event to be emitted
             await new Promise((resolve) => setTimeout(resolve, 10));
 
-            const event: ToolConfirmationEvent = eventSpy.mock.calls[0][0];
+            const event: ToolConfirmationEvent = eventSpy.mock.calls[0]?.[0]!;
 
             // Send denial response with remember choice
             await provider.handleConfirmationResponse({
@@ -259,7 +259,7 @@ describe('EventBasedConfirmationProvider', () => {
             // Wait for event to be emitted
             await new Promise((resolve) => setTimeout(resolve, 10));
 
-            const event: ToolConfirmationEvent = eventSpy.mock.calls[0][0];
+            const event: ToolConfirmationEvent = eventSpy.mock.calls[0]?.[0]!;
             provider.cancelConfirmation(event.executionId);
 
             await expect(confirmationPromise).rejects.toThrow('Confirmation request cancelled');

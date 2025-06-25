@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createToolConfirmationProvider, createToolConfirmationProviderLegacy } from './factory.js';
 import { EventBasedConfirmationProvider } from './event-based-confirmation-provider.js';
 import { NoOpConfirmationProvider } from './noop-confirmation-provider.js';

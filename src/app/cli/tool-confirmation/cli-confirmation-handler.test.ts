@@ -24,7 +24,7 @@ vi.mock('chalk', () => ({
 }));
 
 vi.mock('boxen', () => ({
-    default: vi.fn((text, options) => `[BOXED] ${text}`),
+    default: vi.fn((text, _options) => `[BOXED] ${text}`),
 }));
 
 // Mock logger to avoid winston issues
