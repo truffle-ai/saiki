@@ -295,5 +295,5 @@ export function useChat(wsUrl: string) {
         setMessages([]);
     }, []);
 
-    return { messages, status, sendMessage, reset, setMessages };
+    return { messages, status, sendMessage, reset, setMessages, websocket: wsRef.current };
 }

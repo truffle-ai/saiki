@@ -8,6 +8,7 @@ import ConnectServerModal from './ConnectServerModal';
 import ServerRegistryModal from './ServerRegistryModal';
 import ServersPanel from './ServersPanel';
 import SessionPanel from './SessionPanel';
+import { ToolConfirmationHandler } from './ToolConfirmationHandler';
 import { Button } from "./ui/button";
 import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2, RefreshCw } from "lucide-react";
 import { cn } from '@/lib/utils';
@@ -27,7 +28,7 @@ import {
 } from './ui/dropdown-menu';
 
 export default function ChatApp() {
-  const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState, returnToWelcome } = useChatContext();
+  const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState, returnToWelcome, websocket } = useChatContext();
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [isServerRegistryOpen, setServerRegistryOpen] = useState(false);
@@ -674,6 +675,9 @@ export default function ChatApp() {
           </DialogContent>
         </Dialog>
       </main>
+      
+      {/* Tool Confirmation Handler */}
+      <ToolConfirmationHandler websocket={websocket} />
     </div>
   );
 } 
