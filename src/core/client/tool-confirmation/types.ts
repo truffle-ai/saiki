@@ -1,6 +1,28 @@
 import { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
 
 /**
+ * Event emitted when tool confirmation is requested
+ */
+export interface ToolConfirmationEvent {
+    toolName: string;
+    args: any;
+    description?: string | undefined;
+    executionId: string;
+    timestamp: Date;
+    userId?: string | undefined;
+}
+
+/**
+ * Response to tool confirmation request
+ */
+export interface ToolConfirmationResponse {
+    executionId: string;
+    approved: boolean;
+    rememberChoice?: boolean | undefined;
+    userId?: string | undefined;
+}
+
+/**
  * Interface to get tool confirmation and manage allowed tools
  */
 export interface ToolConfirmationProvider {
