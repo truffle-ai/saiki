@@ -1,77 +1,84 @@
-import { ToolConfirmationProvider, ToolExecutionDetails } from './types.js';
-import { logger } from '../../logger/index.js';
+import { logger } from '../../../core/logger/index.js';
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { InMemorySettingsProvider } from '../../settings/in-memory-provider.js';
-import { SettingsProvider } from '../../settings/types.js';
+import { InMemorySettingsProvider } from '../../../core/settings/in-memory-provider.js';
+import { SettingsProvider } from '../../../core/settings/types.js';
 import boxen from 'boxen';
-import { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
-import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
+import {
+    ToolConfirmationEvent,
+    ToolConfirmationResponse,
+} from '../../../core/client/tool-confirmation/types.js';
+import { EventBasedConfirmationProvider } from '../../../core/client/tool-confirmation/event-based-confirmation-provider.js';
 
 /**
- * CLI implementation of ToolConfirmationProvider
- * Automatically approves tools in the allowedTools set,
- * and prompts for confirmation for other tools using logger's styling
+ * CLI-specific handler for tool confirmation events
+ * Listens to events from EventBasedConfirmationProvider and handles CLI-specific user interaction
  */
-export class CLIConfirmationProvider implements ToolConfirmationProvider {
-    public allowedToolsProvider: IAllowedToolsProvider;
-    private rl: readline.Interface | null = null;
-    public settingsProvider: SettingsProvider;
+export class CLIConfirmationHandler {
+    private settingsProvider: SettingsProvider;
+    private provider: EventBasedConfirmationProvider;
 
-    constructor(allowedToolsProvider?: IAllowedToolsProvider, settingsProvider?: SettingsProvider) {
-        this.allowedToolsProvider = allowedToolsProvider ?? new InMemoryAllowedToolsProvider();
+    constructor(provider: EventBasedConfirmationProvider, settingsProvider?: SettingsProvider) {
+        this.provider = provider;
         this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider();
+
+        // Listen to confirmation request events
+        this.provider.on('toolConfirmationRequest', this.handleConfirmationRequest.bind(this));
     }
 
     /**
-     * Request confirmation for executing a tool
-     * @param toolDetails Details about the tool execution
-     * @param userId (Optional) The user ID for whom to request confirmation. If not provided, a default user ID will be used.
-     * @param callbacks (Optional) callbacks for customizing the confirmation flow
-     * @returns Promise resolving to boolean indicating if execution is approved
-     * TODO: Use the callbacks or change to event-driven approach
+     * Handle tool confirmation request events from the core provider
      */
-    async requestConfirmation(
-        toolDetails: ToolExecutionDetails,
-        userId?: string,
-        _callbacks?: {
-            displayDetails?: (details: ToolExecutionDetails) => void;
-            collectInput?: () => Promise<string | boolean>;
-            parseResponse?: (response: any) => boolean;
-        }
-    ): Promise<boolean> {
-        // Use a default userId if not provided
-        const effectiveUserId = userId ?? 'default';
-        // Get user settings and check if tool approval is required
-        const userSettings = await this.settingsProvider.getUserSettings(effectiveUserId);
-        if (userSettings.toolApprovalRequired === false) {
-            logger.debug(`Tool '${toolDetails.toolName}' execution is automatically approved`);
-            return true;
-        }
-        // If the tool is in the allowed list, automatically approve
-        if (await this.allowedToolsProvider.isToolAllowed(toolDetails.toolName, effectiveUserId)) {
-            logger.debug(`Tool '${toolDetails.toolName}' is pre-approved for execution`);
-            return true;
-        }
+    private async handleConfirmationRequest(event: ToolConfirmationEvent): Promise<void> {
+        try {
+            // Check user settings first
+            const effectiveUserId = event.userId ?? 'default';
+            const userSettings = await this.settingsProvider.getUserSettings(effectiveUserId);
 
-        // Display tool call using the logger's built-in method
-        logger.toolCall(toolDetails.toolName, toolDetails.args);
+            if (userSettings.toolApprovalRequired === false) {
+                logger.debug(
+                    `Tool '${event.toolName}' execution is automatically approved by settings`
+                );
+                await this.provider.handleConfirmationResponse({
+                    executionId: event.executionId,
+                    approved: true,
+                    userId: event.userId,
+                });
+                return;
+            }
 
-        // Collect user input with arrow key navigation
-        const choice = await this.collectArrowKeyInput();
+            // Display tool call using the logger's built-in method
+            logger.toolCall(event.toolName, event.args);
 
-        // Add an approved tool to the list
-        if (choice) {
-            await this.allowedToolsProvider.allowTool(toolDetails.toolName, effectiveUserId);
-        } else {
-            logger.warn(`Tool '${toolDetails.toolName}' execution denied`);
+            // Collect user input with arrow key navigation
+            const approved = await this.collectArrowKeyInput();
+
+            // Send response back to provider
+            const response: ToolConfirmationResponse = {
+                executionId: event.executionId,
+                approved,
+                rememberChoice: approved, // Auto-remember approved tools for CLI
+                userId: event.userId,
+            };
+
+            await this.provider.handleConfirmationResponse(response);
+
+            if (!approved) {
+                logger.warn(`Tool '${event.toolName}' execution denied`);
+            }
+        } catch (error) {
+            logger.error(`Error handling tool confirmation request: ${error}`);
+            // Send denial response on error
+            await this.provider.handleConfirmationResponse({
+                executionId: event.executionId,
+                approved: false,
+                userId: event.userId,
+            });
         }
-
-        return choice;
     }
 
     /**
-     * TODO: Refactor this implementation to be more generic
+     * Collect user input with arrow key navigation
      * @returns Promise resolving to boolean (true for approve, false for deny)
      */
     private collectArrowKeyInput(): Promise<boolean> {
@@ -185,12 +192,9 @@ export class CLIConfirmationProvider implements ToolConfirmationProvider {
     }
 
     /**
-     * Close the readline interface if it's open
+     * Cleanup handler
      */
-    close(): void {
-        if (this.rl) {
-            this.rl.close();
-            this.rl = null;
-        }
+    destroy(): void {
+        this.provider.removeAllListeners('toolConfirmationRequest');
     }
 }
