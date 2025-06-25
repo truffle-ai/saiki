@@ -55,6 +55,7 @@ export class CLIToolConfirmationSubscriber implements EventSubscriber {
                 this.sendConfirmationResponse({
                     executionId: event.executionId,
                     approved: true,
+                    sessionId: event.sessionId,
                 });
                 return;
             }
@@ -69,7 +70,8 @@ export class CLIToolConfirmationSubscriber implements EventSubscriber {
             const response: ToolConfirmationResponse = {
                 executionId: event.executionId,
                 approved,
-                rememberChoice: false, // Don't auto-remember approved tools for CLI
+                rememberChoice: false, // CLI won't persist choice
+                sessionId: event.sessionId,
             };
 
             this.sendConfirmationResponse(response);
@@ -83,6 +85,7 @@ export class CLIToolConfirmationSubscriber implements EventSubscriber {
             this.sendConfirmationResponse({
                 executionId: event.executionId,
                 approved: false,
+                sessionId: event.sessionId,
             });
         }
     }
@@ -95,6 +98,9 @@ export class CLIToolConfirmationSubscriber implements EventSubscriber {
             logger.error('AgentEventBus not available for sending confirmation response');
             return;
         }
+        logger.debug(
+            `CLI sending toolConfirmationResponse for executionId ${response.executionId}, approved=${response.approved}, sessionId=${response.sessionId}`
+        );
         this.agentEventBus.emit('saiki:toolConfirmationResponse', response);
     }
 

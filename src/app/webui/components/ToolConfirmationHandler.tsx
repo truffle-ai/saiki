@@ -13,6 +13,7 @@ interface ToolConfirmationEvent {
     args: any;
     description?: string;
     timestamp: Date;
+    sessionId?: string;
 }
 
 interface ToolConfirmationHandlerProps {
@@ -42,6 +43,11 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
                         timestamp: new Date(message.data.timestamp)
                     };
                     
+                    console.debug(
+                        '[WebUI] Received toolConfirmationRequest',
+                        confirmationEvent
+                    );
+                    
                     setPendingConfirmation(confirmationEvent);
                     setIsDialogOpen(true);
                     setRememberChoice(false);
@@ -68,9 +74,11 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
                 executionId: pendingConfirmation.executionId,
                 approved,
                 rememberChoice,
+                sessionId: pendingConfirmation.sessionId,
             }
         };
 
+        console.debug('[WebUI] Sending toolConfirmationResponse', response);
         websocket.send(JSON.stringify(response));
         
         // Close dialog and reset state

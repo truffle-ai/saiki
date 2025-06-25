@@ -19,6 +19,7 @@ export class AnthropicService implements ILLMService {
     private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
+    private readonly sessionId: string;
 
     constructor(
         clientManager: MCPManager,
@@ -26,7 +27,8 @@ export class AnthropicService implements ILLMService {
         sessionEventBus: SessionEventBus,
         contextManager: ContextManager,
         model: string,
-        maxIterations: number = 10
+        maxIterations: number = 10,
+        sessionId: string
     ) {
         this.maxIterations = maxIterations;
         this.model = model;
@@ -34,6 +36,7 @@ export class AnthropicService implements ILLMService {
         this.clientManager = clientManager;
         this.sessionEventBus = sessionEventBus;
         this.contextManager = contextManager;
+        this.sessionId = sessionId;
     }
 
     getAllTools(): Promise<any> {
@@ -162,7 +165,11 @@ export class AnthropicService implements ILLMService {
 
                     // Execute tool
                     try {
-                        const result = await this.clientManager.executeTool(toolName, args);
+                        const result = await this.clientManager.executeTool(
+                            toolName,
+                            args,
+                            this.sessionId
+                        );
 
                         // Add tool result to message manager
                         await this.contextManager.addToolResult(toolUseId, toolName, result);

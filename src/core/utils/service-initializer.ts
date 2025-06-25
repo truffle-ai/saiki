@@ -73,9 +73,11 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
     });
 
     // 4. Initialize client manager with event-based tool confirmation
-    // Create allowed tools provider with memory configuration
-    // TODO: Implement storage-backed provider when tool persistence is needed
-    const allowedToolsProvider = createAllowedToolsProvider({ type: 'memory' });
+    // Create allowed tools provider with storage configuration
+    const allowedToolsProvider = createAllowedToolsProvider({
+        type: 'storage',
+        storageManager,
+    });
 
     // Create event-based tool confirmation provider
     // Application layers (CLI, WebUI) will register handlers for confirmation events

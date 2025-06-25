@@ -20,6 +20,7 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
             resolve: (approved: boolean) => void;
             reject: (error: Error) => void;
             toolName: string;
+            sessionId?: string;
         }
     >();
     private confirmationTimeout: number;
@@ -44,8 +45,15 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
 
     async requestConfirmation(details: ToolExecutionDetails): Promise<boolean> {
         // Check if tool is in allowed list first
-        const isAllowed = await this.allowedToolsProvider.isToolAllowed(details.toolName);
+        const isAllowed = await this.allowedToolsProvider.isToolAllowed(
+            details.toolName,
+            details.sessionId
+        );
+
         if (isAllowed) {
+            logger.debug(
+                `Tool '${details.toolName}' already allowed for session '${details.sessionId ?? 'global'}' – skipping confirmation.`
+            );
             return true;
         }
 
@@ -56,11 +64,11 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
             description: details.description,
             executionId,
             timestamp: new Date(),
-            sessionId: details.sessionId, // Add session context for session-specific logic
+            sessionId: details.sessionId, // session context
         };
 
         logger.info(
-            `Tool confirmation requested for ${details.toolName}, executionId: ${executionId}`
+            `Tool confirmation requested for ${details.toolName}, executionId: ${executionId}, sessionId: ${details.sessionId}`
         );
 
         return new Promise<boolean>((resolve, reject) => {
@@ -83,6 +91,7 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
                     reject(error);
                 },
                 toolName: details.toolName,
+                sessionId: details.sessionId,
             });
 
             // Emit the confirmation request event via AgentEventBus
@@ -96,14 +105,20 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
     async handleConfirmationResponse(response: ToolConfirmationResponse): Promise<void> {
         const pending = this.pendingConfirmations.get(response.executionId);
         if (!pending) {
-            // Response for unknown or expired confirmation request
+            logger.warn(
+                `Received toolConfirmationResponse for unknown executionId ${response.executionId}`
+            );
             return;
         }
 
         // If user wants to remember this choice, add to allowed tools
         if (response.approved && response.rememberChoice) {
-            await this.allowedToolsProvider.allowTool(pending.toolName);
+            await this.allowedToolsProvider.allowTool(pending.toolName, response.sessionId);
         }
+
+        logger.info(
+            `Tool confirmation ${response.approved ? 'approved' : 'denied'} for executionId ${response.executionId}, sessionId: ${response.sessionId}`
+        );
 
         pending.resolve(response.approved);
     }

@@ -23,6 +23,7 @@ export class VercelLLMService implements ILLMService {
     private maxIterations: number;
     private temperature: number | undefined;
     private maxOutputTokens: number | undefined;
+    private readonly sessionId: string;
 
     constructor(
         clientManager: MCPManager,
@@ -32,7 +33,8 @@ export class VercelLLMService implements ILLMService {
         contextManager: ContextManager,
         maxIterations: number = 10,
         temperature?: number,
-        maxOutputTokens?: number
+        maxOutputTokens?: number,
+        sessionId: string
     ) {
         this.model = model;
         this.provider = provider;
@@ -42,6 +44,7 @@ export class VercelLLMService implements ILLMService {
         this.contextManager = contextManager;
         this.temperature = temperature;
         this.maxOutputTokens = maxOutputTokens;
+        this.sessionId = sessionId;
 
         logger.debug(
             `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, temperature: ${temperature}, maxOutputTokens: ${maxOutputTokens}`
@@ -60,7 +63,7 @@ export class VercelLLMService implements ILLMService {
                 acc[toolName] = {
                     parameters: jsonSchema(tool.parameters as any),
                     execute: async (args: any) => {
-                        return await this.clientManager.executeTool(toolName, args);
+                        return await this.clientManager.executeTool(toolName, args, this.sessionId);
                     },
                     ...(tool.description && { description: tool.description }),
                 };

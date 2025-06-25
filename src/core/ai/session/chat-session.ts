@@ -201,7 +201,8 @@ export class ChatSession {
             llmConfig.router,
             this.services.clientManager,
             this.eventBus, // Use session event bus
-            this.contextManager
+            this.contextManager,
+            this.id
         );
 
         logger.debug(`ChatSession ${this.id}: Services initialized with storage`);
@@ -374,7 +375,8 @@ export class ChatSession {
                 router,
                 this.services.clientManager,
                 this.eventBus, // Use session event bus
-                this.contextManager
+                this.contextManager,
+                this.id
             );
 
             // Replace the LLM service

@@ -20,6 +20,7 @@ export class OpenAIService implements ILLMService {
     private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
+    private readonly sessionId: string;
 
     constructor(
         clientManager: MCPManager,
@@ -27,7 +28,8 @@ export class OpenAIService implements ILLMService {
         sessionEventBus: SessionEventBus,
         contextManager: ContextManager,
         model: string,
-        maxIterations: number = 10
+        maxIterations: number = 10,
+        sessionId: string
     ) {
         this.maxIterations = maxIterations;
         this.model = model;
@@ -35,6 +37,7 @@ export class OpenAIService implements ILLMService {
         this.clientManager = clientManager;
         this.sessionEventBus = sessionEventBus;
         this.contextManager = contextManager;
+        this.sessionId = sessionId;
     }
 
     getAllTools(): Promise<ToolSet> {
@@ -129,7 +132,11 @@ export class OpenAIService implements ILLMService {
 
                     // Execute tool
                     try {
-                        const result = await this.clientManager.executeTool(toolName, args);
+                        const result = await this.clientManager.executeTool(
+                            toolName,
+                            args,
+                            this.sessionId
+                        );
 
                         // Add tool result to message manager
                         await this.contextManager.addToolResult(toolCall.id, toolName, result);
