@@ -175,7 +175,7 @@ export class WebSocketEventSubscriber implements EventSubscriber {
 
         // Forward pre-execution tool confirmation events
         eventBus.on(
-            'toolConfirmationRequest',
+            'saiki:toolConfirmationRequest',
             (payload) => {
                 this.broadcast({
                     event: 'toolConfirmationRequest',

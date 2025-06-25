@@ -229,7 +229,11 @@ export function useChat(wsUrl: string) {
                     break;
                 }
                 case 'error': {
-                    const errMsg = payload.message || 'Unknown error';
+                    // Ensure that error messages are always rendered as readable text.
+                    const rawMsg = payload.message ?? 'Unknown error';
+                    const errMsg =
+                        typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg, null, 2);
+
                     setMessages((ms) => [
                         ...ms,
                         {
