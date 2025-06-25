@@ -3,7 +3,7 @@ import { ServerConfigs, McpServerConfig } from '../config/schemas.js';
 import { logger } from '../logger/index.js';
 import { IMCPClient } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';
-import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
+import { NoOpConfirmationProvider } from './tool-confirmation/noop-confirmation-provider.js';
 import { ToolSet } from '../ai/types.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
@@ -44,8 +44,8 @@ export class MCPManager {
     private confirmationProvider: ToolConfirmationProvider;
 
     constructor(confirmationProvider?: ToolConfirmationProvider) {
-        // If a confirmation provider is passed, use it, otherwise use the default implementation
-        this.confirmationProvider = confirmationProvider ?? new CLIConfirmationProvider();
+        // If a confirmation provider is passed, use it, otherwise use auto-approve fallback
+        this.confirmationProvider = confirmationProvider ?? new NoOpConfirmationProvider();
     }
 
     /**
