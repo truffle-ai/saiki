@@ -16,8 +16,8 @@
  *   strict check for the user id if the feature flag is set.
  */
 export interface IAllowedToolsProvider {
-    allowTool(toolName: string, userId?: string): Promise<void>;
-    disallowTool(toolName: string, userId?: string): Promise<void>;
-    isToolAllowed(toolName: string, userId?: string): Promise<boolean>;
-    getAllowedTools?(userId?: string): Promise<Set<string>>;
+    allowTool(toolName: string): Promise<void>;
+    disallowTool(toolName: string): Promise<void>;
+    isToolAllowed(toolName: string): Promise<boolean>;
+    getAllowedTools?(): Promise<Set<string>>;
 }

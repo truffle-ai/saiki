@@ -18,26 +18,26 @@ export class InMemoryAllowedToolsProvider implements IAllowedToolsProvider {
     }
 
     // If userId is omitted, use getUserId() as the default
-    async allowTool(toolName: string, userId?: string): Promise<void> {
-        const effectiveUserId = userId ?? getUserId();
+    async allowTool(toolName: string): Promise<void> {
+        const effectiveUserId = getUserId();
         this.getAllowedSet(effectiveUserId).add(toolName);
     }
 
     // If userId is omitted, use getUserId() as the default
-    async disallowTool(toolName: string, userId?: string): Promise<void> {
-        const effectiveUserId = userId ?? getUserId();
+    async disallowTool(toolName: string): Promise<void> {
+        const effectiveUserId = getUserId();
         this.getAllowedSet(effectiveUserId).delete(toolName);
     }
 
     // If userId is omitted, use getUserId() as the default
-    async isToolAllowed(toolName: string, userId?: string): Promise<boolean> {
-        const effectiveUserId = userId ?? getUserId();
+    async isToolAllowed(toolName: string): Promise<boolean> {
+        const effectiveUserId = getUserId();
         return this.getAllowedSet(effectiveUserId).has(toolName);
     }
 
     // If userId is omitted, use getUserId() as the default
-    async getAllowedTools(userId?: string): Promise<Set<string>> {
-        const effectiveUserId = userId ?? getUserId();
+    async getAllowedTools(): Promise<Set<string>> {
+        const effectiveUserId = getUserId();
         // Return a copy to prevent external mutation
         return new Set(this.getAllowedSet(effectiveUserId));
     }

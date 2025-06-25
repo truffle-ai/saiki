@@ -9,7 +9,6 @@ export interface ToolConfirmationEvent {
     description?: string | undefined;
     executionId: string;
     timestamp: Date;
-    userId?: string | undefined;
 }
 
 /**
@@ -19,7 +18,6 @@ export interface ToolConfirmationResponse {
     executionId: string;
     approved: boolean;
     rememberChoice?: boolean | undefined;
-    userId?: string | undefined;
 }
 
 /**
@@ -29,13 +27,17 @@ export interface ToolConfirmationProvider {
     allowedToolsProvider: IAllowedToolsProvider;
     requestConfirmation(
         details: ToolExecutionDetails,
-        userId?: string,
         callbacks?: {
             displayDetails?: (details: ToolExecutionDetails) => void;
             collectInput?: () => Promise<string | boolean>;
             parseResponse?: (response: any) => boolean;
         }
     ): Promise<boolean>;
+
+    // Only implemented by event-based providers – kept here for convenience
+    handleConfirmationResponse?(response: ToolConfirmationResponse): Promise<void>;
+
+    on?(event: 'toolConfirmationRequest', listener: (event: ToolConfirmationEvent) => void): any;
 }
 
 /**

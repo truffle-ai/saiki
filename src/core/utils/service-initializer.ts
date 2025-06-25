@@ -84,6 +84,13 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
         allowedToolsProvider,
     });
 
+    // Bridge tool confirmation requests to the global AgentEventBus so that
+    // application layers (WebSocket server, desktop apps, etc.) can listen to
+    // them exactly like any other Saiki event.
+    confirmationProvider.on?.('toolConfirmationRequest', (event) => {
+        agentEventBus.emit('toolConfirmationRequest', event);
+    });
+
     const clientManager = new MCPManager(confirmationProvider);
     await clientManager.initializeFromConfig(config.mcpServers);
 

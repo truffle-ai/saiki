@@ -224,6 +224,10 @@ export function useChat(wsUrl: string) {
                     });
                     break;
                 }
+                case 'toolConfirmationResponse': {
+                    // No UI output needed; just ignore.
+                    break;
+                }
                 case 'error': {
                     const errMsg = payload.message || 'Unknown error';
                     setMessages((ms) => [

@@ -22,6 +22,9 @@ export class CLIConfirmationHandler {
         this.provider = provider;
         this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider();
 
+        // Ensure tool approval is required by default in CLI
+        void this.settingsProvider.updateUserSettings('default', { toolApprovalRequired: true });
+
         // Listen to confirmation request events
         this.provider.on('toolConfirmationRequest', this.handleConfirmationRequest.bind(this));
     }
@@ -32,8 +35,10 @@ export class CLIConfirmationHandler {
     private async handleConfirmationRequest(event: ToolConfirmationEvent): Promise<void> {
         try {
             // Check user settings first
-            const effectiveUserId = event.userId ?? 'default';
-            const userSettings = await this.settingsProvider.getUserSettings(effectiveUserId);
+            logger.info(
+                `Handling tool confirmation request for ${event.toolName}, executionId: ${event.executionId}`
+            );
+            const userSettings = await this.settingsProvider.getUserSettings('default');
 
             if (userSettings.toolApprovalRequired === false) {
                 logger.debug(
@@ -42,7 +47,6 @@ export class CLIConfirmationHandler {
                 await this.provider.handleConfirmationResponse({
                     executionId: event.executionId,
                     approved: true,
-                    userId: event.userId,
                 });
                 return;
             }
@@ -57,8 +61,7 @@ export class CLIConfirmationHandler {
             const response: ToolConfirmationResponse = {
                 executionId: event.executionId,
                 approved,
-                rememberChoice: approved, // Auto-remember approved tools for CLI
-                userId: event.userId,
+                rememberChoice: false, // Don't auto-remember approved tools for CLI
             };
 
             await this.provider.handleConfirmationResponse(response);
@@ -72,7 +75,6 @@ export class CLIConfirmationHandler {
             await this.provider.handleConfirmationResponse({
                 executionId: event.executionId,
                 approved: false,
-                userId: event.userId,
             });
         }
     }

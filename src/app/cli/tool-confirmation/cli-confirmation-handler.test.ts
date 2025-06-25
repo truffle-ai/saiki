@@ -104,11 +104,11 @@ describe('CLIConfirmationHandler', () => {
             const handleResponseSpy = vi.spyOn(provider, 'handleConfirmationResponse');
 
             const event: ToolConfirmationEvent = {
+                executionId: 'exec-123',
                 toolName: 'testTool',
                 args: { arg1: 'value1' },
-                executionId: 'test-id',
+                description: 'Test tool',
                 timestamp: new Date(),
-                userId: 'default',
             };
 
             // Emit the event
@@ -118,9 +118,8 @@ describe('CLIConfirmationHandler', () => {
             await new Promise((resolve) => setTimeout(resolve, 10));
 
             expect(handleResponseSpy).toHaveBeenCalledWith({
-                executionId: 'test-id',
+                executionId: 'exec-123',
                 approved: true,
-                userId: 'default',
             });
         });
 
@@ -133,11 +132,11 @@ describe('CLIConfirmationHandler', () => {
             );
 
             const event: ToolConfirmationEvent = {
+                executionId: 'exec-123',
                 toolName: 'testTool',
                 args: { arg1: 'value1' },
-                executionId: 'test-id',
+                description: 'Test tool',
                 timestamp: new Date(),
-                userId: 'default',
             };
 
             // Emit the event
@@ -148,9 +147,8 @@ describe('CLIConfirmationHandler', () => {
 
             // Should send denial response on error
             expect(handleResponseSpy).toHaveBeenCalledWith({
-                executionId: 'test-id',
+                executionId: 'exec-123',
                 approved: false,
-                userId: 'default',
             });
         });
     });
@@ -180,11 +178,11 @@ describe('CLIConfirmationHandler', () => {
             });
 
             const event: ToolConfirmationEvent = {
+                executionId: 'exec-123',
                 toolName: 'testTool',
                 args: { arg1: 'value1' },
-                executionId: 'test-execution-id',
+                description: 'Test tool',
                 timestamp: new Date(),
-                userId: 'testUser',
             };
 
             // Emit the event
@@ -194,13 +192,12 @@ describe('CLIConfirmationHandler', () => {
             await new Promise((resolve) => setTimeout(resolve, 10));
 
             expect(handleResponseSpy).toHaveBeenCalledWith({
-                executionId: 'test-execution-id',
+                executionId: 'exec-123',
                 approved: true,
-                userId: 'testUser',
             });
         });
 
-        it('should handle events with missing userId', async () => {
+        it('should handle events without user context', async () => {
             const handleResponseSpy = vi.spyOn(provider, 'handleConfirmationResponse');
 
             // Configure settings to not require approval
@@ -209,11 +206,11 @@ describe('CLIConfirmationHandler', () => {
             });
 
             const event: ToolConfirmationEvent = {
+                executionId: 'exec-123',
                 toolName: 'testTool',
                 args: { arg1: 'value1' },
-                executionId: 'test-execution-id',
+                description: 'Test tool',
                 timestamp: new Date(),
-                // No userId
             };
 
             // Emit the event
@@ -223,9 +220,8 @@ describe('CLIConfirmationHandler', () => {
             await new Promise((resolve) => setTimeout(resolve, 10));
 
             expect(handleResponseSpy).toHaveBeenCalledWith({
-                executionId: 'test-execution-id',
+                executionId: 'exec-123',
                 approved: true,
-                userId: undefined,
             });
         });
     });

@@ -13,7 +13,6 @@ interface ToolConfirmationEvent {
     args: any;
     description?: string;
     timestamp: Date;
-    userId?: string;
 }
 
 interface ToolConfirmationHandlerProps {
@@ -37,7 +36,7 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
             try {
                 const message = JSON.parse(event.data);
                 
-                if (message.type === 'toolConfirmationRequest') {
+                if (message.event === 'toolConfirmationRequest') {
                     const confirmationEvent: ToolConfirmationEvent = {
                         ...message.data,
                         timestamp: new Date(message.data.timestamp)
@@ -69,7 +68,6 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
                 executionId: pendingConfirmation.executionId,
                 approved,
                 rememberChoice,
-                userId: pendingConfirmation.userId
             }
         };
 

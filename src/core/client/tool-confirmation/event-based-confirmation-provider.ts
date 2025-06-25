@@ -7,6 +7,7 @@ import {
     ToolConfirmationResponse,
 } from './types.js';
 import { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
+import { logger } from '@core/logger/logger.js';
 
 /**
  * Event-based tool confirmation provider that emits events for confirmation requests
@@ -22,7 +23,6 @@ export class EventBasedConfirmationProvider
             resolve: (approved: boolean) => void;
             reject: (error: Error) => void;
             toolName: string;
-            userId?: string | undefined;
         }
     >();
     private confirmationTimeout: number;
@@ -37,9 +37,9 @@ export class EventBasedConfirmationProvider
         this.confirmationTimeout = options.confirmationTimeout ?? 30000; // 30 seconds default
     }
 
-    async requestConfirmation(details: ToolExecutionDetails, userId?: string): Promise<boolean> {
+    async requestConfirmation(details: ToolExecutionDetails): Promise<boolean> {
         // Check if tool is in allowed list first
-        const isAllowed = await this.allowedToolsProvider.isToolAllowed(details.toolName, userId);
+        const isAllowed = await this.allowedToolsProvider.isToolAllowed(details.toolName);
         if (isAllowed) {
             return true;
         }
@@ -51,8 +51,11 @@ export class EventBasedConfirmationProvider
             description: details.description,
             executionId,
             timestamp: new Date(),
-            userId,
         };
+
+        logger.info(
+            `Tool confirmation requested for ${details.toolName}, executionId: ${executionId}`
+        );
 
         return new Promise<boolean>((resolve, reject) => {
             // Set timeout
@@ -74,7 +77,6 @@ export class EventBasedConfirmationProvider
                     reject(error);
                 },
                 toolName: details.toolName,
-                userId,
             });
 
             // Emit the confirmation request event
@@ -94,7 +96,7 @@ export class EventBasedConfirmationProvider
 
         // If user wants to remember this choice, add to allowed tools
         if (response.approved && response.rememberChoice) {
-            await this.allowedToolsProvider.allowTool(pending.toolName, pending.userId);
+            await this.allowedToolsProvider.allowTool(pending.toolName);
         }
 
         pending.resolve(response.approved);

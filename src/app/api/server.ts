@@ -36,6 +36,25 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     logger.info('Setting up API event subscriptions...');
     webSubscriber.subscribe(agent.agentEventBus);
 
+    // —— Tool confirmation response bridge ——
+    // Listen for toolConfirmationResponse messages from the WebUI and pipe them
+    // back to the core ToolConfirmationProvider so the awaiting promise can
+    // resolve.
+    const confirmationProvider = agent.getToolConfirmationProvider();
+
+    wss.on('connection', (ws: WebSocket) => {
+        ws.on('message', async (data) => {
+            try {
+                const msg = JSON.parse(data.toString());
+                if (msg?.type === 'toolConfirmationResponse' && msg.data) {
+                    await confirmationProvider.handleConfirmationResponse?.(msg.data);
+                }
+            } catch (_err) {
+                // Ignore malformed messages
+            }
+        });
+    });
+
     // HTTP endpoints
 
     // Health check endpoint
@@ -245,7 +264,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             logger.debug(`WebSocket received message: ${messageString}`);
             try {
                 const data = JSON.parse(messageString);
-                if (data.type === 'message' && data.content) {
+                if (data.type === 'toolConfirmationResponse' && data.data) {
+                    // Route confirmation back to provider and do not broadcast an error
+                    await confirmationProvider.handleConfirmationResponse?.(data.data);
+                    return;
+                } else if (data.type === 'message' && data.content) {
                     logger.info(
                         `Processing message from WebSocket: ${data.content.substring(0, 50)}...`
                     );

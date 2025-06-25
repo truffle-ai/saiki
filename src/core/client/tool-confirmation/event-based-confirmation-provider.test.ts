@@ -37,15 +37,12 @@ describe('EventBasedConfirmationProvider', () => {
 
     describe('requestConfirmation', () => {
         it('should auto-approve allowed tools', async () => {
-            await allowedToolsProvider.allowTool('testTool', 'user1');
+            await allowedToolsProvider.allowTool('testTool');
 
-            const result = await provider.requestConfirmation(
-                {
-                    toolName: 'testTool',
-                    args: { arg1: 'value1' },
-                },
-                'user1'
-            );
+            const result = await provider.requestConfirmation({
+                toolName: 'testTool',
+                args: { arg1: 'value1' },
+            });
 
             expect(result).toBe(true);
         });
@@ -55,14 +52,11 @@ describe('EventBasedConfirmationProvider', () => {
             provider.on('toolConfirmationRequest', eventSpy);
 
             // Start confirmation request but don't wait for it
-            const confirmationPromise = provider.requestConfirmation(
-                {
-                    toolName: 'newTool',
-                    args: { arg1: 'value1' },
-                    description: 'Test tool',
-                },
-                'user1'
-            );
+            const confirmationPromise = provider.requestConfirmation({
+                toolName: 'newTool',
+                args: { arg1: 'value1' },
+                description: 'Test tool',
+            });
 
             // Give event time to be emitted
             await new Promise((resolve) => setTimeout(resolve, 10));
@@ -74,7 +68,6 @@ describe('EventBasedConfirmationProvider', () => {
                     description: 'Test tool',
                     executionId: expect.any(String),
                     timestamp: expect.any(Date),
-                    userId: 'user1',
                 })
             );
 
@@ -103,7 +96,7 @@ describe('EventBasedConfirmationProvider', () => {
             await provider.handleConfirmationResponse({
                 executionId: event.executionId,
                 approved: true,
-                userId: event.userId,
+                rememberChoice: true,
             });
 
             const result = await confirmationPromise;
@@ -128,7 +121,7 @@ describe('EventBasedConfirmationProvider', () => {
             await provider.handleConfirmationResponse({
                 executionId: event.executionId,
                 approved: false,
-                userId: event.userId,
+                rememberChoice: true,
             });
 
             const result = await confirmationPromise;
@@ -166,13 +159,10 @@ describe('EventBasedConfirmationProvider', () => {
             const eventSpy = vi.fn();
             provider.on('toolConfirmationRequest', eventSpy);
 
-            const confirmationPromise = provider.requestConfirmation(
-                {
-                    toolName: 'newTool',
-                    args: { arg1: 'value1' },
-                },
-                'user1'
-            );
+            const confirmationPromise = provider.requestConfirmation({
+                toolName: 'newTool',
+                args: { arg1: 'value1' },
+            });
 
             // Wait for event to be emitted
             await new Promise((resolve) => setTimeout(resolve, 10));
@@ -184,13 +174,12 @@ describe('EventBasedConfirmationProvider', () => {
                 executionId: event.executionId,
                 approved: true,
                 rememberChoice: true,
-                userId: 'user1',
             });
 
             await confirmationPromise;
 
             // Verify tool was added to allowed list
-            const isAllowed = await allowedToolsProvider.isToolAllowed('newTool', 'user1');
+            const isAllowed = await allowedToolsProvider.isToolAllowed('newTool');
             expect(isAllowed).toBe(true);
         });
 
@@ -198,13 +187,10 @@ describe('EventBasedConfirmationProvider', () => {
             const eventSpy = vi.fn();
             provider.on('toolConfirmationRequest', eventSpy);
 
-            const confirmationPromise = provider.requestConfirmation(
-                {
-                    toolName: 'newTool',
-                    args: { arg1: 'value1' },
-                },
-                'user1'
-            );
+            const confirmationPromise = provider.requestConfirmation({
+                toolName: 'newTool',
+                args: { arg1: 'value1' },
+            });
 
             // Wait for event to be emitted
             await new Promise((resolve) => setTimeout(resolve, 10));
@@ -216,13 +202,12 @@ describe('EventBasedConfirmationProvider', () => {
                 executionId: event.executionId,
                 approved: false,
                 rememberChoice: true,
-                userId: 'user1',
             });
 
             await confirmationPromise;
 
             // Verify tool was not added to allowed list
-            const isAllowed = await allowedToolsProvider.isToolAllowed('newTool', 'user1');
+            const isAllowed = await allowedToolsProvider.isToolAllowed('newTool');
             expect(isAllowed).toBe(false);
         });
     });
