@@ -155,19 +155,3 @@ systemPrompt:
 4. **Dynamic content:** Use dynamic sources for time-sensitive or contextual information
 5. **Modular approach:** Break complex prompts into separate contributors for easier management
 
-## TypeScript Interface
-
-```typescript
-export interface SystemPromptConfig {
-    contributors: ContributorConfig[];
-}
-
-export interface ContributorConfig {
-    id: string;
-    type: 'static' | 'dynamic';
-    priority: number;
-    enabled?: boolean;
-    content?: string; // for static
-    source?: string; // for dynamic
-}
-```
