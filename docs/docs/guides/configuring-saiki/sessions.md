@@ -29,7 +29,7 @@ sessions:
 ### `sessionTTL`
 - **Type:** Number (milliseconds)
 - **Default:** 3600000 (1 hour)
-- **Description:** How long sessions remain active without activity before being cleaned up
+- **Description:** How long sessions remain in memory without activity before being removed from memory (chat history is preserved in storage)
 
 ## Examples
 
@@ -56,9 +56,10 @@ sessions:
 
 ## Session Behavior
 
-- **Automatic cleanup:** Expired sessions are automatically removed
+- **Automatic cleanup:** Expired sessions are automatically removed from memory (chat history preserved in storage)
 - **Session isolation:** Each session has independent conversation history and tool approvals
 - **Memory management:** Limiting sessions prevents memory exhaustion in long-running deployments
+- **Chat persistence:** Conversation history is always preserved in storage and can be restored when sessions are accessed again
 
 ## Default Configuration
 
