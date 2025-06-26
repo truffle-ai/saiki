@@ -55,6 +55,11 @@ describe('CLI Overrides', () => {
             maxSessions: 100,
             sessionTTL: 3600000,
         },
+        toolConfirmation: {
+            mode: 'event-based' as const,
+            timeout: 30000,
+            allowedToolsStorage: 'storage' as const,
+        },
     };
 
     test('applies CLI overrides correctly', () => {

@@ -38,6 +38,11 @@ describe('AgentStateManager Events', () => {
                 maxSessions: 100,
                 sessionTTL: 3600000,
             },
+            toolConfirmation: {
+                mode: 'event-based',
+                timeout: 30000,
+                allowedToolsStorage: 'storage',
+            },
         };
         // Parse through schema to validate and apply defaults, converting input to ValidatedAgentConfig
         const validatedConfig = AgentConfigSchema.parse(mockConfig);

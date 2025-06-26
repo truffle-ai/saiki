@@ -17,6 +17,9 @@ export const AGENT_EVENT_NAMES = [
     'saiki:mcpServerAdded',
     'saiki:mcpServerRemoved',
     'saiki:mcpServerUpdated',
+    // Tool confirmation events
+    'saiki:toolConfirmationRequest',
+    'saiki:toolConfirmationResponse',
 ] as const;
 
 /**
@@ -169,6 +172,24 @@ export interface AgentEventMap {
     'saiki:mcpServerUpdated': {
         serverName: string;
         config: any; // McpServerConfig type
+    };
+
+    /** Fired when tool confirmation is requested */
+    'saiki:toolConfirmationRequest': {
+        toolName: string;
+        args: Record<string, any>;
+        description?: string;
+        executionId: string;
+        timestamp: Date;
+        sessionId?: string;
+    };
+
+    /** Fired when tool confirmation response is received */
+    'saiki:toolConfirmationResponse': {
+        executionId: string;
+        approved: boolean;
+        rememberChoice?: boolean;
+        sessionId?: string;
     };
 }
 

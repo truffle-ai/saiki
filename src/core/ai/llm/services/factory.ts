@@ -44,13 +44,15 @@ function extractApiKey(config: ValidatedLLMConfig): string {
  * @param clientManager Client manager instance
  * @param sessionEventBus Session-level event bus for emitting LLM events
  * @param contextManager Message manager instance
+ * @param sessionId Session ID
  * @returns ILLMService instance
  */
 function _createInBuiltLLMService(
     config: ValidatedLLMConfig,
     clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
-    contextManager: ContextManager
+    contextManager: ContextManager,
+    sessionId: string
 ): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
@@ -68,7 +70,8 @@ function _createInBuiltLLMService(
                 sessionEventBus,
                 contextManager,
                 config.model,
-                config.maxIterations
+                config.maxIterations,
+                sessionId
             );
         }
         case 'anthropic': {
@@ -79,7 +82,8 @@ function _createInBuiltLLMService(
                 sessionEventBus,
                 contextManager,
                 config.model,
-                config.maxIterations
+                config.maxIterations,
+                sessionId
             );
         }
         default:
@@ -139,7 +143,8 @@ function _createVercelLLMService(
     config: ValidatedLLMConfig,
     clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
-    contextManager: ContextManager
+    contextManager: ContextManager,
+    sessionId: string
 ): VercelLLMService {
     const model = _createVercelModel(config);
 
@@ -150,6 +155,7 @@ function _createVercelLLMService(
         sessionEventBus,
         contextManager,
         config.maxIterations,
+        sessionId,
         config.temperature,
         config.maxOutputTokens
     );
@@ -163,11 +169,24 @@ export function createLLMService(
     router: LLMRouter,
     clientManager: MCPManager,
     sessionEventBus: SessionEventBus,
-    contextManager: ContextManager
+    contextManager: ContextManager,
+    sessionId: string
 ): ILLMService {
     if (router === 'vercel') {
-        return _createVercelLLMService(config, clientManager, sessionEventBus, contextManager);
+        return _createVercelLLMService(
+            config,
+            clientManager,
+            sessionEventBus,
+            contextManager,
+            sessionId
+        );
     } else {
-        return _createInBuiltLLMService(config, clientManager, sessionEventBus, contextManager);
+        return _createInBuiltLLMService(
+            config,
+            clientManager,
+            sessionEventBus,
+            contextManager,
+            sessionId
+        );
     }
 }

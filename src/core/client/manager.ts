@@ -3,9 +3,10 @@ import { ServerConfigs, McpServerConfig } from '../config/schemas.js';
 import { logger } from '../logger/index.js';
 import { IMCPClient } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';
-import { CLIConfirmationProvider } from './tool-confirmation/cli-confirmation-provider.js';
+import { NoOpConfirmationProvider } from './tool-confirmation/noop-confirmation-provider.js';
 import { ToolSet } from '../ai/types.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
+import { ToolExecutionDeniedError } from './tool-confirmation/errors.js';
 
 /**
  * Centralized manager for Multiple Model Context Protocol (MCP) servers.
@@ -44,8 +45,8 @@ export class MCPManager {
     private confirmationProvider: ToolConfirmationProvider;
 
     constructor(confirmationProvider?: ToolConfirmationProvider) {
-        // If a confirmation provider is passed, use it, otherwise use the default implementation
-        this.confirmationProvider = confirmationProvider ?? new CLIConfirmationProvider();
+        // If a confirmation provider is passed, use it, otherwise use auto-approve fallback
+        this.confirmationProvider = confirmationProvider ?? new NoOpConfirmationProvider();
     }
 
     /**
@@ -150,16 +151,21 @@ export class MCPManager {
      * Execute a specific tool with the given arguments.
      * @param toolName Name of the tool to execute
      * @param args Arguments to pass to the tool
+     * @param sessionId Optional session ID
      * @returns Promise resolving to the tool execution result
      */
-    async executeTool(toolName: string, args: any): Promise<any> {
+    async executeTool(toolName: string, args: any, sessionId?: string): Promise<any> {
         const client = this.getToolClient(toolName);
         if (!client) {
             throw new Error(`No client found for tool: ${toolName}`);
         }
-        const approved = await this.confirmationProvider.requestConfirmation({ toolName, args });
+        const approved = await this.confirmationProvider.requestConfirmation({
+            toolName,
+            args,
+            ...(sessionId && { sessionId }),
+        });
         if (!approved) {
-            throw new Error(`Execution of tool '${toolName}' was denied`);
+            throw new ToolExecutionDeniedError(toolName, sessionId);
         }
         return await client.callTool(toolName, args);
     }

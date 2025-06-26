@@ -172,6 +172,18 @@ export class WebSocketEventSubscriber implements EventSubscriber {
             },
             { signal }
         );
+
+        // Forward pre-execution tool confirmation events
+        eventBus.on(
+            'saiki:toolConfirmationRequest',
+            (payload) => {
+                this.broadcast({
+                    event: 'toolConfirmationRequest',
+                    data: payload,
+                });
+            },
+            { signal }
+        );
     }
 
     /**

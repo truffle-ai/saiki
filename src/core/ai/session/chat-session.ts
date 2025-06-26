@@ -155,7 +155,7 @@ export class ChatSession {
                     payload && typeof payload === 'object'
                         ? { ...payload, sessionId: this.id }
                         : { sessionId: this.id };
-                logger.debug(
+                logger.silly(
                     `Forwarding session event ${eventName} to agent bus with session context: ${JSON.stringify(payloadWithSession, null, 2)}`
                 );
                 // Forward to agent bus with session context
@@ -201,7 +201,8 @@ export class ChatSession {
             llmConfig.router,
             this.services.clientManager,
             this.eventBus, // Use session event bus
-            this.contextManager
+            this.contextManager,
+            this.id
         );
 
         logger.debug(`ChatSession ${this.id}: Services initialized with storage`);
@@ -374,7 +375,8 @@ export class ChatSession {
                 router,
                 this.services.clientManager,
                 this.eventBus, // Use session event bus
-                this.contextManager
+                this.contextManager,
+                this.id
             );
 
             // Replace the LLM service

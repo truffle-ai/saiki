@@ -72,17 +72,19 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
         database: config.storage.database.type,
     });
 
-    // 4. Initialize client manager with storage-backed allowed tools provider
-    const runMode = (process.env.SAIKI_RUN_MODE as 'cli' | 'web') ?? 'cli';
+    // 4. Initialize client manager with configurable tool confirmation
+    // Create allowed tools provider based on configuration
+    const allowedToolsProvider = createAllowedToolsProvider({
+        type: config.toolConfirmation.allowedToolsStorage,
+        storage,
+    });
 
-    // Create allowed tools provider with memory configuration
-    // TODO: Implement storage-backed provider when tool persistence is needed
-    const allowedToolsProvider = createAllowedToolsProvider({ type: 'memory' });
-
-    // Create tool confirmation provider
+    // Create tool confirmation provider with configured mode and timeout
     const confirmationProvider = createToolConfirmationProvider({
-        runMode,
+        mode: config.toolConfirmation.mode,
         allowedToolsProvider,
+        agentEventBus,
+        confirmationTimeout: config.toolConfirmation.timeout,
     });
 
     const clientManager = new MCPManager(confirmationProvider);

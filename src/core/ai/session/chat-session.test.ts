@@ -27,6 +27,7 @@ vi.mock('../../logger/index.js', () => ({
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
+        silly: vi.fn(),
     },
 }));
 
@@ -427,7 +428,8 @@ describe('ChatSession', () => {
                 mockLLMConfig.router,
                 mockServices.clientManager,
                 chatSession.eventBus, // Session-specific event bus
-                mockContextManager
+                mockContextManager,
+                sessionId
             );
 
             // Verify session-specific history provider creation

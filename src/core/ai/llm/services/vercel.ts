@@ -9,6 +9,7 @@ import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
+import { ToolExecutionDeniedError } from '../../../client/tool-confirmation/errors.js';
 
 /**
  * Vercel AI SDK implementation of LLMService
@@ -23,6 +24,7 @@ export class VercelLLMService implements ILLMService {
     private maxIterations: number;
     private temperature: number | undefined;
     private maxOutputTokens: number | undefined;
+    private readonly sessionId: string;
 
     constructor(
         clientManager: MCPManager,
@@ -31,6 +33,7 @@ export class VercelLLMService implements ILLMService {
         sessionEventBus: SessionEventBus,
         contextManager: ContextManager,
         maxIterations: number = 10,
+        sessionId: string,
         temperature?: number,
         maxOutputTokens?: number
     ) {
@@ -42,6 +45,7 @@ export class VercelLLMService implements ILLMService {
         this.contextManager = contextManager;
         this.temperature = temperature;
         this.maxOutputTokens = maxOutputTokens;
+        this.sessionId = sessionId;
 
         logger.debug(
             `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, temperature: ${temperature}, maxOutputTokens: ${maxOutputTokens}`
@@ -60,7 +64,20 @@ export class VercelLLMService implements ILLMService {
                 acc[toolName] = {
                     parameters: jsonSchema(tool.parameters as any),
                     execute: async (args: any) => {
-                        return await this.clientManager.executeTool(toolName, args);
+                        try {
+                            return await this.clientManager.executeTool(
+                                toolName,
+                                args,
+                                this.sessionId
+                            );
+                        } catch (err: any) {
+                            if (err instanceof ToolExecutionDeniedError) {
+                                return { error: err.message, denied: true };
+                            }
+                            // Other failures
+                            const message = err instanceof Error ? err.message : String(err);
+                            return { error: message };
+                        }
                     },
                     ...(tool.description && { description: tool.description }),
                 };
@@ -108,7 +125,7 @@ export class VercelLLMService implements ILLMService {
                     tokensUsed,
                 } = await this.contextManager.getFormattedMessagesWithCompression(context);
 
-                logger.debug(
+                logger.silly(
                     `Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`
                 );
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);

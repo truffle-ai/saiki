@@ -315,7 +315,15 @@ program
 
         // ——— Dispatch based on --mode ———
         switch (opts.mode) {
-            case 'cli':
+            case 'cli': {
+                // Set up CLI tool confirmation subscriber
+                const { CLIToolConfirmationSubscriber } = await import(
+                    './cli/tool-confirmation/cli-confirmation-handler.js'
+                );
+                const cliSubscriber = new CLIToolConfirmationSubscriber();
+                cliSubscriber.subscribe(agent.agentEventBus);
+                logger.info('Setting up CLI event subscriptions...');
+
                 if (headlessInput) {
                     // One shot CLI
                     await startHeadlessCli(agent, headlessInput);
@@ -324,6 +332,7 @@ program
                     await startAiCli(agent); // Interactive CLI
                 }
                 break;
+            }
 
             case 'web': {
                 const webPort = parseInt(opts.webPort, 10);

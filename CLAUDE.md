@@ -91,6 +91,26 @@ User Input → WebUI → WebSocket/REST → API → SaikiAgent → Core Services
 - **Update documentation when making changes** - Check `/docs` folder
 - **Never create documentation proactively** - Only when explicitly requested
 
+### Mermaid Diagrams in Documentation
+- **Use mermaid diagrams** for complex flows, architecture diagrams, and sequence diagrams
+- **ExpandableMermaid component** available for interactive diagrams:
+  ```tsx
+  import ExpandableMermaid from '@site/src/components/ExpandableMermaid';
+  
+  <ExpandableMermaid title="Event Flow Diagram">
+  ```mermaid
+  sequenceDiagram
+      participant A as User
+      participant B as System
+      A->>B: Request
+      B-->>A: Response
+  ```
+  </ExpandableMermaid>
+  ```
+- **Responsive design**: Thumbnails use full scale, modals expand to 92% viewport
+- **User experience**: Click to expand, Escape to close, hover effects
+- **Theme support**: Automatically adapts to light/dark mode
+
 ## Testing Strategy
 - **Follow existing test patterns** - Check README and search codebase for test framework
 - **Verify before marking complete** - All quality checks must pass

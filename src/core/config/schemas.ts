@@ -569,6 +569,36 @@ export const AgentConfigSchema = z
                 sessionTTL: 3600000,
             })
             .describe('Session management configuration'),
+
+        toolConfirmation: z
+            .object({
+                mode: z
+                    .enum(['event-based', 'auto-approve', 'auto-deny'])
+                    .default('event-based')
+                    .describe(
+                        'Tool confirmation mode: event-based (interactive), auto-approve (all tools), auto-deny (no tools)'
+                    ),
+                timeout: z
+                    .number()
+                    .int()
+                    .positive()
+                    .default(30000)
+                    .describe(
+                        'Timeout for tool confirmation requests in milliseconds, defaults to 30000ms (30 seconds)'
+                    ),
+                allowedToolsStorage: z
+                    .enum(['memory', 'storage'])
+                    .default('storage')
+                    .describe(
+                        'Storage type for remembered tool approvals: memory (session-only) or storage (persistent)'
+                    ),
+            })
+            .default({
+                mode: 'event-based',
+                timeout: 30000,
+                allowedToolsStorage: 'storage',
+            })
+            .describe('Tool confirmation and approval configuration'),
     })
     .strict()
     .describe('Main configuration for an agent, including its LLM and server connections');
