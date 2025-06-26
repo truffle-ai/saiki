@@ -134,6 +134,8 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
             await this.allowedToolsProvider.allowTool(pending.toolName, response.sessionId);
         }
 
+        // No further action needed if denied; LLM service wrapper will catch and return error
+
         logger.info(
             `Tool confirmation ${response.approved ? 'approved' : 'denied'} for executionId ${response.executionId}, sessionId: ${response.sessionId}`
         );

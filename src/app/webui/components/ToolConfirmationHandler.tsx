@@ -161,7 +161,7 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
 
                     <div>
                         <span className="font-medium">Arguments:</span>
-                        <pre className="bg-gray-50 p-3 rounded-md text-xs overflow-auto max-h-48 mt-1">
+                        <pre className="bg-background/50 p-3 rounded-md text-xs overflow-auto max-h-48 mt-1 text-muted-foreground">
                             {formatArgs(pendingConfirmation.args)}
                         </pre>
                     </div>

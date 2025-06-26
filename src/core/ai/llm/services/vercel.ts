@@ -9,6 +9,7 @@ import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
+import { ToolExecutionDeniedError } from '../../../errors.js';
 
 /**
  * Vercel AI SDK implementation of LLMService
@@ -70,7 +71,10 @@ export class VercelLLMService implements ILLMService {
                                 this.sessionId
                             );
                         } catch (err: any) {
-                            // Always return an error object so the AI SDK emits a toolResult
+                            if (err instanceof ToolExecutionDeniedError) {
+                                return { error: err.message, denied: true };
+                            }
+                            // Other failures
                             const message = err instanceof Error ? err.message : String(err);
                             return { error: message };
                         }
