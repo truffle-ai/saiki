@@ -337,7 +337,22 @@ export class SaikiAgent {
     }
 
     /**
-     * Deletes a session and cleans up its resources.
+     * Ends a session by removing it from memory without deleting conversation history.
+     * Used for cleanup, agent shutdown, and session expiry.
+     * @param sessionId The session ID to end
+     */
+    public async endSession(sessionId: string): Promise<void> {
+        this.ensureStarted();
+        // If ending the currently loaded default session, clear our reference
+        if (sessionId === this.currentDefaultSessionId) {
+            this.defaultSession = null;
+        }
+        return this.sessionManager.endSession(sessionId);
+    }
+
+    /**
+     * Deletes a session and its conversation history permanently.
+     * Used for user-initiated permanent deletion.
      * @param sessionId The session ID to delete
      */
     public async deleteSession(sessionId: string): Promise<void> {
@@ -347,14 +362,6 @@ export class SaikiAgent {
             this.defaultSession = null;
         }
         return this.sessionManager.deleteSession(sessionId);
-    }
-
-    /**
-     * @deprecated Use deleteSession instead. This method will be removed in a future version.
-     */
-    public async endSession(sessionId: string): Promise<void> {
-        logger.warn('endSession is deprecated, use deleteSession instead');
-        return this.deleteSession(sessionId);
     }
 
     /**

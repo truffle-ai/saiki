@@ -899,17 +899,18 @@ describe('SessionManager', () => {
             expect(restoredSession!.id).toBe(sessionId);
         });
 
-        test('should differentiate between memory cleanup and explicit deletion', async () => {
+        test('should delete conversation history and session metadata on explicit deletion', async () => {
             const sessionId = 'explicit-delete-test';
             const session = await sessionManager.createSession(sessionId);
 
-            // Explicit deletion should remove everything
+            // Explicit deletion should remove everything including conversation history
             await sessionManager.deleteSession(sessionId);
 
-            // Should call cleanup (which now only disposes memory)
+            // Should call reset to clear conversation history, then cleanup to dispose memory
+            expect(session.reset).toHaveBeenCalled();
             expect(session.cleanup).toHaveBeenCalled();
 
-            // Should remove from storage completely
+            // Should remove session metadata from storage completely
             expect(mockStorageManager.database.delete).toHaveBeenCalledWith(`session:${sessionId}`);
             expect(mockStorageManager.cache.delete).toHaveBeenCalledWith(`session:${sessionId}`);
         });
@@ -1084,9 +1085,9 @@ describe('SessionManager', () => {
             expect(realSessionManager['sessions'].has(sessionId)).toBe(false);
             expect(await realStorageBackends.database.get(sessionKey)).toBeUndefined();
 
-            // Note: In a full integration test, chat history would also be deleted
-            // by the ContextManager's resetConversation() method, but since we're
-            // mocking ChatSession, we only test session metadata deletion here
+            // Note: Chat history is also deleted via session.reset() which calls
+            // ContextManager's resetConversation() method, but since we're mocking
+            // ChatSession, we only test session metadata deletion here
         });
 
         test('end-to-end: multiple sessions can expire and restore independently', async () => {

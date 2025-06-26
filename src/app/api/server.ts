@@ -614,24 +614,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
-    // Reset session conversation
-    app.post('/api/sessions/:sessionId/reset', async (req, res) => {
-        try {
-            const { sessionId } = req.params;
-            const session = await agent.getSession(sessionId);
-            if (!session) {
-                return res.status(404).json({ error: 'Session not found' });
-            }
-
-            await agent.resetConversation(sessionId);
-            return res.json({ status: 'reset', sessionId });
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error(`Error resetting session ${req.params.sessionId}: ${errorMessage}`);
-            return res.status(500).json({ error: 'Failed to reset session' });
-        }
-    });
-
     // Load session as current working session
     app.post('/api/sessions/:sessionId/load', async (req, res) => {
         try {

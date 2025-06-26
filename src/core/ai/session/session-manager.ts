@@ -292,26 +292,51 @@ export class SessionManager {
     }
 
     /**
-     * Deletes a session and removes it from memory and storage.
+     * Ends a session by removing it from memory without deleting conversation history.
+     * Used for cleanup, agent shutdown, and session expiry.
+     *
+     * @param sessionId The session ID to end
+     */
+    public async endSession(sessionId: string): Promise<void> {
+        await this.ensureInitialized();
+
+        // Remove from memory only - preserve conversation history in storage
+        const session = this.sessions.get(sessionId);
+        if (session) {
+            await session.cleanup(); // Clean up memory resources only
+            this.sessions.delete(sessionId);
+        }
+
+        // Remove from cache but preserve database storage
+        const sessionKey = `session:${sessionId}`;
+        await this.services.storage.cache.delete(sessionKey);
+
+        logger.debug(`Ended session (removed from memory, chat history preserved): ${sessionId}`);
+    }
+
+    /**
+     * Deletes a session and its conversation history, removing everything from memory and storage.
+     * Used for user-initiated permanent deletion.
      *
      * @param sessionId The session ID to delete
      */
     public async deleteSession(sessionId: string): Promise<void> {
         await this.ensureInitialized();
 
-        // Remove from memory
-        const session = this.sessions.get(sessionId);
+        // Get session (load from storage if not in memory) to clear conversation history
+        const session = await this.getSession(sessionId);
         if (session) {
-            await session.cleanup();
+            await session.reset(); // This deletes the conversation history
+            await session.cleanup(); // This cleans up memory resources
             this.sessions.delete(sessionId);
         }
 
-        // Remove from storage
+        // Remove session metadata from storage
         const sessionKey = `session:${sessionId}`;
         await this.services.storage.database.delete(sessionKey);
         await this.services.storage.cache.delete(sessionKey);
 
-        logger.debug(`Deleted session: ${sessionId}`);
+        logger.debug(`Deleted session and conversation history: ${sessionId}`);
     }
 
     /**
@@ -342,14 +367,6 @@ export class SessionManager {
         }
 
         logger.debug(`Reset session conversation: ${sessionId}`);
-    }
-
-    /**
-     * @deprecated Use deleteSession instead. This method will be removed in a future version.
-     */
-    public async endSession(sessionId: string): Promise<void> {
-        logger.warn('endSession is deprecated, use deleteSession instead');
-        return this.deleteSession(sessionId);
     }
 
     /**
@@ -614,11 +631,11 @@ export class SessionManager {
             logger.debug('Periodic session cleanup stopped');
         }
 
-        // Close all in-memory sessions
+        // End all in-memory sessions (preserve conversation history)
         const sessionIds = Array.from(this.sessions.keys());
         for (const sessionId of sessionIds) {
             try {
-                await this.deleteSession(sessionId);
+                await this.endSession(sessionId);
             } catch (error) {
                 logger.error(
                     `Failed to cleanup session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`

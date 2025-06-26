@@ -135,12 +135,10 @@ describe('Session Integration: Chat History Preservation', () => {
         // Delete session through SaikiAgent
         await agent.deleteSession(sessionId);
 
-        // Everything should be gone
+        // Everything should be gone including chat history
         expect(await agent.getSession(sessionId)).toBeUndefined();
         expect(await storage.database.get(sessionKey)).toBeUndefined();
-
-        // Note: Chat history deletion would normally happen through ChatSession.reset()
-        // but since we're not using real LLM services, we manually verify the intent
+        expect(await storage.database.get(messagesKey)).toBeUndefined();
     });
 
     test('full integration: multiple concurrent sessions with independent histories', async () => {
