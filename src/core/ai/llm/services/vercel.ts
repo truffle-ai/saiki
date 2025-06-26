@@ -63,7 +63,17 @@ export class VercelLLMService implements ILLMService {
                 acc[toolName] = {
                     parameters: jsonSchema(tool.parameters as any),
                     execute: async (args: any) => {
-                        return await this.clientManager.executeTool(toolName, args, this.sessionId);
+                        try {
+                            return await this.clientManager.executeTool(
+                                toolName,
+                                args,
+                                this.sessionId
+                            );
+                        } catch (err: any) {
+                            // Always return an error object so the AI SDK emits a toolResult
+                            const message = err instanceof Error ? err.message : String(err);
+                            return { error: message };
+                        }
                     },
                     ...(tool.description && { description: tool.description }),
                 };
