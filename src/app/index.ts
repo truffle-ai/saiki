@@ -308,17 +308,6 @@ program
 
             // Start the agent (initialize async services)
             await agent.start();
-
-            // If running in CLI mode, attach the interactive confirmation handler
-            if (opts.mode === 'cli') {
-                const { CLIToolConfirmationSubscriber } = await import(
-                    './cli/tool-confirmation/cli-confirmation-handler.js'
-                );
-                // Subscribe to tool confirmation events via AgentEventBus
-                const cliSubscriber = new CLIToolConfirmationSubscriber();
-                cliSubscriber.subscribe(agent.agentEventBus);
-                logger.info('Setting up CLI event subscriptions...');
-            }
         } catch (err) {
             logger.error((err as Error).message);
             process.exit(1);
@@ -326,7 +315,15 @@ program
 
         // ——— Dispatch based on --mode ———
         switch (opts.mode) {
-            case 'cli':
+            case 'cli': {
+                // Set up CLI tool confirmation subscriber
+                const { CLIToolConfirmationSubscriber } = await import(
+                    './cli/tool-confirmation/cli-confirmation-handler.js'
+                );
+                const cliSubscriber = new CLIToolConfirmationSubscriber();
+                cliSubscriber.subscribe(agent.agentEventBus);
+                logger.info('Setting up CLI event subscriptions...');
+
                 if (headlessInput) {
                     // One shot CLI
                     await startHeadlessCli(agent, headlessInput);
@@ -335,6 +332,7 @@ program
                     await startAiCli(agent); // Interactive CLI
                 }
                 break;
+            }
 
             case 'web': {
                 const webPort = parseInt(opts.webPort, 10);

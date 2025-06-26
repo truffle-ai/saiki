@@ -72,19 +72,19 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
         database: config.storage.database.type,
     });
 
-    // 4. Initialize client manager with event-based tool confirmation
-    // Create allowed tools provider with storage configuration
+    // 4. Initialize client manager with configurable tool confirmation
+    // Create allowed tools provider based on configuration
     const allowedToolsProvider = createAllowedToolsProvider({
-        type: 'storage',
+        type: config.toolConfirmation.allowedToolsStorage,
         storage,
     });
 
-    // Create event-based tool confirmation provider
-    // Application layers (CLI, WebUI) will register handlers for confirmation events
+    // Create tool confirmation provider with configured mode and timeout
     const confirmationProvider = createToolConfirmationProvider({
-        mode: 'event-based',
+        mode: config.toolConfirmation.mode,
         allowedToolsProvider,
         agentEventBus,
+        confirmationTimeout: config.toolConfirmation.timeout,
     });
 
     const clientManager = new MCPManager(confirmationProvider);

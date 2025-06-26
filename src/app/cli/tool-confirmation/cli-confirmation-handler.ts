@@ -1,8 +1,6 @@
 import { logger } from '../../../core/logger/index.js';
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { InMemorySettingsProvider } from '../../../core/settings/in-memory-provider.js';
-import { SettingsProvider } from '../../../core/settings/types.js';
 import boxen from 'boxen';
 import {
     ToolConfirmationEvent,
@@ -16,14 +14,10 @@ import { EventSubscriber } from '../../api/types.js';
  * Implements EventSubscriber pattern to listen to AgentEventBus for tool confirmation requests
  */
 export class CLIToolConfirmationSubscriber implements EventSubscriber {
-    private settingsProvider: SettingsProvider;
     private agentEventBus?: AgentEventBus;
 
-    constructor(settingsProvider?: SettingsProvider) {
-        this.settingsProvider = settingsProvider ?? new InMemorySettingsProvider();
-
-        // Ensure tool approval is required by default in CLI
-        void this.settingsProvider.updateUserSettings('default', { toolApprovalRequired: true });
+    constructor() {
+        // No configuration needed - CLI always shows interactive prompts
     }
 
     /**
@@ -42,23 +36,9 @@ export class CLIToolConfirmationSubscriber implements EventSubscriber {
      */
     private async handleConfirmationRequest(event: ToolConfirmationEvent): Promise<void> {
         try {
-            // Check user settings first
             logger.info(
                 `Handling tool confirmation request for ${event.toolName}, executionId: ${event.executionId}`
             );
-            const userSettings = await this.settingsProvider.getUserSettings('default');
-
-            if (userSettings.toolApprovalRequired === false) {
-                logger.debug(
-                    `Tool '${event.toolName}' execution is automatically approved by settings`
-                );
-                this.sendConfirmationResponse({
-                    executionId: event.executionId,
-                    approved: true,
-                    ...(event.sessionId && { sessionId: event.sessionId }),
-                });
-                return;
-            }
 
             // Display tool call using the logger's built-in method
             logger.toolCall(event.toolName, event.args);

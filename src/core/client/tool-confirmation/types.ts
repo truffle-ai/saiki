@@ -32,14 +32,7 @@ export interface ToolConfirmationResponse {
  */
 export interface ToolConfirmationProvider {
     allowedToolsProvider: IAllowedToolsProvider;
-    requestConfirmation(
-        details: ToolExecutionDetails,
-        callbacks?: {
-            displayDetails?: (details: ToolExecutionDetails) => void;
-            collectInput?: () => Promise<string | boolean>;
-            parseResponse?: (response: any) => boolean;
-        }
-    ): Promise<boolean>;
+    requestConfirmation(details: ToolExecutionDetails): Promise<boolean>;
 
     // Only implemented by event-based providers – kept here for convenience
     handleConfirmationResponse?(response: ToolConfirmationResponse): Promise<void>;
