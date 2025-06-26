@@ -155,7 +155,7 @@ export class ChatSession {
                     payload && typeof payload === 'object'
                         ? { ...payload, sessionId: this.id }
                         : { sessionId: this.id };
-                logger.debug(
+                logger.silly(
                     `Forwarding session event ${eventName} to agent bus with session context: ${JSON.stringify(payloadWithSession, null, 2)}`
                 );
                 // Forward to agent bus with session context

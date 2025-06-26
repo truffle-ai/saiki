@@ -106,7 +106,11 @@ export default function MessageList({ messages }: MessageListProps) {
                           Tool: {msg.toolName}
                         </span>
                         {msg.toolResult ? (
-                          <CheckCircle className="mx-2 h-4 w-4 text-green-500" />
+                          typeof msg.toolResult === 'object' && msg.toolResult !== null && 'error' in (msg.toolResult as any) ? (
+                            <AlertTriangle className="mx-2 h-4 w-4 text-red-500" />
+                          ) : (
+                            <CheckCircle className="mx-2 h-4 w-4 text-green-500" />
+                          )
                         ) : (
                           <Loader2 className="mx-2 h-4 w-4 animate-spin text-muted-foreground" />
                         )}
@@ -122,7 +126,13 @@ export default function MessageList({ messages }: MessageListProps) {
                           {msg.toolResult && (
                             <div>
                               <p className="text-xs font-medium">Result:</p>
-                              {Array.isArray((msg.toolResult as any).content) ? (
+                              {typeof msg.toolResult === 'object' && msg.toolResult !== null && 'error' in (msg.toolResult as any) ? (
+                                <pre className="whitespace-pre-wrap overflow-auto bg-red-100 text-red-700 p-2 rounded text-xs">
+                                  {typeof (msg.toolResult as any).error === 'object'
+                                    ? JSON.stringify((msg.toolResult as any).error, null, 2)
+                                    : String((msg.toolResult as any).error)}
+                                </pre>
+                              ) : Array.isArray((msg.toolResult as any).content) ? (
                                 (msg.toolResult as any).content.map((part: any, index: number) => {
                                   if (part.type === 'image') {
                                     const src = part.data && part.mimeType
@@ -160,6 +170,13 @@ export default function MessageList({ messages }: MessageListProps) {
                       {typeof msg.content === 'string' && msg.content.trim() !== '' && (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       )}
+
+                      {msg.content && typeof msg.content === 'object' && !Array.isArray(msg.content) && (
+                        <pre className="whitespace-pre-wrap overflow-auto bg-background/50 p-2 rounded text-xs text-muted-foreground">
+                          {JSON.stringify(msg.content, null, 2)}
+                        </pre>
+                      )}
+
                       {Array.isArray(msg.content) && msg.content.map((part, partIdx) => {
                         const partKey = `${msgKey}-part-${partIdx}`;
                         if (part.type === 'text') {

@@ -29,6 +29,9 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
     const [rememberChoice, setRememberChoice] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+    // Queue to hold requests that arrive while a dialog is already open
+    const queuedRequestsRef = React.useRef<ToolConfirmationEvent[]>([]);
+
     // Handle incoming WebSocket messages
     useEffect(() => {
         if (!websocket) return;
@@ -40,17 +43,19 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
                 if (message.event === 'toolConfirmationRequest') {
                     const confirmationEvent: ToolConfirmationEvent = {
                         ...message.data,
-                        timestamp: new Date(message.data.timestamp)
+                        timestamp: new Date(message.data.timestamp),
                     };
-                    
-                    console.debug(
-                        '[WebUI] Received toolConfirmationRequest',
-                        confirmationEvent
-                    );
-                    
-                    setPendingConfirmation(confirmationEvent);
-                    setIsDialogOpen(true);
-                    setRememberChoice(false);
+
+                    console.debug('[WebUI] Received toolConfirmationRequest', confirmationEvent);
+
+                    if (isDialogOpen) {
+                        // Buffer the request to be shown later
+                        queuedRequestsRef.current.push(confirmationEvent);
+                    } else {
+                        setPendingConfirmation(confirmationEvent);
+                        setIsDialogOpen(true);
+                        setRememberChoice(false);
+                    }
                 }
             } catch (error) {
                 console.error('Error parsing WebSocket message:', error);
@@ -62,7 +67,7 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
         return () => {
             websocket.removeEventListener('message', handleMessage);
         };
-    }, [websocket]);
+    }, [websocket, isDialogOpen]);
 
     // Send confirmation response
     const sendResponse = useCallback((approved: boolean) => {
@@ -85,6 +90,16 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
         setIsDialogOpen(false);
         setPendingConfirmation(null);
         setRememberChoice(false);
+
+        // If there are queued requests, show the next one
+        if (queuedRequestsRef.current.length > 0) {
+            const next = queuedRequestsRef.current.shift()!;
+            // slight delay to allow dialog close animation
+            setTimeout(() => {
+                setPendingConfirmation(next);
+                setIsDialogOpen(true);
+            }, 0);
+        }
     }, [pendingConfirmation, rememberChoice, websocket]);
 
     const handleApprove = () => sendResponse(true);
@@ -166,7 +181,7 @@ export function ToolConfirmationHandler({ websocket }: ToolConfirmationHandlerPr
                             htmlFor="remember" 
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                            Remember this choice for future executions of this tool
+                            Approve future executions of this tool for this session
                         </label>
                     </div>
 

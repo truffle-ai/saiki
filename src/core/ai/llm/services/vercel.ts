@@ -111,7 +111,7 @@ export class VercelLLMService implements ILLMService {
                     tokensUsed,
                 } = await this.contextManager.getFormattedMessagesWithCompression(context);
 
-                logger.debug(
+                logger.silly(
                     `Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`
                 );
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
