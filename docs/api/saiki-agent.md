@@ -128,7 +128,7 @@ async listSessions(): Promise<string[]>
 
 ### `deleteSession`
 
-Permanently deletes a session and its conversation history.
+Permanently deletes a session and all its conversation history. This action cannot be undone.
 
 ```typescript
 async deleteSession(sessionId: string): Promise<void>
@@ -137,6 +137,8 @@ async deleteSession(sessionId: string): Promise<void>
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `sessionId` | `string` | Session ID to delete |
+
+**Note:** This completely removes the session and all associated conversation data from storage.
 
 ### `loadSession`
 
