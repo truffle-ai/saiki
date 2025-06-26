@@ -36,6 +36,13 @@ const ExpandableMermaid: React.FC<ExpandableMermaidProps> = ({ children, title =
     };
   }, [isModalOpen]);
 
+  // Cleanup body overflow on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   return (
     <>
       {/* Regular diagram with click-to-expand */}
@@ -53,10 +60,16 @@ const ExpandableMermaid: React.FC<ExpandableMermaidProps> = ({ children, title =
 
       {/* Full-screen modal */}
       {isModalOpen && (
-        <div className="mermaid-modal-backdrop" onClick={closeModal}>
+        <div 
+          className="mermaid-modal-backdrop" 
+          onClick={closeModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+        >
           <div className="mermaid-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="mermaid-modal-header">
-              <h3>{title}</h3>
+              <h3 id="modal-title">{title}</h3>
               <button className="mermaid-close-btn" onClick={closeModal} aria-label="Close">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2"/>
