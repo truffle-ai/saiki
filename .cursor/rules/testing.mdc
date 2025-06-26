@@ -1,27 +1,79 @@
 ---
-description: Mandatory local validation rules requiring all code changes to pass build, test, lint, and typecheck commands before completion 
-globs: ["**/*.ts", "**/*.js", "**/*.tsx", "**/*.jsx"]
-alwaysApply: false
+description: Testing patterns, commands, and validation requirements for Saiki development
+globs: ["**/*.test.ts", "**/*.integration.test.ts", "**/*.spec.ts", "**/*.ts", "**/*.js"]
+alwaysApply: true
 ---
-- **All code changes must be verified before completion**
+
+- **Test File Classification**
+  - **Unit Tests**: Use `.test.ts` suffix for isolated component testing
+    - Mock external dependencies (storage, services, APIs)
+    - Fast execution (< 100ms per test)
+    - Test individual functions/classes in isolation
+  - **Integration Tests**: Use `.integration.test.ts` suffix for end-to-end testing
+    - Test complete flows through multiple system layers
+    - Use real storage backends with in-memory configuration
+    - Test actual component interactions
+    - May include slower operations
+
+- **Test Commands**
+  - **All tests**: `npm test` or `npm run test`
+  - **Unit tests only**: `npm run test:unit` (excludes `**/*.integration.test.ts`)
+  - **Integration tests only**: `npm run test:integ` (runs only `**/*.integration.test.ts`)
+  - **Watch modes**: 
+    - `npm run test:unit:watch` for unit test development
+    - `npm run test:integ:watch` for integration test development
+
+- **Mandatory Validation Before Completion**
   - The agent **MUST run** the following commands and ensure they exit with status `0`:
     - `npm run build`  – compiles the project bundle
-    - `npm run test`   – executes the full test suite
+    - `npm test`       – executes the full test suite
     - `npm run lint`   – checks for ESLint violations
     - `npm run typecheck` – runs the strict TypeScript type checker
   - If any command fails, the agent should:
-    1. Stop further edits aimed at feature implementation.
-    2. Diagnose and fix the underlying issue.
-    3. Re-run the failing command(s) until all four commands pass or ask the user for guidance after 3 failed attempts.
+    1. Stop further edits aimed at feature implementation
+    2. Diagnose and fix the underlying issue
+    3. Re-run the failing command(s) until all four commands pass
 
-- **CI-parity in local validation**
-  - Treat these commands as the minimum gate equivalent to CI checks.
-  - New files must include any required test cases to keep coverage intact.
+- **Test Organization Examples**
+  ```typescript
+  // ✅ DO: Unit test structure
+  describe('SessionManager', () => {
+    let sessionManager: SessionManager;
+    let mockServices: any;
 
-- **Examples**
-  ```bash
-  # ✅ DO: Validate before finishing a task
-  npm run build && npm run test && npm run lint && npm run typecheck
+    beforeEach(() => {
+      // Setup mocks for isolated testing
+    });
 
-  # ❌ DON'T: Submit or mark a task done without running these validations
+    test('creates new session with valid ID', () => {
+      // Test isolated functionality
+    });
+  });
+
+  // ✅ DO: Integration test structure  
+  describe('Session Integration: Chat History Preservation', () => {
+    let agent: SaikiAgent;
+    
+    beforeEach(async () => {
+      // Setup real components with test config
+      agent = new SaikiAgent(testConfig);
+      await agent.start();
+    });
+
+    test('full integration: chat history survives session expiry', async () => {
+      // Test complete end-to-end workflows
+    });
+  });
   ```
+
+- **Development Workflow**
+  - Use `npm run test:unit:watch` during feature development
+  - Run `npm run test:integ` before submitting changes
+  - Add regression tests when fixing bugs
+  - Follow existing patterns in the codebase for test structure
+
+- **Quality Requirements**
+  - Unit tests must pass before commits
+  - Integration tests must pass before releases
+  - Tests should be deterministic and not flaky
+  - Use realistic but anonymized test data

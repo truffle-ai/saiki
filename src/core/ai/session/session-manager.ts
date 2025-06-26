@@ -426,31 +426,40 @@ export class SessionManager {
     }
 
     /**
-     * Cleans up expired sessions from both memory and storage.
+     * Cleans up expired sessions from memory only, preserving chat history in storage.
+     * This allows inactive sessions to be garbage collected while keeping conversations restorable.
      */
     private async cleanupExpiredSessions(): Promise<void> {
         const now = Date.now();
-        const sessionKeys = await this.services.storage.database.list('session:');
+        const expiredSessions: string[] = [];
 
-        for (const sessionKey of sessionKeys) {
+        // Check in-memory sessions for expiry
+        for (const [sessionId, _session] of this.sessions.entries()) {
+            const sessionKey = `session:${sessionId}`;
             const sessionData = await this.services.storage.database.get<SessionData>(sessionKey);
 
             if (sessionData && now - sessionData.lastActivity > this.sessionTTL) {
-                const sessionId = sessionKey.replace('session:', '');
-
-                // Remove from memory
-                const session = this.sessions.get(sessionId);
-                if (session) {
-                    await session.cleanup();
-                    this.sessions.delete(sessionId);
-                }
-
-                // Remove from storage
-                await this.services.storage.database.delete(sessionKey);
-                await this.services.storage.cache.delete(sessionKey);
-
-                logger.debug(`Cleaned up expired session: ${sessionId}`);
+                expiredSessions.push(sessionId);
             }
+        }
+
+        // Remove expired sessions from memory only (preserve storage)
+        for (const sessionId of expiredSessions) {
+            const session = this.sessions.get(sessionId);
+            if (session) {
+                // Only dispose memory resources, don't delete chat history
+                session.dispose();
+                this.sessions.delete(sessionId);
+                logger.debug(
+                    `Removed expired session from memory: ${sessionId} (chat history preserved)`
+                );
+            }
+        }
+
+        if (expiredSessions.length > 0) {
+            logger.debug(
+                `Memory cleanup: removed ${expiredSessions.length} inactive sessions, chat history preserved`
+            );
         }
     }
 

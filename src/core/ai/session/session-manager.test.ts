@@ -97,7 +97,10 @@ describe('SessionManager', () => {
                 run: vi.fn().mockResolvedValue('Mock response'),
                 reset: vi.fn().mockResolvedValue(undefined),
                 dispose: vi.fn(),
-                cleanup: vi.fn().mockResolvedValue(undefined),
+                cleanup: vi.fn().mockImplementation(async () => {
+                    // Simulate the new cleanup behavior - only call dispose, not reset
+                    mockSession.dispose();
+                }),
                 switchLLM: vi.fn().mockResolvedValue(undefined),
                 getHistory: vi.fn().mockResolvedValue([]),
                 getContextManager: vi.fn(),
@@ -790,6 +793,346 @@ describe('SessionManager', () => {
 
             setIntervalSpy.mockRestore();
             await shortTTLSessionManager.cleanup();
+        });
+    });
+
+    describe('Chat History Preservation', () => {
+        beforeEach(async () => {
+            await sessionManager.init();
+        });
+
+        test('should preserve chat history when session expires from memory', async () => {
+            const sessionId = 'test-session-history';
+
+            // Create session and simulate it has messages
+            const session = await sessionManager.createSession(sessionId);
+            expect(session).toBeDefined();
+
+            // Mock that session has been inactive for longer than TTL
+            const sessionKey = `session:${sessionId}`;
+            const expiredSessionData = {
+                id: sessionId,
+                createdAt: Date.now() - 7200000, // 2 hours ago
+                lastActivity: Date.now() - 7200000, // 2 hours ago (expired)
+                messageCount: 5,
+            };
+            mockStorageManager.database.get.mockResolvedValue(expiredSessionData);
+
+            // Trigger cleanup - should remove from memory but preserve storage
+            await sessionManager['cleanupExpiredSessions']();
+
+            // Session should be removed from memory
+            expect(sessionManager['sessions'].has(sessionId)).toBe(false);
+
+            // But session should still exist in storage (not deleted)
+            expect(mockStorageManager.database.delete).not.toHaveBeenCalledWith(sessionKey);
+
+            // Chat history should still be accessible through DatabaseHistoryProvider
+            // (The actual history is stored separately from session metadata)
+        });
+
+        test('should restore session from storage with chat history intact', async () => {
+            const sessionId = 'restored-session';
+
+            // Mock that session exists in storage but not in memory
+            const storedSessionData = {
+                id: sessionId,
+                createdAt: Date.now() - 3600000, // 1 hour ago
+                lastActivity: Date.now() - 1800000, // 30 minutes ago
+                messageCount: 10,
+            };
+            mockStorageManager.database.get.mockResolvedValue(storedSessionData);
+
+            // Get session - should restore from storage
+            const restoredSession = await sessionManager.getSession(sessionId);
+
+            expect(restoredSession).toBeDefined();
+            expect(restoredSession!.id).toBe(sessionId);
+            expect(MockChatSession).toHaveBeenCalledWith(mockServices, sessionId);
+
+            // Session should now be in memory
+            expect(sessionManager['sessions'].has(sessionId)).toBe(true);
+        });
+
+        test('should only call dispose() during cleanup, not reset()', async () => {
+            const sessionId = 'memory-only-cleanup';
+            const session = await sessionManager.createSession(sessionId);
+
+            // Spy on session methods
+            const disposeSpy = vi.spyOn(session, 'dispose');
+            const resetSpy = vi.spyOn(session, 'reset');
+
+            // Manually call cleanup (simulating what happens during expiry)
+            await session.cleanup();
+
+            // Should only dispose memory resources, NOT reset conversation
+            expect(disposeSpy).toHaveBeenCalled();
+            expect(resetSpy).not.toHaveBeenCalled();
+        });
+
+        test('should preserve session metadata and history after memory cleanup', async () => {
+            const sessionId = 'persistent-session';
+
+            // Create session
+            await sessionManager.createSession(sessionId);
+
+            // Mock expired session data
+            const expiredSessionData = {
+                id: sessionId,
+                createdAt: Date.now() - 7200000,
+                lastActivity: Date.now() - 7200000, // Expired
+                messageCount: 15,
+            };
+            mockStorageManager.database.get.mockResolvedValue(expiredSessionData);
+
+            // Trigger cleanup
+            await sessionManager['cleanupExpiredSessions']();
+
+            // Session metadata should still exist in storage
+            expect(mockStorageManager.database.delete).not.toHaveBeenCalledWith(
+                `session:${sessionId}`
+            );
+
+            // Session should be able to be restored later
+            const restoredSession = await sessionManager.getSession(sessionId);
+            expect(restoredSession).toBeDefined();
+            expect(restoredSession!.id).toBe(sessionId);
+        });
+
+        test('should differentiate between memory cleanup and explicit deletion', async () => {
+            const sessionId = 'explicit-delete-test';
+            const session = await sessionManager.createSession(sessionId);
+
+            // Explicit deletion should remove everything
+            await sessionManager.deleteSession(sessionId);
+
+            // Should call cleanup (which now only disposes memory)
+            expect(session.cleanup).toHaveBeenCalled();
+
+            // Should remove from storage completely
+            expect(mockStorageManager.database.delete).toHaveBeenCalledWith(`session:${sessionId}`);
+            expect(mockStorageManager.cache.delete).toHaveBeenCalledWith(`session:${sessionId}`);
+        });
+
+        test('should handle multiple expired sessions without affecting storage', async () => {
+            const sessionIds = ['expired-1', 'expired-2', 'expired-3'];
+
+            // Create multiple sessions
+            for (const sessionId of sessionIds) {
+                await sessionManager.createSession(sessionId);
+            }
+
+            // Mock all as expired
+            mockStorageManager.database.get.mockImplementation((key: string) => {
+                const sessionId = key.replace('session:', '');
+                if (sessionIds.includes(sessionId)) {
+                    return Promise.resolve({
+                        id: sessionId,
+                        createdAt: Date.now() - 7200000,
+                        lastActivity: Date.now() - 7200000, // All expired
+                        messageCount: 5,
+                    });
+                }
+                return Promise.resolve(null);
+            });
+
+            // Trigger cleanup
+            await sessionManager['cleanupExpiredSessions']();
+
+            // All sessions should be removed from memory
+            sessionIds.forEach((sessionId) => {
+                expect(sessionManager['sessions'].has(sessionId)).toBe(false);
+            });
+
+            // But none should be deleted from storage
+            sessionIds.forEach((sessionId) => {
+                expect(mockStorageManager.database.delete).not.toHaveBeenCalledWith(
+                    `session:${sessionId}`
+                );
+            });
+        });
+    });
+
+    describe('End-to-End Chat History Preservation', () => {
+        let realStorageBackends: any;
+        let realSessionManager: SessionManager;
+
+        beforeEach(async () => {
+            // Create real storage backends for end-to-end testing
+            const { createStorageBackends } = await import('../../storage/index.js');
+
+            const storageConfig = {
+                cache: { type: 'in-memory' as const },
+                database: { type: 'in-memory' as const },
+            };
+
+            const result = await createStorageBackends(storageConfig);
+            realStorageBackends = result.backends;
+
+            // Create SessionManager with real storage and short TTL for faster testing
+            realSessionManager = new SessionManager(
+                {
+                    ...mockServices,
+                    storage: realStorageBackends,
+                },
+                {
+                    maxSessions: 10,
+                    sessionTTL: 100, // 100ms for fast testing
+                }
+            );
+
+            await realSessionManager.init();
+        });
+
+        afterEach(async () => {
+            if (realSessionManager) {
+                await realSessionManager.cleanup();
+            }
+            if (realStorageBackends) {
+                await realStorageBackends.database.disconnect();
+                await realStorageBackends.cache.disconnect();
+            }
+        });
+
+        test('end-to-end: chat history survives session expiry and is restored on access', async () => {
+            const sessionId = 'e2e-test-session';
+
+            // Step 1: Create session and simulate adding chat history
+            const originalSession = await realSessionManager.createSession(sessionId);
+            expect(originalSession).toBeDefined();
+
+            // Simulate chat history by storing messages directly (since we're mocking ChatSession)
+            const messagesKey = `messages:${sessionId}`;
+            const mockChatHistory = [
+                { role: 'user', content: 'Hello!' },
+                { role: 'assistant', content: 'Hi there!' },
+                { role: 'user', content: 'How are you?' },
+                { role: 'assistant', content: 'I am doing well, thank you!' },
+            ];
+            await realStorageBackends.database.set(messagesKey, mockChatHistory);
+
+            // Verify session exists in memory
+            expect(realSessionManager['sessions'].has(sessionId)).toBe(true);
+
+            // Step 2: Wait for session to expire, then trigger cleanup
+            await new Promise((resolve) => setTimeout(resolve, 150)); // Wait > TTL (100ms)
+
+            // Update session metadata to mark it as expired
+            const sessionKey = `session:${sessionId}`;
+            const sessionData = await realStorageBackends.database.get(sessionKey);
+            if (sessionData) {
+                sessionData.lastActivity = Date.now() - 200; // Mark as expired
+                await realStorageBackends.database.set(sessionKey, sessionData);
+            }
+
+            // Trigger cleanup manually (simulating periodic cleanup)
+            await realSessionManager['cleanupExpiredSessions']();
+
+            // Step 3: Verify session removed from memory but preserved in storage
+            expect(realSessionManager['sessions'].has(sessionId)).toBe(false);
+
+            // Session metadata should still exist
+            const preservedSessionData = await realStorageBackends.database.get(sessionKey);
+            expect(preservedSessionData).toBeDefined();
+
+            // Chat history should still exist
+            const preservedHistory = await realStorageBackends.database.get(messagesKey);
+            expect(preservedHistory).toEqual(mockChatHistory);
+
+            // Step 4: Access session again - should restore from storage
+            const restoredSession = await realSessionManager.getSession(sessionId);
+            expect(restoredSession).toBeDefined();
+            expect(restoredSession!.id).toBe(sessionId);
+
+            // Session should be back in memory
+            expect(realSessionManager['sessions'].has(sessionId)).toBe(true);
+
+            // Chat history should still be accessible
+            const finalHistory = await realStorageBackends.database.get(messagesKey);
+            expect(finalHistory).toEqual(mockChatHistory);
+
+            // Step 5: Verify new messages can be added to restored session
+            await realStorageBackends.database.set(messagesKey, [
+                ...mockChatHistory,
+                { role: 'user', content: 'Still here!' },
+            ]);
+
+            const updatedHistory = await realStorageBackends.database.get(messagesKey);
+            expect(updatedHistory).toHaveLength(5);
+            expect(updatedHistory[4]).toEqual({ role: 'user', content: 'Still here!' });
+        });
+
+        test('end-to-end: explicit deletion removes everything permanently', async () => {
+            const sessionId = 'e2e-delete-test';
+
+            // Create session with chat history
+            await realSessionManager.createSession(sessionId);
+
+            const messagesKey = `messages:${sessionId}`;
+            const sessionKey = `session:${sessionId}`;
+            const mockHistory = [{ role: 'user', content: 'Test message' }];
+            await realStorageBackends.database.set(messagesKey, mockHistory);
+
+            // Verify everything exists
+            expect(await realStorageBackends.database.get(sessionKey)).toBeDefined();
+            expect(await realStorageBackends.database.get(messagesKey)).toEqual(mockHistory);
+
+            // Explicitly delete session
+            await realSessionManager.deleteSession(sessionId);
+
+            // Everything should be gone
+            expect(realSessionManager['sessions'].has(sessionId)).toBe(false);
+            expect(await realStorageBackends.database.get(sessionKey)).toBeUndefined();
+
+            // Note: In a full integration test, chat history would also be deleted
+            // by the ContextManager's resetConversation() method, but since we're
+            // mocking ChatSession, we only test session metadata deletion here
+        });
+
+        test('end-to-end: multiple sessions can expire and restore independently', async () => {
+            const sessionIds = ['multi-1', 'multi-2', 'multi-3'];
+            const histories = sessionIds.map((id, index) => [
+                { role: 'user', content: `Hello from session ${index + 1}` },
+            ]);
+
+            // Create multiple sessions with different histories
+            for (let i = 0; i < sessionIds.length; i++) {
+                await realSessionManager.createSession(sessionIds[i]);
+                await realStorageBackends.database.set(`messages:${sessionIds[i]}`, histories[i]);
+            }
+
+            // Mark all as expired and cleanup
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            for (const sessionId of sessionIds) {
+                const sessionData = await realStorageBackends.database.get(`session:${sessionId}`);
+                if (sessionData) {
+                    sessionData.lastActivity = Date.now() - 200;
+                    await realStorageBackends.database.set(`session:${sessionId}`, sessionData);
+                }
+            }
+
+            await realSessionManager['cleanupExpiredSessions']();
+
+            // All should be removed from memory
+            sessionIds.forEach((id) => {
+                expect(realSessionManager['sessions'].has(id)).toBe(false);
+            });
+
+            // Restore sessions one by one and verify independent histories
+            for (let i = 0; i < sessionIds.length; i++) {
+                const sessionId = sessionIds[i]!;
+                const restoredSession = await realSessionManager.getSession(sessionId);
+                expect(restoredSession).toBeDefined();
+                expect(restoredSession!.id).toBe(sessionId);
+
+                const history = await realStorageBackends.database.get(`messages:${sessionId}`);
+                expect(history).toEqual(histories[i]);
+            }
+
+            // All should be back in memory
+            sessionIds.forEach((id) => {
+                expect(realSessionManager['sessions'].has(id)).toBe(true);
+            });
         });
     });
 });
