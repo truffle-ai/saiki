@@ -74,7 +74,25 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
         return new Promise<boolean>((resolve, reject) => {
             // Set timeout
             const timeout = setTimeout(() => {
+                // Emit synthetic denial so UI and downstream logic know it was cancelled
+                const timeoutResponse: ToolConfirmationResponse = {
+                    executionId,
+                    approved: false,
+                    rememberChoice: false,
+                    sessionId: details.sessionId,
+                };
+
+                logger.warn(
+                    `Tool confirmation timeout for ${details.toolName}, executionId: ${executionId}`
+                );
+
+                // Clean up pending map before emitting to avoid re-processing
                 this.pendingConfirmations.delete(executionId);
+
+                // Notify application layers – this will hit handleConfirmationResponse but
+                // pending entry is already gone so it will be ignored.
+                this.agentEventBus.emit('saiki:toolConfirmationResponse', timeoutResponse);
+
                 reject(new Error(`Tool confirmation timeout for ${details.toolName}`));
             }, this.confirmationTimeout);
 

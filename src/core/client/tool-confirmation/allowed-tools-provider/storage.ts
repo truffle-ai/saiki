@@ -1,5 +1,6 @@
 import type { StorageManager } from '@core/storage/storage-manager.js';
 import type { IAllowedToolsProvider } from './types.js';
+import { logger } from '@core/logger/index.js';
 
 /**
  * Storage-backed implementation that persists allowed tools in the Saiki
@@ -18,6 +19,7 @@ export class StorageAllowedToolsProvider implements IAllowedToolsProvider {
 
     async allowTool(toolName: string, sessionId?: string): Promise<void> {
         const key = this.buildKey(sessionId);
+        logger.debug(`Adding allowed tool '${toolName}' for key '${key}'`);
         const set = (await this.storageManager.cache.get<Set<string>>(key)) ?? new Set<string>();
         set.add(toolName);
         await this.storageManager.cache.set(key, set);
@@ -25,6 +27,7 @@ export class StorageAllowedToolsProvider implements IAllowedToolsProvider {
 
     async disallowTool(toolName: string, sessionId?: string): Promise<void> {
         const key = this.buildKey(sessionId);
+        logger.debug(`Removing allowed tool '${toolName}' for key '${key}'`);
         const set = (await this.storageManager.cache.get<Set<string>>(key)) ?? new Set<string>();
         set.delete(toolName);
         await this.storageManager.cache.set(key, set);
@@ -39,7 +42,11 @@ export class StorageAllowedToolsProvider implements IAllowedToolsProvider {
         const globalSet = await this.storageManager.cache.get<Set<string>>(
             this.buildKey(undefined)
         );
-        return globalSet?.has(toolName) ?? false;
+        const allowed = globalSet?.has(toolName) ?? false;
+        logger.debug(
+            `Checked allowed tool '${toolName}' in session '${sessionId ?? 'global'}' – allowed=${allowed}`
+        );
+        return allowed;
     }
 
     async getAllowedTools(sessionId?: string): Promise<Set<string>> {
