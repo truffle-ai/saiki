@@ -10,7 +10,7 @@ import ServersPanel from './ServersPanel';
 import SessionPanel from './SessionPanel';
 import { ToolConfirmationHandler } from './ToolConfirmationHandler';
 import { Button } from "./ui/button";
-import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2, RefreshCw } from "lucide-react";
+import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2 } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
@@ -45,9 +45,7 @@ export default function ChatApp() {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Conversation management states
-  const [isResetDialogOpen, setResetDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -155,32 +153,6 @@ export default function ChatApp() {
     }
   }, [switchSession]);
 
-  const handleResetConversation = useCallback(async () => {
-    if (!currentSessionId) return;
-    
-    setIsResetting(true);
-    try {
-      const response = await fetch(`/api/sessions/${currentSessionId}/reset`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reset conversation');
-      }
-
-      // Refresh the session to clear messages in the UI
-      await switchSession(currentSessionId);
-      setResetDialogOpen(false);
-    } catch (error) {
-      console.error('Error resetting conversation:', error);
-      // You might want to show a toast notification here
-    } finally {
-      setIsResetting(false);
-    }
-  }, [currentSessionId, switchSession]);
 
   const handleDeleteConversation = useCallback(async () => {
     if (!currentSessionId) return;
@@ -272,14 +244,13 @@ export default function ChatApp() {
         else if (isServerRegistryOpen) setServerRegistryOpen(false);
         else if (isExportOpen) setExportOpen(false);
         else if (showShortcuts) setShowShortcuts(false);
-        else if (isResetDialogOpen) setResetDialogOpen(false);
         else if (isDeleteDialogOpen) setDeleteDialogOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isSessionsPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isResetDialogOpen, isDeleteDialogOpen]);
+  }, [isServersPanelOpen, isSessionsPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isDeleteDialogOpen]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -372,10 +343,6 @@ export default function ChatApp() {
                   {currentSessionId && !isWelcomeState && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setResetDialogOpen(true)}>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reset Conversation
-                      </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => setDeleteDialogOpen(true)}
                         className="text-destructive focus:text-destructive"
@@ -570,39 +537,6 @@ export default function ChatApp() {
           </DialogContent>
         </Dialog>
 
-        {/* Reset Conversation Confirmation Modal */}
-        <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center space-x-2">
-                <RefreshCw className="h-5 w-5" />
-                <span>Reset Conversation</span>
-              </DialogTitle>
-              <DialogDescription>
-                This will clear all messages in this conversation while keeping the session active.
-                {currentSessionId && (
-                  <span className="block mt-2 font-medium">
-                    Session: <span className="font-mono">{currentSessionId}</span>
-                  </span>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleResetConversation}
-                disabled={isResetting}
-                className="flex items-center space-x-2"
-              >
-                <RefreshCw className={cn("h-4 w-4", isResetting && "animate-spin")} />
-                <span>{isResetting ? 'Resetting...' : 'Reset Conversation'}</span>
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Delete Conversation Confirmation Modal */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

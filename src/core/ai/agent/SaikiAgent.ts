@@ -85,8 +85,8 @@ export class SaikiAgent {
     private currentDefaultSessionId: string = 'default';
 
     // Track initialization state
-    private isStarted: boolean = false;
-    private isStopped: boolean = false;
+    private _isStarted: boolean = false;
+    private _isStopped: boolean = false;
 
     // Store config for async initialization
     private config: AgentConfig;
@@ -105,7 +105,7 @@ export class SaikiAgent {
      * @throws Error if agent is already started or initialization fails
      */
     public async start(): Promise<void> {
-        if (this.isStarted) {
+        if (this._isStarted) {
             throw new Error('Agent is already started');
         }
 
@@ -132,7 +132,7 @@ export class SaikiAgent {
                 services: services,
             });
 
-            this.isStarted = true;
+            this._isStarted = true;
             logger.info('SaikiAgent started successfully.');
         } catch (error) {
             logger.error('Failed to start SaikiAgent', error);
@@ -148,12 +148,12 @@ export class SaikiAgent {
      * @throws Error if agent has not been started or shutdown fails
      */
     public async stop(): Promise<void> {
-        if (this.isStopped) {
+        if (this._isStopped) {
             logger.warn('Agent is already stopped');
             return;
         }
 
-        if (!this.isStarted) {
+        if (!this._isStarted) {
             throw new Error('Agent must be started before it can be stopped');
         }
 
@@ -195,8 +195,8 @@ export class SaikiAgent {
                 shutdownErrors.push(new Error(`Storage disconnect failed: ${err.message}`));
             }
 
-            this.isStopped = true;
-            this.isStarted = false;
+            this._isStopped = true;
+            this._isStarted = false;
 
             if (shutdownErrors.length > 0) {
                 const errorMessages = shutdownErrors.map((e) => e.message).join('; ');
@@ -215,16 +215,16 @@ export class SaikiAgent {
      * Checks if the agent has been started.
      * @returns true if agent is started, false otherwise
      */
-    public getIsStarted(): boolean {
-        return this.isStarted;
+    public isStarted(): boolean {
+        return this._isStarted;
     }
 
     /**
      * Checks if the agent has been stopped.
      * @returns true if agent is stopped, false otherwise
      */
-    public getIsStopped(): boolean {
-        return this.isStopped;
+    public isStopped(): boolean {
+        return this._isStopped;
     }
 
     /**
@@ -232,10 +232,10 @@ export class SaikiAgent {
      * @throws Error if agent is not started or has been stopped
      */
     private ensureStarted(): void {
-        if (this.isStopped) {
+        if (this._isStopped) {
             throw new Error('Agent has been stopped and cannot be used');
         }
-        if (!this.isStarted) {
+        if (!this._isStarted) {
             throw new Error('Agent must be started before use. Call agent.start() first.');
         }
     }
@@ -337,7 +337,22 @@ export class SaikiAgent {
     }
 
     /**
-     * Deletes a session and cleans up its resources.
+     * Ends a session by removing it from memory without deleting conversation history.
+     * Used for cleanup, agent shutdown, and session expiry.
+     * @param sessionId The session ID to end
+     */
+    public async endSession(sessionId: string): Promise<void> {
+        this.ensureStarted();
+        // If ending the currently loaded default session, clear our reference
+        if (sessionId === this.currentDefaultSessionId) {
+            this.defaultSession = null;
+        }
+        return this.sessionManager.endSession(sessionId);
+    }
+
+    /**
+     * Deletes a session and its conversation history permanently.
+     * Used for user-initiated permanent deletion.
      * @param sessionId The session ID to delete
      */
     public async deleteSession(sessionId: string): Promise<void> {
@@ -347,14 +362,6 @@ export class SaikiAgent {
             this.defaultSession = null;
         }
         return this.sessionManager.deleteSession(sessionId);
-    }
-
-    /**
-     * @deprecated Use deleteSession instead. This method will be removed in a future version.
-     */
-    public async endSession(sessionId: string): Promise<void> {
-        logger.warn('endSession is deprecated, use deleteSession instead');
-        return this.deleteSession(sessionId);
     }
 
     /**

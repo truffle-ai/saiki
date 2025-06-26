@@ -112,6 +112,23 @@ User Input → WebUI → WebSocket/REST → API → SaikiAgent → Core Services
 - **Theme support**: Automatically adapts to light/dark mode
 
 ## Testing Strategy
+
+### Test Classification
+- **Unit Tests**: `*.test.ts` - Fast tests with mocked dependencies, isolated component testing
+- **Integration Tests**: `*.integration.test.ts` - Real dependencies, cross-component testing
+- **Future**: `*.e2e.test.ts` - Full system end-to-end testing
+
+### Test Commands
+- `npm test` - Run all tests (unit + integration)
+- `npm run test:unit` - Run only unit tests (fast, for development)
+- `npm run test:integ` - Run only integration tests (thorough, for CI/releases)
+- `npm run test:unit:watch` - Watch mode for unit tests during development
+- `npm run test:integ:watch` - Watch mode for integration tests
+
+### Testing Guidelines
+- **Development workflow**: Run unit tests frequently for fast feedback
+- **Pre-commit**: Run integration tests to ensure cross-component compatibility
+- **CI/CD**: Use unit tests for PR checks, full test suite for releases
 - **Follow existing test patterns** - Check README and search codebase for test framework
 - **Verify before marking complete** - All quality checks must pass
 - **Add regression tests** - When fixing bugs, add tests to prevent recurrence

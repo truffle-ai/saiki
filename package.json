@@ -42,8 +42,12 @@
         "format": "prettier --write \"src/**/*.ts\" \"app/**/*.ts\"",
         "format:check": "prettier --check \"src/**/*.ts\" \"app/**/*.ts\"",
         "test": "vitest run",
+        "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
+        "test:integ": "vitest run --config vitest.integration.config.ts",
         "test:ci": "vitest run --coverage",
-        "test:watch": "vitest watch"
+        "test:watch": "vitest watch",
+        "test:unit:watch": "vitest watch --exclude '**/*.integration.test.ts'",
+        "test:integ:watch": "vitest watch --config vitest.integration.config.ts"
     },
     "keywords": [
         "mcp",

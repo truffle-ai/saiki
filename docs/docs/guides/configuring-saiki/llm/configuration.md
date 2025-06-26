@@ -22,23 +22,9 @@ export type LLMConfig = {
 };
 
 export type AgentConfig = {
-    systemPrompt?: string | SystemPromptConfig;
     llm: LLMConfig;
     // ... other agent fields
 };
-
-export interface SystemPromptConfig {
-    contributors: ContributorConfig[];
-}
-
-export interface ContributorConfig {
-    id: string;
-    type: 'static' | 'dynamic';
-    priority: number;
-    enabled?: boolean;
-    content?: string; // for static
-    source?: string; // for dynamic
-}
 ```
 
 ## LLM Configuration Fields
@@ -58,69 +44,11 @@ export interface ContributorConfig {
 - **router** (string): Choose between `vercel` (default) or `in-built` routers
 - **maxIterations** (number): Maximum number of tool execution iterations before stopping (prevents infinite loops)
 
-## Agent-Level System Prompt Configuration
+## System Prompts
 
 ⚠️ **Important**: The `systemPrompt` field is configured at the agent level, not within the LLM configuration.
 
-### Simple String Prompt
-
-The simplest way to configure a system prompt is with a string:
-
-```yaml
-systemPrompt: |
-  You are a helpful AI assistant with access to tools.
-  Use these tools when appropriate to answer user queries.
-  You can use multiple tools in sequence to solve complex problems.
-  After each tool result, determine if you need more information or can provide a final answer.
-
-llm:
-  provider: openai
-  model: gpt-4.1-mini
-  apiKey: $OPENAI_API_KEY
-```
-
-### Advanced SystemPromptConfig
-
-For more complex scenarios, you can use the structured approach:
-
-```yaml
-systemPrompt:
-  contributors:
-    - id: default
-      type: static
-      priority: 1
-      content: |
-        You are a helpful AI assistant with access to tools.
-        Use these tools when appropriate to answer user queries.
-    - id: date-time
-      type: dynamic
-      priority: 2
-      source: dateTime
-    - id: custom-instructions
-      type: static
-      priority: 3
-      enabled: true
-      content: |
-        Additional custom instructions for this specific agent.
-
-llm:
-  provider: openai
-  model: gpt-4.1-mini
-  apiKey: $OPENAI_API_KEY
-```
-
-### System Prompt Contributors
-
-**Static Contributors**
-- Use `content` field for fixed text
-- Perfect for consistent agent behavior instructions
-- Higher priority numbers are appended last
-
-**Dynamic Contributors**
-- Use `source` field for dynamically generated content
-- Available sources:
-  - `dateTime`: Automatically adds current date/time context
-- Enable/disable with the `enabled` field
+For detailed system prompt configuration, including simple strings and advanced contributor patterns, see the dedicated [System Prompt Configuration](../systemPrompt) guide.
 
 ## LLM Response Control
 
@@ -245,33 +173,16 @@ llm:
 
 ### Production-Ready Configuration
 ```yaml
-systemPrompt:
-  contributors:
-    - id: core
-      type: static
-      priority: 1
-      content: |
-        You are a helpful AI assistant designed to work with tools and data.
-        Always use available tools when they can help answer user questions.
-        Provide clear, accurate, and helpful responses.
-    - id: timestamp
-      type: dynamic
-      priority: 2
-      source: dateTime
-
 llm:
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
   temperature: 0.3
+  maxOutputTokens: 4000
 ```
 
 ### Local Development Configuration
 ```yaml
-systemPrompt: |
-  You are a helpful AI assistant running locally.
-  Use the available tools to help users with their tasks.
-
 llm:
   provider: openai
   model: llama3.2

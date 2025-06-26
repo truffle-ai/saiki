@@ -352,7 +352,7 @@ process.on('SIGTERM', async () => {
 ### 2. Session Lifecycle
 
 ```typescript
-// Set session TTL to prevent memory leaks
+// Set session TTL to manage memory usage (chat history preserved in storage)
 const agent = new SaikiAgent({
   // ... other config
   sessions: {

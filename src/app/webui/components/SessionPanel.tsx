@@ -61,10 +61,8 @@ export default function SessionPanel({
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 
   // Conversation management states
-  const [isResetDialogOpen, setResetDialogOpen] = useState(false);
   const [isDeleteConversationDialogOpen, setDeleteConversationDialogOpen] = useState(false);
   const [selectedSessionForAction, setSelectedSessionForAction] = useState<string | null>(null);
-  const [isResetting, setIsResetting] = useState(false);
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
 
   const fetchSessions = useCallback(async () => {
@@ -167,39 +165,6 @@ export default function SessionPanel({
     }
   };
 
-  const handleResetConversation = async () => {
-    if (!selectedSessionForAction) return;
-    
-    setIsResetting(true);
-    try {
-      const response = await fetch(`/api/sessions/${selectedSessionForAction}/reset`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reset conversation');
-      }
-
-      // Refresh sessions to update message counts
-      await fetchSessions();
-      
-      // If we reset the current session, refresh it
-      if (currentSessionId === selectedSessionForAction) {
-        onSessionChange(selectedSessionForAction);
-      }
-      
-      setResetDialogOpen(false);
-      setSelectedSessionForAction(null);
-    } catch (error) {
-      console.error('Error resetting conversation:', error);
-      setError(error instanceof Error ? error.message : 'Failed to reset conversation');
-    } finally {
-      setIsResetting(false);
-    }
-  };
 
   const handleDeleteConversation = async () => {
     if (!selectedSessionForAction) return;
@@ -358,21 +323,6 @@ export default function SessionPanel({
                     {/* Conversation Actions - Direct Buttons */}
                     {session.messageCount > 0 && (
                       <>
-                        {/* Reset Conversation Button */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedSessionForAction(session.id);
-                            setResetDialogOpen(true);
-                          }}
-                          className="h-8 w-8 p-0"
-                          title="Reset Conversation"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                        
                         {/* Delete Conversation Button */}
                         <Button
                           variant="ghost"
@@ -448,39 +398,6 @@ export default function SessionPanel({
         </DialogContent>
       </Dialog>
 
-      {/* Reset Conversation Confirmation Dialog */}
-      <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <RefreshCw className="h-5 w-5" />
-              <span>Reset Conversation</span>
-            </DialogTitle>
-            <DialogDescription>
-              This will clear all messages in this conversation while keeping the session active.
-              {selectedSessionForAction && (
-                <span className="block mt-2 font-medium">
-                  Session: <span className="font-mono">{selectedSessionForAction}</span>
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleResetConversation}
-              disabled={isResetting}
-              className="flex items-center space-x-2"
-            >
-              <RefreshCw className={cn("h-4 w-4", isResetting && "animate-spin")} />
-              <span>{isResetting ? 'Resetting...' : 'Reset Conversation'}</span>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Conversation Confirmation Dialog */}
       <Dialog open={isDeleteConversationDialogOpen} onOpenChange={setDeleteConversationDialogOpen}>

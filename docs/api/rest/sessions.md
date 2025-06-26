@@ -92,7 +92,7 @@ sidebar_position: 2
 ```
 
 ### Delete Session
-*Deletes a session and its history.*
+*Permanently deletes a session and all its conversation history. This action cannot be undone.*
 
 <p class="api-endpoint-header"><span class="api-method delete">DELETE</span><code>/api/sessions/:sessionId</code></p>
 

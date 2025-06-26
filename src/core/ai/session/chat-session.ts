@@ -401,18 +401,19 @@ export class ChatSession {
     }
 
     /**
-     * Cleanup the session and its resources.
-     * This method should be called when the session is being ended.
+     * Cleanup the session and its in-memory resources.
+     * This method should be called when the session is being removed from memory.
+     * Chat history is preserved in storage and can be restored later.
      */
     public async cleanup(): Promise<void> {
         try {
-            // Reset the conversation history to clean up any storage
-            await this.reset();
-
-            // Dispose of event listeners
+            // Only dispose of event listeners and in-memory resources
+            // Do NOT reset conversation - that would delete chat history!
             this.dispose();
 
-            logger.debug(`ChatSession ${this.id}: Cleanup completed`);
+            logger.debug(
+                `ChatSession ${this.id}: Memory cleanup completed (chat history preserved)`
+            );
         } catch (error) {
             logger.error(
                 `Error during ChatSession cleanup for session ${this.id}: ${error instanceof Error ? error.message : String(error)}`
