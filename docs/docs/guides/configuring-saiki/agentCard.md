@@ -11,6 +11,8 @@ Configure your agent's public metadata for Agent-to-Agent (A2A) communication an
 
 The agent card provides standardized metadata about your agent's capabilities, allowing other agents and services to discover and interact with your agent programmatically.
 
+Learn more about Agent-to-Agent communication: [A2A: A new era of agent interoperability](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)
+
 ## Configuration
 
 ```yaml
