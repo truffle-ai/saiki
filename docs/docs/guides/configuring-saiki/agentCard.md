@@ -182,5 +182,5 @@ The agent card enables:
 
 ## Default Behavior
 
-If no agent card is specified, Saiki will generate basic metadata based on your configuration. For A2A communication, it's recommended to explicitly configure your agent card.
+If no agent card is specified, Saiki will generate basic metadata based on your configuration. For A2A communication, it's recommended to configure your agent card explicitly.
 

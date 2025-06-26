@@ -22,7 +22,6 @@ export type LLMConfig = {
 };
 
 export type AgentConfig = {
-    systemPrompt?: string | SystemPromptConfig;
     llm: LLMConfig;
     // ... other agent fields
 };
@@ -49,7 +48,7 @@ export type AgentConfig = {
 
 ⚠️ **Important**: The `systemPrompt` field is configured at the agent level, not within the LLM configuration.
 
-For detailed system prompt configuration including simple strings and advanced contributor patterns, see the dedicated [System Prompt Configuration](../systemPrompt) guide.
+For detailed system prompt configuration, including simple strings and advanced contributor patterns, see the dedicated [System Prompt Configuration](../systemPrompt) guide.
 
 ## LLM Response Control
 

@@ -56,7 +56,7 @@ systemPrompt:
 - **Type:** `static`
 - **Required:** `content` field
 - **Use case:** Fixed text and consistent agent behavior instructions
-- **Priority:** Higher numbers are appended last
+- **Priority:** Contibutors are concatenated in ascending-piority order. `priority: 1` text appears before `priority:2` in the system prompt
 
 ```yaml
 systemPrompt:

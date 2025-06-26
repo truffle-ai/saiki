@@ -80,7 +80,7 @@ describe('Session Integration: Chat History Preservation', () => {
             await storage.database.set(sessionKey, sessionData);
         }
 
-        // Trigger cleanup through SessionManager
+        // Access private method to manually trigger cleanup for testing session expiry behavior
         const sessionManager = agent.sessionManager;
         await (sessionManager as any).cleanupExpiredSessions();
 
