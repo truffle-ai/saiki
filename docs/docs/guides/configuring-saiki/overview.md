@@ -55,6 +55,10 @@ mcpServers:
 - **storage:**
   - This section defines where the agent will store conversation history, settings, and other data. 
   - [Complete Reference](./storage)
+- **toolConfirmation:**
+  - This section controls how and when users are prompted to approve tool execution
+  - Configure confirmation modes, timeouts, and approval storage
+  - [Complete Reference](./toolConfirmation)
 
 ## Best Practices
 
