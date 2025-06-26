@@ -84,8 +84,8 @@ describe('SaikiAgent Lifecycle Management', () => {
         test('should create agent with config (new pattern)', () => {
             const agent = new SaikiAgent(mockConfig);
 
-            expect(agent.getIsStarted()).toBe(false);
-            expect(agent.getIsStopped()).toBe(false);
+            expect(agent.isStarted()).toBe(false);
+            expect(agent.isStopped()).toBe(false);
         });
     });
 
@@ -95,8 +95,8 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             await agent.start();
 
-            expect(agent.getIsStarted()).toBe(true);
-            expect(agent.getIsStopped()).toBe(false);
+            expect(agent.isStarted()).toBe(true);
+            expect(agent.isStopped()).toBe(false);
             expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig);
         });
 
@@ -134,7 +134,7 @@ describe('SaikiAgent Lifecycle Management', () => {
             mockCreateAgentServices.mockRejectedValue(new Error('Service initialization failed'));
 
             await expect(agent.start()).rejects.toThrow('Service initialization failed');
-            expect(agent.getIsStarted()).toBe(false);
+            expect(agent.isStarted()).toBe(false);
         });
     });
 
@@ -145,8 +145,8 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             await agent.stop();
 
-            expect(agent.getIsStarted()).toBe(false);
-            expect(agent.getIsStopped()).toBe(true);
+            expect(agent.isStarted()).toBe(false);
+            expect(agent.isStopped()).toBe(true);
             expect(mockServices.sessionManager.cleanup).toHaveBeenCalled();
             expect(mockServices.clientManager.disconnectAll).toHaveBeenCalled();
             expect(mockServices.storageManager!.disconnect).toHaveBeenCalled();
@@ -180,7 +180,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             // Should not throw, but should still mark as stopped
             await expect(agent.stop()).resolves.toBeUndefined();
-            expect(agent.getIsStopped()).toBe(true);
+            expect(agent.isStopped()).toBe(true);
 
             // Should still try to clean other services
             expect(mockServices.clientManager.disconnectAll).toHaveBeenCalled();
@@ -242,11 +242,11 @@ describe('SaikiAgent Lifecycle Management', () => {
             expect(() => agent.getCurrentSessionId()).not.toThrow();
         });
 
-        test('getIsStarted and getIsStopped should work without start() (read-only)', () => {
+        test('isStarted and isStopped should work without start() (read-only)', () => {
             const agent = new SaikiAgent(mockConfig);
 
-            expect(() => agent.getIsStarted()).not.toThrow();
-            expect(() => agent.getIsStopped()).not.toThrow();
+            expect(() => agent.isStarted()).not.toThrow();
+            expect(() => agent.isStopped()).not.toThrow();
         });
     });
 
@@ -255,21 +255,21 @@ describe('SaikiAgent Lifecycle Management', () => {
             const agent = new SaikiAgent(mockConfig);
 
             // Initial state
-            expect(agent.getIsStarted()).toBe(false);
-            expect(agent.getIsStopped()).toBe(false);
+            expect(agent.isStarted()).toBe(false);
+            expect(agent.isStopped()).toBe(false);
 
             // Start
             await agent.start();
-            expect(agent.getIsStarted()).toBe(true);
-            expect(agent.getIsStopped()).toBe(false);
+            expect(agent.isStarted()).toBe(true);
+            expect(agent.isStopped()).toBe(false);
 
             // Use agent (mock a successful operation)
             expect(agent.getCurrentLLMConfig()).toBeDefined();
 
             // Stop
             await agent.stop();
-            expect(agent.getIsStarted()).toBe(false);
-            expect(agent.getIsStopped()).toBe(true);
+            expect(agent.isStarted()).toBe(false);
+            expect(agent.isStopped()).toBe(true);
         });
 
         test('should handle resource cleanup in correct order', async () => {
