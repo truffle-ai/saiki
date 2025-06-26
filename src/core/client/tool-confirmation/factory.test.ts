@@ -1,18 +1,25 @@
-import { describe, it, expect } from 'vitest';
-import { createToolConfirmationProvider, createToolConfirmationProviderLegacy } from './factory.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { createToolConfirmationProvider } from './factory.js';
 import { EventBasedConfirmationProvider } from './event-based-confirmation-provider.js';
 import { NoOpConfirmationProvider } from './noop-confirmation-provider.js';
 import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
+import { AgentEventBus } from '../../events/index.js';
 
 describe('Tool Confirmation Factory', () => {
+    let agentEventBus: AgentEventBus;
+
+    beforeEach(() => {
+        agentEventBus = new AgentEventBus();
+    });
+
     describe('createToolConfirmationProvider', () => {
         it('should create event-based provider by default', () => {
-            const provider = createToolConfirmationProvider();
+            const provider = createToolConfirmationProvider({ agentEventBus });
             expect(provider).toBeInstanceOf(EventBasedConfirmationProvider);
         });
 
         it('should create event-based provider when explicitly specified', () => {
-            const provider = createToolConfirmationProvider({ mode: 'event-based' });
+            const provider = createToolConfirmationProvider({ mode: 'event-based', agentEventBus });
             expect(provider).toBeInstanceOf(EventBasedConfirmationProvider);
         });
 
@@ -30,6 +37,7 @@ describe('Tool Confirmation Factory', () => {
             const allowedToolsProvider = new InMemoryAllowedToolsProvider();
             const provider = createToolConfirmationProvider({
                 allowedToolsProvider,
+                agentEventBus,
             });
             expect(provider.allowedToolsProvider).toBe(allowedToolsProvider);
         });
@@ -37,6 +45,7 @@ describe('Tool Confirmation Factory', () => {
         it('should create allowed tools provider from config', () => {
             const provider = createToolConfirmationProvider({
                 allowedToolsConfig: { type: 'memory' },
+                agentEventBus,
             });
             expect(provider.allowedToolsProvider).toBeDefined();
         });
@@ -45,6 +54,7 @@ describe('Tool Confirmation Factory', () => {
             const provider = createToolConfirmationProvider({
                 mode: 'event-based',
                 confirmationTimeout: 5000,
+                agentEventBus,
             });
             expect(provider).toBeInstanceOf(EventBasedConfirmationProvider);
         });
@@ -56,66 +66,13 @@ describe('Tool Confirmation Factory', () => {
                 });
             }).toThrow('Unknown tool confirmation mode: unknown-mode');
         });
-    });
 
-    describe('createToolConfirmationProviderLegacy', () => {
-        it('should create event-based provider for cli mode', () => {
-            const provider = createToolConfirmationProviderLegacy({
-                runMode: 'cli',
-            });
-            expect(provider).toBeInstanceOf(EventBasedConfirmationProvider);
-        });
-
-        it('should create auto-approve provider for web mode', () => {
-            const provider = createToolConfirmationProviderLegacy({
-                runMode: 'web',
-            });
-            expect(provider).toBeInstanceOf(NoOpConfirmationProvider);
-        });
-
-        it('should create auto-approve provider for discord mode', () => {
-            const provider = createToolConfirmationProviderLegacy({
-                runMode: 'discord',
-            });
-            expect(provider).toBeInstanceOf(NoOpConfirmationProvider);
-        });
-
-        it('should create auto-approve provider for telegram mode', () => {
-            const provider = createToolConfirmationProviderLegacy({
-                runMode: 'telegram',
-            });
-            expect(provider).toBeInstanceOf(NoOpConfirmationProvider);
-        });
-
-        it('should create auto-approve provider for mcp mode', () => {
-            const provider = createToolConfirmationProviderLegacy({
-                runMode: 'mcp',
-            });
-            expect(provider).toBeInstanceOf(NoOpConfirmationProvider);
-        });
-
-        it('should create auto-approve provider for server mode', () => {
-            const provider = createToolConfirmationProviderLegacy({
-                runMode: 'server',
-            });
-            expect(provider).toBeInstanceOf(NoOpConfirmationProvider);
-        });
-
-        it('should pass through allowed tools provider', () => {
-            const allowedToolsProvider = new InMemoryAllowedToolsProvider();
-            const provider = createToolConfirmationProviderLegacy({
-                runMode: 'cli',
-                allowedToolsProvider,
-            });
-            expect(provider.allowedToolsProvider).toBe(allowedToolsProvider);
-        });
-
-        it('should pass through allowed tools config', () => {
-            const provider = createToolConfirmationProviderLegacy({
-                runMode: 'cli',
-                allowedToolsConfig: { type: 'memory' },
-            });
-            expect(provider.allowedToolsProvider).toBeDefined();
+        it('should throw error when agentEventBus is missing for event-based mode', () => {
+            expect(() => {
+                createToolConfirmationProvider({
+                    mode: 'event-based',
+                });
+            }).toThrow('AgentEventBus is required for event-based tool confirmation mode');
         });
     });
 

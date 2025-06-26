@@ -1,14 +1,14 @@
 import { InMemoryAllowedToolsProvider } from './in-memory.js';
 import { StorageAllowedToolsProvider } from './storage.js';
 import type { IAllowedToolsProvider } from './types.js';
-import type { StorageManager } from '@core/storage/storage-manager.js';
+import type { StorageBackends } from '@core/storage/index.js';
 
 // TODO: Add proper storage backend for allowed tools persistence
 // This will require implementing a dedicated storage interface for tool permissions
 
 export interface AllowedToolsConfig {
     type: 'memory' | 'storage';
-    storageManager?: StorageManager;
+    storage?: StorageBackends;
 }
 
 /**
@@ -23,12 +23,10 @@ export function createAllowedToolsProvider(config: AllowedToolsConfig): IAllowed
             return new InMemoryAllowedToolsProvider();
 
         case 'storage':
-            if (!config.storageManager) {
-                throw new Error(
-                    'storageManager is required for storage-based AllowedToolsProvider'
-                );
+            if (!config.storage) {
+                throw new Error('storage is required for storage-based AllowedToolsProvider');
             }
-            return new StorageAllowedToolsProvider(config.storageManager);
+            return new StorageAllowedToolsProvider(config.storage);
 
         default:
             throw new Error(`Unknown AllowedToolsProvider type: ${(config as any).type}`);

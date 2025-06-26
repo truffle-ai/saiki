@@ -1,17 +1,17 @@
-import type { StorageManager } from '@core/storage/storage-manager.js';
+import type { StorageBackends } from '@core/storage/index.js';
 import type { IAllowedToolsProvider } from './types.js';
 import { logger } from '@core/logger/index.js';
 
 /**
  * Storage-backed implementation that persists allowed tools in the Saiki
- * StorageManager cache backend. The key scheme is:
+ * storage backends. The key scheme is:
  *   allowedTools:<sessionId>          – approvals scoped to a session
  *   allowedTools:global               – global approvals (sessionId undefined)
  *
- * Using the cache layer allows TTLs if the underlying backend supports it.
+ * Using the database backend for persistence.
  */
 export class StorageAllowedToolsProvider implements IAllowedToolsProvider {
-    constructor(private storageManager: StorageManager) {}
+    constructor(private storage: StorageBackends) {}
 
     private buildKey(sessionId?: string) {
         return sessionId ? `allowedTools:${sessionId}` : 'allowedTools:global';
@@ -22,12 +22,12 @@ export class StorageAllowedToolsProvider implements IAllowedToolsProvider {
         logger.debug(`Adding allowed tool '${toolName}' for key '${key}'`);
 
         // Persist as a plain string array to avoid JSON <-> Set issues across backends
-        const existingRaw = await this.storageManager.database.get<string[]>(key);
+        const existingRaw = await this.storage.database.get<string[]>(key);
         const newSet = new Set<string>(Array.isArray(existingRaw) ? existingRaw : []);
         newSet.add(toolName);
 
         // Store a fresh array copy – never the live Set instance
-        await this.storageManager.database.set(key, Array.from(newSet));
+        await this.storage.database.set(key, Array.from(newSet));
         logger.debug(`Added allowed tool '${toolName}' for key '${key}'`);
     }
 
@@ -35,24 +35,20 @@ export class StorageAllowedToolsProvider implements IAllowedToolsProvider {
         const key = this.buildKey(sessionId);
         logger.debug(`Removing allowed tool '${toolName}' for key '${key}'`);
 
-        const existingRaw = await this.storageManager.database.get<string[]>(key);
+        const existingRaw = await this.storage.database.get<string[]>(key);
         if (!Array.isArray(existingRaw)) return;
 
         const newSet = new Set<string>(existingRaw);
         newSet.delete(toolName);
-        await this.storageManager.database.set(key, Array.from(newSet));
+        await this.storage.database.set(key, Array.from(newSet));
     }
 
     async isToolAllowed(toolName: string, sessionId?: string): Promise<boolean> {
-        const sessionArr = await this.storageManager.database.get<string[]>(
-            this.buildKey(sessionId)
-        );
+        const sessionArr = await this.storage.database.get<string[]>(this.buildKey(sessionId));
         if (Array.isArray(sessionArr) && sessionArr.includes(toolName)) return true;
 
         // Fallback to global approvals
-        const globalArr = await this.storageManager.database.get<string[]>(
-            this.buildKey(undefined)
-        );
+        const globalArr = await this.storage.database.get<string[]>(this.buildKey(undefined));
         const allowed = Array.isArray(globalArr) ? globalArr.includes(toolName) : false;
         logger.debug(
             `Checked allowed tool '${toolName}' in session '${sessionId ?? 'global'}' – allowed=${allowed}`
@@ -61,7 +57,7 @@ export class StorageAllowedToolsProvider implements IAllowedToolsProvider {
     }
 
     async getAllowedTools(sessionId?: string): Promise<Set<string>> {
-        const arr = await this.storageManager.database.get<string[]>(this.buildKey(sessionId));
+        const arr = await this.storage.database.get<string[]>(this.buildKey(sessionId));
         return new Set<string>(Array.isArray(arr) ? arr : []);
     }
 }

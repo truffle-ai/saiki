@@ -76,7 +76,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
     // Create allowed tools provider with storage configuration
     const allowedToolsProvider = createAllowedToolsProvider({
         type: 'storage',
-        storageManager,
+        storage,
     });
 
     // Create event-based tool confirmation provider

@@ -55,7 +55,7 @@ export class CLIToolConfirmationSubscriber implements EventSubscriber {
                 this.sendConfirmationResponse({
                     executionId: event.executionId,
                     approved: true,
-                    sessionId: event.sessionId,
+                    ...(event.sessionId && { sessionId: event.sessionId }),
                 });
                 return;
             }
@@ -71,7 +71,7 @@ export class CLIToolConfirmationSubscriber implements EventSubscriber {
                 executionId: event.executionId,
                 approved,
                 rememberChoice: false, // CLI won't persist choice
-                sessionId: event.sessionId,
+                ...(event.sessionId && { sessionId: event.sessionId }),
             };
 
             this.sendConfirmationResponse(response);
@@ -85,7 +85,7 @@ export class CLIToolConfirmationSubscriber implements EventSubscriber {
             this.sendConfirmationResponse({
                 executionId: event.executionId,
                 approved: false,
-                sessionId: event.sessionId,
+                ...(event.sessionId && { sessionId: event.sessionId }),
             });
         }
     }

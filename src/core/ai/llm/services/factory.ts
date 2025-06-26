@@ -155,9 +155,9 @@ function _createVercelLLMService(
         sessionEventBus,
         contextManager,
         config.maxIterations,
+        sessionId,
         config.temperature,
-        config.maxOutputTokens,
-        sessionId
+        config.maxOutputTokens
     );
 }
 

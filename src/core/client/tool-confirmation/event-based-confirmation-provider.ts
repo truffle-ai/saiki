@@ -79,7 +79,7 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
                     executionId,
                     approved: false,
                     rememberChoice: false,
-                    sessionId: details.sessionId,
+                    ...(details.sessionId && { sessionId: details.sessionId }),
                 };
 
                 logger.warn(
@@ -109,7 +109,7 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
                     reject(error);
                 },
                 toolName: details.toolName,
-                sessionId: details.sessionId,
+                ...(details.sessionId && { sessionId: details.sessionId }),
             });
 
             // Emit the confirmation request event via AgentEventBus

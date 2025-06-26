@@ -32,9 +32,9 @@ export class VercelLLMService implements ILLMService {
         sessionEventBus: SessionEventBus,
         contextManager: ContextManager,
         maxIterations: number = 10,
+        sessionId: string,
         temperature?: number,
-        maxOutputTokens?: number,
-        sessionId: string
+        maxOutputTokens?: number
     ) {
         this.model = model;
         this.provider = provider;

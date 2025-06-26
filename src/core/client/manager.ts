@@ -161,7 +161,7 @@ export class MCPManager {
         const approved = await this.confirmationProvider.requestConfirmation({
             toolName,
             args,
-            sessionId,
+            ...(sessionId && { sessionId }),
         });
         if (!approved) {
             throw new Error(`Execution of tool '${toolName}' was denied`);
