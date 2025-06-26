@@ -1,6 +1,6 @@
 ---
 sidebar_position: 7
-sidebar_label: "Agent Card"
+sidebar_label: "Agent Card (A2A)"
 ---
 
 # Agent Card Configuration
