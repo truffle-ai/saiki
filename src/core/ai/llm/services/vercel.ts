@@ -9,7 +9,7 @@ import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
-import { ToolExecutionDeniedError } from '../../../errors.js';
+import { ToolExecutionDeniedError } from '../../../client/tool-confirmation/errors.js';
 
 /**
  * Vercel AI SDK implementation of LLMService

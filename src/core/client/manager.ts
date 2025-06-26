@@ -6,7 +6,7 @@ import { ToolConfirmationProvider } from './tool-confirmation/types.js';
 import { NoOpConfirmationProvider } from './tool-confirmation/noop-confirmation-provider.js';
 import { ToolSet } from '../ai/types.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
-import { ToolExecutionDeniedError } from '../errors.js';
+import { ToolExecutionDeniedError } from './tool-confirmation/errors.js';
 
 /**
  * Centralized manager for Multiple Model Context Protocol (MCP) servers.
