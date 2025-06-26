@@ -484,4 +484,4 @@ These implementations serve as reference examples for building your own custom U
 Tool confirmation works with these other configuration sections:
 - **[Storage](./storage)** - Required for persistent approval storage
 - **[MCP Servers](./mcpServers)** - Defines which tools are available for confirmation
-- **[Sessions](./sessions)** - Affects session-scoped approval behavior
+<!-- - **[Sessions](./sessions)** - Affects session-scoped approval behavior -->
