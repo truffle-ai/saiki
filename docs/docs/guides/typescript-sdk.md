@@ -1,10 +1,25 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
+title: "TypeScript SDK Guide"
 ---
 
 # TypeScript SDK Guide
 
-Learn how to integrate Saiki's AI agent capabilities into your TypeScript/JavaScript applications using the official SDK.
+Welcome to the Saiki TypeScript/JavaScript SDK guide! This guide provides everything you need to start building powerful AI applications with Saiki.
+
+Whether you're creating standalone agents, integrating with existing applications, or building custom AI workflows, the SDK offers a flexible and robust set of tools.
+
+## Key Features
+
+- **Full TypeScript Support**: Strong typing for better development.
+
+## Getting Started
+
+To get started with the TypeScript SDK, check out the following resources:
+
+- **[API Reference](/api/typescript-sdk)**: Complete technical documentation for all classes, methods, and types.
+- **[Configuration Guide](./configuring-saiki/overview)**: Learn how to configure your agent's LLMs, tools, and storage.
+- **[Building with Saiki](/tutorials)**: Step-by-step tutorials for creating your first Saiki application.
 
 ## Overview
 
