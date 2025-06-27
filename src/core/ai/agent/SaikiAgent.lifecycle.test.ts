@@ -40,7 +40,7 @@ describe('SaikiAgent Lifecycle Management', () => {
         };
 
         mockServices = {
-            clientManager: {
+            mcpManager: {
                 disconnectAll: vi.fn(),
                 initializeFromConfig: vi.fn().mockResolvedValue(undefined),
             } as any,
@@ -76,7 +76,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
         // Set up default behaviors for mock functions that will be overridden in tests
         (mockServices.sessionManager.cleanup as any).mockResolvedValue(undefined);
-        (mockServices.clientManager.disconnectAll as any).mockResolvedValue(undefined);
+        (mockServices.mcpManager.disconnectAll as any).mockResolvedValue(undefined);
         (mockServices.storageManager!.disconnect as any).mockResolvedValue(undefined);
     });
 
@@ -148,7 +148,7 @@ describe('SaikiAgent Lifecycle Management', () => {
             expect(agent.isStarted()).toBe(false);
             expect(agent.isStopped()).toBe(true);
             expect(mockServices.sessionManager.cleanup).toHaveBeenCalled();
-            expect(mockServices.clientManager.disconnectAll).toHaveBeenCalled();
+            expect(mockServices.mcpManager.disconnectAll).toHaveBeenCalled();
             expect(mockServices.storageManager!.disconnect).toHaveBeenCalled();
         });
 
@@ -183,7 +183,7 @@ describe('SaikiAgent Lifecycle Management', () => {
             expect(agent.isStopped()).toBe(true);
 
             // Should still try to clean other services
-            expect(mockServices.clientManager.disconnectAll).toHaveBeenCalled();
+            expect(mockServices.mcpManager.disconnectAll).toHaveBeenCalled();
             expect(mockServices.storageManager!.disconnect).toHaveBeenCalled();
         });
     });
@@ -283,7 +283,7 @@ describe('SaikiAgent Lifecycle Management', () => {
                 return Promise.resolve();
             });
 
-            (mockServices.clientManager.disconnectAll as any).mockImplementation(() => {
+            (mockServices.mcpManager.disconnectAll as any).mockImplementation(() => {
                 cleanupOrder.push('clients');
                 return Promise.resolve();
             });

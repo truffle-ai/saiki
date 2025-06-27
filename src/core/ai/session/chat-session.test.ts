@@ -141,7 +141,7 @@ describe('ChatSession', () => {
             promptManager: {
                 getSystemPrompt: vi.fn().mockReturnValue('System prompt'),
             },
-            clientManager: {
+            mcpManager: {
                 getAllTools: vi.fn().mockResolvedValue({}),
             },
             agentEventBus: {
@@ -426,7 +426,7 @@ describe('ChatSession', () => {
             expect(mockCreateLLMService).toHaveBeenCalledWith(
                 mockLLMConfig,
                 mockLLMConfig.router,
-                mockServices.clientManager,
+                mockServices.mcpManager,
                 chatSession.eventBus, // Session-specific event bus
                 mockContextManager,
                 sessionId

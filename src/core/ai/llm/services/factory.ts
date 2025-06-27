@@ -41,7 +41,7 @@ function extractApiKey(config: ValidatedLLMConfig): string {
 /**
  * Create an instance of one of our in-built LLM services
  * @param config LLM configuration from the config file
- * @param clientManager Client manager instance
+ * @param mcpManager Client manager instance
  * @param sessionEventBus Session-level event bus for emitting LLM events
  * @param contextManager Message manager instance
  * @param sessionId Session ID
@@ -49,7 +49,7 @@ function extractApiKey(config: ValidatedLLMConfig): string {
  */
 function _createInBuiltLLMService(
     config: ValidatedLLMConfig,
-    clientManager: MCPManager,
+    mcpManager: MCPManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager,
     sessionId: string
@@ -65,7 +65,7 @@ function _createInBuiltLLMService(
             // 2. When baseURL is undefined/null/empty, the spread operator won't add the baseURL property
             const openai = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
             return new OpenAIService(
-                clientManager,
+                mcpManager,
                 openai,
                 sessionEventBus,
                 contextManager,
@@ -77,7 +77,7 @@ function _createInBuiltLLMService(
         case 'anthropic': {
             const anthropic = new Anthropic({ apiKey });
             return new AnthropicService(
-                clientManager,
+                mcpManager,
                 anthropic,
                 sessionEventBus,
                 contextManager,
@@ -141,7 +141,7 @@ function getOpenAICompatibleBaseURL(llmConfig: ValidatedLLMConfig): string {
 
 function _createVercelLLMService(
     config: ValidatedLLMConfig,
-    clientManager: MCPManager,
+    mcpManager: MCPManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager,
     sessionId: string
@@ -149,7 +149,7 @@ function _createVercelLLMService(
     const model = _createVercelModel(config);
 
     return new VercelLLMService(
-        clientManager,
+        mcpManager,
         model,
         config.provider,
         sessionEventBus,
@@ -167,7 +167,7 @@ function _createVercelLLMService(
 export function createLLMService(
     config: ValidatedLLMConfig,
     router: LLMRouter,
-    clientManager: MCPManager,
+    mcpManager: MCPManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager,
     sessionId: string
@@ -175,7 +175,7 @@ export function createLLMService(
     if (router === 'vercel') {
         return _createVercelLLMService(
             config,
-            clientManager,
+            mcpManager,
             sessionEventBus,
             contextManager,
             sessionId
@@ -183,7 +183,7 @@ export function createLLMService(
     } else {
         return _createInBuiltLLMService(
             config,
-            clientManager,
+            mcpManager,
             sessionEventBus,
             contextManager,
             sessionId

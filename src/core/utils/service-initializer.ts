@@ -37,7 +37,7 @@ import { AgentEventBus } from '../events/index.js';
  * Type for the core agent services returned by createAgentServices
  */
 export type AgentServices = {
-    clientManager: MCPManager;
+    mcpManager: MCPManager;
     promptManager: PromptManager;
     agentEventBus: AgentEventBus;
     stateManager: AgentStateManager;
@@ -87,8 +87,8 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
         confirmationTimeout: config.toolConfirmation.timeout,
     });
 
-    const clientManager = new MCPManager(confirmationProvider);
-    await clientManager.initializeFromConfig(config.mcpServers);
+    const mcpManager = new MCPManager(confirmationProvider);
+    await mcpManager.initializeFromConfig(config.mcpServers);
 
     const mcpServerCount = Object.keys(config.mcpServers).length;
     if (mcpServerCount === 0) {
@@ -109,7 +109,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
         {
             stateManager,
             promptManager,
-            clientManager,
+            mcpManager,
             agentEventBus,
             storage, // Add storage backends to session services
         },
@@ -126,7 +126,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
     // 8. Return the core services
     return {
-        clientManager,
+        mcpManager,
         promptManager,
         agentEventBus,
         stateManager,
