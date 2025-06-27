@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 7
 title: "Using Saiki as an MCP Server"
 sidebar_label: "Using Saiki as an MCP Server"
 ---
@@ -12,7 +12,7 @@ This means you can even connect one Saiki agent to another Saiki agent!
 
 The default Saiki agent has tools to access files and browse the web, but you can configure this too by changing the config file!
 
-Check out our [Configuration guide](../configuring-saiki/overview)
+Check out our [Configuration guide](./configuring-saiki/overview)
 
 ## Local MCP Server Guide
 
@@ -66,7 +66,7 @@ By default, Saiki CLI loads an AI agent that has tools to:
 - browse the web
 - search files on your local system
 
-But you can customize the tools by using a custom Saiki agent configuration file. Check out our [Configuration guide](../configuring-saiki/overview).
+But you can customize the tools by using a custom Saiki agent configuration file. Check out our [Configuration guide](./configuring-saiki/overview).
 
 **Example Usage in Cursor:**
 
@@ -86,7 +86,7 @@ But you can customize the tools by using a custom Saiki agent configuration file
    ```
 
 4. **Any custom functionality:**
-    You can configure your Saiki agent to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](../configuring-saiki/overview)
+    You can configure your Saiki agent to have any other custom functionality by setting up your own config file and using it here. Check out our [Configuration guide](./configuring-saiki/overview)
 
 ## Remote MCP Server Setup
 

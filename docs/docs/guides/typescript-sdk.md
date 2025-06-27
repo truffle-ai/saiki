@@ -1,19 +1,60 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
+title: "TypeScript SDK Guide"
 ---
 
-# Node.js SDK Guide
+# TypeScript SDK Guide
 
-Learn how to integrate Saiki's AI agent capabilities into your Node.js applications using the official TypeScript/JavaScript SDK.
+Welcome to the Saiki TypeScript/JavaScript SDK guide! This guide provides everything you need to start building powerful AI applications with Saiki.
+
+Whether you're creating standalone agents, integrating with existing applications, or building custom AI workflows, the SDK offers a flexible and robust set of tools.
+
+## Key Features
+
+- **Full TypeScript Support**: Strong typing for better development.
+
+## Core Concepts
+
+The SDK is built around a few core concepts:
+
+- **SaikiAgent**: The main class for creating and managing agents.
+- **MCPManager**: A utility for managing MCP server connections.
+- **LLMService**: A service for interacting with large language models.
+- **StorageBackends**: A set of backends for persisting agent data.
+
+## Example Usage
+
+Here's a quick example of how to create a simple agent that uses the OpenAI API:
+
+```typescript
+import { SaikiAgent } from '@truffle-ai/saiki';
+
+const agent = new SaikiAgent({
+  llm: {
+    provider: 'openai',
+    model: 'gpt-4',
+    apiKey: process.env.OPENAI_API_KEY,
+  },
+});
+
+await agent.start();
+
+const response = await agent.run('Hello, world!');
+console.log(response);
+
+await agent.stop();
+```
+
+For more detailed examples, see the [Examples & Demos](/docs/category/examples--demos) section.
 
 ## Overview
 
-The Saiki Node.js SDK provides a complete library for building AI agents with MCP (Model Context Protocol) integration. It offers both high-level agent abstractions and low-level utilities for maximum flexibility.
+The Saiki TypeScript SDK provides a complete library for building AI agents with MCP (Model Context Protocol) integration. It offers both high-level agent abstractions and low-level utilities for maximum flexibility.
 
 ### When to Use the SDK vs REST API
 
-**Use the Node.js SDK when:**
-- Building Node.js/TypeScript applications
+**Use the TypeScript SDK when:**
+- Building TypeScript/JavaScript applications
 - Need real-time event handling
 - Want type safety and IDE support
 - Require complex session management
@@ -382,7 +423,7 @@ agent.agentEventBus.on('llmservice:toolResult', (data) => {
 
 ## Next Steps
 
-- **[API Reference](/api/nodejs-sdk)** - Detailed method documentation
-- **[MCP Guide](/docs/category/mcp)** - Learn about Model Context Protocol
+- **[SaikiAgent API](/api/saiki-agent)** - Detailed method documentation
+- **[MCP Guide](/docs/guides/mcp-manager)** - Learn about Model Context Protocol
 - **[Deployment Guide](/docs/guides/deployment)** - Production deployment strategies
 - **[Examples](/docs/category/examples--demos)** - Complete example applications

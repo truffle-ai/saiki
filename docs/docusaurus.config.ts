@@ -119,7 +119,7 @@ const config: Config = {
             ],
         },
         footer: {
-            style: 'dark',
+            style: 'light',
             links: [
                 {
                     title: 'Documentation',

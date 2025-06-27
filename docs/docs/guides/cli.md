@@ -113,7 +113,7 @@ saiki --mode mcp
 
 With this, you can now connect this agent to Cursor, claude desktop, or even other Saiki agents!
 
-Check [Using saiki as an MCP Server](./mcp/saiki-agent-as-mcp-server.md) to understand more about MCP servers.
+Check [Using saiki as an MCP Server](./saiki-as-mcp-server.md) to understand more about MCP servers.
 
 #### **Group MCP servers with saiki**
 ```bash
@@ -127,7 +127,7 @@ To use a specific config file:
 saiki mcp --group-servers -a ./saiki-tools.yml
 ```
 
-Check [Using Saiki to group MCP servers](./mcp/saiki-group-mcp-servers.md) to understand more about MCP server aggregation.
+Check [Using Saiki to group MCP servers](./saiki-group-mcp-servers.md) to understand more about MCP server aggregation.
 
 
 #### **Change log level for saiki CLI**

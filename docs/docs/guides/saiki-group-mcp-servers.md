@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 8
 sidebar_label: "Using Saiki to group MCP servers"
 ---
 
@@ -92,4 +92,4 @@ Or use the default Saiki configuration
 
 ### Step 3: Restart Cursor
 
-After adding the configuration, restart Cursor to load the new MCP server.
+After adding the configuration, restart Cursor to load the new MCP server. 
