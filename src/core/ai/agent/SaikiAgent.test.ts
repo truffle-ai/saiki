@@ -1,11 +1,15 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { LLMConfig, AgentConfig } from '../../config/schemas.js';
 import * as validationUtils from '../../config/validation-utils.js';
 
 // Mock the dependencies
 vi.mock('../../config/validation-utils.js');
 vi.mock('../../logger/index.js');
+vi.mock('../../utils/service-initializer.js');
+
+import { createAgentServices } from '../../utils/service-initializer.js';
+const mockCreateAgentServices = vi.mocked(createAgentServices);
 
 const mockValidationUtils = vi.mocked(validationUtils);
 
@@ -15,7 +19,7 @@ describe('SaikiAgent.switchLLM', () => {
     let mockStateManager: any;
     let mockSessionManager: any;
     let mockEventBus: any;
-    let mockClientManager: any;
+    let mockMcpManager: any;
     let mockPromptManager: any;
     let mockStorageManager: any;
 
@@ -24,26 +28,31 @@ describe('SaikiAgent.switchLLM', () => {
         model: 'gpt-4o',
         apiKey: 'test-key',
         router: 'vercel',
-        systemPrompt: 'You are a helpful assistant',
         maxIterations: 50,
         maxInputTokens: 128000,
     };
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
 
         // Create mock services
         mockStateManager = {
-            getRuntimeState: vi.fn().mockReturnValue({
+            getRuntimeConfig: vi.fn().mockReturnValue({
                 llm: mockLLMConfig,
                 mcpServers: {},
-                runtime: { debugMode: false, logLevel: 'info' },
+                storage: {
+                    cache: { type: 'in-memory' },
+                    database: { type: 'in-memory' },
+                },
+                sessions: {
+                    maxSessions: 10,
+                    sessionTTL: 3600,
+                },
             }),
-            getEffectiveState: vi.fn().mockReturnValue({
-                llm: mockLLMConfig,
-            }),
+            getLLMConfig: vi.fn().mockReturnValue(mockLLMConfig),
             updateLLM: vi.fn().mockReturnValue({ isValid: true, errors: [], warnings: [] }),
-            updateLLMConfig: vi.fn().mockResolvedValue(undefined),
+            addMcpServer: vi.fn(),
+            removeMcpServer: vi.fn(),
         };
 
         mockSessionManager = {
@@ -96,9 +105,11 @@ describe('SaikiAgent.switchLLM', () => {
             emit: vi.fn(),
         };
 
-        mockClientManager = {
+        mockMcpManager = {
             connectServer: vi.fn(),
             getAllTools: vi.fn().mockResolvedValue({}),
+            initializeFromConfig: vi.fn().mockResolvedValue(undefined),
+            disconnectAll: vi.fn().mockResolvedValue(undefined),
         };
 
         mockPromptManager = {
@@ -106,25 +117,63 @@ describe('SaikiAgent.switchLLM', () => {
         };
 
         mockStorageManager = {
-            // Add any methods that might be called
+            disconnect: vi.fn().mockResolvedValue(undefined),
         };
 
-        // Create SaikiAgent with all required services
-        agent = new SaikiAgent({
-            clientManager: mockClientManager,
+        const mockServices = {
+            mcpManager: mockMcpManager,
             promptManager: mockPromptManager,
             agentEventBus: mockEventBus,
             stateManager: mockStateManager,
             sessionManager: mockSessionManager,
             storage: mockStorageManager,
-        });
+            storageManager: mockStorageManager,
+        };
 
-        // Mock the validation function
-        mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, currentConfig) => {
+        // Mock createAgentServices to return our mock services
+        mockCreateAgentServices.mockResolvedValue(mockServices);
+
+        const mockConfig: AgentConfig = {
+            systemPrompt: 'You are a helpful AI assistant.',
+            llm: mockLLMConfig,
+            mcpServers: {},
+            storage: {
+                cache: { type: 'in-memory' },
+                database: { type: 'in-memory' },
+            },
+            sessions: {
+                maxSessions: 10,
+                sessionTTL: 3600,
+            },
+        };
+
+        // Create SaikiAgent with config and start it
+        agent = new SaikiAgent(mockConfig);
+        await agent.start();
+
+        // Mock the validation function - return ValidatedLLMConfig with all required fields
+        mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, _currentConfig) => {
+            const resultConfig = {
+                ...mockLLMConfig,
+                ...updates,
+            };
             return {
                 config: {
-                    ...mockLLMConfig,
-                    ...updates, // Apply the updates so router is properly set
+                    provider: resultConfig.provider,
+                    model: resultConfig.model,
+                    apiKey: resultConfig.apiKey,
+                    // Ensure required fields have values (ValidatedLLMConfig)
+                    maxIterations: resultConfig.maxIterations ?? 50,
+                    router: resultConfig.router ?? 'vercel',
+                    // Optional fields
+                    ...(resultConfig.baseURL && { baseURL: resultConfig.baseURL }),
+                    ...(resultConfig.maxInputTokens && {
+                        maxInputTokens: resultConfig.maxInputTokens,
+                    }),
+                    ...(resultConfig.maxOutputTokens && {
+                        maxOutputTokens: resultConfig.maxOutputTokens,
+                    }),
+                    ...(resultConfig.temperature && { temperature: resultConfig.temperature }),
                 },
                 isValid: true,
                 errors: [],
@@ -140,13 +189,15 @@ describe('SaikiAgent.switchLLM', () => {
             expect(result.success).toBe(false);
             expect(result.errors).toBeDefined();
             expect(result.errors!).toHaveLength(1);
-            expect(result.errors![0].type).toBe('general');
-            expect(result.errors![0].message).toBe('At least model or provider must be specified');
+            expect(result.errors?.[0]?.type).toBe('general');
+            expect(result.errors?.[0]?.message).toBe(
+                'At least model or provider must be specified'
+            );
         });
 
         test('should handle validation failure', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: mockLLMConfig,
+                config: mockLLMConfig as any, // Type assertion since this is a test mock
                 isValid: false,
                 errors: [
                     {
@@ -162,8 +213,8 @@ describe('SaikiAgent.switchLLM', () => {
             expect(result.success).toBe(false);
             expect(result.errors).toBeDefined();
             expect(result.errors!).toHaveLength(1);
-            expect(result.errors![0].type).toBe('invalid_model');
-            expect(result.errors![0].message).toBe('Invalid model');
+            expect(result.errors?.[0]?.type).toBe('invalid_model');
+            expect(result.errors?.[0]?.message).toBe('Invalid model');
         });
     });
 
@@ -173,7 +224,7 @@ describe('SaikiAgent.switchLLM', () => {
 
             expect(result.success).toBe(true);
             expect(result.config).toBeDefined();
-            expect(result.config!.model).toBe('gpt-4o-mini');
+            expect(result.config?.model).toBe('gpt-4o-mini');
             expect(result.message).toContain(
                 'Successfully switched to openai/gpt-4o using vercel router'
             );
@@ -198,7 +249,7 @@ describe('SaikiAgent.switchLLM', () => {
 
         test('should include warnings in response', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: { ...mockLLMConfig, model: 'gpt-4o' },
+                config: { ...mockLLMConfig, model: 'gpt-4o' } as any,
                 isValid: true,
                 errors: [],
                 warnings: ['Config warning'],
@@ -294,17 +345,17 @@ describe('SaikiAgent.switchLLM', () => {
             expect(result.success).toBe(false);
             expect(result.errors).toBeDefined();
             expect(result.errors!).toHaveLength(1);
-            expect(result.errors![0].type).toBe('general');
-            expect(result.errors![0].message).toBe('Session nonexistent not found');
+            expect(result.errors?.[0]?.type).toBe('general');
+            expect(result.errors?.[0]?.message).toBe('Session nonexistent not found');
         });
 
         test('should use session-specific state', async () => {
             const sessionLLMConfig = { ...mockLLMConfig, model: 'session-model' };
-            mockStateManager.getEffectiveState.mockReturnValue({ llm: sessionLLMConfig });
+            mockStateManager.getRuntimeConfig.mockReturnValue({ llm: sessionLLMConfig });
 
             await agent.switchLLM({ model: 'gpt-4o' }, 'session1');
 
-            expect(mockStateManager.getEffectiveState).toHaveBeenCalledWith('session1');
+            expect(mockStateManager.getRuntimeConfig).toHaveBeenCalledWith('session1');
             expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({ model: 'gpt-4o' }),
                 sessionLLMConfig
@@ -405,7 +456,7 @@ describe('SaikiAgent.switchLLM', () => {
     describe('Warning Collection', () => {
         test('should collect and deduplicate warnings', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: { ...mockLLMConfig, model: 'gpt-4o-mini' },
+                config: { ...mockLLMConfig, model: 'gpt-4o-mini' } as any,
                 isValid: true,
                 errors: [],
                 warnings: ['Config warning', 'Duplicate warning'],
@@ -443,13 +494,13 @@ describe('SaikiAgent.switchLLM', () => {
             expect(result.success).toBe(false);
             expect(result.errors).toBeDefined();
             expect(result.errors!).toHaveLength(1);
-            expect(result.errors![0].type).toBe('general');
-            expect(result.errors![0].message).toBe('Validation failed');
+            expect(result.errors?.[0]?.type).toBe('general');
+            expect(result.errors?.[0]?.message).toBe('Validation failed');
         });
 
         test('should handle state manager validation errors', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: mockLLMConfig,
+                config: mockLLMConfig as any, // Type assertion since this is a test mock
                 isValid: true,
                 errors: [],
                 warnings: [],
@@ -471,8 +522,8 @@ describe('SaikiAgent.switchLLM', () => {
 
             expect(result.success).toBe(false);
             expect(result.errors).toHaveLength(1);
-            expect(result.errors[0].type).toBe('missing_api_key');
-            expect(result.errors[0].message).toBe('API key required');
+            expect(result.errors?.[0]?.type).toBe('missing_api_key');
+            expect(result.errors?.[0]?.message).toBe('API key required');
         });
 
         test('should handle session manager errors', async () => {
@@ -483,8 +534,8 @@ describe('SaikiAgent.switchLLM', () => {
 
             expect(result.success).toBe(false);
             expect(result.errors).toHaveLength(1);
-            expect(result.errors[0].type).toBe('general');
-            expect(result.errors[0].message).toBe('Session error');
+            expect(result.errors?.[0]?.type).toBe('general');
+            expect(result.errors?.[0]?.message).toBe('Session error');
         });
     });
 });

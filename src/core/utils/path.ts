@@ -1,5 +1,4 @@
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import { promises as fsPromises } from 'fs';
 import { createRequire } from 'module';
@@ -169,7 +168,7 @@ export function resolvePackagePath(targetPath: string, resolveFromPackageRoot: b
             const packageJsonPath = require.resolve('@truffle-ai/saiki/package.json');
             const packageRoot = path.dirname(packageJsonPath);
             return path.resolve(packageRoot, targetPath);
-        } catch (err) {
+        } catch (_err) {
             // If require.resolve fails, fall back to the old method
             // This should handle edge cases or development scenarios
             const packageRoot = findPackageRoot(process.cwd());

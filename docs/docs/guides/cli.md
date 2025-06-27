@@ -56,6 +56,16 @@ saiki --agent <path_to_agent_config_file>
 
 Check [Configuration Guide](./configuring-saiki/overview) to understand more about saiki config files
 
+#### **Require all MCP servers to connect successfully**
+
+By default, Saiki uses "lenient" mode where individual servers can fail to connect without preventing startup. Use the `--strict` flag to require all servers to connect successfully:
+
+```bash
+saiki --strict
+```
+
+This overrides any individual `connectionMode` settings in your MCP server configurations. See [MCP Configuration](./configuring-saiki/mcpServers) for more details on connection modes.
+
 #### **Run a specific command with Saiki CLI:**
 
 ```bash

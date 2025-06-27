@@ -12,7 +12,6 @@ Type definitions and interfaces for the Saiki TypeScript/JavaScript SDK.
 import {
   // Main classes
   SaikiAgent,
-  createSaikiAgent,
   
   // Standalone utilities
   MCPManager,
@@ -47,8 +46,6 @@ import {
   
   // Service types
   AgentServices,
-  InitializeServicesOptions,
-  CLIConfigOverrides
 } from '@truffle-ai/saiki';
 ```
 
@@ -266,7 +263,6 @@ interface AgentEventMap {
   
   'saiki:stateExported': {
     config: AgentConfig;
-    runtimeSettings: any;
   };
   
   'saiki:stateReset': {
@@ -432,43 +428,12 @@ Container for all agent service instances.
 
 ```typescript
 interface AgentServices {
-  clientManager: MCPManager;
+  mcpManager: MCPManager;
   promptManager: PromptManager;
   agentEventBus: AgentEventBus;
   stateManager: AgentStateManager;
   sessionManager: SessionManager;
   storage: StorageBackends;
-}
-```
-
-### `InitializeServicesOptions`
-
-Options for overriding services during initialization.
-
-```typescript
-interface InitializeServicesOptions {
-  runMode?: 'cli' | 'web';
-  connectionMode?: 'strict' | 'lenient';
-  clientManager?: MCPManager;
-  agentEventBus?: AgentEventBus;
-  sessionManager?: SessionManager;
-  storage?: StorageBackends;
-}
-```
-
-### `CLIConfigOverrides`
-
-Configuration overrides from CLI arguments.
-
-```typescript
-interface CLIConfigOverrides {
-  model?: string;
-  provider?: string;
-  apiKey?: string;
-  baseURL?: string;
-  temperature?: number;
-  maxTokens?: number;
-  systemPrompt?: string;
 }
 ```
 

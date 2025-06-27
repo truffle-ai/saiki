@@ -31,10 +31,10 @@ export class MCPClient implements IMCPClient {
     private serverSpawned = false;
     private serverPid: number | null = null;
     private serverAlias: string | null = null;
-    private timeout: number; // Changed to number, as Zod default ensures it
+    private timeout: number = 60000; // Default timeout value
 
     async connect(config: McpServerConfig, serverName: string): Promise<Client> {
-        this.timeout = config.timeout; // Rely on Zod default for timeout
+        this.timeout = config.timeout ?? 30000; // Use config timeout or Zod schema default
         if (config.type === 'stdio') {
             const stdioConfig: StdioServerConfig = config;
 
@@ -80,11 +80,12 @@ export class MCPClient implements IMCPClient {
         // TODO: Improve this logic to be less hacky
         if (
             command === 'node' &&
+            this.resolvedArgs &&
             this.resolvedArgs.length > 0 &&
-            this.resolvedArgs[0].startsWith('dist/')
+            this.resolvedArgs[0]?.startsWith('dist/')
         ) {
             try {
-                const scriptRelativePath = this.resolvedArgs[0];
+                const scriptRelativePath = this.resolvedArgs[0]!;
                 this.resolvedArgs[0] = resolvePackagePath(scriptRelativePath, true);
                 logger.debug(
                     `Resolved bundled script path: ${scriptRelativePath} -> ${this.resolvedArgs[0]}`
@@ -270,7 +271,7 @@ export class MCPClient implements IMCPClient {
             // Call the tool with properly formatted arguments
             logger.debug(`Using timeout: ${this.timeout}`);
 
-            const result = await this.client.callTool(
+            const result = await this.client!.callTool(
                 { name, arguments: toolArgs },
                 undefined, // resultSchema (optional)
                 { timeout: this.timeout } // Use server-specific timeout, default 1 minute
@@ -296,7 +297,7 @@ export class MCPClient implements IMCPClient {
         const tools: ToolSet = {};
         try {
             // Call listTools with parameters only
-            const listToolResult = await this.client.listTools({});
+            const listToolResult = await this.client!.listTools({});
             logger.silly(`listTools result: ${JSON.stringify(listToolResult, null, 2)}`);
 
             // Populate tools
@@ -333,7 +334,7 @@ export class MCPClient implements IMCPClient {
     async listPrompts(): Promise<string[]> {
         this.ensureConnected();
         try {
-            const response = await this.client.listPrompts();
+            const response = await this.client!.listPrompts();
             logger.debug(`listPrompts response: ${JSON.stringify(response, null, 2)}`);
             return response.prompts.map((p: any) => p.name);
         } catch (error) {
@@ -356,7 +357,7 @@ export class MCPClient implements IMCPClient {
         try {
             logger.debug(`Getting prompt '${name}' with args: ${JSON.stringify(args, null, 2)}`);
             // Pass params first, then options
-            const response = await this.client.getPrompt(
+            const response = await this.client!.getPrompt(
                 { name, arguments: args },
                 { timeout: this.timeout }
             );
@@ -380,7 +381,7 @@ export class MCPClient implements IMCPClient {
     async listResources(): Promise<string[]> {
         this.ensureConnected();
         try {
-            const response = await this.client.listResources();
+            const response = await this.client!.listResources();
             logger.debug(`listResources response: ${JSON.stringify(response, null, 2)}`);
             return response.resources.map((r: any) => r.uri);
         } catch (error) {
@@ -401,7 +402,7 @@ export class MCPClient implements IMCPClient {
         try {
             logger.debug(`Reading resource '${uri}'`);
             // Pass params first, then options
-            const response = await this.client.readResource({ uri }, { timeout: this.timeout });
+            const response = await this.client!.readResource({ uri }, { timeout: this.timeout });
             logger.debug(`readResource '${uri}' response: ${JSON.stringify(response, null, 2)}`);
             return response; // Return the full response object
         } catch (error: any) {

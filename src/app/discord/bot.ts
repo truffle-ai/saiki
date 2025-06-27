@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { Client, GatewayIntentBits, Partials, Attachment } from 'discord.js';
+import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import https from 'https';
 import http from 'http'; // ADDED for http support
 import { SaikiAgent } from '@core/index.js';
@@ -101,7 +101,7 @@ export function startDiscordBot(agent: SaikiAgent) {
     });
 
     client.once('ready', () => {
-        console.log(`Discord bot logged in as ${client.user.tag}`);
+        console.log(`Discord bot logged in as ${client.user?.tag || 'Unknown'}`);
     });
 
     client.on('messageCreate', async (message) => {
@@ -166,14 +166,14 @@ export function startDiscordBot(agent: SaikiAgent) {
                 const responseText = await agent.run(userText, imageDataInput);
                 // Handle Discord's 2000 character limit
                 const MAX_LENGTH = 1900; // Leave some buffer
-                if (responseText.length <= MAX_LENGTH) {
+                if (responseText && responseText.length <= MAX_LENGTH) {
                     await message.reply(responseText);
-                } else {
+                } else if (responseText) {
                     // Split into chunks and send multiple messages
                     let remaining = responseText;
                     let isFirst = true;
 
-                    while (remaining.length > 0) {
+                    while (remaining && remaining.length > 0) {
                         const chunk = remaining.substring(0, MAX_LENGTH);
                         remaining = remaining.substring(MAX_LENGTH);
 
@@ -188,11 +188,16 @@ export function startDiscordBot(agent: SaikiAgent) {
                             await message.channel.send(chunk);
                         }
                     }
+                } else {
+                    await message.reply(
+                        'I received your message but could not generate a response.'
+                    );
                 }
             } catch (error) {
                 console.error('Error handling Discord message', error);
                 try {
-                    await message.reply(`Error: ${error.message}`);
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                    await message.reply(`Error: ${errorMessage}`);
                 } catch (replyError) {
                     console.error('Error sending error reply:', replyError);
                 }

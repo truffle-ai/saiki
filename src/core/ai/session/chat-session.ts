@@ -6,10 +6,9 @@ import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
 import { getEffectiveMaxInputTokens } from '../llm/registry.js';
 import type { ContextManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
-import type { InternalMessage } from '../llm/messages/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { MCPManager } from '../../client/manager.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { ValidatedLLMConfig } from '../../config/schemas.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
 import type { StorageBackends } from '../../storage/backend/types.js';
 import {
@@ -83,7 +82,7 @@ export class ChatSession {
      *
      * Each session has its own ContextManager instance with isolated history.
      */
-    private contextManager: ContextManager;
+    private contextManager!: ContextManager;
 
     /**
      * Handles AI model interactions, tool execution, and response generation for this session.
@@ -91,7 +90,7 @@ export class ChatSession {
      * Each session has its own LLMService instance that uses the session's
      * ContextManager and event bus.
      */
-    private llmService: ILLMService;
+    private llmService!: ILLMService;
 
     /**
      * Map of event forwarder functions for cleanup.
@@ -115,7 +114,7 @@ export class ChatSession {
         private services: {
             stateManager: AgentStateManager;
             promptManager: PromptManager;
-            clientManager: MCPManager;
+            mcpManager: MCPManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
         },
@@ -156,7 +155,7 @@ export class ChatSession {
                     payload && typeof payload === 'object'
                         ? { ...payload, sessionId: this.id }
                         : { sessionId: this.id };
-                logger.debug(
+                logger.silly(
                     `Forwarding session event ${eventName} to agent bus with session context: ${JSON.stringify(payloadWithSession, null, 2)}`
                 );
                 // Forward to agent bus with session context
@@ -185,6 +184,8 @@ export class ChatSession {
         );
 
         // Create session-specific message manager
+        // NOTE: llmConfig comes from AgentStateManager which stores validated config,
+        // so router should always be defined (has default in schema)
         this.contextManager = createContextManager(
             llmConfig,
             llmConfig.router,
@@ -198,9 +199,10 @@ export class ChatSession {
         this.llmService = createLLMService(
             llmConfig,
             llmConfig.router,
-            this.services.clientManager,
+            this.services.mcpManager,
             this.eventBus, // Use session event bus
-            this.contextManager
+            this.contextManager,
+            this.id
         );
 
         logger.debug(`ChatSession ${this.id}: Services initialized with storage`);
@@ -337,7 +339,7 @@ export class ChatSession {
      * });
      * ```
      */
-    public async switchLLM(newLLMConfig: LLMConfig): Promise<void> {
+    public async switchLLM(newLLMConfig: ValidatedLLMConfig): Promise<void> {
         try {
             // Update ContextManager configuration first
             const provider = newLLMConfig.provider.toLowerCase();
@@ -357,6 +359,7 @@ export class ChatSession {
             }
 
             if (providerChanged || routerChanged) {
+                // NOTE: router comes from validated config, should always be defined
                 newFormatter = createMessageFormatter(provider, router);
             }
 
@@ -370,9 +373,10 @@ export class ChatSession {
             const newLLMService = createLLMService(
                 newLLMConfig,
                 router,
-                this.services.clientManager,
+                this.services.mcpManager,
                 this.eventBus, // Use session event bus
-                this.contextManager
+                this.contextManager,
+                this.id
             );
 
             // Replace the LLM service
@@ -397,18 +401,19 @@ export class ChatSession {
     }
 
     /**
-     * Cleanup the session and its resources.
-     * This method should be called when the session is being ended.
+     * Cleanup the session and its in-memory resources.
+     * This method should be called when the session is being removed from memory.
+     * Chat history is preserved in storage and can be restored later.
      */
     public async cleanup(): Promise<void> {
         try {
-            // Reset the conversation history to clean up any storage
-            await this.reset();
-
-            // Dispose of event listeners
+            // Only dispose of event listeners and in-memory resources
+            // Do NOT reset conversation - that would delete chat history!
             this.dispose();
 
-            logger.debug(`ChatSession ${this.id}: Cleanup completed`);
+            logger.debug(
+                `ChatSession ${this.id}: Memory cleanup completed (chat history preserved)`
+            );
         } catch (error) {
             logger.error(
                 `Error during ChatSession cleanup for session ${this.id}: ${error instanceof Error ? error.message : String(error)}`

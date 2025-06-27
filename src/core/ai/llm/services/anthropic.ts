@@ -3,7 +3,6 @@ import { MCPManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
-import { EventEmitter } from 'events';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
@@ -16,41 +15,44 @@ import type { SessionEventBus } from '../../../events/index.js';
 export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
-    private clientManager: MCPManager;
+    private mcpManager: MCPManager;
     private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
+    private readonly sessionId: string;
 
     constructor(
-        clientManager: MCPManager,
+        mcpManager: MCPManager,
         anthropic: Anthropic,
         sessionEventBus: SessionEventBus,
         contextManager: ContextManager,
         model: string,
-        maxIterations: number = 10
+        maxIterations: number = 10,
+        sessionId: string
     ) {
         this.maxIterations = maxIterations;
         this.model = model;
         this.anthropic = anthropic;
-        this.clientManager = clientManager;
+        this.mcpManager = mcpManager;
         this.sessionEventBus = sessionEventBus;
         this.contextManager = contextManager;
+        this.sessionId = sessionId;
     }
 
     getAllTools(): Promise<any> {
-        return this.clientManager.getAllTools();
+        return this.mcpManager.getAllTools();
     }
 
     async completeTask(
         userInput: string,
         imageData?: ImageData,
-        stream?: boolean
+        _stream?: boolean
     ): Promise<string> {
         // Add user message with optional image data
         await this.contextManager.addUserMessage(userInput, imageData);
 
         // Get all tools
-        const rawTools = await this.clientManager.getAllTools();
+        const rawTools = await this.mcpManager.getAllTools();
         const formattedTools = this.formatToolsForClaude(rawTools);
 
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
@@ -68,9 +70,12 @@ export class AnthropicService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = { clientManager: this.clientManager };
-                const { formattedMessages, systemPrompt, tokensUsed } =
-                    await this.contextManager.getFormattedMessagesWithCompression(context);
+                const context = { mcpManager: this.mcpManager };
+                const {
+                    formattedMessages,
+                    systemPrompt: _systemPrompt,
+                    tokensUsed,
+                } = await this.contextManager.getFormattedMessagesWithCompression(context);
 
                 // For Anthropic, we need to get the formatted system prompt separately
                 const formattedSystemPrompt =
@@ -82,7 +87,7 @@ export class AnthropicService implements ILLMService {
                 const response = await this.anthropic.messages.create({
                     model: this.model,
                     messages: formattedMessages,
-                    system: formattedSystemPrompt,
+                    ...(formattedSystemPrompt && { system: formattedSystemPrompt }),
                     tools: formattedTools,
                     max_tokens: 4096,
                 });
@@ -160,7 +165,11 @@ export class AnthropicService implements ILLMService {
 
                     // Execute tool
                     try {
-                        const result = await this.clientManager.executeTool(toolName, args);
+                        const result = await this.mcpManager.executeTool(
+                            toolName,
+                            args,
+                            this.sessionId
+                        );
 
                         // Add tool result to message manager
                         await this.contextManager.addToolResult(toolUseId, toolName, result);

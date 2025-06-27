@@ -14,10 +14,6 @@ Saiki supports multiple LLM providers out-of-the-box via the Vercel AI SDK. You 
 
 ### Basic Configuration
 ```yaml
-systemPrompt: |
-  You are a helpful AI assistant with access to tools.
-  Use these tools when appropriate to answer user queries.
-
 llm:
   provider: openai
   model: gpt-4.1-mini
@@ -38,7 +34,6 @@ GROQ_API_KEY=your_groq_key
 ### [Configuration Reference](./configuration)
 Complete guide to all LLM configuration options including:
 - Required and optional fields
-- System prompt configuration
 - Provider-specific options
 - Advanced settings
 
@@ -56,9 +51,7 @@ Detailed guide to all supported LLM providers:
 - **Model**: The specific AI model to use (e.g., gpt-4.1-mini, claude-3-5-sonnet)
 
 ### System Prompts
-System prompts define how your agent behaves. They can be:
-- **Simple strings** for basic use cases
-- **Advanced configurations** with multiple contributors for complex scenarios
+System prompts define how your agent behaves. See the [System Prompt Configuration](../systemPrompt) guide for details on simple strings and advanced contributor configurations.
 
 ### Routers
 Saiki uses routers to handle LLM requests:

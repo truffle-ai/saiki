@@ -18,9 +18,9 @@ import {
     getProviderFromModel,
     getAllSupportedModels,
     SaikiAgent,
-    loadConfigFile,
-    createSaikiAgent,
+    loadAgentConfig,
 } from '@core/index.js';
+import { applyCLIOverrides, type CLIConfigOverrides } from './config/cli-overrides.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startApiAndLegacyWebUIServer } from './api/server.js';
@@ -167,7 +167,7 @@ program
             );
 
             logger.info(`Loading Saiki config from: ${configPath}`);
-            const config = await loadConfigFile(configPath);
+            const config = await loadAgentConfig(configPath);
 
             // Validate that MCP servers are configured
             if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
@@ -281,23 +281,33 @@ program
         try {
             const configPath = resolvePackagePath(opts.agent, opts.agent === DEFAULT_CONFIG_PATH);
             logger.info(`Initializing Saiki with config: ${configPath}`);
-            const cfg = await loadConfigFile(configPath);
+            const cfg = await loadAgentConfig(configPath);
 
-            // TODO: process cli config overrides and create a new config here before creating the agent
-            // maybe move the cli overrides into the loading of the config file?
-            agent = await createSaikiAgent(
-                cfg,
-                {
-                    model: opts.model,
-                    provider: opts.provider,
-                    router: opts.router,
-                    apiKey: opts.apiKey,
-                },
-                {
-                    connectionMode: opts.strict ? 'strict' : 'lenient',
-                    runMode: opts.mode,
+            // Apply CLI overrides to config before passing to core layer
+            const cliOverrides: CLIConfigOverrides = {
+                model: opts.model,
+                provider: opts.provider,
+                router: opts.router,
+                apiKey: opts.apiKey,
+            };
+            // Set run mode for tool confirmation provider
+            process.env.SAIKI_RUN_MODE = opts.mode;
+
+            // Apply CLI overrides
+            const finalConfig = applyCLIOverrides(cfg, cliOverrides);
+
+            // Apply --strict flag to all server configs
+            if (opts.strict && finalConfig.mcpServers) {
+                for (const [_serverName, serverConfig] of Object.entries(finalConfig.mcpServers)) {
+                    // All server config types have connectionMode field
+                    serverConfig.connectionMode = 'strict';
                 }
-            );
+            }
+
+            agent = new SaikiAgent(finalConfig);
+
+            // Start the agent (initialize async services)
+            await agent.start();
         } catch (err) {
             logger.error((err as Error).message);
             process.exit(1);
@@ -305,7 +315,15 @@ program
 
         // ——— Dispatch based on --mode ———
         switch (opts.mode) {
-            case 'cli':
+            case 'cli': {
+                // Set up CLI tool confirmation subscriber
+                const { CLIToolConfirmationSubscriber } = await import(
+                    './cli/tool-confirmation/cli-confirmation-handler.js'
+                );
+                const cliSubscriber = new CLIToolConfirmationSubscriber();
+                cliSubscriber.subscribe(agent.agentEventBus);
+                logger.info('Setting up CLI event subscriptions...');
+
                 if (headlessInput) {
                     // One shot CLI
                     await startHeadlessCli(agent, headlessInput);
@@ -314,6 +332,7 @@ program
                     await startAiCli(agent); // Interactive CLI
                 }
                 break;
+            }
 
             case 'web': {
                 const webPort = parseInt(opts.webPort, 10);
@@ -382,7 +401,10 @@ program
             // Use `saiki --mode server` to start saiki as a remote server
             case 'mcp': {
                 // Start stdio mcp server only
-                const agentCardConfig = agent.getEffectiveConfig().agentCard ?? {};
+                const agentCardConfig = agent.getEffectiveConfig().agentCard || {
+                    name: 'saiki',
+                    version: '1.0.0',
+                };
 
                 try {
                     // Redirect logs to file to prevent interference with stdio transport

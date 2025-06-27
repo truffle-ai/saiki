@@ -15,14 +15,14 @@ export async function initializeMcpToolAggregationServer(
     mcpTransport: Transport,
     serverName: string,
     serverVersion: string,
-    strict: boolean
+    _strict: boolean
 ): Promise<McpServer> {
     // Create MCP manager with no confirmation provider (tools are auto-approved)
     const mcpManager = new MCPManager(new NoOpConfirmationProvider());
 
     // Initialize all MCP server connections from config
     logger.info('Connecting to configured MCP servers for tool aggregation...');
-    await mcpManager.initializeFromConfig(serverConfigs, strict ? 'strict' : 'lenient');
+    await mcpManager.initializeFromConfig(serverConfigs);
 
     // Create the aggregation MCP server
     const mcpServer = new McpServer(
@@ -114,11 +114,11 @@ export async function initializeMcpToolAggregationServer(
         logger.info(`Registering ${allPrompts.length} prompts from connected MCP servers`);
 
         for (const promptName of allPrompts) {
-            mcpServer.prompt(promptName, `Prompt: ${promptName}`, async (name, args) => {
+            mcpServer.prompt(promptName, `Prompt: ${promptName}`, async (extra) => {
                 logger.info(
-                    `Prompt aggregation: getting ${name} with args: ${JSON.stringify(args)}`
+                    `Prompt aggregation: getting ${promptName} with args: ${JSON.stringify(extra)}`
                 );
-                return await mcpManager.getPrompt(name, args);
+                return await mcpManager.getPrompt(promptName, {});
             });
         }
     } catch (error) {

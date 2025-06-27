@@ -37,7 +37,7 @@ function expandEnvVars(config: any): any {
     return config;
 }
 
-export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
+export async function loadAgentConfig(configPath: string): Promise<AgentConfig> {
     try {
         // Determine where to load from: absolute, default, or user-relative
         const resolveFromPackageRoot = configPath === DEFAULT_CONFIG_PATH;
@@ -55,7 +55,9 @@ export async function loadConfigFile(configPath: string): Promise<AgentConfig> {
             const expandedConfig = expandEnvVars(config);
             return expandedConfig;
         } catch (parseError) {
-            throw new Error(`Failed to parse YAML: ${parseError.message}`);
+            throw new Error(
+                `Failed to parse YAML: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+            );
         }
     } catch (error: any) {
         // Include path & cause for better diagnostics

@@ -28,7 +28,21 @@ sidebar_position: 3
 
 #### Request Body
 - `name` (string, required): A unique name for the server.
-- `config` (object, required): The server's configuration object.
+- `config` (object, required): The server's configuration object, including optional `connectionMode`.
+
+**Example Request Body:**
+```json
+{
+  "name": "filesystem",
+  "config": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+    "timeout": 30000,
+    "connectionMode": "strict"
+  }
+}
+```
 
 #### Responses
 **Success (201)**

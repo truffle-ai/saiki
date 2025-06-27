@@ -100,6 +100,11 @@ const config: Config = {
                     activeBaseRegex: `/api/`,
                 },
                 {
+                    to: '/blog',
+                    position: 'left',
+                    label: 'Blog',
+                },
+                {
                     href: 'https://discord.gg/GFzWFAAZcm',
                     position: 'right',
                     className: 'header-discord-link',

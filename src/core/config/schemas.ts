@@ -72,7 +72,10 @@ export const AgentCardSchema = z
     })
     .strict();
 
-export type AgentCard = z.infer<typeof AgentCardSchema>;
+// Input type for user-facing API (pre-parsing)
+export type AgentCard = z.input<typeof AgentCardSchema>;
+// Validated type for internal use (post-parsing)
+export type ValidatedAgentCard = z.infer<typeof AgentCardSchema>;
 
 // Define a base schema for common fields
 const BaseContributorSchema = z
@@ -123,7 +126,10 @@ export const ContributorConfigSchema = z
         "Configuration for a system prompt contributor. Type 'static' requires 'content', type 'dynamic' requires 'source'."
     );
 
-export type ContributorConfig = z.infer<typeof ContributorConfigSchema>;
+// Input type for user-facing API (pre-parsing)
+export type ContributorConfig = z.input<typeof ContributorConfigSchema>;
+// Validated type for internal use (post-parsing)
+export type ValidatedContributorConfig = z.infer<typeof ContributorConfigSchema>;
 
 export const SystemPromptConfigSchema = z
     .object({
@@ -153,14 +159,12 @@ export const LLMConfigSchema = z
             .number()
             .int()
             .positive()
-            .optional()
             .default(50)
             .describe(
                 'Maximum number of iterations for agentic loops or chained LLM calls, defaults to 50'
             ),
         router: z
             .enum(['vercel', 'in-built'])
-            .optional()
             .default('vercel')
             .describe('LLM router to use (vercel or in-built), defaults to vercel'),
         baseURL: z
@@ -281,7 +285,10 @@ export const LLMConfigSchema = z
         }
     });
 
-export type LLMConfig = z.infer<typeof LLMConfigSchema>;
+// Input type for user-facing API (pre-parsing)
+export type LLMConfig = z.input<typeof LLMConfigSchema>;
+// Validated type for internal use (post-parsing)
+export type ValidatedLLMConfig = z.infer<typeof LLMConfigSchema>;
 
 export const StdioServerConfigSchema = z
     .object({
@@ -292,7 +299,6 @@ export const StdioServerConfigSchema = z
             .describe("Array of arguments for the command (e.g., ['script.js'])"),
         env: z
             .record(z.string())
-            .optional()
             .default({})
             .describe(
                 'Optional environment variables for the server process, defaults to an empty object'
@@ -301,12 +307,20 @@ export const StdioServerConfigSchema = z
             .number()
             .int()
             .positive()
-            .optional()
             .default(30000)
             .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
+        connectionMode: z
+            .enum(['strict', 'lenient'])
+            .default('lenient')
+            .describe(
+                'Connection mode: "strict" requires successful connection, "lenient" allows failures, defaults to "lenient"'
+            ),
     })
     .strict();
-export type StdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
+// Input type for user-facing API (pre-parsing)
+export type StdioServerConfig = z.input<typeof StdioServerConfigSchema>;
+// Validated type for internal use (post-parsing)
+export type ValidatedStdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
 
 export const SseServerConfigSchema = z
     .object({
@@ -314,19 +328,26 @@ export const SseServerConfigSchema = z
         url: z.string().url().describe('URL for the SSE server endpoint'),
         headers: z
             .record(z.string())
-            .optional()
             .default({})
             .describe('Optional headers for the SSE connection, defaults to an empty object'),
         timeout: z
             .number()
             .int()
             .positive()
-            .optional()
             .default(30000)
             .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
+        connectionMode: z
+            .enum(['strict', 'lenient'])
+            .default('lenient')
+            .describe(
+                'Connection mode: "strict" requires successful connection, "lenient" allows failures, defaults to "lenient"'
+            ),
     })
     .strict();
-export type SseServerConfig = z.infer<typeof SseServerConfigSchema>;
+// Input type for user-facing API (pre-parsing)
+export type SseServerConfig = z.input<typeof SseServerConfigSchema>;
+// Validated type for internal use (post-parsing)
+export type ValidatedSseServerConfig = z.infer<typeof SseServerConfigSchema>;
 
 export const HttpServerConfigSchema = z
     .object({
@@ -334,19 +355,26 @@ export const HttpServerConfigSchema = z
         url: z.string().url().describe('URL for the HTTP server'),
         headers: z
             .record(z.string())
-            .optional()
             .default({})
             .describe('Optional headers for HTTP requests, defaults to an empty object'),
         timeout: z
             .number()
             .int()
             .positive()
-            .optional()
             .default(30000)
             .describe('Timeout in milliseconds for HTTP requests, defaults to 30000ms'),
+        connectionMode: z
+            .enum(['strict', 'lenient'])
+            .default('lenient')
+            .describe(
+                'Connection mode: "strict" requires successful connection, "lenient" allows failures, defaults to "lenient"'
+            ),
     })
     .strict();
-export type HttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
+// Input type for user-facing API (pre-parsing)
+export type HttpServerConfig = z.input<typeof HttpServerConfigSchema>;
+// Validated type for internal use (post-parsing)
+export type ValidatedHttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
 
 export const McpServerConfigSchema = z
     .discriminatedUnion(
@@ -364,12 +392,18 @@ export const McpServerConfigSchema = z
         }
     )
     .describe('Configuration for an MCP server connection (can be stdio, sse, or http)');
-export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
+// Input type for user-facing API (pre-parsing)
+export type McpServerConfig = z.input<typeof McpServerConfigSchema>;
+// Validated type for internal use (post-parsing)
+export type ValidatedMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
 export const ServerConfigsSchema = z
     .record(McpServerConfigSchema)
     .describe('A dictionary of server configurations, keyed by server name');
-export type ServerConfigs = z.infer<typeof ServerConfigsSchema>;
+// Input type for user-facing API (pre-parsing)
+export type ServerConfigs = z.input<typeof ServerConfigsSchema>;
+// Validated type for internal use (post-parsing)
+export type ValidatedServerConfigs = z.infer<typeof ServerConfigsSchema>;
 
 // ==== STORAGE CONFIGURATION ====
 // Base schema for common connection pool options
@@ -502,18 +536,16 @@ export const AgentConfigSchema = z
             .describe(
                 'The system prompt content as a string, or a structured system prompt configuration'
             ),
-        mcpServers: ServerConfigsSchema.optional()
-            .default({})
-            .describe('Configurations for MCP (Model Context Protocol) servers used by the agent'),
+        mcpServers: ServerConfigsSchema.default({}).describe(
+            'Configurations for MCP (Model Context Protocol) servers used by the agent'
+        ),
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 
         // Storage configuration
-        storage: StorageSchema.optional()
-            .default({
-                cache: { type: 'in-memory' },
-                database: { type: 'in-memory' },
-            })
-            .describe('Storage configuration for the agent using cache and database backends'),
+        storage: StorageSchema.default({
+            cache: { type: 'in-memory' },
+            database: { type: 'in-memory' },
+        }).describe('Storage configuration for the agent using cache and database backends'),
 
         sessions: z
             .object({
@@ -521,26 +553,56 @@ export const AgentConfigSchema = z
                     .number()
                     .int()
                     .positive()
-                    .optional()
                     .default(100)
                     .describe('Maximum number of concurrent sessions allowed, defaults to 100'),
                 sessionTTL: z
                     .number()
                     .int()
                     .positive()
-                    .optional()
                     .default(3600000)
                     .describe(
                         'Session time-to-live in milliseconds, defaults to 3600000ms (1 hour)'
                     ),
             })
-            .optional()
             .default({
                 maxSessions: 100,
                 sessionTTL: 3600000,
             })
             .describe('Session management configuration'),
+
+        toolConfirmation: z
+            .object({
+                mode: z
+                    .enum(['event-based', 'auto-approve', 'auto-deny'])
+                    .default('event-based')
+                    .describe(
+                        'Tool confirmation mode: event-based (interactive), auto-approve (all tools), auto-deny (no tools)'
+                    ),
+                timeout: z
+                    .number()
+                    .int()
+                    .positive()
+                    .default(30000)
+                    .describe(
+                        'Timeout for tool confirmation requests in milliseconds, defaults to 30000ms (30 seconds)'
+                    ),
+                allowedToolsStorage: z
+                    .enum(['memory', 'storage'])
+                    .default('storage')
+                    .describe(
+                        'Storage type for remembered tool approvals: memory (session-only) or storage (persistent)'
+                    ),
+            })
+            .default({
+                mode: 'event-based',
+                timeout: 30000,
+                allowedToolsStorage: 'storage',
+            })
+            .describe('Tool confirmation and approval configuration'),
     })
     .strict()
     .describe('Main configuration for an agent, including its LLM and server connections');
-export type AgentConfig = z.infer<typeof AgentConfigSchema>;
+// Input type for user-facing API (pre-parsing) - makes fields with defaults optional
+export type AgentConfig = z.input<typeof AgentConfigSchema>;
+// Validated type for internal use (post-parsing) - all defaults applied
+export type ValidatedAgentConfig = z.infer<typeof AgentConfigSchema>;

@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatSession } from './chat-session.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { ValidatedLLMConfig } from '../../config/schemas.js';
 
 // Mock all dependencies
 vi.mock('../llm/messages/history/factory.js', () => ({
@@ -27,6 +27,7 @@ vi.mock('../../logger/index.js', () => ({
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
+        silly: vi.fn(),
     },
 }));
 
@@ -54,12 +55,11 @@ describe('ChatSession', () => {
     let mockFormatter: any;
 
     const sessionId = 'test-session-123';
-    const mockLLMConfig: LLMConfig = {
+    const mockLLMConfig: ValidatedLLMConfig = {
         provider: 'openai',
         model: 'gpt-4',
         apiKey: 'test-key',
         router: 'in-built',
-        systemPrompt: 'You are a helpful assistant',
         maxIterations: 50,
         maxInputTokens: 128000,
     };
@@ -141,7 +141,7 @@ describe('ChatSession', () => {
             promptManager: {
                 getSystemPrompt: vi.fn().mockReturnValue('System prompt'),
             },
-            clientManager: {
+            mcpManager: {
                 getAllTools: vi.fn().mockResolvedValue({}),
             },
             agentEventBus: {
@@ -246,7 +246,7 @@ describe('ChatSession', () => {
         });
 
         test('should optimize LLM switching by only creating new components when necessary', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 maxInputTokens: 256000, // Only change maxInputTokens
             };
@@ -262,7 +262,7 @@ describe('ChatSession', () => {
         });
 
         test('should create new tokenizer when provider changes', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',
@@ -274,7 +274,7 @@ describe('ChatSession', () => {
         });
 
         test('should create new formatter when router changes', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 router: 'vercel',
             };
@@ -285,7 +285,7 @@ describe('ChatSession', () => {
         });
 
         test('should update message manager configuration during LLM switch', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',
@@ -301,7 +301,7 @@ describe('ChatSession', () => {
         });
 
         test('should emit LLM switched event with correct metadata', async () => {
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'anthropic',
                 model: 'claude-3-opus',
@@ -351,7 +351,7 @@ describe('ChatSession', () => {
         test('should handle LLM switch failures and propagate errors', async () => {
             await chatSession.init();
 
-            const newConfig: LLMConfig = {
+            const newConfig: ValidatedLLMConfig = {
                 ...mockLLMConfig,
                 provider: 'invalid-provider' as any,
             };
@@ -426,9 +426,10 @@ describe('ChatSession', () => {
             expect(mockCreateLLMService).toHaveBeenCalledWith(
                 mockLLMConfig,
                 mockLLMConfig.router,
-                mockServices.clientManager,
+                mockServices.mcpManager,
                 chatSession.eventBus, // Session-specific event bus
-                mockContextManager
+                mockContextManager,
+                sessionId
             );
 
             // Verify session-specific history provider creation

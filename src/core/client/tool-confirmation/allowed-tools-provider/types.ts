@@ -16,8 +16,21 @@
  *   strict check for the user id if the feature flag is set.
  */
 export interface IAllowedToolsProvider {
-    allowTool(toolName: string, userId?: string): Promise<void>;
-    disallowTool(toolName: string, userId?: string): Promise<void>;
-    isToolAllowed(toolName: string, userId?: string): Promise<boolean>;
-    getAllowedTools?(userId?: string): Promise<Set<string>>;
+    /**
+     * Persist an approval for a tool. If `sessionId` is provided the approval is
+     * scoped to that session. When omitted the approval is treated as global.
+     */
+    allowTool(toolName: string, sessionId?: string): Promise<void>;
+
+    /** Remove an approval. */
+    disallowTool(toolName: string, sessionId?: string): Promise<void>;
+
+    /**
+     * Check whether the given tool is currently allowed. If `sessionId` is
+     * provided the session-scoped list is checked first, then any global entry.
+     */
+    isToolAllowed(toolName: string, sessionId?: string): Promise<boolean>;
+
+    /** Optional helper to introspect all approvals for debugging. */
+    getAllowedTools?(sessionId?: string): Promise<Set<string>>;
 }

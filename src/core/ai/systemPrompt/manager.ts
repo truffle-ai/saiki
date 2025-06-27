@@ -13,7 +13,7 @@ import { logger } from '../../logger/index.js';
  */
 export class PromptManager {
     private contributors: SystemPromptContributor[] = [];
-    private rawConfig: string | SystemPromptConfig;
+    private rawConfig!: string | SystemPromptConfig;
 
     constructor(config: string | SystemPromptConfig) {
         this.load(config);

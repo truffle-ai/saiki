@@ -1,12 +1,11 @@
 import { ContextManager } from './manager.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { IConversationHistoryProvider } from './history/types.js';
-import { LLMConfig } from '../../../config/schemas.js';
+import { ValidatedLLMConfig } from '../../../config/schemas.js';
 import { LLMRouter } from '../types.js';
 import { createMessageFormatter } from './formatters/factory.js';
 import { createTokenizer } from '../tokenizer/factory.js';
 import { getEffectiveMaxInputTokens } from '../registry.js';
-import { getMaxInputTokensForModel } from '../registry.js';
 import { SessionEventBus } from '../../../events/index.js';
 import { logger } from '../../../logger/index.js';
 
@@ -24,7 +23,7 @@ import { logger } from '../../../logger/index.js';
  * TODO: Make compression strategy also configurable
  */
 export function createContextManager(
-    config: LLMConfig,
+    config: ValidatedLLMConfig,
     router: LLMRouter,
     promptManager: PromptManager,
     sessionEventBus: SessionEventBus,
