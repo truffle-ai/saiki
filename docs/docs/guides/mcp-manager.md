@@ -216,4 +216,8 @@ app.post('/api/execute/:toolName', async (req, res) => {
 app.listen(3000);
 ```
 
-For detailed API reference, see the [MCPManager API documentation](/api/utilities#mcpmanager). 🛠️ 
+For detailed API reference, see the [MCPManager API documentation](/api/mcp-manager). 🛠️
+
+**Tool execution failures**
+- Validate tool arguments match expected schema
+- Check server logs for detailed error information 

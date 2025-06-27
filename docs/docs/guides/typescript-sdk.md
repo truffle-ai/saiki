@@ -13,13 +13,39 @@ Whether you're creating standalone agents, integrating with existing application
 
 - **Full TypeScript Support**: Strong typing for better development.
 
-## Getting Started
+## Core Concepts
 
-To get started with the TypeScript SDK, check out the following resources:
+The SDK is built around a few core concepts:
 
-- **[API Reference](/api/typescript-sdk)**: Complete technical documentation for all classes, methods, and types.
-- **[Configuration Guide](./configuring-saiki/overview)**: Learn how to configure your agent's LLMs, tools, and storage.
-- **[Building with Saiki](/tutorials)**: Step-by-step tutorials for creating your first Saiki application.
+- **SaikiAgent**: The main class for creating and managing agents.
+- **MCPManager**: A utility for managing MCP server connections.
+- **LLMService**: A service for interacting with large language models.
+- **StorageBackends**: A set of backends for persisting agent data.
+
+## Example Usage
+
+Here's a quick example of how to create a simple agent that uses the OpenAI API:
+
+```typescript
+import { SaikiAgent } from '@truffle-ai/saiki';
+
+const agent = new SaikiAgent({
+  llm: {
+    provider: 'openai',
+    model: 'gpt-4',
+    apiKey: process.env.OPENAI_API_KEY,
+  },
+});
+
+await agent.start();
+
+const response = await agent.run('Hello, world!');
+console.log(response);
+
+await agent.stop();
+```
+
+For more detailed examples, see the [Examples & Demos](/docs/category/examples--demos) section.
 
 ## Overview
 
@@ -397,7 +423,7 @@ agent.agentEventBus.on('llmservice:toolResult', (data) => {
 
 ## Next Steps
 
-- **[API Reference](/api/nodejs-sdk)** - Detailed method documentation
-- **[MCP Guide](/docs/category/mcp)** - Learn about Model Context Protocol
+- **[API Reference](/api/typescript-sdk)** - Detailed method documentation
+- **[MCP Guide](/docs/guides/mcp-manager)** - Learn about Model Context Protocol
 - **[Deployment Guide](/docs/guides/deployment)** - Production deployment strategies
 - **[Examples](/docs/category/examples--demos)** - Complete example applications

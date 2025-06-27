@@ -172,7 +172,7 @@ const config: Config = {
                         },
                         {
                             label: 'Contributing',
-                            to: '/docs/community/contribution-guide/overview',
+                            href: 'https://github.com/truffle-ai/saiki/blob/main/CONTRIBUTING.md',
                         },
                         {
                             label: 'Changelog',

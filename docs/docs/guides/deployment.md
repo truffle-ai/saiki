@@ -131,5 +131,15 @@ Once deployed, your Saiki server provides:
 
 ## Next Steps
 
-- **[TypeScript SDK Guide](/docs/guides/nodejs-sdk)** - Integrate Saiki into your applications
-- **[API Reference](/docs/api)** - Complete API documentation
+- **[TypeScript SDK Guide](./typescript-sdk)** - Integrate Saiki into your applications
+- **[API Reference](/api)** - Complete API documentation
+
+For more detailed information on configuring agents, refer to the [Saiki Configuration Guide](./configuring-saiki/overview).
+
+### Building with the TypeScript SDK
+
+For custom builds and advanced integration, you can use the [TypeScript SDK Guide](./typescript-sdk) to bundle Saiki into your own applications.
+
+For a complete technical reference, see the [API Reference](/api).
+
+## Hosting Options
