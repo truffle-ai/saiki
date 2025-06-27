@@ -32,7 +32,7 @@ const customProvider = new CustomConfirmationProvider();
 const managerWithProvider = new MCPManager(customProvider);
 ```
 
-### Connection Management Methods
+## Connection Management Methods
 
 #### `connectServer`
 
@@ -161,7 +161,7 @@ async disconnectAll(): Promise<void>
 await manager.disconnectAll();
 ```
 
-### Tool Management Methods
+## Tool Management Methods
 
 #### `getAllTools`
 
@@ -219,7 +219,7 @@ await manager.executeTool('writeFile', {
 });
 ```
 
-### Resource Management Methods
+## Resource Management Methods
 
 #### `listAllResources`
 
@@ -251,7 +251,7 @@ const resource = await manager.readResource('file:///project/README.md');
 console.log('Resource content:', resource.contents);
 ```
 
-### Prompt Management Methods
+## Prompt Management Methods
 
 #### `listAllPrompts`
 
@@ -286,7 +286,7 @@ const prompt = await manager.getPrompt('code-review', {
 console.log('Prompt:', prompt.messages);
 ```
 
-### Status and Monitoring Methods
+## Status and Monitoring Methods
 
 #### `getClients`
 
