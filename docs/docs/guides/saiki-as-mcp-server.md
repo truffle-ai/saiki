@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 7
 title: "Using Saiki as an MCP Server"
 sidebar_label: "Using Saiki as an MCP Server"
 ---

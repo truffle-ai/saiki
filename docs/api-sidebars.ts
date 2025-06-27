@@ -28,7 +28,7 @@ const sidebars: SidebarsConfig = {
                 description:
                     'Complete technical API reference for the Saiki TypeScript/JavaScript SDK.',
             },
-            items: ['nodejs-sdk', 'saiki-agent', 'utilities', 'events', 'types'],
+            items: ['nodejs-sdk', 'saiki-agent', 'mcp-manager', 'events', 'types'],
         },
     ],
 };
