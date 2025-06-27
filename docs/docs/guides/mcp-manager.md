@@ -123,25 +123,6 @@ const results = await manager.executeTool('search', {
 });
 ```
 
-### Database Operations
-
-Connect to databases through MCP:
-
-```typescript
-await manager.connectServer('db', {
-  type: 'stdio',
-  command: 'npx',
-  args: ['-y', '@truffle-ai/postgres-mcp'],
-  env: {
-    DATABASE_URL: 'postgresql://user:pass@localhost:5432/mydb'
-  }
-});
-
-const users = await manager.executeTool('query', {
-  sql: 'SELECT * FROM users WHERE active = true'
-});
-```
-
 ### Multi-Server Workflows
 
 Combine multiple servers for complex tasks:
@@ -163,7 +144,10 @@ await manager.initializeFromConfig({
   git: {
     type: 'stdio',
     command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-git']
+    args: ['-y', '@cyanheads/git-mcp-server'],
+    env: {
+        MCP_LOG_LEVEL: "info",
+        GIT_SIGN_COMMITS: "false"
   }
 });
 
