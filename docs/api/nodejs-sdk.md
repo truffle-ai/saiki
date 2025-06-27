@@ -2,9 +2,9 @@
 sidebar_position: 3
 ---
 
-# Node.js SDK API Reference
+# TypeScript SDK API Reference
 
-Complete technical API reference for the Saiki Node.js SDK. For guides and examples, see the [SDK Guide](/docs/guides/nodejs-sdk).
+Complete technical API reference for the Saiki TypeScript/JavaScript SDK. For guides and examples, see the [SDK Guide](/docs/guides/nodejs-sdk).
 
 ## Installation
 

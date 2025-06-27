@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # TypeScript Types
 
-Type definitions and interfaces for the Saiki Node.js SDK.
+Type definitions and interfaces for the Saiki TypeScript/JavaScript SDK.
 
 ## Core Imports
 

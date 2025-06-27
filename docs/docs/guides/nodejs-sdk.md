@@ -2,18 +2,18 @@
 sidebar_position: 2
 ---
 
-# Node.js SDK Guide
+# TypeScript SDK Guide
 
-Learn how to integrate Saiki's AI agent capabilities into your Node.js applications using the official TypeScript/JavaScript SDK.
+Learn how to integrate Saiki's AI agent capabilities into your TypeScript/JavaScript applications using the official SDK.
 
 ## Overview
 
-The Saiki Node.js SDK provides a complete library for building AI agents with MCP (Model Context Protocol) integration. It offers both high-level agent abstractions and low-level utilities for maximum flexibility.
+The Saiki TypeScript SDK provides a complete library for building AI agents with MCP (Model Context Protocol) integration. It offers both high-level agent abstractions and low-level utilities for maximum flexibility.
 
 ### When to Use the SDK vs REST API
 
-**Use the Node.js SDK when:**
-- Building Node.js/TypeScript applications
+**Use the TypeScript SDK when:**
+- Building TypeScript/JavaScript applications
 - Need real-time event handling
 - Want type safety and IDE support
 - Require complex session management

@@ -21,11 +21,12 @@ const sidebars: SidebarsConfig = {
         'websocket',
         {
             type: 'category',
-            label: 'Node.js SDK',
+            label: 'TypeScript SDK',
             link: {
                 type: 'generated-index',
-                title: 'Node.js SDK API Reference',
-                description: 'Complete technical API reference for the Saiki Node.js SDK.',
+                title: 'TypeScript SDK API Reference',
+                description:
+                    'Complete technical API reference for the Saiki TypeScript/JavaScript SDK.',
             },
             items: ['nodejs-sdk', 'saiki-agent', 'utilities', 'events', 'types'],
         },

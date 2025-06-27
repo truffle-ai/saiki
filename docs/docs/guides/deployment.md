@@ -131,5 +131,5 @@ Once deployed, your Saiki server provides:
 
 ## Next Steps
 
-- **[Node.js SDK Guide](/docs/guides/nodejs-sdk)** - Integrate Saiki into your applications
+- **[TypeScript SDK Guide](/docs/guides/nodejs-sdk)** - Integrate Saiki into your applications
 - **[API Reference](/docs/api)** - Complete API documentation

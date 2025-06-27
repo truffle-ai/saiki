@@ -238,7 +238,7 @@ app.listen(3000, () => {
 });
 ```
 
-**What you're learning:** The same agent works everywhere - CLI, web, mobile, anywhere Node.js runs.
+**What you're learning:** The same agent works everywhere - CLI, web, mobile, anywhere TypeScript/JavaScript runs.
 
 ### Testing Your Web Service
 
@@ -278,7 +278,7 @@ The same `agent.run()` call works in:
 - **Command line tools**
 - **Interactive applications**
 - **Web services**
-- **Any Node.js environment**
+- **Any TypeScript/JavaScript environment**
 
 ### 4. Error Handling
 Always wrap agent calls in try-catch blocks:
