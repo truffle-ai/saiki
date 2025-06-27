@@ -428,7 +428,7 @@ Container for all agent service instances.
 
 ```typescript
 interface AgentServices {
-  clientManager: MCPManager;
+  mcpManager: MCPManager;
   promptManager: PromptManager;
   agentEventBus: AgentEventBus;
   stateManager: AgentStateManager;

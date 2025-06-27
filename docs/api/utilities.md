@@ -385,7 +385,7 @@ async createAgentServices(
 - `agentConfig` - Complete agent configuration
 
 **Returns:** `AgentServices` object containing:
-- `clientManager: MCPManager`
+- `mcpManager: MCPManager`
 - `promptManager: PromptManager`
 - `agentEventBus: AgentEventBus`
 - `stateManager: AgentStateManager`
@@ -400,9 +400,9 @@ import { createAgentServices } from '@truffle-ai/saiki';
 const services = await createAgentServices(config, options);
 
 // Access individual services
-const { clientManager, sessionManager, stateManager } = services;
+const { mcpManager, sessionManager, stateManager } = services;
 
 // Use services independently
-const tools = await clientManager.getAllTools();
+const tools = await mcpManager.getAllTools();
 const session = await sessionManager.createSession();
 ``` 
