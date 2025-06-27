@@ -74,7 +74,7 @@ describe('SessionManager', () => {
             promptManager: {
                 getSystemPrompt: vi.fn().mockReturnValue('System prompt'),
             },
-            clientManager: {
+            mcpManager: {
                 getAllTools: vi.fn().mockResolvedValue({}),
             },
             agentEventBus: {

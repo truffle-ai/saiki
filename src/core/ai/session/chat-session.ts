@@ -114,7 +114,7 @@ export class ChatSession {
         private services: {
             stateManager: AgentStateManager;
             promptManager: PromptManager;
-            clientManager: MCPManager;
+            mcpManager: MCPManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
         },
@@ -199,7 +199,7 @@ export class ChatSession {
         this.llmService = createLLMService(
             llmConfig,
             llmConfig.router,
-            this.services.clientManager,
+            this.services.mcpManager,
             this.eventBus, // Use session event bus
             this.contextManager,
             this.id
@@ -373,7 +373,7 @@ export class ChatSession {
             const newLLMService = createLLMService(
                 newLLMConfig,
                 router,
-                this.services.clientManager,
+                this.services.mcpManager,
                 this.eventBus, // Use session event bus
                 this.contextManager,
                 this.id

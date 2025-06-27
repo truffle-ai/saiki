@@ -30,7 +30,7 @@ The main components are:
 1.  **LLM Interface (`ILLMService`)** - Defines the contract that all LLM implementations must follow. It handles task completion, context updates, conversation state, and event emission.
 2.  **Provider Implementations** - Each provider (e.g., OpenAI, Anthropic) has its own implementation of `ILLMService`. These services interact with the provider's specific API.
 3.  **Factory (`factory.ts`)** - Creates the appropriate service (`OpenAIService`, `AnthropicService`, etc.) based on configuration (`LLMConfig`). It also handles API key extraction and can optionally create services compatible with the Vercel AI SDK.
-4.  **Client Manager (`client/manager.ts`)** - Manages the available tools (getting definitions, executing them). LLM services use the `ClientManager` to get tool information and execute tool calls requested by the LLM.
+4.  **Client Manager (`client/manager.ts`)** - Manages the available tools (getting definitions, executing them). LLM services use the `McpManager` to get tool information and execute tool calls requested by the LLM.
 5.  **Message Manager (`messages/manager.ts`)** - Manages the conversation history, formats messages according to the provider's requirements (using specific formatters), handles system prompts, applies compression strategies, and manages token limits. Each LLM service instance typically has its own `ContextManager`.
 6.  **Event Emitter (`EventEmitter`)** - Used by LLM services to emit events during the task completion lifecycle (e.g., `thinking`, `toolCall`, `toolResult`, `response`, `error`). This allows other parts of the application to react to the LLM's progress.
 
@@ -43,7 +43,7 @@ Adding a new LLM provider involves these main steps:
 2.  **Implement/Select Formatter:** Ensure a message formatter (`IMessageFormatter`) exists for the provider's API structure.
 3.  **Implement/Select Tokenizer & Utilities:** Ensure a tokenizer (`ITokenizer`) and token limit information (`getMaxTokens`) are available for the chosen model(s).
 4.  **Choose/Implement Compression Strategy(ies):** Decide which context compression strategies (`ICompressionStrategy`) the `ContextManager` should use if the token limit is exceeded.
-5.  **Create `ILLMService` Implementation:** Build the core service class, integrating the SDK, `ContextManager`, `ClientManager`, and handling the API interaction logic.
+5.  **Create `ILLMService` Implementation:** Build the core service class, integrating the SDK, `ContextManager`, `McpManager`, and handling the API interaction logic.
 6.  **Update Factory:** Modify the `factory.ts` to recognize and instantiate your new service.
 7.  **Test:** Configure and run Saiki to test your new provider integration.
 
@@ -107,13 +107,13 @@ import { ImageData } from '../messages/types.js'; // For potential image support
 export class YourProviderService implements ILLMService {
     private providerClient: YourProviderSDK; // Provider SDK instance (passed in)
     private model: string;                  // Model identifier (passed in)
-    private clientManager: MCPManager; // Passed in from factory
+    private mcpManager: MCPManager; // Passed in from factory
     private contextManager: ContextManager;  // Passed in from factory
     private eventEmitter: EventEmitter;      // Passed in from factory
     private maxIterations: number;           // Max tool call loops
 
     constructor(
-        clientManager: MCPManager,     // Provided by factory
+        mcpManager: MCPManager,     // Provided by factory
         providerClient: YourProviderSDK,   // Provided by factory
         agentEventBus: EventEmitter,       // Provided by factory
         contextManager: ContextManager,    // Provided by factory
@@ -122,7 +122,7 @@ export class YourProviderService implements ILLMService {
     ) {
         this.model = model;
         this.providerClient = providerClient;
-        this.clientManager = clientManager;
+        this.mcpManager = mcpManager;
         this.eventEmitter = agentEventBus;   // Use the passed-in emitter
         this.contextManager = contextManager; // Use the passed-in message manager
         this.maxIterations = maxIterations;
@@ -133,7 +133,7 @@ export class YourProviderService implements ILLMService {
 
 
     getAllTools(): Promise<ToolSet> {
-        return this.clientManager.getAllTools();
+        return this.mcpManager.getAllTools();
     }
 
     getConfig(): LLMServiceConfig {
@@ -152,7 +152,7 @@ export class YourProviderService implements ILLMService {
         // Add user message (potentially with image data) via ContextManager
         this.contextManager.addUserMessage(userInput, imageData);
 
-        const rawTools = await this.clientManager.getAllTools();
+        const rawTools = await this.mcpManager.getAllTools();
         // Provider-specific formatting is still needed
         const formattedTools = this.formatToolsForProvider(rawTools); 
         
@@ -170,7 +170,7 @@ export class YourProviderService implements ILLMService {
 
                 // Get formatted messages from ContextManager (handles history, compression, formatting)
                 const messages = await this.contextManager.getFormattedMessages({ 
-                    clientManager: this.clientManager // May be needed for certain formatters
+                    mcpManager: this.mcpManager // May be needed for certain formatters
                 }); 
                 
                 // Estimate and log token count (optional but useful)
@@ -234,7 +234,7 @@ export class YourProviderService implements ILLMService {
                     this.eventEmitter.emit('llmservice:toolCall', toolName, args);
                     let result: any;
                     try {
-                        result = await this.clientManager.executeTool(toolName, args);
+                        result = await this.mcpManager.executeTool(toolName, args);
                         logger.debug(`Tool ${toolName} executed successfully.`);
                         // Add success result via ContextManager
                         this.contextManager.addToolResult(toolCallId, toolName, result);
@@ -321,7 +321,7 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
 2.  **Add to `_createLLMService`:** Add a `case` for your provider name in the `switch` statement within the `_createLLMService` function:
     ```typescript
     case 'your-provider-name':
-        return new YourProviderService(clientManager, config.systemPrompt, apiKey, config.model);
+        return new YourProviderService(mcpManager, config.systemPrompt, apiKey, config.model);
     ```
 3.  **Update API Key Env Var (If Needed):** If your provider uses a standard environment variable name different from `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, update the `switch` statement within the `extractApiKey` function (or the `getApiKeyEnvVarName` helper if used) to include your provider's key name.
     ```typescript

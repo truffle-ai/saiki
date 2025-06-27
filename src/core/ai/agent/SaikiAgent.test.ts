@@ -19,7 +19,7 @@ describe('SaikiAgent.switchLLM', () => {
     let mockStateManager: any;
     let mockSessionManager: any;
     let mockEventBus: any;
-    let mockClientManager: any;
+    let mockMcpManager: any;
     let mockPromptManager: any;
     let mockStorageManager: any;
 
@@ -105,7 +105,7 @@ describe('SaikiAgent.switchLLM', () => {
             emit: vi.fn(),
         };
 
-        mockClientManager = {
+        mockMcpManager = {
             connectServer: vi.fn(),
             getAllTools: vi.fn().mockResolvedValue({}),
             initializeFromConfig: vi.fn().mockResolvedValue(undefined),
@@ -121,7 +121,7 @@ describe('SaikiAgent.switchLLM', () => {
         };
 
         const mockServices = {
-            clientManager: mockClientManager,
+            mcpManager: mockMcpManager,
             promptManager: mockPromptManager,
             agentEventBus: mockEventBus,
             stateManager: mockStateManager,

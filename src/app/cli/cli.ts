@@ -20,8 +20,8 @@ ${validLogLevels.join('|')} - Set logging level directly
 async function _initCli(agent: SaikiAgent): Promise<void> {
     // Log connection info
     logger.debug(`Log level: ${logger.getLevel()}`);
-    logger.info(`Connected servers: ${agent.clientManager.getClients().size}`, null, 'green');
-    const failedConnections = agent.clientManager.getFailedConnections();
+    logger.info(`Connected servers: ${agent.mcpManager.getClients().size}`, null, 'green');
+    const failedConnections = agent.mcpManager.getFailedConnections();
     if (Object.keys(failedConnections).length > 0) {
         logger.error(`Failed connections: ${Object.keys(failedConnections).length}.`, null, 'red');
     }
@@ -37,10 +37,10 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
     // Load available tools
     logger.info('Loading available tools...');
     try {
-        const tools = await agent.clientManager.getAllTools(); // tools variable is not used currently but kept for potential future use
+        const tools = await agent.mcpManager.getAllTools(); // tools variable is not used currently but kept for potential future use
         logger.info(
             `Loaded ${Object.keys(tools).length} tools from ${
-                agent.clientManager.getClients().size
+                agent.mcpManager.getClients().size
             } MCP servers`
         );
     } catch (error) {

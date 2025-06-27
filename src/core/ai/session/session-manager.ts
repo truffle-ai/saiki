@@ -53,7 +53,7 @@ export class SessionManager {
         private services: {
             stateManager: AgentStateManager;
             promptManager: PromptManager;
-            clientManager: MCPManager;
+            mcpManager: MCPManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
         },

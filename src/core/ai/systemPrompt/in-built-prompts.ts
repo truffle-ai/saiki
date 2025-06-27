@@ -25,14 +25,14 @@ export async function getMemorySummary(_context: DynamicContributorContext): Pro
 
 // TODO: This needs to be optimized to only fetch resources when needed. Curerntly this runs every time the prompt is generated.
 export async function getResourceData(context: DynamicContributorContext): Promise<string> {
-    const uris = await context.clientManager.listAllResources();
+    const uris = await context.mcpManager.listAllResources();
     if (!uris || uris.length === 0) {
         return '<resources></resources>';
     }
     const parts = await Promise.all(
         uris.map(async (uri) => {
             try {
-                const response = await context.clientManager.readResource(uri);
+                const response = await context.mcpManager.readResource(uri);
                 let content: string;
                 if (typeof response === 'string') {
                     content = response;

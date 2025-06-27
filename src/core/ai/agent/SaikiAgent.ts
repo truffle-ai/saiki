@@ -13,7 +13,7 @@ import { buildLLMConfig } from '../../config/validation-utils.js';
 import type { IMCPClient } from '../../client/types.js';
 
 const requiredServices: (keyof AgentServices)[] = [
-    'clientManager',
+    'mcpManager',
     'promptManager',
     'agentEventBus',
     'stateManager',
@@ -71,7 +71,7 @@ export class SaikiAgent {
      * This gives users the option to use methods of the services directly if they know what they are doing
      * But the main recommended entry points/functions would still be the wrapper methods we define below
      */
-    public readonly clientManager!: MCPManager;
+    public readonly mcpManager!: MCPManager;
     public readonly promptManager!: PromptManager;
     public readonly agentEventBus!: AgentEventBus;
     public readonly stateManager!: AgentStateManager;
@@ -124,7 +124,7 @@ export class SaikiAgent {
 
             // Use Object.assign to set readonly properties
             Object.assign(this, {
-                clientManager: services.clientManager,
+                mcpManager: services.mcpManager,
                 promptManager: services.promptManager,
                 agentEventBus: services.agentEventBus,
                 stateManager: services.stateManager,
@@ -175,8 +175,8 @@ export class SaikiAgent {
 
             // 2. Disconnect all MCP clients
             try {
-                if (this.clientManager) {
-                    await this.clientManager.disconnectAll();
+                if (this.mcpManager) {
+                    await this.mcpManager.disconnectAll();
                     logger.debug('MCPManager disconnected all clients successfully');
                 }
             } catch (error) {
@@ -745,14 +745,14 @@ export class SaikiAgent {
             }
 
             // Then connect the server
-            await this.clientManager.connectServer(name, config);
+            await this.mcpManager.connectServer(name, config);
 
             this.agentEventBus.emit('saiki:mcpServerConnected', {
                 name,
                 success: true,
             });
             this.agentEventBus.emit('saiki:availableToolsUpdated', {
-                tools: Object.keys(await this.clientManager.getAllTools()),
+                tools: Object.keys(await this.mcpManager.getAllTools()),
                 source: 'mcp',
             });
             logger.info(`SaikiAgent: Successfully added and connected to MCP server '${name}'.`);
@@ -779,7 +779,7 @@ export class SaikiAgent {
     public async removeMcpServer(name: string): Promise<void> {
         this.ensureStarted();
         // Disconnect the client first
-        await this.clientManager.removeClient(name);
+        await this.mcpManager.removeClient(name);
 
         // Then remove from runtime state
         this.stateManager.removeMcpServer(name);
@@ -794,7 +794,7 @@ export class SaikiAgent {
      */
     public async executeMcpTool(toolName: string, args: any): Promise<any> {
         this.ensureStarted();
-        return await this.clientManager.executeTool(toolName, args);
+        return await this.mcpManager.executeTool(toolName, args);
     }
 
     /**
@@ -804,7 +804,7 @@ export class SaikiAgent {
      */
     public async getAllMcpTools(): Promise<any> {
         this.ensureStarted();
-        return await this.clientManager.getAllTools();
+        return await this.mcpManager.getAllTools();
     }
 
     /**
@@ -814,7 +814,7 @@ export class SaikiAgent {
      */
     public getMcpClients(): Map<string, IMCPClient> {
         this.ensureStarted();
-        return this.clientManager.getClients();
+        return this.mcpManager.getClients();
     }
 
     /**
@@ -824,7 +824,7 @@ export class SaikiAgent {
      */
     public getMcpFailedConnections(): Record<string, string> {
         this.ensureStarted();
-        return this.clientManager.getFailedConnections();
+        return this.mcpManager.getFailedConnections();
     }
 
     // ============= CONFIGURATION ACCESS =============
