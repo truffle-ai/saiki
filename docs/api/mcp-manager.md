@@ -9,7 +9,7 @@ The `MCPManager` is a powerful, standalone utility for managing [Model Context P
 
 This class provides a unified interface for accessing tools, resources, and prompts from all connected servers, making it an essential component for building complex, multi-server workflows.
 
-### Constructor
+## Constructor
 
 ```typescript
 constructor(confirmationProvider?: ToolConfirmationProvider)

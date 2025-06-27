@@ -423,7 +423,7 @@ agent.agentEventBus.on('llmservice:toolResult', (data) => {
 
 ## Next Steps
 
-- **[API Reference](/api/typescript-sdk)** - Detailed method documentation
+- **[SaikiAgent API](/api/saiki-agent)** - Detailed method documentation
 - **[MCP Guide](/docs/guides/mcp-manager)** - Learn about Model Context Protocol
 - **[Deployment Guide](/docs/guides/deployment)** - Production deployment strategies
 - **[Examples](/docs/category/examples--demos)** - Complete example applications
