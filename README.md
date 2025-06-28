@@ -20,7 +20,7 @@ Saiki turns natural-language requests into real actions across your tools, apps,
 1. [Why Saiki?](#why-saiki)
 2. [Installation](#installation)
 3. [Run Modes](#run-modes)
-4. [First Prompt](#first-prompt)
+4. [Quick Start](#quick-start)
 5. [Programmatic API](#programmatic-api)
 6. [Configuration](#configuration)
 7. [Examples & Demos](#examples--demos)
@@ -81,7 +81,7 @@ Run `saiki --help` for **all flags, sub-commands, and environment variables**.
 
 ---
 
-## First Prompt
+## Quick Start
 
 Set your API keys first:
 ```bash
