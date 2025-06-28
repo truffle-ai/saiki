@@ -48,7 +48,7 @@
 | **Extensible** | Ship your own MCP tool servers or plug in custom services with a few lines of config. |
 | **Interoperable** | Enable multi-agent collaboration via MCP and A2A. |
 
-Saiki is the missing **intelligence layer** of your stack—perfect for building agentic appilcations, standalone chatbots, or as the reasoning engine inside larger products.
+Saiki is the missing **intelligence layer** of your stack—perfect for building agentic applications, standalone chatbots, or as the reasoning engine inside larger products.
 
 ---
 
@@ -194,7 +194,7 @@ More ready-to-run recipes live in [`agents/examples`](agents/examples) and the [
 Saiki supports multiple LLM providers out-of-the-box, plus any OpenAI SDK-compatible provider.
 
 - **OpenAI**: `gpt-4.1-mini`, `gpt-4o`, `o3`, `o1` and more
-- **Anthropic**: `claude-3-7-sonnet-20250219`, `claude-3-5-sonnet-20240620` and more  
+- **Anthropic**: `claude-4-sonnet-20250514`, `claude-3-7-sonnet-20250219`, and more  
 - **Google**: `gemini-2.5-pro-exp-03-25`, `gemini-2.0-flash` and more
 - **Groq**: `llama-3.3-70b-versatile`, `gemma-2-9b-it`
 
