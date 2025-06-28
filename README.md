@@ -1,137 +1,165 @@
 # Saiki
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Beta-yellow" alt="Status: Beta">
-  <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License: Elastic License 2.0">
-  <a href="https://discord.gg/GFzWFAAZcm"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat" alt="Discord"></a>
-  <a href="https://deepwiki.com/truffle-ai/saiki"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <img src="https://img.shields.io/badge/Status-Beta-yellow">
+  <img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg">
+  <a href="https://discord.gg/GFzWFAAZcm"><img src="https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white"></a>
+  <a href="https://deepwiki.com/truffle-ai/saiki"><img src="https://deepwiki.com/badge.svg"></a>
 </p>
 
+**A lightweight runtime for creating and running AI agents that turn natural language into real-world actions.**  
 
-**Use natural language to control your tools, apps, and services — connect once, command everything.**
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/9a796427-ab97-4c8f-8ac2-09cf58135553" alt="Saiki Demo" width="900" />
 </div>
 
+---
+
+## Table of Contents
+1. [Why Saiki?](#why-saiki)
+2. [Installation](#installation)
+3. [Run Modes](#run-modes)
+4. [Quick Start](#quick-start)
+5. [Programmatic API](#programmatic-api)
+6. [Configuration](#configuration)
+7. [Examples & Demos](#examples--demos)
+8. [Capabilities](#capabilities)
+9. [Architecture Overview](#architecture-overview)
+10. [LLM Providers](#llm-providers)
+11. [Standalone MCP Manager](#standalone-mcp-manager)
+12. [CLI Reference](#cli-reference)
+13. [Next Steps](#next-steps)
+14. [Community & Support](#community--support)
+15. [Contributors](#contributors)
+16. [License](#license)
+
+---
+
+## Why Saiki?
+
+| 💡 Feature | What it means for you |
+|------------|-----------------------|
+| **Single runtime, many interfaces** | Run the same agent via CLI, Web, Discord, Telegram, or a REST/WS server. |
+| **Model-agnostic** | Hot-swap LLMs from OpenAI, Anthropic, Gemini, Groq, or local models. |
+| **Unified Tooling** | Connect to remote tool servers (filesystem, browser, web-search) via the **Model Context Protocol (MCP)**. |
+| **Config-driven** | Define agent behavior (prompts, tools, model, memory) in version-controlled YAML. |
+| **Production-ready Core** | Leverage a multi-session chat manager, typed API, pluggable storage, and robust logging. |
+| **Extensible** | Ship your own MCP tool servers or plug in custom services with a few lines of config. |
+| **Interoperable** | Enable multi-agent collaboration via MCP and A2A. |
+
+Saiki is the missing **intelligence layer** of your stack—perfect for building agentic applications, standalone chatbots, or as the reasoning engine inside larger products.
+
+---
+
 ## Installation
 
-**Global (npm)**
 ```bash
+# NPM global
 npm install -g @truffle-ai/saiki
-```
 
-<details><summary><strong>Build & Link from source</strong></summary>
-
-```bash
+# —or— build from source
 git clone https://github.com/truffle-ai/saiki.git
-cd saiki
-npm install
-npm run build
-npm link
+cd saiki && npm i && npm run build && npm link
 ```
 
-After linking, the `saiki` command becomes available globally.
+---
 
-</details>
+## Run Modes
+
+| Mode | Command | Best for |
+|------|---------|----------|
+| **Interactive CLI** | `saiki` | Everyday automation & quick tasks |
+| **Web UI** | `saiki --mode web` | Friendly chat interface w/ image support |
+| **Headless Server** | `saiki --mode server` | REST & WebSocket micro-services |
+| **MCP Server (Agent)** | `saiki --mode mcp` | Exposing your agent as a tool for others via stdio |
+| **MCP Server (Aggregator)** | `saiki mcp --group-servers` | Re-exposing tools from multiple MCP servers via stdio |
+| **Discord Bot** | `saiki --mode discord` | Community servers & channels ([Requires Setup](src/app/discord/README.md)) |
+| **Telegram Bot** | `saiki --mode telegram` | Mobile chat ([Requires Setup](src/app/telegram/README.md)) |
+
+Run `saiki --help` for **all flags, sub-commands, and environment variables**.
+
+---
 
 ## Quick Start
 
-### CLI Mode
-
-Invoke the interactive CLI:
+Set your API keys first:
 ```bash
-saiki
+export OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-<details><summary><strong>Alternative: without global install</strong></summary>
-
-You can also run directly via npm:
+Then, give Saiki a multi-step task that combines different tools:
 ```bash
-npm start
+saiki "create a new snake game in html, css, and javascript, then open it in the browser"
 ```
 
-</details>
+Saiki will use its **filesystem** tools to write the code and its **browser** tools to open the `index.html` file—all from a single prompt.
 
+---
 
-### Web UI Mode
+## Programmatic API
 
-Serve the experimental web interface:
-```bash
-saiki --mode web
+The `SaikiAgent` class is the core of the runtime. The following example shows its full lifecycle: initialization, running a single task, holding a conversation, and shutting down.
+
+```ts
+import 'dotenv/config';
+import { SaikiAgent, loadConfigFile } from '@truffle-ai/saiki';
+
+const cfg  = await loadConfigFile('./agents/agent.yml');
+const agent = new SaikiAgent(cfg);
+
+await agent.start();
+
+// Single-shot task
+console.log(await agent.run('List the 5 largest files in this repo'));
+
+// Conversation
+await agent.run('Write a haiku about TypeScript');
+await agent.run('Make it funnier');
+
+agent.resetConversation();
+
+await agent.stop();
 ```
 
-<details><summary><strong>Alternative: without global install</strong></summary>
+Everything in the CLI is powered by this same class—so whatever the CLI can do, your code can too.
 
-```bash
-npm start -- --mode web
+---
+
+## Configuration
+
+Agents are defined in version-controlled YAML. A minimal example:
+
+```yaml
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
+  puppeteer:
+    type: stdio
+    command: npx
+    args: ['-y', '@truffle-ai/puppeteer-server']
+
+llm:
+  provider: openai
+  model: gpt-4o
+  apiKey: $OPENAI_API_KEY
+
+prompt: |
+  You are Saiki, an expert coding assistant...
 ```
 
-</details>
+Change the file, reload the agent, and keep chatting—the conversation state, memory, and tools adapt on the fly.
 
-Open http://localhost:3000 in your browser.
-
-### Server Mode
-
-Run Saiki as a server with just REST APIs and WebSockets:
-```bash
-saiki --mode server
-```
-
-This mode is perfect for:
-- Backend integrations 
-- Microservice architectures
-- Custom frontend development
-- API-only deployments
-
-The server exposes REST endpoints for messaging, MCP server management, and WebSocket support for real-time communication.
-
-### Bot Modes
-
-Run Saiki as a Discord or Telegram bot.
-
-**Discord Bot:**
-```bash
-saiki --mode discord
-```
-Make sure you have `DISCORD_BOT_TOKEN` set in your environment. See [here](src/app/discord/README.md) for more details.
-
-**Telegram Bot:**
-```bash
-saiki --mode telegram
-```
-Make sure you have `TELEGRAM_BOT_TOKEN` set in your environment. See [here](src/app/telegram/README.md) for more details.
-
-### MCP Server Mode
-
-Spin up an agent that acts as an MCP server
-
-```bash
-saiki --mode mcp
-```
-
-## Overview
-
-Saiki is an open, modular and extensible AI agent that lets you perform tasks across your tools, apps, and services using natural language. You describe what you want to do — Saiki figures out which tools to invoke and orchestrates them seamlessly, whether that means running a shell command, summarizing a webpage, or calling an API.
-
-Why developers choose Saiki:
-
-1. **Open & Extensible**: Connect to any service via the Model Context Protocol (MCP).
-2. **Config-Driven Agents**: Define & save your agent prompts, tools (via MCP), and model in YAML.
-3. **Multi-Interface Support**: Use via CLI, wrap it in a web UI, or integrate into other systems.
-4. **Runs Anywhere**: Local-first runtime with logging, retries, and support for any LLM provider.
-5. **Interoperable**: Expose as an API or connect to other agents via MCP/A2A(soon).
-
-Saiki is the missing natural language layer across your stack. Whether you're automating workflows, building agents, or prototyping new ideas, Saiki gives you the tools to move fast — and bend it to your needs. Interact with Saiki via the command line or the new experimental web UI.
-
-Ready to jump in? Follow the [Installation](#installation) guide or explore demos below.
+---
 
 ## Examples & Demos
 
 ### 🛒 Amazon Shopping Assistant
 **Task:** `Can you go to amazon and add some snacks to my cart? I like trail mix, cheetos and maybe surprise me with something else?`
 ```bash
-# Use default config which supports puppeteer for navigating the browser
+# Default agent has browser tools
 saiki
 ```
 <a href="https://youtu.be/C-Z0aVbl4Ik">
@@ -146,168 +174,52 @@ saiki --agent ./agents/examples/email_slack.yml
 ```
 <img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="600">
 
-### 📝 Use Notion As A Second Brain
-```bash
-saiki --agent ./agents/examples/notion.yml #Requires setup
-```
-<img src="assets/notion_webui_example.gif" alt="Notion Integration Demo" width="600">
+More ready-to-run recipes live in [`agents/examples`](agents/examples) and the [docs site](https://truffle-ai.github.io/saiki/).
 
+---
 
-## CLI Reference
+## Capabilities
 
-The `saiki` command supports several options to customize its behavior. Run `saiki --help` for the full list.
+* **Dynamic LLM Switching**: Change model, provider, or routing rules mid-conversation.
+* **Streaming Responses**: Opt-in to receive tokens as they arrive for real-time output.
+* **Multi-Session Management**: Create isolated, stateful chat sessions (think workspace tabs).  
+* **Pluggable Memory Backends**: Use the in-memory default or connect your own DB via the `StorageManager`.
+* **Lifecycle Event Bus**: Subscribe to agent events for metrics, logging, or custom side-effects.
+* **Standalone MCP Manager**: Use Saiki's core `MCPManager` in your own projects without the full agent.
 
-```
-> saiki -h
-Usage: saiki [options] [command] [prompt...]
+---
 
-Saiki CLI allows you to talk to Saiki, build custom AI Agents, build complex AI applications like Cursor, and more.
+## LLM Providers
 
-Run saiki interactive CLI with `saiki` or run a one-shot prompt with `saiki <prompt>`
-Run saiki web UI with `saiki --mode web`
-Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`
-Run saiki as a discord bot with `saiki --mode discord`
-Run saiki as a telegram bot with `saiki --mode telegram`
-Run saiki as an MCP server with `saiki --mode mcp`
-
-Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples
-
-Arguments:
-  prompt                    Natural-language prompt to run once. If not passed, saiki will start as an interactive CLI
-
-Options:
-  -v, --version             output the current version
-  -a, --agent <path>        Path to agent config file (default: "agents/agent.yml")
-  -s, --strict              Require all server connections to succeed
-  --no-verbose              Disable verbose output
-  -m, --model <model>       Specify the LLM model to use.
-  -r, --router <router>     Specify the LLM router to use (vercel or in-built)
-  --mode <mode>             The application in which saiki should talk to you - cli | web | server | discord | telegram | mcp (default: "cli")
-  --web-port <port>         optional port for the web UI (default: "3000")
-  -h, --help                display help for command
-
-Commands:
-  create-app                Scaffold a new Saiki Typescript app
-  init-app                  Initialize an existing Typescript app with Saiki
-```
-
-**Common Examples:**
-
-*   **Specify a custom agent:**
-    ```bash
-    cp agents/agent.yml agents/custom_config.yml
-    saiki --agent agents/custom_config.yml
-    ```
-
-*   **Use a specific AI model (if configured):**
-    ```bash
-    saiki -m gemini-2.5-pro-exp-03-25
-    ```
-
-## Configuration
-
-Saiki defines agents using a YAML config file (`agents/agent.yml` by default). To configure an agent, use tool servers (MCP servers) and LLM providers.
-
-```yaml
-mcpServers:
-  filesystem:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-filesystem"
-      - .
-  puppeteer:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@truffle-ai/puppeteer-server"
-
-llm:
-  provider: openai
-  model: gpt-4.1-mini
-  apiKey: $OPENAI_API_KEY
-```
-
-## LLM Providers & Setup
-
-Saiki supports multiple LLM providers out of the box, plus any OpenAI SDK-compatible provider.
-
-### Built-in Providers
+Saiki supports multiple LLM providers out-of-the-box, plus any OpenAI SDK-compatible provider.
 
 - **OpenAI**: `gpt-4.1-mini`, `gpt-4o`, `o3`, `o1` and more
-- **Anthropic**: `claude-3-7-sonnet-20250219`, `claude-3-5-sonnet-20240620` and more  
+- **Anthropic**: `claude-4-sonnet-20250514`, `claude-3-7-sonnet-20250219`, and more  
 - **Google**: `gemini-2.5-pro-exp-03-25`, `gemini-2.0-flash` and more
 - **Groq**: `llama-3.3-70b-versatile`, `gemma-2-9b-it`
 
-You will need to set your provider specific API keys accordingly.
-
 ### Quick Setup
 
-Set your API key and run:
+Set your API key and run. You can switch providers instantly via the `-m` flag.
 ```bash
 # OpenAI (default)
-export OPENAI_API_KEY=your_key
+export OPENAI_API_KEY=your_openai_api_key_here
+export ANTHROPIC_API_KEY=your_anthropic_api_key_here
+export GOOGLE_GENERATIVE_AI_API_KEY=your_google_gemini_api_key_here
 saiki
 
 # Switch providers via CLI
-saiki -m claude-3-5-sonnet-20240620
-saiki -m gemini-2.0-flash
+saiki -m claude-3.5-sonnet-20240620
+saiki -m gemini-1.5-flash-latest
 ```
 
-For comprehensive setup instructions, all supported models, advanced configuration, and troubleshooting, see our **[LLM Providers Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/llm/providers)**.
+For comprehensive setup instructions, see our **[LLM Providers Guide](https://truffle-ai.github.io/saiki/docs/guides/configuring-saiki/llm/providers)**.
 
+---
 
-## Building with Saiki
+## Standalone MCP Manager
 
-Saiki can be easily integrated into your applications as a powerful AI agent library. Here's a simple example to get you started:
-
-### Quick Start: Programmatic Usage
-
-```typescript
-import 'dotenv/config';
-import { loadConfigFile, SaikiAgent } from '@truffle-ai/saiki';
-
-// Load your agent configuration
-const config = await loadConfigFile('./agent.yml');
-const agent = new SaikiAgent(config);
-
-// Start the agent (initialize async services)
-await agent.start();
-
-// Use the agent for single tasks
-const result = await agent.run("Analyze the files in this directory and create a summary");
-console.log(result);
-
-// Clean shutdown when done
-await agent.stop();
-
-// Or have conversations
-const response1 = await agent.run("What files are in the current directory?");
-const response2 = await agent.run("Create a README for the main.py file");
-
-// Reset conversation when needed
-agent.resetConversation();
-```
-
-For detailed information on the available API endpoints and WebSocket communication protocol, please see the [Saiki API and WebSocket Interface documentation](https://truffle-ai.github.io/saiki/docs/api).
-
-### Learn More
-
-For comprehensive guides on building different types of applications with Saiki, including:
-- **Web backends and APIs**
-- **Discord/Telegram bots** 
-- **Advanced patterns and best practices**
-- **Multi-agent systems**
-
-See our **[Building with Saiki Developer Guide](https://truffle-ai.github.io/saiki/docs/tutorials/building-with-saiki/)**.
-
-## MCP Server Management
-
-Saiki includes a powerful MCPManager that can be used as a standalone utility for managing MCP servers in your own applications. This is perfect for developers who need MCP server management without the full Saiki agent framework.
-
-### Quick Start: MCP Manager
+Need to manage MCP tool servers without the full agent? Use the `MCPManager` directly in your own applications.
 
 ```typescript
 import { MCPManager } from '@truffle-ai/saiki';
@@ -322,13 +234,6 @@ await manager.connectServer('filesystem', {
   args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
 });
 
-await manager.connectServer('web-search', {
-  type: 'stdio', 
-  command: 'npx',
-  args: ['-y', 'tavily-mcp@0.1.2'],
-  env: { TAVILY_API_KEY: process.env.TAVILY_API_KEY }
-});
-
 // Get all available tools across servers
 const tools = await manager.getAllTools();
 console.log('Available tools:', Object.keys(tools));
@@ -337,53 +242,79 @@ console.log('Available tools:', Object.keys(tools));
 const result = await manager.executeTool('readFile', { path: './README.md' });
 console.log('File contents:', result);
 
-// List connected servers
-const clients = manager.getClients();
-console.log('Connected servers:', Array.from(clients.keys()));
-
 // Disconnect when done
 await manager.disconnectAll();
 ```
 
-The MCPManager provides a simple, unified interface for connecting to and managing multiple MCP servers simultaneously. See our **[MCP Manager Documentation](https://truffle-ai.github.io/saiki/docs/mcp-manager)** for complete API reference and advanced usage patterns.
+See the **[MCP Manager Documentation](https://truffle-ai.github.io/saiki/docs/guides/mcp-manager)** for the complete API reference.
 
-## Documentation & Learning Resources
+---
 
-Find detailed guides, architecture, and API reference in our comprehensive [documentation](https://truffle-ai.github.io/saiki/docs/getting-started):
+## CLI Reference
 
-- **[Quick Start](https://truffle-ai.github.io/saiki/docs/getting-started/quick-start)** - Get up and running in minutes
-- **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/guides/configuring-saiki/overview)** - Configure agents, LLMs, and tools
-- **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/tutorials/building-with-saiki/)** - Developer guide with examples and patterns
-- **[Multi-Agent Systems](https://truffle-ai.github.io/saiki/docs/tutorials/building-with-saiki/multi-agent-systems)** - Agent collaboration patterns
-- **[API Reference](https://truffle-ai.github.io/saiki/docs/api-reference/)** - REST APIs, WebSocket, and SDKs
-- **[MCP Manager](https://truffle-ai.github.io/saiki/docs/guides/mcp-manager)** - Standalone MCP server management
-- **[Architecture](https://truffle-ai.github.io/saiki/docs/architecture/overview)** - System design and concepts
+<details>
+<summary>Click to expand for full CLI reference (`saiki --help`)</summary>
 
-### Learning Resources
+```
+Usage: saiki [options] [command] [prompt...]
 
-- **[What is an AI Agent?](https://truffle-ai.github.io/saiki/docs/learn/what-is-an-ai-agent)** - Understanding AI agents
-- **[Model Context Protocol](https://truffle-ai.github.io/saiki/docs/learn/mcp)** - Learn about MCP
-- **[Examples & Demos](https://truffle-ai.github.io/saiki/docs/examples-demos/)** - See Saiki in action
+The Saiki CLI allows you to talk to Saiki, build custom AI Agents, and create complex AI applications. For full documentation, visit https://github.com/truffle-ai/saiki.
+
+Arguments:
+  prompt                    Natural-language prompt to run once. If empty, starts interactive CLI.
+
+Options:
+  -v, --version             output the current version
+  -a, --agent <path>        Path to agent config file (default: "agents/agent.yml")
+  -s, --strict              Require all server connections to succeed
+  --no-verbose              Disable verbose output
+  -m, --model <model>       Specify the LLM model to use.
+  -r, --router <router>     Specify the LLM router to use (vercel or in-built)
+  --mode <mode>             Runtime mode: cli | web | server | discord | telegram | mcp (default: "cli")
+  --web-port <port>         Optional port for the web UI (default: "3000")
+  -h, --help                display help for command
+
+Commands:
+  create-app                Scaffold a new Saiki Typescript app.
+  init-app                  Initialize an existing Typescript app with Saiki.
+  mcp                       Run Saiki as an MCP server.
+```
+</details>
+
+---
+
+## Next Steps
+
+* **[Quick Start](https://truffle-ai.github.io/saiki/docs/getting-started/intro)** – Get up and running in minutes.
+* **[Configuration Guide](https://truffle-ai.github.io/saiki/docs/category/guides)** – Configure agents, LLMs, and tools.
+* **[Building with Saiki](https://truffle-ai.github.io/saiki/docs/category/tutorials)** – Developer guides and patterns.
+* **[API Reference](https://truffle-ai.github.io/saiki/api)** – REST APIs, WebSocket, and SDKs.
+
+---
 
 ## Contributing
-We welcome contributions! Refer to our [Contributing Guide](https://truffle-ai.github.io/saiki/docs/contribution-guide/overview) for more details.
+
+We welcome contributions! Refer to our [Contributing Guide](./CONTRIBUTING.md) for more details.
 
 ## Community & Support
 
-Saiki was built by the team at [Truffle AI](https://www.trytruffle.ai).
+Saiki is built by the team at [Truffle AI](https://www.trytruffle.ai).  
+Join our Discord to share projects, ask questions, or just say hi!
 
-Saiki is better with you! Join our Discord whether you want to say hello, share your projects, ask questions, or get help setting things up:
+[![Discord](https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white)](https://discord.gg/GFzWFAAZcm)
 
-[![Join our Discord server](https://img.shields.io/badge/Discord-Join%20Chat-7289da?logo=discord&logoColor=white&style=flat)](https://discord.gg/GFzWFAAZcm)
+If you enjoy Saiki, please give us a ⭐ on GitHub—it helps a lot!
 
-If you're enjoying Saiki, please give us a ⭐ on GitHub!
-
-## License
-
-Elastic License 2.0. See [LICENSE](LICENSE) for details.
+---
 
 ## Contributors
 
-Thanks to all these amazing people for contributing to Saiki! ([full list](https://github.com/truffle-ai/saiki/graphs/contributors)):
+Thanks to all these amazing people for contributing to Saiki!
 
 [![Contributors](https://contrib.rocks/image?repo=truffle-ai/saiki)](https://github.com/truffle-ai/saiki/graphs/contributors)
+
+---
+
+## License
+
+Elastic License 2.0.  See [LICENSE](LICENSE) for full terms.
