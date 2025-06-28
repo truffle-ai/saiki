@@ -174,7 +174,7 @@ saiki --agent ./agents/examples/email_slack.yml
 ```
 <img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="600">
 
-More ready-to-run recipes live in [`agents/examples`](agents/examples) and the [docs site](https://truffle-ai.github.io/saiki/docs/examples-demos/).
+More ready-to-run recipes live in [`agents/examples`](agents/examples) and the [docs site](https://truffle-ai.github.io/saiki/).
 
 ---
 
@@ -213,7 +213,7 @@ saiki -m claude-3.5-sonnet-20240620
 saiki -m gemini-1.5-flash-latest
 ```
 
-For comprehensive setup instructions, see our **[LLM Providers Guide](https://truffle-ai.github.io/saiki/docs/configuring-saiki/llm/providers)**.
+For comprehensive setup instructions, see our **[LLM Providers Guide](https://truffle-ai.github.io/saiki/docs/guides/configuring-saiki/llm/providers)**.
 
 ---
 
@@ -246,7 +246,7 @@ console.log('File contents:', result);
 await manager.disconnectAll();
 ```
 
-See the **[MCP Manager Documentation](https://truffle-ai.github.io/saiki/docs/mcp-manager)** for the complete API reference.
+See the **[MCP Manager Documentation](https://truffle-ai.github.io/saiki/docs/guides/mcp-manager)** for the complete API reference.
 
 ---
 
