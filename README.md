@@ -74,8 +74,8 @@ cd saiki && npm i && npm run build && npm link
 | **Headless Server** | `saiki --mode server` | REST & WebSocket micro-services |
 | **MCP Server (Agent)** | `saiki --mode mcp` | Exposing your agent as a tool for others |
 | **MCP Server (Aggregator)** | `saiki mcp --group-servers` | Re-exposing tools from multiple MCP servers |
-| **Discord Bot** | `saiki --mode discord` | Community servers & channels |
-| **Telegram Bot** | `saiki --mode telegram` | Mobile chat |
+| **Discord Bot** | `saiki --mode discord` | Community servers & channels ([Requires Setup](src/app/discord/README.md)) |
+| **Telegram Bot** | `saiki --mode telegram` | Mobile chat ([Requires Setup](src/app/telegram/README.md)) |
 
 Run `saiki --help` for **all flags, sub-commands, and environment variables**.
 
