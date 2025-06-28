@@ -1,4 +1,4 @@
-# Saiki - The Runtime For AI Agents
+# Saiki
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Beta-yellow">
@@ -7,8 +7,8 @@
   <a href="https://deepwiki.com/truffle-ai/saiki"><img src="https://deepwiki.com/badge.svg"></a>
 </p>
 
-**The open-source runtime for building and running powerful AI agents.**  
-Saiki turns natural-language requests into real actions across your tools, apps, and services.
+**A lightweight runtime for creating and running AI agents that turn natural language into real-world actions.**  
+
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/9a796427-ab97-4c8f-8ac2-09cf58135553" alt="Saiki Demo" width="900" />
@@ -40,13 +40,13 @@ Saiki turns natural-language requests into real actions across your tools, apps,
 
 | 💡 Feature | What it means for you |
 |------------|-----------------------|
-| **Multi-interface** | Run the same agent via CLI, Web, Discord, Telegram, or a REST/WS server. |
+| **Single runtime, many interfaces** | Run the same agent via CLI, Web, Discord, Telegram, or a REST/WS server. |
 | **Model-agnostic** | Hot-swap LLMs from OpenAI, Anthropic, Gemini, Groq, or local models. |
 | **Unified Tooling** | Connect to remote tool servers (filesystem, browser, web-search) via the **Model Context Protocol (MCP)**. |
 | **Config-driven** | Define agent behavior (prompts, tools, model, memory) in version-controlled YAML. |
 | **Production-ready Core** | Leverage a multi-session chat manager, typed API, pluggable storage, and robust logging. |
 | **Extensible** | Ship your own MCP tool servers or plug in custom services with a few lines of config. |
-| **Interoperable** | Enable multi-agent collaboration via MCP and A2A(soon). |
+| **Interoperable** | Enable multi-agent collaboration via MCP and A2A. |
 
 Saiki is the missing **intelligence layer** of your stack—perfect for building agentic appilcations, standalone chatbots, or as the reasoning engine inside larger products.
 
@@ -72,8 +72,8 @@ cd saiki && npm i && npm run build && npm link
 | **Interactive CLI** | `saiki` | Everyday automation & quick tasks |
 | **Web UI** | `saiki --mode web` | Friendly chat interface w/ image support |
 | **Headless Server** | `saiki --mode server` | REST & WebSocket micro-services |
-| **MCP Server (Agent)** | `saiki --mode mcp` | Exposing your agent as a tool for others |
-| **MCP Server (Aggregator)** | `saiki mcp --group-servers` | Re-exposing tools from multiple MCP servers |
+| **MCP Server (Agent)** | `saiki --mode mcp` | Exposing your agent as a tool for others via stdio |
+| **MCP Server (Aggregator)** | `saiki mcp --group-servers` | Re-exposing tools from multiple MCP servers via stdio |
 | **Discord Bot** | `saiki --mode discord` | Community servers & channels ([Requires Setup](src/app/discord/README.md)) |
 | **Telegram Bot** | `saiki --mode telegram` | Mobile chat ([Requires Setup](src/app/telegram/README.md)) |
 
