@@ -83,12 +83,17 @@ Run `saiki --help` for **all flags, sub-commands, and environment variables**.
 
 ## First Prompt
 
+Set your API keys first:
 ```bash
-export OPENAI_API_KEY=sk-...
-saiki "Summarise the last commit in this repo"
+export OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-Saiki autodetects the standard **MCP filesystem** tool server and calls `git log` under the hood—no extra setup required.
+Then, give Saiki a multi-step task that combines different tools:
+```bash
+saiki "create a new snake game in html, css, and javascript, then open it in the browser"
+```
+
+Saiki will use its **filesystem** tools to write the code and its **browser** tools to open the `index.html` file—all from a single prompt.
 
 ---
 
@@ -198,7 +203,9 @@ Saiki supports multiple LLM providers out-of-the-box, plus any OpenAI SDK-compat
 Set your API key and run. You can switch providers instantly via the `-m` flag.
 ```bash
 # OpenAI (default)
-export OPENAI_API_KEY=your_key
+export OPENAI_API_KEY=your_openai_api_key_here
+export ANTHROPIC_API_KEY=your_anthropic_api_key_here
+export GOOGLE_GENERATIVE_AI_API_KEY=your_google_gemini_api_key_here
 saiki
 
 # Switch providers via CLI
