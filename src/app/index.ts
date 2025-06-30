@@ -41,6 +41,7 @@ import { startNextJsWebServer } from './web.js';
 import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
 import { createAgentCard } from '@core/config/agentCard.js';
 import { initializeMcpToolAggregationServer } from './api/mcp/tool-aggregation-handler.js';
+import { configureCommand } from './cli/commands/configure.js';
 
 const program = new Command();
 
@@ -59,7 +60,12 @@ program
         'The application in which saiki should talk to you - cli | web | server | discord | telegram | mcp',
         'cli'
     )
-    .option('--web-port <port>', 'optional port for the web UI', '3000');
+    .option('--web-port <port>', 'optional port for the web UI', '3000')
+    .option(
+        '--mcp-registry <path>',
+        'path to the MCP registry file',
+        '~/.saiki/mcp-registry.local.json'
+    );
 
 // 2) `create-app` SUB-COMMAND
 program
@@ -209,7 +215,61 @@ program
         }
     });
 
-// 5) Main saiki CLI - Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
+// 5) `configure` SUB-COMMAND
+program
+    .command('configure')
+    .description('Interactive agent configuration builder')
+    .option('--save', 'Save the configuration for later use', true)
+    .option('--no-save', 'Do not save the configuration')
+    .option('-o, --output <path>', 'Output configuration file path')
+    .option(
+        '--load [id]',
+        'Load an existing configuration to modify (interactive selection if no ID provided)'
+    )
+    .option('--list', 'List saved configurations')
+    .option('--delete <id>', 'Delete a saved configuration')
+    .option('--export <id>', 'Export a saved configuration to file')
+    .option('--quick', 'Quick configuration mode')
+    .action(async (options) => {
+        try {
+            await configureCommand(options);
+        } catch (err) {
+            logger.error(`Configure command failed: ${err}`);
+            process.exit(1);
+        }
+    });
+
+// `new` SUB-COMMAND (alias for quick configure)
+program
+    .command('new')
+    .description(
+        'Quickly scaffold a new agent configuration (shortcut for "saiki configure --quick")'
+    )
+    .option('-o, --output <path>', 'Output configuration file path')
+    .action(async (options) => {
+        try {
+            await configureCommand({ ...options, quick: true });
+        } catch (err) {
+            logger.error(`Quick configure failed: ${err}`);
+            process.exit(1);
+        }
+    });
+
+// MCP registry management
+program
+    .command('mcp-registry <action> [id]')
+    .description('Manage local MCP server registry (add | list | remove)')
+    .action(async (action: string, id: string) => {
+        const valid = ['add', 'list', 'remove'];
+        if (!valid.includes(action)) {
+            logger.error(`Invalid action. Use one of: ${valid.join(', ')}`);
+            process.exit(1);
+        }
+        const { mcpRegistryCommand } = await import('./cli/commands/mcp-registry.js');
+        await mcpRegistryCommand(action as any, id);
+    });
+
+// 6) Main saiki CLI - Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
 program
     .argument(
         '[prompt...]',
