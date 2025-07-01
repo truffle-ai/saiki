@@ -25,30 +25,33 @@
 6. [Configuration](#configuration)
 7. [Examples & Demos](#examples--demos)
 8. [Capabilities](#capabilities)
-9. [Architecture Overview](#architecture-overview)
-10. [LLM Providers](#llm-providers)
-11. [Standalone MCP Manager](#standalone-mcp-manager)
-12. [CLI Reference](#cli-reference)
-13. [Next Steps](#next-steps)
-14. [Community & Support](#community--support)
-15. [Contributors](#contributors)
-16. [License](#license)
+<!-- 9. [Architecture Overview](#architecture-overview) -->
+9. [LLM Providers](#llm-providers)
+10. [Standalone MCP Manager](#standalone-mcp-manager)
+11. [CLI Reference](#cli-reference)
+12. [Next Steps](#next-steps)
+13. [Community & Support](#community--support)
+14. [Contributors](#contributors)
+15. [License](#license)
 
 ---
 
 ## Why Saiki?
 
+Saiki is the missing **intelligence layer** of your stack—perfect for building AI applications, standalone chatbots, or as the reasoning engine inside larger products.
+
+The main Saiki features are:
+
 | 💡 Feature | What it means for you |
 |------------|-----------------------|
+| **Powerful CLI and Web UI** | Saiki ships with a powerful CLI and Web UI that enable you to run AI agents in your terminal and over the web. |
 | **Single runtime, many interfaces** | Run the same agent via CLI, Web, Discord, Telegram, or a REST/WS server. |
 | **Model-agnostic** | Hot-swap LLMs from OpenAI, Anthropic, Gemini, Groq, or local models. |
 | **Unified Tooling** | Connect to remote tool servers (filesystem, browser, web-search) via the **Model Context Protocol (MCP)**. |
 | **Config-driven** | Define agent behavior (prompts, tools, model, memory) in version-controlled YAML. |
 | **Production-ready Core** | Leverage a multi-session chat manager, typed API, pluggable storage, and robust logging. |
 | **Extensible** | Ship your own MCP tool servers or plug in custom services with a few lines of config. |
-| **Interoperable** | Enable multi-agent collaboration via MCP and A2A. |
-
-Saiki is the missing **intelligence layer** of your stack—perfect for building agentic applications, standalone chatbots, or as the reasoning engine inside larger products.
+| **Standardized Multi-Agent systems** | Enable multi-agent collaboration via MCP and A2A. |
 
 ---
 
@@ -71,7 +74,7 @@ cd saiki && npm i && npm run build && npm link
 |------|---------|----------|
 | **Interactive CLI** | `saiki` | Everyday automation & quick tasks |
 | **Web UI** | `saiki --mode web` | Friendly chat interface w/ image support |
-| **Headless Server** | `saiki --mode server` | REST & WebSocket micro-services |
+| **Headless Server** | `saiki --mode server` | REST & WebSocket APIs for agent interaction |
 | **MCP Server (Agent)** | `saiki --mode mcp` | Exposing your agent as a tool for others via stdio |
 | **MCP Server (Aggregator)** | `saiki mcp --group-servers` | Re-exposing tools from multiple MCP servers via stdio |
 | **Discord Bot** | `saiki --mode discord` | Community servers & channels ([Requires Setup](src/app/discord/README.md)) |
@@ -123,6 +126,8 @@ await agent.stop();
 ```
 
 Everything in the CLI is powered by this same class—so whatever the CLI can do, your code can too.
+
+Check out our [Typescript SDK docs]((https://truffle-ai.github.io/saiki/api/category/typescript-sdk)
 
 ---
 
