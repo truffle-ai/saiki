@@ -103,7 +103,7 @@ Then start the Web UI:
 saiki --mode web
 ```
 
-The Web UI will load up any previous conversations you had, and also allows you to experiment with different models and MCP servers
+The Web UI will load up any previous conversations you had, and also allows you to experiment with different models and MCP servers.
 
 ---
 
@@ -134,7 +134,7 @@ await agent.stop();
 
 Everything in the CLI is powered by this same class—so whatever the CLI can do, your code can too.
 
-Check out our [Typescript SDK docs](https://truffle-ai.github.io/saiki/api/category/typescript-sdk)
+Check out our [Typescript SDK docs](https://truffle-ai.github.io/saiki/api/category/typescript-sdk) for a complete guide.
 
 ---
 
