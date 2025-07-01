@@ -1,3 +1,44 @@
+/**
+ * CLI Commands Module
+ *
+ * This module defines all available slash commands for the Saiki CLI interface.
+ * Commands provide system control and agent management functionality.
+ *
+ * Available Commands:
+ *
+ * GENERAL:
+ * - /help [command] - Show help information for all commands or a specific command
+ * - /exit, /quit, /q - Exit the CLI application
+ * - /clear, /reset - Clear conversation history for current session
+ * - /history [sessionId], /hist - Show conversation history (current or specified session)
+ *
+ * SESSION MANAGEMENT:
+ * - /session, /s - Manage chat sessions (defaults to list)
+ *   - /session list - List all available sessions with metadata
+ *   - /session new [id] - Create a new session with optional custom ID
+ *   - /session switch <id> - Switch to a different session
+ *   - /session current - Show current active session info
+ *   - /session history [id], /session h - Show conversation history
+ *   - /session delete <id> - Delete a session (cannot delete active session)
+ *
+ * MODEL MANAGEMENT:
+ * - /model, /m - Manage AI models (defaults to current)
+ *   - /model current - Show current model configuration
+ *   - /model switch <model> [provider] - Switch to a different model/provider
+ *
+ * SYSTEM CONFIGURATION:
+ * - /log [level] - Set or view current log level
+ *   Available levels: error, warn, info, http, verbose, debug, silly
+ * - /config - Show current agent configuration (LLM, sessions, MCP servers)
+ * - /stats - Show system statistics (sessions, MCP servers, tools)
+ *
+ * Usage:
+ * - Commands start with '/' followed by the command name
+ * - Arguments are space-separated
+ * - Commands with subcommands default to a primary action if no subcommand given
+ * - Use /help <command> for detailed help on specific commands
+ */
+
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
