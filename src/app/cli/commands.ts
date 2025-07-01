@@ -569,16 +569,18 @@ export const CLI_COMMANDS: CommandDefinition[] = [
     modelCommands,
     {
         name: 'log',
-        description: `Set or view log level. Available levels: ${chalk.cyan('error')}, ${chalk.cyan('warn')}, ${chalk.cyan('info')}, ${chalk.cyan('debug')}, ${chalk.cyan('verbose')}.`,
+        description: `Set or view log level. Available levels: ${chalk.cyan('error')}, ${chalk.cyan('warn')}, ${chalk.cyan('info')}, ${chalk.cyan('http')}, ${chalk.cyan('verbose')}, ${chalk.cyan('debug')}, ${chalk.cyan('silly')}.`,
         usage: '/log [level]',
         aliases: [],
         handler: async (args: string[], _agent: SaikiAgent) => {
-            const validLevels = ['error', 'warn', 'info', 'debug', 'verbose'];
+            const validLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
             const level = args[0];
 
             if (!level) {
                 console.log(chalk.blue(`\nCurrent log level: ${chalk.cyan(logger.getLevel())}`));
-                console.log(chalk.dim('Available levels: error, warn, info, debug, verbose'));
+                console.log(
+                    chalk.dim('Available levels: error, warn, info, http, verbose, debug, silly')
+                );
                 return true;
             }
 
