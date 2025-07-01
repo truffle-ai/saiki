@@ -94,7 +94,8 @@ export class SaikiAgent {
     constructor(config: AgentConfig) {
         this.config = config;
 
-        logger.info('SaikiAgent created (call start() to initialize async services).');
+        // call start() to initialize services
+        logger.info('SaikiAgent created.');
     }
 
     /**
