@@ -154,7 +154,7 @@ systemPrompt: |
   You are Saiki, an expert coding assistant...
 ```
 
-Change the file, reload the agent, and keep chatting—the conversation state, memory, and tools adapt on the fly.
+Change the file, reload the agent, and keep chatting—the conversation state, memory, and tools adapt on the fly. Check out our [Configuration guide](https://truffle-ai.github.io/saiki/docs/category/saiki-configuration-guide) for more information.
 
 ---
 
