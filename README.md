@@ -50,7 +50,7 @@ The main Saiki features are:
 | **Config-driven** | Define agent behavior (prompts, tools, model, memory) in version-controlled YAML. |
 | **Production-ready Core** | Leverage a multi-session chat manager, typed API, pluggable storage, and robust logging. |
 | **Extensible** | Ship your own MCP tool servers or plug in custom services with a few lines of config. |
-| **Standardized Multi-Agent systems** | Enable multi-agent collaboration via MCP and A2A. |
+| **Multi-Agent Systems** | Enable multi-agent collaboration via MCP and A2A. |
 
 ---
 
