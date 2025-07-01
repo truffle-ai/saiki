@@ -79,6 +79,30 @@ async function getCurrentSessionInfo(agent: SaikiAgent): Promise<{ id: string; m
 }
 
 /**
+ * Helper to display session history with consistent formatting
+ */
+async function displaySessionHistory(sessionId: string, agent: SaikiAgent): Promise<void> {
+    console.log(chalk.blue(`\n💬 Conversation History for: ${chalk.bold(sessionId)}\n`));
+
+    const history = await agent.getSessionHistory(sessionId);
+
+    if (history.length === 0) {
+        console.log(chalk.dim('  No messages in this conversation yet.\n'));
+        return;
+    }
+
+    // Display each message with formatting
+    history.forEach((message, index) => {
+        console.log(formatHistoryMessage(message, index));
+    });
+
+    console.log(chalk.dim(`\n  Total: ${history.length} messages`));
+    console.log(
+        chalk.dim('  💡 Use /clear to reset conversation or /session switch to change sessions\n')
+    );
+}
+
+/**
  * Helper to format conversation history
  */
 function formatHistoryMessage(message: any, index: number): string {
@@ -267,28 +291,7 @@ const sessionCommands: CommandDefinition = {
                     const sessionId =
                         args.length > 0 && args[0] ? args[0] : agent.getCurrentSessionId();
 
-                    console.log(
-                        chalk.blue(`\n💬 Conversation History for: ${chalk.bold(sessionId)}\n`)
-                    );
-
-                    const history = await agent.getSessionHistory(sessionId);
-
-                    if (history.length === 0) {
-                        console.log(chalk.dim('  No messages in this conversation yet.\n'));
-                        return true;
-                    }
-
-                    // Display each message with formatting
-                    history.forEach((message, index) => {
-                        console.log(formatHistoryMessage(message, index));
-                    });
-
-                    console.log(chalk.dim(`\n  Total: ${history.length} messages`));
-                    console.log(
-                        chalk.dim(
-                            '  💡 Use /clear to reset conversation or /session switch to change sessions\n'
-                        )
-                    );
+                    await displaySessionHistory(sessionId, agent);
                 } catch (error) {
                     if (error instanceof Error && error.message.includes('not found')) {
                         console.log(chalk.red(`❌ Session not found: ${args[0] || 'current'}`));
@@ -559,28 +562,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                 const sessionId =
                     args.length > 0 && args[0] ? args[0] : agent.getCurrentSessionId();
 
-                console.log(
-                    chalk.blue(`\n💬 Conversation History for: ${chalk.bold(sessionId)}\n`)
-                );
-
-                const history = await agent.getSessionHistory(sessionId);
-
-                if (history.length === 0) {
-                    console.log(chalk.dim('  No messages in this conversation yet.\n'));
-                    return true;
-                }
-
-                // Display each message with formatting
-                history.forEach((message, index) => {
-                    console.log(formatHistoryMessage(message, index));
-                });
-
-                console.log(chalk.dim(`\n  Total: ${history.length} messages`));
-                console.log(
-                    chalk.dim(
-                        '  💡 Use /clear to reset conversation or /session switch to change sessions\n'
-                    )
-                );
+                await displaySessionHistory(sessionId, agent);
             } catch (error) {
                 if (error instanceof Error && error.message.includes('not found')) {
                     console.log(chalk.red(`❌ Session not found: ${args[0] || 'current'}`));
