@@ -146,7 +146,7 @@ llm:
   model: gpt-4o
   apiKey: $OPENAI_API_KEY
 
-prompt: |
+systemPrompt: |
   You are Saiki, an expert coding assistant...
 ```
 
