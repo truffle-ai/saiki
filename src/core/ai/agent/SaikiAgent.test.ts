@@ -413,7 +413,7 @@ describe('SaikiAgent.switchLLM', () => {
         test('should pass all parameters to validation', async () => {
             await agent.switchLLM({
                 provider: 'google',
-                model: 'gemini-2.5-pro-exp-03-25',
+                model: 'gemini-2.5-pro',
                 apiKey: 'custom-key',
                 router: 'vercel',
                 baseURL: 'https://custom.api.com',
@@ -422,7 +422,7 @@ describe('SaikiAgent.switchLLM', () => {
             expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
                 {
                     provider: 'google',
-                    model: 'gemini-2.5-pro-exp-03-25',
+                    model: 'gemini-2.5-pro',
                     apiKey: 'custom-key',
                     router: 'vercel',
                     baseURL: 'https://custom.api.com',
