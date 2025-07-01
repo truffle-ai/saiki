@@ -219,12 +219,6 @@ const sessionCommands: CommandDefinition = {
 
                 try {
                     const sessionId = args[0];
-                    if (!sessionId) {
-                        console.log(
-                            chalk.red('❌ Session ID required. Usage: /session switch <id>')
-                        );
-                        return true;
-                    }
 
                     await agent.loadSession(sessionId);
 
@@ -320,12 +314,6 @@ const sessionCommands: CommandDefinition = {
 
                 try {
                     const sessionId = args[0];
-                    if (!sessionId) {
-                        console.log(
-                            chalk.red('❌ Session ID required. Usage: /session delete <id>')
-                        );
-                        return true;
-                    }
 
                     const current = await getCurrentSessionInfo(agent);
 
