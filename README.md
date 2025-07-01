@@ -24,8 +24,7 @@
 5. [Programmatic API](#programmatic-api)
 6. [Configuration](#configuration)
 7. [Examples & Demos](#examples--demos)
-8. [Capabilities](#capabilities)
-<!-- 9. [Architecture Overview](#architecture-overview) -->
+8. [Capabilities](#capabilities)<!-- 9. [Architecture Overview](#architecture-overview) -->
 9. [LLM Providers](#llm-providers)
 10. [Standalone MCP Manager](#standalone-mcp-manager)
 11. [CLI Reference](#cli-reference)
