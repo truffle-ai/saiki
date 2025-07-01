@@ -218,7 +218,7 @@ const sessionCommands: CommandDefinition = {
                 }
 
                 try {
-                    const sessionId = args[0];
+                    const sessionId = args[0]!; // Safe to assert non-null since we checked args.length
 
                     await agent.loadSession(sessionId);
 
@@ -313,7 +313,7 @@ const sessionCommands: CommandDefinition = {
                 }
 
                 try {
-                    const sessionId = args[0];
+                    const sessionId = args[0]!; // Safe to assert non-null since we checked args.length
 
                     const current = await getCurrentSessionInfo(agent);
 
