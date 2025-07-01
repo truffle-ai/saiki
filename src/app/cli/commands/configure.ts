@@ -3,11 +3,7 @@ import chalk from 'chalk';
 import fs from 'fs/promises';
 import path from 'path';
 import * as YAML from 'yaml';
-import {
-    MCP_SERVER_REGISTRY,
-    getMcpServerCategories,
-    getMcpServersByCategory,
-} from '@core/config/mcp-registry.js';
+import { MCP_SERVER_REGISTRY } from '@core/config/mcp-registry.js';
 import { ConfigurationManager } from '@core/config/config-manager.js';
 import {
     getDefaultModelForProvider,
@@ -415,135 +411,6 @@ async function buildAgentConfiguration(
     };
 
     return config;
-}
-
-/**
- * Select MCP servers based on the chosen method
- */
-async function selectMcpServers(
-    method: string,
-    baseServers?: Record<string, McpServerConfig>
-): Promise<Record<string, McpServerConfig>> {
-    const selectedServers: Record<string, McpServerConfig> = {};
-
-    if (method === 'preset') {
-        const preset = await p.select({
-            message: 'Choose a preset configuration',
-            options: [
-                { value: 'essential', label: 'Essential Tools', hint: 'Filesystem + Web browsing' },
-                {
-                    value: 'developer',
-                    label: 'Developer Setup',
-                    hint: 'Essential + GitHub + Terminal',
-                },
-                {
-                    value: 'productivity',
-                    label: 'Productivity Suite',
-                    hint: 'Essential + Notion + Slack',
-                },
-                { value: 'data', label: 'Data & Analytics', hint: 'Essential + Database tools' },
-            ],
-        });
-
-        return getPresetServers(preset as string);
-    }
-
-    if (method === 'category') {
-        const categories = getMcpServerCategories();
-        const selectedCategories = await p.multiselect({
-            message: 'Select categories of MCP servers',
-            options: categories.map((cat) => ({
-                value: cat,
-                label: cat,
-                hint: `${getMcpServersByCategory(cat).length} servers available`,
-            })),
-            initialValues: ['Development', 'Web'],
-        });
-
-        for (const category of selectedCategories as string[]) {
-            const servers = getMcpServersByCategory(category);
-            const selectedInCategory = await p.multiselect({
-                message: `Select servers from ${category}`,
-                options: servers.map((server) => ({
-                    value: server.id,
-                    label: server.name,
-                    hint: server.description,
-                })),
-                required: false,
-            });
-
-            for (const serverId of selectedInCategory as string[]) {
-                const server = MCP_SERVER_REGISTRY[serverId];
-                if (server) {
-                    selectedServers[server.id] = server.config;
-                }
-            }
-        }
-    }
-
-    if (method === 'manual' || method === 'modify' || method === 'replace') {
-        const customRegistry = await loadLocalMcpRegistry();
-        const allServers = [
-            ...Object.values(MCP_SERVER_REGISTRY),
-            ...Object.values(customRegistry),
-        ];
-        const currentServerIds = baseServers ? Object.keys(baseServers) : [];
-
-        // Debug logging to understand what's happening
-        logger.debug(
-            `MCP Selection Debug: method=${method}, totalServers=${allServers.length}, currentServers=[${currentServerIds.join(', ')}]`
-        );
-
-        let message = 'Select MCP servers';
-        if (method === 'modify') {
-            message = `Select MCP servers (✓ = currently enabled, available: ${allServers.length} total)`;
-        } else if (method === 'replace') {
-            message = `Replace all MCP servers - select new ones (${allServers.length} available)`;
-        } else {
-            message = `Select MCP servers (${allServers.length} available)`;
-        }
-
-        // Show current state before selection
-        if (method === 'modify' && currentServerIds.length > 0) {
-            p.note(`Currently enabled: ${currentServerIds.join(', ')}`, 'Current MCP Servers');
-        }
-
-        const selectedIds = await p.multiselect({
-            message,
-            options: allServers.map((server) => {
-                const isCurrentlyEnabled = currentServerIds.includes(server.id);
-                return {
-                    value: server.id,
-                    label: `${server.name}${isCurrentlyEnabled ? ' ✓' : ''}`,
-                    hint: `${server.category} - ${server.description}`,
-                };
-            }),
-            initialValues: method === 'replace' ? [] : currentServerIds,
-            required: false,
-        });
-
-        // Debug the selection result
-        logger.debug(
-            `MCP Selection Result: selectedIds=${Array.isArray(selectedIds) ? selectedIds.join(', ') : 'invalid'}`
-        );
-
-        // Handle cancellation or empty selection
-        if (!selectedIds || !Array.isArray(selectedIds)) {
-            logger.warn('MCP server selection cancelled or invalid, keeping existing servers');
-            return baseServers || {};
-        }
-
-        for (const serverId of selectedIds as string[]) {
-            const server = MCP_SERVER_REGISTRY[serverId];
-            if (server) {
-                selectedServers[server.id] = server.config;
-            } else {
-                logger.warn(`Selected MCP server '${serverId}' not found in registry`);
-            }
-        }
-    }
-
-    return selectedServers;
 }
 
 /**

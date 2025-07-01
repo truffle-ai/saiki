@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { logger } from '@core/index.js';
 import type { McpServerRegistryEntry } from '@core/config/mcp-registry.js';
 
 const LOCAL_REGISTRY_PATH = path.join(os.homedir(), '.saiki', 'mcp-registry.local.json');
