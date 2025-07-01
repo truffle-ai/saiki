@@ -126,7 +126,7 @@ await agent.stop();
 
 Everything in the CLI is powered by this same class—so whatever the CLI can do, your code can too.
 
-Check out our [Typescript SDK docs]((https://truffle-ai.github.io/saiki/api/category/typescript-sdk)
+Check out our [Typescript SDK docs](https://truffle-ai.github.io/saiki/api/category/typescript-sdk)
 
 ---
 
