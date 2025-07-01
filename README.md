@@ -97,6 +97,14 @@ saiki "create a new snake game in html, css, and javascript, then open it in the
 
 Saiki will use its **filesystem** tools to write the code and its **browser** tools to open the `index.html` file—all from a single prompt.
 
+Then start the Web UI:
+
+```bash
+saiki --mode web
+```
+
+The Web UI will load up any previous conversations you had, and also allows you to experiment with different models and MCP servers
+
 ---
 
 ## Programmatic API
@@ -154,7 +162,9 @@ systemPrompt: |
   You are Saiki, an expert coding assistant...
 ```
 
-Change the file, reload the agent, and keep chatting—the conversation state, memory, and tools adapt on the fly. Check out our [Configuration guide](https://truffle-ai.github.io/saiki/docs/category/saiki-configuration-guide) for more information.
+Change the file, reload the agent, and chat—the conversation state, memory, and tools will update.
+
+Check out our [Configuration guide] for the complete reference.(https://truffle-ai.github.io/saiki/docs/category/saiki-configuration-guide)
 
 ---
 
