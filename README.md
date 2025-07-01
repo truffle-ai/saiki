@@ -164,7 +164,7 @@ systemPrompt: |
 
 Change the file, reload the agent, and chat—the conversation state, memory, and tools will update.
 
-Check out our [Configuration guide] for the complete reference.(https://truffle-ai.github.io/saiki/docs/category/saiki-configuration-guide)
+Check out our [Configuration guide](https://truffle-ai.github.io/saiki/docs/category/saiki-configuration-guide) for the complete reference.
 
 ---
 
