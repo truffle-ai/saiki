@@ -3,21 +3,57 @@ import chalk from 'chalk';
 import { logger } from '@core/index.js';
 import { CLISubscriber } from './cli-subscriber.js';
 import { SaikiAgent } from '@core/index.js';
+import { parseInput } from './command-parser.js';
+import { executeCommand } from './commands.js';
 
-const validLogLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
-const HELP_MESSAGE = `Available commands:
-exit/quit - Exit the CLI
-clear - Clear conversation history
-help - Show this help message
-currentloglevel - Show current logging level
-${validLogLevels.join('|')} - Set logging level directly
-`;
+/**
+ * Find and load the most recent session based on lastActivity.
+ * This provides better UX than always loading the "default" session.
+ */
+async function loadMostRecentSession(agent: SaikiAgent): Promise<void> {
+    try {
+        const sessionIds = await agent.listSessions();
+
+        if (sessionIds.length === 0) {
+            // No sessions exist, let agent create default
+            logger.debug('No existing sessions found, will use default session');
+            return;
+        }
+
+        // Find the session with the most recent activity
+        let mostRecentSession = sessionIds[0];
+        let mostRecentActivity = 0;
+
+        for (const sessionId of sessionIds) {
+            const metadata = await agent.getSessionMetadata(sessionId);
+            if (metadata && metadata.lastActivity > mostRecentActivity) {
+                mostRecentActivity = metadata.lastActivity;
+                mostRecentSession = sessionId;
+            }
+        }
+
+        // Load the most recent session if it's not already current
+        const currentSessionId = agent.getCurrentSessionId();
+        if (mostRecentSession !== currentSessionId) {
+            await agent.loadSession(mostRecentSession);
+            logger.debug(`Loaded most recent session: ${mostRecentSession}`);
+        }
+    } catch (error) {
+        // If anything fails, just continue with current session
+        logger.debug(
+            `Failed to load most recent session: ${error instanceof Error ? error.message : String(error)}`
+        );
+    }
+}
 
 /**
  * Initializes common CLI setup: logging, event subscriptions, tool loading.
  * @param agent The SaikiAgent instance providing access to all required services
  */
 async function _initCli(agent: SaikiAgent): Promise<void> {
+    // Load the most recent session instead of always using 'default'
+    await loadMostRecentSession(agent);
+
     // Log connection info
     logger.debug(`Log level: ${logger.getLevel()}`);
     logger.info(`Connected servers: ${agent.mcpManager.getClients().size}`, null, 'green');
@@ -75,6 +111,12 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
     );
 
     logger.info(`CLI initialized successfully. Ready for input.`, null, 'green');
+
+    // Show welcome message with slash command instructions
+    console.log(chalk.bold.cyan('\n🚀 Welcome to Saiki CLI!'));
+    console.log(chalk.dim('• Type your message normally to chat with the AI'));
+    console.log(chalk.dim('• Use /command for system commands (e.g., /help, /session, /model)'));
+    console.log(chalk.dim('• Type /help to see all available commands\n'));
 }
 
 /**
@@ -108,7 +150,7 @@ export async function startAiCli(agent: SaikiAgent) {
                 }
                 process.stdin.resume();
                 rl.question(
-                    chalk.bold.green('\nWhat would you like to do? (type "help" for commands) '),
+                    chalk.bold.green('\nWhat would you like to do? (type /help for commands) '),
                     (answer) => {
                         resolve(answer.trim());
                     }
@@ -116,50 +158,28 @@ export async function startAiCli(agent: SaikiAgent) {
             });
         };
 
-        async function handleCliCommand(input: string): Promise<boolean> {
-            const lowerInput = input.toLowerCase().trim();
+        async function handleInput(input: string): Promise<boolean> {
+            const parsed = parseInput(input);
 
-            if (lowerInput === 'exit' || lowerInput === 'quit') {
-                logger.warn('Exiting AI CLI. Goodbye!');
-                rl.close();
-                process.exit(0);
+            if (parsed.type === 'command') {
+                // Handle slash command
+                if (!parsed.command) {
+                    console.log(chalk.yellow('💡 Type /help to see available commands'));
+                    return true;
+                }
+
+                return await executeCommand(parsed.command, parsed.args || [], agent);
+            } else {
+                // Handle regular prompt - pass to AI
+                return false;
             }
-
-            if (lowerInput === 'clear') {
-                await agent.resetConversation();
-                logger.info('Conversation history cleared.');
-                return true;
-            }
-
-            if (validLogLevels.includes(lowerInput)) {
-                console.log(`Current log level: ${logger.getLevel()}`);
-                logger.setLevel(lowerInput);
-                console.log(`Log level set to ${lowerInput}`);
-                return true;
-            }
-
-            if (lowerInput === 'currentloglevel') {
-                console.log(`Current log level: ${logger.getLevel()}`);
-                return true;
-            }
-
-            if (lowerInput === 'help') {
-                showHelp();
-                return true;
-            }
-
-            return false;
-        }
-
-        function showHelp() {
-            console.log(HELP_MESSAGE);
         }
 
         try {
             while (true) {
                 const userInput = await promptUser();
 
-                if (await handleCliCommand(userInput)) {
+                if (await handleInput(userInput)) {
                     continue;
                 }
 
@@ -192,10 +212,25 @@ export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promi
     // Common initialization
     await _initCli(agent);
     try {
-        // Execute the task
-        // reset conversation for headless mode
-        await agent.resetConversation();
-        await agent.run(prompt);
+        // Check if this is a slash command
+        const parsed = parseInput(prompt);
+
+        if (parsed.type === 'command') {
+            // Execute slash command
+            if (!parsed.command) {
+                console.log(
+                    chalk.yellow('💡 No command specified. Use /help to see available commands')
+                );
+                return;
+            }
+
+            await executeCommand(parsed.command, parsed.args || [], agent);
+        } else {
+            // Execute the task as a regular AI prompt
+            // reset conversation for headless mode
+            await agent.resetConversation();
+            await agent.run(prompt);
+        }
     } catch (error) {
         logger.error(
             `Error in processing input: ${error instanceof Error ? error.message : String(error)}`
