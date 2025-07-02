@@ -9,6 +9,7 @@ import { ValidatedLLMConfig, LLMConfig, McpServerConfig } from '../../config/sch
 import {
     getSupportedProviders,
     getDefaultModelForProvider,
+    inferProviderFromModel,
     LLMProvider,
     LLM_REGISTRY,
     ModelInfo,
@@ -807,6 +808,29 @@ export class SaikiAgent {
             ...model,
             isDefault: model.name === defaultModel,
         }));
+    }
+
+    /**
+     * Infers the provider from a model name.
+     * Searches through all supported providers to find which one supports the given model.
+     *
+     * @param modelName The model name to search for
+     * @returns The provider name if found, null if the model is not supported
+     *
+     * @example
+     * ```typescript
+     * const provider = agent.inferProviderFromModel('gpt-4o');
+     * console.log(provider); // 'openai'
+     *
+     * const provider2 = agent.inferProviderFromModel('claude-4-sonnet-20250514');
+     * console.log(provider2); // 'anthropic'
+     *
+     * const provider3 = agent.inferProviderFromModel('unknown-model');
+     * console.log(provider3); // null
+     * ```
+     */
+    public inferProviderFromModel(modelName: string): LLMProvider | null {
+        return inferProviderFromModel(modelName);
     }
 
     // ============= MCP SERVER MANAGEMENT =============

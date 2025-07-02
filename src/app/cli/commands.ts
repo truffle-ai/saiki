@@ -27,7 +27,7 @@
  *   - /model help - Show detailed help for model commands
  *   - /model list - List all supported providers and models
  *   - /model current - Show current model configuration
- *   - /model switch <model> [provider] - Switch to a different model/provider
+ *   - /model switch <model> - Switch to a different model (provider auto-detected)
  *
  * SYSTEM CONFIGURATION:
  * - /log [level] - Set or view current log level
@@ -463,9 +463,7 @@ const modelCommands: CommandDefinition = {
                         console.log();
                     }
 
-                    console.log(
-                        chalk.dim('💡 Use /model switch <provider> <model> to switch models')
-                    );
+                    console.log(chalk.dim('💡 Use /model switch <model> to switch models'));
                     console.log(chalk.dim('💡 Default models are marked with [DEFAULT]'));
                     console.log(chalk.dim('💡 Token limits show maximum input context size\n'));
                 } catch (error) {
@@ -510,30 +508,27 @@ const modelCommands: CommandDefinition = {
         {
             name: 'switch',
             description: 'Switch to a different model',
-            usage: '/model switch <model> [provider]',
+            usage: '/model switch <model>',
             handler: async (args: string[], agent: SaikiAgent) => {
                 if (args.length === 0) {
-                    console.log(
-                        chalk.red('❌ Model required. Usage: /model switch <model> [provider]')
-                    );
+                    console.log(chalk.red('❌ Model required. Usage: /model switch <model>'));
                     return true;
                 }
 
                 try {
-                    const provider = args[0];
-                    const model = args[1];
+                    const model = args[0]!; // Safe to assert since we checked args.length above
 
-                    console.log(
-                        chalk.yellow(
-                            `🔄 Switching model to ${model}${provider ? ` (${provider})` : ''}...`
-                        )
-                    );
-
-                    const llmConfig: any = { model };
-                    if (provider) {
-                        llmConfig.provider = provider;
+                    // Infer provider from model name
+                    const provider = agent.inferProviderFromModel(model);
+                    if (!provider) {
+                        console.log(chalk.red(`❌ Unknown model: ${model}`));
+                        console.log(chalk.dim('💡 Use /model list to see available models'));
+                        return true;
                     }
 
+                    console.log(chalk.yellow(`🔄 Switching to ${model} (${provider})...`));
+
+                    const llmConfig = { model, provider };
                     const result = await agent.switchLLM(llmConfig);
 
                     if (result.success) {
@@ -577,14 +572,12 @@ const modelCommands: CommandDefinition = {
                     `  ${chalk.yellow('/model current')} - Display currently active model and configuration`
                 );
                 console.log(
-                    `  ${chalk.yellow('/model switch')} ${chalk.blue('<provider> <model>')} - Switch to a different AI model`
+                    `  ${chalk.yellow('/model switch')} ${chalk.blue('<model>')} - Switch to a different AI model (provider auto-detected)`
                 );
                 console.log(`        Examples:`);
-                console.log(`          ${chalk.dim('/model switch openai gpt-4o')}`);
-                console.log(
-                    `          ${chalk.dim('/model switch anthropic claude-4-sonnet-20250514')}`
-                );
-                console.log(`          ${chalk.dim('/model switch google gemini-2.5-pro')}`);
+                console.log(`          ${chalk.dim('/model switch gpt-4o')}`);
+                console.log(`          ${chalk.dim('/model switch claude-4-sonnet-20250514')}`);
+                console.log(`          ${chalk.dim('/model switch gemini-2.5-pro')}`);
                 console.log(`  ${chalk.yellow('/model help')} - Show this help message`);
 
                 console.log(
