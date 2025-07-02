@@ -6,6 +6,13 @@ import { SessionManager, SessionMetadata, ChatSession } from '../session/index.j
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { ValidatedLLMConfig, LLMConfig, McpServerConfig } from '../../config/schemas.js';
+import {
+    getSupportedProviders,
+    getDefaultModelForProvider,
+    LLMProvider,
+    LLM_REGISTRY,
+    ModelInfo,
+} from '../llm/registry.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import { AgentEventBus } from '../../events/index.js';
@@ -712,6 +719,94 @@ export class SaikiAgent {
             message: switchResult.message,
             ...(allWarnings.length > 0 && { warnings: allWarnings }),
         };
+    }
+
+    /**
+     * Gets all supported LLM providers.
+     * Returns a strongly-typed array of valid provider names that can be used with the agent.
+     *
+     * @returns Array of supported provider names
+     *
+     * @example
+     * ```typescript
+     * const providers = agent.getSupportedProviders();
+     * console.log(providers); // ['openai', 'anthropic', 'google', 'groq']
+     * ```
+     */
+    public getSupportedProviders(): LLMProvider[] {
+        return getSupportedProviders() as LLMProvider[];
+    }
+
+    /**
+     * Gets all supported models grouped by provider with detailed information.
+     * Returns a strongly-typed object mapping each provider to its available models,
+     * including model metadata such as token limits and default status.
+     *
+     * @returns Object mapping provider names to their model information
+     *
+     * @example
+     * ```typescript
+     * const models = agent.getSupportedModels();
+     * console.log(models.openai); // Array of OpenAI models with metadata
+     * console.log(models.anthropic[0].maxInputTokens); // Token limit for first Anthropic model
+     *
+     * // Check if a model is the default for its provider
+     * const hasDefault = models.google.some(model => model.isDefault);
+     * ```
+     */
+    public getSupportedModels(): Record<LLMProvider, Array<ModelInfo & { isDefault: boolean }>> {
+        const result = {} as Record<LLMProvider, Array<ModelInfo & { isDefault: boolean }>>;
+
+        const providers = getSupportedProviders() as LLMProvider[];
+        for (const provider of providers) {
+            const defaultModel = getDefaultModelForProvider(provider);
+            const providerInfo = LLM_REGISTRY[provider];
+
+            result[provider] = providerInfo.models.map((model) => ({
+                ...model,
+                isDefault: model.name === defaultModel,
+            }));
+        }
+
+        return result;
+    }
+
+    /**
+     * Gets supported models for a specific provider.
+     * Returns model information including metadata for the specified provider only.
+     *
+     * @param provider The provider to get models for
+     * @returns Array of model information for the specified provider
+     * @throws Error if provider is not supported
+     *
+     * @example
+     * ```typescript
+     * try {
+     *   const openaiModels = agent.getSupportedModelsForProvider('openai');
+     *   const defaultModel = openaiModels.find(model => model.isDefault);
+     *   console.log(`Default OpenAI model: ${defaultModel?.name}`);
+     * } catch (error) {
+     *   console.error('Unsupported provider');
+     * }
+     * ```
+     */
+    public getSupportedModelsForProvider(
+        provider: LLMProvider
+    ): Array<ModelInfo & { isDefault: boolean }> {
+        const supportedProviders = getSupportedProviders() as LLMProvider[];
+        if (!supportedProviders.includes(provider)) {
+            throw new Error(
+                `Unsupported provider: ${provider}. Supported providers: ${supportedProviders.join(', ')}`
+            );
+        }
+
+        const defaultModel = getDefaultModelForProvider(provider);
+        const providerInfo = LLM_REGISTRY[provider];
+
+        return providerInfo.models.map((model) => ({
+            ...model,
+            isDefault: model.name === defaultModel,
+        }));
     }
 
     // ============= MCP SERVER MANAGEMENT =============

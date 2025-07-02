@@ -23,8 +23,9 @@
  *   - /session delete <id> - Delete a session (cannot delete active session)
  *
  * MODEL MANAGEMENT:
- * - /model, /m - Manage AI models (defaults to current)
+ * - /model, /m - Manage AI models (defaults to help)
  *   - /model help - Show detailed help for model commands
+ *   - /model list - List all supported providers and models
  *   - /model current - Show current model configuration
  *   - /model switch <model> [provider] - Switch to a different model/provider
  *
@@ -435,6 +436,47 @@ const modelCommands: CommandDefinition = {
     aliases: ['m'],
     subcommands: [
         {
+            name: 'list',
+            description: 'List all supported providers and models',
+            usage: '/model list',
+            handler: async (_args: string[], agent: SaikiAgent) => {
+                try {
+                    console.log(chalk.bold.blue('\n🤖 Supported Models and Providers:\n'));
+
+                    const providers = agent.getSupportedProviders();
+                    const allModels = agent.getSupportedModels();
+
+                    for (const provider of providers) {
+                        const models = allModels[provider];
+
+                        console.log(chalk.bold.yellow(`${provider.toUpperCase()}:`));
+                        console.log(chalk.cyan('  Models:'));
+
+                        for (const model of models) {
+                            const tokenLimit = ` (${model.maxInputTokens.toLocaleString()} tokens)`;
+                            const defaultLabel = model.isDefault ? chalk.green(' [DEFAULT]') : '';
+
+                            console.log(
+                                `    ${chalk.cyan(model.name)}${tokenLimit}${defaultLabel}`
+                            );
+                        }
+                        console.log();
+                    }
+
+                    console.log(
+                        chalk.dim('💡 Use /model switch <provider> <model> to switch models')
+                    );
+                    console.log(chalk.dim('💡 Default models are marked with [DEFAULT]'));
+                    console.log(chalk.dim('💡 Token limits show maximum input context size\n'));
+                } catch (error) {
+                    logger.error(
+                        `Failed to list models: ${error instanceof Error ? error.message : String(error)}`
+                    );
+                }
+                return true;
+            },
+        },
+        {
             name: 'current',
             description: 'Show current model configuration',
             usage: '/model current',
@@ -529,6 +571,9 @@ const modelCommands: CommandDefinition = {
 
                 console.log(chalk.cyan('Available subcommands:'));
                 console.log(
+                    `  ${chalk.yellow('/model list')} - List all supported providers, models, and capabilities`
+                );
+                console.log(
                     `  ${chalk.yellow('/model current')} - Display currently active model and configuration`
                 );
                 console.log(
@@ -537,9 +582,9 @@ const modelCommands: CommandDefinition = {
                 console.log(`        Examples:`);
                 console.log(`          ${chalk.dim('/model switch openai gpt-4o')}`);
                 console.log(
-                    `          ${chalk.dim('/model switch anthropic claude-3-5-sonnet-20241022')}`
+                    `          ${chalk.dim('/model switch anthropic claude-4-sonnet-20250514')}`
                 );
-                console.log(`          ${chalk.dim('/model switch google gemini-2.0-flash-exp')}`);
+                console.log(`          ${chalk.dim('/model switch google gemini-2.5-pro')}`);
                 console.log(`  ${chalk.yellow('/model help')} - Show this help message`);
 
                 console.log(
@@ -573,7 +618,7 @@ const modelCommands: CommandDefinition = {
         }
 
         console.log(chalk.red(`❌ Unknown model subcommand: ${subcommand}`));
-        console.log(chalk.dim('Available subcommands: current, switch, help'));
+        console.log(chalk.dim('Available subcommands: list, current, switch, help'));
         console.log(chalk.dim('💡 Use /model help for detailed command descriptions'));
         return true;
     },
