@@ -502,33 +502,21 @@ export class SaikiAgent {
     // ============= LLM MANAGEMENT =============
 
     /**
-     * Gets the current LLM configuration.
+     * Gets the current LLM configuration with all defaults applied.
      * @returns Current LLM configuration
-     *
-     * TODO: USER-FACING API DECISION NEEDED
-     * Should this return:
-     * 1. ValidatedLLMConfig (with all defaults applied, internal representation)
-     * 2. LLMConfig (input type, matches what users expect to see)
-     *
-     * Currently returning ValidatedLLMConfig for consistency with internal state,
-     * but this means required fields that were optional in input appear required.
      */
-    public getCurrentLLMConfig(): ValidatedLLMConfig {
+    public getCurrentLLMConfig(): LLMConfig {
         this.ensureStarted();
-        return structuredClone(this.stateManager.getLLMConfig());
+        return structuredClone(this.stateManager.getLLMConfig()) as LLMConfig;
     }
 
     /**
      * Switches the LLM service while preserving conversation history.
      * This is a comprehensive method that handles ALL validation, configuration building, and switching internally.
      *
-     * TODO: USER-FACING API DECISION NEEDED
-     * Current design:
+     * Design:
      * - Input: Partial<LLMConfig> (allows optional fields like maxIterations?, router?)
-     * - Output: ValidatedLLMConfig (internal representation with all defaults applied)
-     *
-     * Question: Should the returned 'config' be LLMConfig (input type) to match
-     * user expectations, or ValidatedLLMConfig (internal type) for accuracy?
+     * - Output: LLMConfig (user-friendly type with all defaults applied)
      *
      * Key features:
      * - Accepts partial LLM configuration object
@@ -564,7 +552,7 @@ export class SaikiAgent {
         sessionId?: string
     ): Promise<{
         success: boolean;
-        config?: ValidatedLLMConfig;
+        config?: LLMConfig;
         message?: string;
         warnings?: string[];
         errors?: Array<{
@@ -658,7 +646,7 @@ export class SaikiAgent {
         configWarnings: string[] = []
     ): Promise<{
         success: boolean;
-        config?: ValidatedLLMConfig;
+        config?: LLMConfig;
         message?: string;
         warnings?: string[];
         errors?: Array<{
@@ -720,7 +708,7 @@ export class SaikiAgent {
 
         return {
             success: true,
-            config: validatedConfig,
+            config: validatedConfig as LLMConfig,
             message: switchResult.message,
             ...(allWarnings.length > 0 && { warnings: allWarnings }),
         };
