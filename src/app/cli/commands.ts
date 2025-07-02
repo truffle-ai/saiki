@@ -7,13 +7,14 @@
  * Available Commands:
  *
  * GENERAL:
- * - /help [command] - Show help information for all commands or a specific command
+ * - /help [command] - Show help information (redirects to contextual help for major commands)
  * - /exit, /quit, /q - Exit the CLI application
  * - /clear, /reset - Clear conversation history for current session
  * - /history [sessionId], /hist - Show conversation history (current or specified session)
  *
  * SESSION MANAGEMENT:
- * - /session, /s - Manage chat sessions (defaults to list)
+ * - /session, /s - Manage chat sessions (defaults to help)
+ *   - /session help - Show detailed help for session commands
  *   - /session list - List all available sessions with metadata
  *   - /session new [id] - Create a new session with optional custom ID
  *   - /session switch <id> - Switch to a different session
@@ -23,6 +24,7 @@
  *
  * MODEL MANAGEMENT:
  * - /model, /m - Manage AI models (defaults to current)
+ *   - /model help - Show detailed help for model commands
  *   - /model current - Show current model configuration
  *   - /model switch <model> [provider] - Switch to a different model/provider
  *
@@ -32,11 +34,18 @@
  * - /config - Show current agent configuration (LLM, sessions, MCP servers)
  * - /stats - Show system statistics (sessions, MCP servers, tools)
  *
+ * TOOL MANAGEMENT:
+ * - /tools - List all available MCP tools with descriptions
+ *
+ * PROMPT MANAGEMENT
+ * - /prompt - Display the current system prompt
+ *
  * Usage:
  * - Commands start with '/' followed by the command name
  * - Arguments are space-separated
  * - Commands with subcommands default to a primary action if no subcommand given
- * - Use /help <command> for detailed help on specific commands
+ * - Use contextual help for detailed guidance (e.g., /session help, /model help)
+ * - /help redirects to contextual help for major command groups
  */
 
 import chalk from 'chalk';
@@ -180,6 +189,7 @@ const sessionCommands: CommandDefinition = {
     name: 'session',
     description: 'Manage chat sessions',
     usage: '/session <subcommand> [args]',
+    category: 'Session Management',
     aliases: ['s'],
     subcommands: [
         {
@@ -357,22 +367,24 @@ const sessionCommands: CommandDefinition = {
 
                 console.log(chalk.cyan('Available subcommands:'));
                 console.log(
-                    `  ${chalk.yellow('list')} - List all sessions with their status and activity`
+                    `  ${chalk.yellow('/session list')} - List all sessions with their status and activity`
                 );
                 console.log(
-                    `  ${chalk.yellow('new')} [name] - Create a new session (optional custom name)`
-                );
-                console.log(`  ${chalk.yellow('switch')} <id> - Switch to a different session`);
-                console.log(
-                    `  ${chalk.yellow('current')} - Show current session info and message count`
+                    `  ${chalk.yellow('/session new')} ${chalk.blue('[name]')} - Create a new session (optional custom name)`
                 );
                 console.log(
-                    `  ${chalk.yellow('history')} - Display conversation history for current session`
+                    `  ${chalk.yellow('/session switch')} ${chalk.blue('<id>')} - Switch to a different session`
                 );
                 console.log(
-                    `  ${chalk.yellow('delete')} <id> - Delete a session (cannot delete active session)`
+                    `  ${chalk.yellow('/session current')} - Show current session info and message count`
                 );
-                console.log(`  ${chalk.yellow('help')} - Show this help message`);
+                console.log(
+                    `  ${chalk.yellow('/session history')} - Display conversation history for current session`
+                );
+                console.log(
+                    `  ${chalk.yellow('/session delete')} ${chalk.blue('<id>')} - Delete a session (cannot delete active session)`
+                );
+                console.log(`  ${chalk.yellow('/session help')} - Show this help message`);
 
                 console.log(
                     chalk.dim('\n💡 Sessions allow you to maintain separate conversations')
@@ -385,11 +397,11 @@ const sessionCommands: CommandDefinition = {
         },
     ],
     handler: async (args: string[], agent: SaikiAgent) => {
-        // Default to list if no subcommand
+        // Default to help if no subcommand
         if (args.length === 0) {
-            const listSubcommand = sessionCommands.subcommands?.find((s) => s.name === 'list');
-            if (listSubcommand) {
-                return listSubcommand.handler([], agent);
+            const helpSubcommand = sessionCommands.subcommands?.find((s) => s.name === 'help');
+            if (helpSubcommand) {
+                return helpSubcommand.handler([], agent);
             }
             return true;
         }
@@ -419,6 +431,7 @@ const modelCommands: CommandDefinition = {
     name: 'model',
     description: 'Manage AI models',
     usage: '/model <subcommand> [args]',
+    category: 'Model Management',
     aliases: ['m'],
     subcommands: [
         {
@@ -465,8 +478,8 @@ const modelCommands: CommandDefinition = {
                 }
 
                 try {
-                    const model = args[0];
-                    const provider = args[1];
+                    const provider = args[0];
+                    const model = args[1];
 
                     console.log(
                         chalk.yellow(
@@ -516,18 +529,18 @@ const modelCommands: CommandDefinition = {
 
                 console.log(chalk.cyan('Available subcommands:'));
                 console.log(
-                    `  ${chalk.yellow('current')} - Display currently active model and configuration`
+                    `  ${chalk.yellow('/model current')} - Display currently active model and configuration`
                 );
                 console.log(
-                    `  ${chalk.yellow('switch')} <provider> <model> - Switch to a different AI model`
+                    `  ${chalk.yellow('/model switch')} ${chalk.blue('<provider> <model>')} - Switch to a different AI model`
                 );
                 console.log(`        Examples:`);
                 console.log(`          ${chalk.dim('/model switch openai gpt-4o')}`);
                 console.log(
                     `          ${chalk.dim('/model switch anthropic claude-3-5-sonnet-20241022')}`
                 );
-                console.log(`          ${chalk.dim('/model switch gemini gemini-2.0-flash-exp')}`);
-                console.log(`  ${chalk.yellow('help')} - Show this help message`);
+                console.log(`          ${chalk.dim('/model switch google gemini-2.0-flash-exp')}`);
+                console.log(`  ${chalk.yellow('/model help')} - Show this help message`);
 
                 console.log(
                     chalk.dim('\n💡 Switching models allows you to use different AI capabilities')
@@ -541,11 +554,11 @@ const modelCommands: CommandDefinition = {
         },
     ],
     handler: async (args: string[], agent: SaikiAgent) => {
-        // Default to current if no subcommand
+        // Default to help if no subcommand
         if (args.length === 0) {
-            const currentSubcommand = modelCommands.subcommands?.find((s) => s.name === 'current');
-            if (currentSubcommand) {
-                return currentSubcommand.handler([], agent);
+            const helpSubcommand = modelCommands.subcommands?.find((s) => s.name === 'help');
+            if (helpSubcommand) {
+                return helpSubcommand.handler([], agent);
             }
             return true;
         }
@@ -574,6 +587,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         name: 'help',
         description: 'Show help information',
         usage: '/help [command]',
+        category: 'General',
         aliases: ['h', '?'],
         handler: async (args: string[], _agent: SaikiAgent) => {
             if (args.length === 0) {
@@ -584,6 +598,25 @@ export const CLI_COMMANDS: CommandDefinition[] = [
             const commandName = args[0];
             if (!commandName) {
                 console.log(chalk.red('❌ No command specified'));
+                return true;
+            }
+
+            // Redirect to contextual help for commands that have their own help subcommands
+            if (commandName === 'session' || commandName === 's') {
+                console.log(chalk.blue('💡 For detailed session help, use:'));
+                console.log(`   ${chalk.cyan('/session help')}`);
+                console.log(
+                    chalk.dim('\n   This shows all session subcommands with examples and tips.')
+                );
+                return true;
+            }
+
+            if (commandName === 'model' || commandName === 'm') {
+                console.log(chalk.blue('💡 For detailed model help, use:'));
+                console.log(`   ${chalk.cyan('/model help')}`);
+                console.log(
+                    chalk.dim('\n   This shows all model subcommands with examples and usage.')
+                );
                 return true;
             }
 
@@ -604,6 +637,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         name: 'exit',
         description: 'Exit the CLI',
         usage: '/exit',
+        category: 'General',
         aliases: ['quit', 'q'],
         handler: async (_args: string[], _agent: SaikiAgent) => {
             logger.warn('Exiting AI CLI. Goodbye!');
@@ -614,6 +648,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         name: 'clear',
         description: 'Clear conversation history',
         usage: '/clear',
+        category: 'General',
         aliases: ['reset'],
         handler: async (_args: string[], agent: SaikiAgent) => {
             try {
@@ -631,6 +666,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         name: 'history',
         description: 'Show conversation history',
         usage: '/history [sessionId]',
+        category: 'General',
         aliases: ['hist'],
         handler: async (args: string[], agent: SaikiAgent) => {
             try {
@@ -658,6 +694,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         name: 'log',
         description: `Set or view log level. Available levels: ${chalk.cyan('error')}, ${chalk.cyan('warn')}, ${chalk.cyan('info')}, ${chalk.cyan('http')}, ${chalk.cyan('verbose')}, ${chalk.cyan('debug')}, ${chalk.cyan('silly')}.`,
         usage: '/log [level]',
+        category: 'System',
         aliases: [],
         handler: async (args: string[], _agent: SaikiAgent) => {
             const validLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
@@ -668,6 +705,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                 console.log(
                     chalk.dim('Available levels: error, warn, info, http, verbose, debug, silly')
                 );
+                console.log(chalk.dim('💡 Use /log [level] to set the log level'));
                 return true;
             }
 
@@ -686,6 +724,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         name: 'config',
         description: 'Show current configuration',
         usage: '/config',
+        category: 'System',
         handler: async (_args: string[], agent: SaikiAgent) => {
             try {
                 const config = agent.getEffectiveConfig();
@@ -730,6 +769,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         name: 'stats',
         description: 'Show system statistics',
         usage: '/stats',
+        category: 'System',
         handler: async (_args: string[], agent: SaikiAgent) => {
             try {
                 console.log(chalk.blue('\n📊 System Statistics:\n'));
@@ -777,6 +817,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         name: 'tools',
         description: 'List all available MCP tools',
         usage: '/tools',
+        category: 'Tool Management',
         handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
             try {
                 const tools = await agent.getAllMcpTools();
@@ -808,6 +849,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         name: 'prompt',
         description: 'Display the current system prompt',
         usage: '/prompt',
+        category: 'Prompt Management',
         handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
             try {
                 const systemPrompt = await agent.getSystemPrompt();
