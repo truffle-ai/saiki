@@ -43,11 +43,16 @@ import chalk from 'chalk';
 import { logger } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
 import { CommandDefinition, formatCommandHelp, displayAllCommands } from './command-parser.js';
+import type { SessionMetadata } from '@core/index.js';
 
 /**
  * Helper to format session information consistently
  */
-function formatSessionInfo(sessionId: string, metadata?: any, isCurrent: boolean = false): string {
+function formatSessionInfo(
+    sessionId: string,
+    metadata?: SessionMetadata,
+    isCurrent: boolean = false
+): string {
     const prefix = isCurrent ? chalk.green('→') : ' ';
     const name = isCurrent ? chalk.green.bold(sessionId) : chalk.cyan(sessionId);
 
@@ -72,7 +77,9 @@ function formatSessionInfo(sessionId: string, metadata?: any, isCurrent: boolean
 /**
  * Helper to get current session info
  */
-async function getCurrentSessionInfo(agent: SaikiAgent): Promise<{ id: string; metadata?: any }> {
+async function getCurrentSessionInfo(
+    agent: SaikiAgent
+): Promise<{ id: string; metadata: SessionMetadata | undefined }> {
     const currentId = agent.getCurrentSessionId();
     const metadata = await agent.getSessionMetadata(currentId);
     return { id: currentId, metadata };
@@ -341,6 +348,41 @@ const sessionCommands: CommandDefinition = {
                 return true;
             },
         },
+        {
+            name: 'help',
+            description: 'Show detailed help for session commands',
+            usage: '/session help',
+            handler: async (_args: string[], _agent: SaikiAgent) => {
+                console.log(chalk.bold.blue('\n📋 Session Management Commands:\n'));
+
+                console.log(chalk.cyan('Available subcommands:'));
+                console.log(
+                    `  ${chalk.yellow('list')} - List all sessions with their status and activity`
+                );
+                console.log(
+                    `  ${chalk.yellow('new')} [name] - Create a new session (optional custom name)`
+                );
+                console.log(`  ${chalk.yellow('switch')} <id> - Switch to a different session`);
+                console.log(
+                    `  ${chalk.yellow('current')} - Show current session info and message count`
+                );
+                console.log(
+                    `  ${chalk.yellow('history')} - Display conversation history for current session`
+                );
+                console.log(
+                    `  ${chalk.yellow('delete')} <id> - Delete a session (cannot delete active session)`
+                );
+                console.log(`  ${chalk.yellow('help')} - Show this help message`);
+
+                console.log(
+                    chalk.dim('\n💡 Sessions allow you to maintain separate conversations')
+                );
+                console.log(chalk.dim('💡 Use /session switch <id> to change sessions'));
+                console.log(chalk.dim('💡 Session names can be custom or auto-generated UUIDs\n'));
+
+                return true;
+            },
+        },
     ],
     handler: async (args: string[], agent: SaikiAgent) => {
         // Default to list if no subcommand
@@ -363,8 +405,9 @@ const sessionCommands: CommandDefinition = {
 
         console.log(chalk.red(`❌ Unknown session subcommand: ${subcommand}`));
         console.log(
-            chalk.dim('Available subcommands: list, new, switch, current, history, delete')
+            chalk.dim('Available subcommands: list, new, switch, current, history, delete, help')
         );
+        console.log(chalk.dim('💡 Use /session help for detailed command descriptions'));
         return true;
     },
 };
@@ -464,6 +507,38 @@ const modelCommands: CommandDefinition = {
                 return true;
             },
         },
+        {
+            name: 'help',
+            description: 'Show detailed help for model commands',
+            usage: '/model help',
+            handler: async (_args: string[], _agent: SaikiAgent) => {
+                console.log(chalk.bold.blue('\n🤖 Model Management Commands:\n'));
+
+                console.log(chalk.cyan('Available subcommands:'));
+                console.log(
+                    `  ${chalk.yellow('current')} - Display currently active model and configuration`
+                );
+                console.log(
+                    `  ${chalk.yellow('switch')} <provider> <model> - Switch to a different AI model`
+                );
+                console.log(`        Examples:`);
+                console.log(`          ${chalk.dim('/model switch openai gpt-4o')}`);
+                console.log(
+                    `          ${chalk.dim('/model switch anthropic claude-3-5-sonnet-20241022')}`
+                );
+                console.log(`          ${chalk.dim('/model switch gemini gemini-2.0-flash-exp')}`);
+                console.log(`  ${chalk.yellow('help')} - Show this help message`);
+
+                console.log(
+                    chalk.dim('\n💡 Switching models allows you to use different AI capabilities')
+                );
+                console.log(chalk.dim('💡 Model changes apply to the current session immediately'));
+                console.log(chalk.dim('💡 Available providers: openai, anthropic, gemini'));
+                console.log(chalk.dim('💡 Check your config file for supported models\n'));
+
+                return true;
+            },
+        },
     ],
     handler: async (args: string[], agent: SaikiAgent) => {
         // Default to current if no subcommand
@@ -485,7 +560,8 @@ const modelCommands: CommandDefinition = {
         }
 
         console.log(chalk.red(`❌ Unknown model subcommand: ${subcommand}`));
-        console.log(chalk.dim('Available subcommands: current, switch'));
+        console.log(chalk.dim('Available subcommands: current, switch, help'));
+        console.log(chalk.dim('💡 Use /model help for detailed command descriptions'));
         return true;
     },
 };
@@ -692,6 +768,62 @@ export const CLI_COMMANDS: CommandDefinition[] = [
             } catch (error) {
                 logger.error(
                     `Failed to get statistics: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+            return true;
+        },
+    },
+    {
+        name: 'tools',
+        description: 'List all available MCP tools',
+        usage: '/tools',
+        handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
+            try {
+                const tools = await agent.mcpManager.getAllTools();
+                const toolEntries = Object.entries(tools);
+
+                if (toolEntries.length === 0) {
+                    console.log(chalk.yellow('📋 No tools available'));
+                    return true;
+                }
+
+                console.log(chalk.bold.green(`\n🔧 Available Tools (${toolEntries.length}):\n`));
+
+                // Display tools with descriptions
+                for (const [toolName, toolInfo] of toolEntries) {
+                    const description = toolInfo.description || 'No description available';
+                    console.log(`  ${chalk.yellow(toolName)} - ${chalk.dim(description)}`);
+                }
+
+                console.log(chalk.dim('💡 Tools are provided by connected MCP servers'));
+            } catch (error) {
+                logger.error(
+                    `Failed to list tools: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+            return true;
+        },
+    },
+    {
+        name: 'prompt',
+        description: 'Display the current system prompt',
+        usage: '/prompt',
+        handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
+            try {
+                // Build the prompt with the required context
+                const context = {
+                    mcpManager: agent.mcpManager,
+                };
+                const systemPrompt = await agent.promptManager.build(context);
+
+                console.log(chalk.bold.green('\n📋 Current System Prompt:\n'));
+                console.log(chalk.dim('─'.repeat(80)));
+                console.log(systemPrompt);
+                console.log(chalk.dim('─'.repeat(80)));
+                console.log();
+            } catch (error) {
+                logger.error(
+                    `Failed to get system prompt: ${error instanceof Error ? error.message : String(error)}`
                 );
             }
             return true;

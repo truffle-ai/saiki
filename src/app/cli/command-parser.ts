@@ -1,10 +1,11 @@
 import chalk from 'chalk';
+import type { SaikiAgent } from '@core/index.js';
 
 export interface CommandResult {
     type: 'command' | 'prompt';
     command?: string;
     args?: string[];
-    rawInput?: string;
+    rawInput: string;
 }
 
 export interface CommandDefinition {
@@ -13,7 +14,7 @@ export interface CommandDefinition {
     usage: string;
     aliases?: string[];
     subcommands?: CommandDefinition[];
-    handler: (args: string[], agent: any) => Promise<boolean>;
+    handler: (args: string[], agent: SaikiAgent) => Promise<boolean>;
 }
 
 /**
@@ -114,7 +115,7 @@ export function displayAllCommands(commands: CommandDefinition[]): void {
             categories['Session Management']!.push(cmd);
         } else if (cmd.name.startsWith('model')) {
             categories['Model Management']!.push(cmd);
-        } else if (['config', 'stats', 'log'].includes(cmd.name)) {
+        } else if (['config', 'stats', 'log', 'tools', 'prompt'].includes(cmd.name)) {
             categories['System']!.push(cmd);
         } else {
             categories['General']!.push(cmd);
