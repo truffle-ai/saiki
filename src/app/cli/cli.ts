@@ -36,7 +36,7 @@ async function loadMostRecentSession(agent: SaikiAgent): Promise<void> {
         const currentSessionId = agent.getCurrentSessionId();
         if (mostRecentSession !== currentSessionId) {
             await agent.loadSession(mostRecentSession);
-            logger.debug(`Loaded most recent session: ${mostRecentSession}`);
+            logger.info(`Loaded session: ${mostRecentSession}`, null, 'cyan');
         }
     } catch (error) {
         // If anything fails, just continue with current session
@@ -51,7 +51,6 @@ async function loadMostRecentSession(agent: SaikiAgent): Promise<void> {
  * @param agent The SaikiAgent instance providing access to all required services
  */
 async function _initCli(agent: SaikiAgent): Promise<void> {
-    // Load the most recent session instead of always using 'default'
     await loadMostRecentSession(agent);
 
     // Log connection info
@@ -84,31 +83,6 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
             `Failed to load tools: ${error instanceof Error ? error.message : String(error)}`
         );
     }
-
-    // Determine which session will be used and whether it already has history
-    const currentSessionId = agent.getCurrentSessionId();
-    let conversationState = 'Starting new conversation';
-    let messageCount = 0;
-    try {
-        const metadata = await agent.getSessionMetadata(currentSessionId);
-        if (metadata) {
-            messageCount = metadata.messageCount;
-            if (messageCount > 0) {
-                conversationState = 'Resuming existing conversation';
-            }
-        }
-    } catch (error) {
-        // Non-fatal – fall back to default state
-        logger.debug(
-            `Failed to retrieve session metadata for ${currentSessionId}: ${error instanceof Error ? error.message : String(error)}`
-        );
-    }
-
-    logger.info(
-        `Loading session '${currentSessionId}'. ${conversationState} (${messageCount} messages).`,
-        null,
-        messageCount > 0 ? 'yellow' : 'green'
-    );
 
     logger.info(`CLI initialized successfully. Ready for input.`, null, 'green');
 

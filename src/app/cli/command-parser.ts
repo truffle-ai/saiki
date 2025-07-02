@@ -1,19 +1,21 @@
 import chalk from 'chalk';
+import type { SaikiAgent } from '@core/index.js';
 
 export interface CommandResult {
     type: 'command' | 'prompt';
     command?: string;
     args?: string[];
-    rawInput?: string;
+    rawInput: string;
 }
 
 export interface CommandDefinition {
     name: string;
     description: string;
     usage: string;
+    category?: string;
     aliases?: string[];
     subcommands?: CommandDefinition[];
-    handler: (args: string[], agent: any) => Promise<boolean>;
+    handler: (args: string[], agent: SaikiAgent) => Promise<boolean>;
 }
 
 /**
@@ -101,29 +103,47 @@ export function formatCommandHelp(cmd: CommandDefinition, detailed: boolean = fa
 export function displayAllCommands(commands: CommandDefinition[]): void {
     console.log(chalk.bold.green('\n📋 Available Commands:\n'));
 
-    const categories: { [key: string]: CommandDefinition[] } = {
-        'Session Management': [],
-        'Model Management': [],
-        System: [],
-        General: [],
-    };
+    // Define category order for consistent display
+    const categoryOrder = [
+        'General',
+        'Session Management',
+        'Model Management',
+        'Tool Management',
+        'Prompt Management',
+        'System',
+    ];
 
-    // Categorize commands
+    const categories: { [key: string]: CommandDefinition[] } = {};
+
+    // Initialize categories
+    for (const category of categoryOrder) {
+        categories[category] = [];
+    }
+
+    // Categorize commands using metadata
     for (const cmd of commands) {
-        if (cmd.name.startsWith('session')) {
-            categories['Session Management']!.push(cmd);
-        } else if (cmd.name.startsWith('model')) {
-            categories['Model Management']!.push(cmd);
-        } else if (['config', 'stats', 'log'].includes(cmd.name)) {
-            categories['System']!.push(cmd);
-        } else {
-            categories['General']!.push(cmd);
+        const category = cmd.category || 'General';
+        if (!categories[category]) {
+            categories[category] = [];
+        }
+        categories[category]!.push(cmd);
+    }
+
+    // Display by category in order
+    for (const category of categoryOrder) {
+        const cmds = categories[category];
+        if (cmds && cmds.length > 0) {
+            console.log(chalk.bold.yellow(`${category}:`));
+            for (const cmd of cmds) {
+                console.log('  ' + formatCommandHelp(cmd));
+            }
+            console.log();
         }
     }
 
-    // Display by category
+    // Display any uncategorized commands (fallback)
     for (const [category, cmds] of Object.entries(categories)) {
-        if (cmds.length > 0) {
+        if (!categoryOrder.includes(category) && cmds.length > 0) {
             console.log(chalk.bold.yellow(`${category}:`));
             for (const cmd of cmds) {
                 console.log('  ' + formatCommandHelp(cmd));

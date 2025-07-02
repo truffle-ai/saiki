@@ -6,11 +6,20 @@ import { SessionManager, SessionMetadata, ChatSession } from '../session/index.j
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { ValidatedLLMConfig, LLMConfig, McpServerConfig } from '../../config/schemas.js';
+import {
+    getSupportedProviders,
+    getDefaultModelForProvider,
+    getProviderFromModel,
+    LLMProvider,
+    LLM_REGISTRY,
+    ModelInfo,
+} from '../llm/registry.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import { AgentEventBus } from '../../events/index.js';
 import { buildLLMConfig } from '../../config/validation-utils.js';
 import type { IMCPClient } from '../../client/types.js';
+import type { ToolSet } from '../types.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
@@ -34,6 +43,7 @@ const requiredServices: (keyof AgentServices)[] = [
  * - **Dynamic LLM Switching**: Change language models while preserving conversation history
  * - **MCP Server Integration**: Connect to and manage Model Context Protocol servers
  * - **Tool Execution**: Execute tools from connected MCP servers
+ * - **Prompt Management**: Build and inspect dynamic system prompts with context
  * - **Event System**: Emit events for integration with external systems
  *
  * Design Principles:
@@ -51,8 +61,8 @@ const requiredServices: (keyof AgentServices)[] = [
  * // Process user messages
  * const response = await agent.run("Hello, how are you?");
  *
- * // Switch LLM models
- * await agent.switchLLM({ model: 'gpt-4o', provider: 'openai' });
+ * // Switch LLM models (provider inferred automatically)
+ * await agent.switchLLM({ model: 'gpt-4o' });
  *
  * // Manage sessions
  * const session = agent.createSession('user-123');
@@ -60,6 +70,10 @@ const requiredServices: (keyof AgentServices)[] = [
  *
  * // Connect MCP servers
  * await agent.connectMcpServer('filesystem', { command: 'mcp-filesystem' });
+ *
+ * // Inspect available tools and system prompt
+ * const tools = await agent.getAllMcpTools();
+ * const prompt = await agent.getSystemPrompt();
  *
  * // Gracefully stop the agent when done
  * await agent.stop();
@@ -496,33 +510,21 @@ export class SaikiAgent {
     // ============= LLM MANAGEMENT =============
 
     /**
-     * Gets the current LLM configuration.
+     * Gets the current LLM configuration with all defaults applied.
      * @returns Current LLM configuration
-     *
-     * TODO: USER-FACING API DECISION NEEDED
-     * Should this return:
-     * 1. ValidatedLLMConfig (with all defaults applied, internal representation)
-     * 2. LLMConfig (input type, matches what users expect to see)
-     *
-     * Currently returning ValidatedLLMConfig for consistency with internal state,
-     * but this means required fields that were optional in input appear required.
      */
-    public getCurrentLLMConfig(): ValidatedLLMConfig {
+    public getCurrentLLMConfig(): LLMConfig {
         this.ensureStarted();
-        return structuredClone(this.stateManager.getLLMConfig());
+        return structuredClone(this.stateManager.getLLMConfig()) as LLMConfig;
     }
 
     /**
      * Switches the LLM service while preserving conversation history.
      * This is a comprehensive method that handles ALL validation, configuration building, and switching internally.
      *
-     * TODO: USER-FACING API DECISION NEEDED
-     * Current design:
+     * Design:
      * - Input: Partial<LLMConfig> (allows optional fields like maxIterations?, router?)
-     * - Output: ValidatedLLMConfig (internal representation with all defaults applied)
-     *
-     * Question: Should the returned 'config' be LLMConfig (input type) to match
-     * user expectations, or ValidatedLLMConfig (internal type) for accuracy?
+     * - Output: LLMConfig (user-friendly type with all defaults applied)
      *
      * Key features:
      * - Accepts partial LLM configuration object
@@ -558,7 +560,7 @@ export class SaikiAgent {
         sessionId?: string
     ): Promise<{
         success: boolean;
-        config?: ValidatedLLMConfig;
+        config?: LLMConfig;
         message?: string;
         warnings?: string[];
         errors?: Array<{
@@ -652,7 +654,7 @@ export class SaikiAgent {
         configWarnings: string[] = []
     ): Promise<{
         success: boolean;
-        config?: ValidatedLLMConfig;
+        config?: LLMConfig;
         message?: string;
         warnings?: string[];
         errors?: Array<{
@@ -714,10 +716,125 @@ export class SaikiAgent {
 
         return {
             success: true,
-            config: validatedConfig,
+            config: validatedConfig as LLMConfig,
             message: switchResult.message,
             ...(allWarnings.length > 0 && { warnings: allWarnings }),
         };
+    }
+
+    /**
+     * Gets all supported LLM providers.
+     * Returns a strongly-typed array of valid provider names that can be used with the agent.
+     *
+     * @returns Array of supported provider names
+     *
+     * @example
+     * ```typescript
+     * const providers = agent.getSupportedProviders();
+     * console.log(providers); // ['openai', 'anthropic', 'google', 'groq']
+     * ```
+     */
+    public getSupportedProviders(): LLMProvider[] {
+        return getSupportedProviders() as LLMProvider[];
+    }
+
+    /**
+     * Gets all supported models grouped by provider with detailed information.
+     * Returns a strongly-typed object mapping each provider to its available models,
+     * including model metadata such as token limits and default status.
+     *
+     * @returns Object mapping provider names to their model information
+     *
+     * @example
+     * ```typescript
+     * const models = agent.getSupportedModels();
+     * console.log(models.openai); // Array of OpenAI models with metadata
+     * console.log(models.anthropic[0].maxInputTokens); // Token limit for first Anthropic model
+     *
+     * // Check if a model is the default for its provider
+     * const hasDefault = models.google.some(model => model.isDefault);
+     * ```
+     */
+    public getSupportedModels(): Record<LLMProvider, Array<ModelInfo & { isDefault: boolean }>> {
+        const result = {} as Record<LLMProvider, Array<ModelInfo & { isDefault: boolean }>>;
+
+        const providers = getSupportedProviders() as LLMProvider[];
+        for (const provider of providers) {
+            const defaultModel = getDefaultModelForProvider(provider);
+            const providerInfo = LLM_REGISTRY[provider];
+
+            result[provider] = providerInfo.models.map((model) => ({
+                ...model,
+                isDefault: model.name === defaultModel,
+            }));
+        }
+
+        return result;
+    }
+
+    /**
+     * Gets supported models for a specific provider.
+     * Returns model information including metadata for the specified provider only.
+     *
+     * @param provider The provider to get models for
+     * @returns Array of model information for the specified provider
+     * @throws Error if provider is not supported
+     *
+     * @example
+     * ```typescript
+     * try {
+     *   const openaiModels = agent.getSupportedModelsForProvider('openai');
+     *   const defaultModel = openaiModels.find(model => model.isDefault);
+     *   console.log(`Default OpenAI model: ${defaultModel?.name}`);
+     * } catch (error) {
+     *   console.error('Unsupported provider');
+     * }
+     * ```
+     */
+    public getSupportedModelsForProvider(
+        provider: LLMProvider
+    ): Array<ModelInfo & { isDefault: boolean }> {
+        const supportedProviders = getSupportedProviders() as LLMProvider[];
+        if (!supportedProviders.includes(provider)) {
+            throw new Error(
+                `Unsupported provider: ${provider}. Supported providers: ${supportedProviders.join(', ')}`
+            );
+        }
+
+        const defaultModel = getDefaultModelForProvider(provider);
+        const providerInfo = LLM_REGISTRY[provider];
+
+        return providerInfo.models.map((model) => ({
+            ...model,
+            isDefault: model.name === defaultModel,
+        }));
+    }
+
+    /**
+     * Infers the provider from a model name.
+     * Searches through all supported providers to find which one supports the given model.
+     *
+     * @param modelName The model name to search for
+     * @returns The provider name if found, null if the model is not supported
+     *
+     * @example
+     * ```typescript
+     * const provider = agent.inferProviderFromModel('gpt-4o');
+     * console.log(provider); // 'openai'
+     *
+     * const provider2 = agent.inferProviderFromModel('claude-4-sonnet-20250514');
+     * console.log(provider2); // 'anthropic'
+     *
+     * const provider3 = agent.inferProviderFromModel('unknown-model');
+     * console.log(provider3); // null
+     * ```
+     */
+    public inferProviderFromModel(modelName: string): LLMProvider | null {
+        try {
+            return getProviderFromModel(modelName) as LLMProvider;
+        } catch {
+            return null;
+        }
     }
 
     // ============= MCP SERVER MANAGEMENT =============
@@ -803,7 +920,7 @@ export class SaikiAgent {
      * Useful for users to discover what tools are available.
      * @returns Promise resolving to a map of tool names to tool definitions
      */
-    public async getAllMcpTools(): Promise<any> {
+    public async getAllMcpTools(): Promise<ToolSet> {
         this.ensureStarted();
         return await this.mcpManager.getAllTools();
     }
@@ -828,6 +945,40 @@ export class SaikiAgent {
         return this.mcpManager.getFailedConnections();
     }
 
+    // ============= PROMPT MANAGEMENT =============
+
+    /**
+     * Gets the current system prompt with all dynamic content resolved.
+     * This method builds the complete prompt by invoking all configured prompt contributors
+     * (static content, dynamic placeholders, MCP resources, etc.) and returns the final
+     * prompt string that will be sent to the LLM.
+     *
+     * Useful for debugging prompt issues, inspecting what context the AI receives,
+     * and understanding how dynamic content is being incorporated.
+     *
+     * @returns Promise resolving to the complete system prompt string
+     *
+     * @example
+     * ```typescript
+     * // Get the current system prompt for inspection
+     * const prompt = await agent.getSystemPrompt();
+     * console.log('Current system prompt:', prompt);
+     *
+     * // Useful for debugging prompt-related issues
+     * if (response.quality === 'poor') {
+     *   const prompt = await agent.getSystemPrompt();
+     *   console.log('Check if prompt includes expected context:', prompt);
+     * }
+     * ```
+     */
+    public async getSystemPrompt(): Promise<string> {
+        this.ensureStarted();
+        const context = {
+            mcpManager: this.mcpManager,
+        };
+        return await this.promptManager.build(context);
+    }
+
     // ============= CONFIGURATION ACCESS =============
 
     /**
@@ -848,26 +999,3 @@ export class SaikiAgent {
     // - Tool chaining and workflow automation
     // - Agent collaboration and delegation
 }
-
-/**
- * Helper function to create a new SaikiAgent instance following the new sync/async pattern.
- * This creates the agent with the sync constructor and returns it (not started).
- * Call agent.start() to initialize async services before using the agent.
- *
- * @param config Agent configuration object
- * @returns SaikiAgent instance (not yet started)
- *
- * @example
- * ```typescript
- * // Create agent, then start async services
- * const agent = new SaikiAgent(config);
- * await agent.start();
- *
- * // Use the agent...
- * const response = await agent.run("Hello!");
- *
- * // Clean shutdown when done
- * await agent.stop();
- *
- * ```
- */
