@@ -61,8 +61,8 @@ const requiredServices: (keyof AgentServices)[] = [
  * // Process user messages
  * const response = await agent.run("Hello, how are you?");
  *
- * // Switch LLM models
- * await agent.switchLLM({ model: 'gpt-4o', provider: 'openai' });
+ * // Switch LLM models (provider inferred automatically)
+ * await agent.switchLLM({ model: 'gpt-4o' });
  *
  * // Manage sessions
  * const session = agent.createSession('user-123');
