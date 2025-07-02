@@ -779,7 +779,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         usage: '/tools',
         handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
             try {
-                const tools = await agent.mcpManager.getAllTools();
+                const tools = await agent.getAllMcpTools();
                 const toolEntries = Object.entries(tools);
 
                 if (toolEntries.length === 0) {
@@ -810,11 +810,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         usage: '/prompt',
         handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
             try {
-                // Build the prompt with the required context
-                const context = {
-                    mcpManager: agent.mcpManager,
-                };
-                const systemPrompt = await agent.promptManager.build(context);
+                const systemPrompt = await agent.getSystemPrompt();
 
                 console.log(chalk.bold.green('\n📋 Current System Prompt:\n'));
                 console.log(chalk.dim('─'.repeat(80)));

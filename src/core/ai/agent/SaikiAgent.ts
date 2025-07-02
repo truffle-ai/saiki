@@ -11,6 +11,7 @@ import type { AgentConfig } from '../../config/schemas.js';
 import { AgentEventBus } from '../../events/index.js';
 import { buildLLMConfig } from '../../config/validation-utils.js';
 import type { IMCPClient } from '../../client/types.js';
+import type { ToolSet } from '../types.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
@@ -34,6 +35,7 @@ const requiredServices: (keyof AgentServices)[] = [
  * - **Dynamic LLM Switching**: Change language models while preserving conversation history
  * - **MCP Server Integration**: Connect to and manage Model Context Protocol servers
  * - **Tool Execution**: Execute tools from connected MCP servers
+ * - **Prompt Management**: Build and inspect dynamic system prompts with context
  * - **Event System**: Emit events for integration with external systems
  *
  * Design Principles:
@@ -60,6 +62,10 @@ const requiredServices: (keyof AgentServices)[] = [
  *
  * // Connect MCP servers
  * await agent.connectMcpServer('filesystem', { command: 'mcp-filesystem' });
+ *
+ * // Inspect available tools and system prompt
+ * const tools = await agent.getAllMcpTools();
+ * const prompt = await agent.getSystemPrompt();
  *
  * // Gracefully stop the agent when done
  * await agent.stop();
@@ -803,7 +809,7 @@ export class SaikiAgent {
      * Useful for users to discover what tools are available.
      * @returns Promise resolving to a map of tool names to tool definitions
      */
-    public async getAllMcpTools(): Promise<any> {
+    public async getAllMcpTools(): Promise<ToolSet> {
         this.ensureStarted();
         return await this.mcpManager.getAllTools();
     }
@@ -828,6 +834,40 @@ export class SaikiAgent {
         return this.mcpManager.getFailedConnections();
     }
 
+    // ============= PROMPT MANAGEMENT =============
+
+    /**
+     * Gets the current system prompt with all dynamic content resolved.
+     * This method builds the complete prompt by invoking all configured prompt contributors
+     * (static content, dynamic placeholders, MCP resources, etc.) and returns the final
+     * prompt string that will be sent to the LLM.
+     *
+     * Useful for debugging prompt issues, inspecting what context the AI receives,
+     * and understanding how dynamic content is being incorporated.
+     *
+     * @returns Promise resolving to the complete system prompt string
+     *
+     * @example
+     * ```typescript
+     * // Get the current system prompt for inspection
+     * const prompt = await agent.getSystemPrompt();
+     * console.log('Current system prompt:', prompt);
+     *
+     * // Useful for debugging prompt-related issues
+     * if (response.quality === 'poor') {
+     *   const prompt = await agent.getSystemPrompt();
+     *   console.log('Check if prompt includes expected context:', prompt);
+     * }
+     * ```
+     */
+    public async getSystemPrompt(): Promise<string> {
+        this.ensureStarted();
+        const context = {
+            mcpManager: this.mcpManager,
+        };
+        return await this.promptManager.build(context);
+    }
+
     // ============= CONFIGURATION ACCESS =============
 
     /**
@@ -848,26 +888,3 @@ export class SaikiAgent {
     // - Tool chaining and workflow automation
     // - Agent collaboration and delegation
 }
-
-/**
- * Helper function to create a new SaikiAgent instance following the new sync/async pattern.
- * This creates the agent with the sync constructor and returns it (not started).
- * Call agent.start() to initialize async services before using the agent.
- *
- * @param config Agent configuration object
- * @returns SaikiAgent instance (not yet started)
- *
- * @example
- * ```typescript
- * // Create agent, then start async services
- * const agent = new SaikiAgent(config);
- * await agent.start();
- *
- * // Use the agent...
- * const response = await agent.run("Hello!");
- *
- * // Clean shutdown when done
- * await agent.stop();
- *
- * ```
- */
