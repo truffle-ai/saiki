@@ -143,23 +143,6 @@ export function getMaxInputTokensForModel(provider: string, model: string): numb
 }
 
 /**
- * Infers the provider from a model name by searching the registry.
- * @param modelName The model name to search for.
- * @returns The provider name if found, null otherwise.
- */
-export function inferProviderFromModel(modelName: string): LLMProvider | null {
-    const lowerModel = modelName.toLowerCase();
-
-    for (const [provider, info] of Object.entries(LLM_REGISTRY)) {
-        if (info.models.some((model) => model.name.toLowerCase() === lowerModel)) {
-            return provider as LLMProvider;
-        }
-    }
-
-    return null;
-}
-
-/**
  * Validates if a provider and model combination is supported.
  * @param provider The provider name.
  * @param model The model name.

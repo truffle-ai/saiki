@@ -9,7 +9,7 @@ import { ValidatedLLMConfig, LLMConfig, McpServerConfig } from '../../config/sch
 import {
     getSupportedProviders,
     getDefaultModelForProvider,
-    inferProviderFromModel,
+    getProviderFromModel,
     LLMProvider,
     LLM_REGISTRY,
     ModelInfo,
@@ -830,7 +830,11 @@ export class SaikiAgent {
      * ```
      */
     public inferProviderFromModel(modelName: string): LLMProvider | null {
-        return inferProviderFromModel(modelName);
+        try {
+            return getProviderFromModel(modelName) as LLMProvider;
+        } catch {
+            return null;
+        }
     }
 
     // ============= MCP SERVER MANAGEMENT =============
