@@ -219,7 +219,7 @@ describe('WebhookEventSubscriber', () => {
                     model: 'test-model',
                 },
                 created: expect.any(String),
-                api_version: '2025-01-01',
+                apiVersion: '2025-07-03',
             });
         });
     });

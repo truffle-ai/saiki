@@ -29,9 +29,9 @@ export interface SaikiWebhookEvent<T extends AgentEventName = AgentEventName> {
     /** The event data payload - typed based on event type */
     data: AgentEventMap[T];
     /** When the event was created */
-    created: Date;
+    created: string;
     /** API version for future compatibility */
-    api_version: string;
+    apiVersion: string;
 }
 
 /**

@@ -129,8 +129,8 @@ export class WebhookEventSubscriber implements EventSubscriber {
                 tools: ['test-tool'],
                 source: 'mcp',
             },
-            created: new Date(),
-            api_version: '2025-01-01',
+            created: new Date().toISOString(),
+            apiVersion: '2025-07-03',
         };
 
         return this.deliverToWebhook(webhook, testEvent);
@@ -164,8 +164,8 @@ export class WebhookEventSubscriber implements EventSubscriber {
             id: `evt_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
             type: eventType,
             data: eventData,
-            created: new Date(),
-            api_version: '2025-01-01',
+            created: new Date().toISOString(),
+            apiVersion: '2025-07-03',
         };
 
         logger.debug(`Delivering webhook event: ${eventType} to ${this.webhooks.size} webhooks`);

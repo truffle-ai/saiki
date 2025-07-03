@@ -14,9 +14,9 @@ All webhook events follow a consistent structure inspired by Stripe's webhook ev
 interface SaikiWebhookEvent<T extends AgentEventName = AgentEventName> {
     id: string;              // Unique event ID (e.g., "evt_1234567890_abc123def")
     type: T;                 // Event type with TypeScript autocomplete
-    data: AgentEventMap[T]; // Event-specific payload
-    created: Date;           // When the event occurred
-    api_version: string;     // API version (currently "2025-01-01")
+    data: AgentEventMap[T];  // Event-specific payload
+    created: string;         // ISO-8601 timestamp of when the event occurred
+    apiVersion: string;      // API version (currently "2025-07-03")
 }
 ```
 
@@ -132,13 +132,14 @@ function verifyWebhookSignature(payload, signature, secret) {
 // In your webhook handler
 app.post('/webhooks/saiki', (req, res) => {
     const signature = req.headers['x-saiki-signature-256'];
-    const payload = JSON.stringify(req.body);
+    const payload = req.body.toString('utf8'); // `req.body` is a Buffer here
     
     if (!verifyWebhookSignature(payload, signature, 'your_secret')) {
         return res.status(401).send('Unauthorized');
     }
     
-    const event = req.body;
+    // Parse only *after* signature verification
+    const event = JSON.parse(payload);
     console.log(`Received ${event.type} event:`, event.data);
     
     res.status(200).send('OK');
@@ -183,10 +184,12 @@ import express from 'express';
 import type { SaikiWebhookEvent } from './webhook-types';
 
 const app = express();
-app.use(express.json());
+// Use raw body middleware for signature verification
+app.use(express.raw({ type: 'application/json' }));
 
 app.post('/webhooks/saiki', (req, res) => {
-    const event: SaikiWebhookEvent = req.body;
+    // Parse JSON from raw buffer
+    const event: SaikiWebhookEvent = JSON.parse(req.body.toString('utf8'));
     
     try {
         switch (event.type) {
