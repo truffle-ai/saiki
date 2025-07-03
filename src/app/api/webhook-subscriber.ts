@@ -28,10 +28,13 @@ export class WebhookEventSubscriber implements EventSubscriber {
     private deliveryOptions: Required<WebhookDeliveryOptions>;
     private fetchFn: typeof globalThis.fetch;
 
-    constructor(options: WebhookDeliveryOptions & { fetchFn?: typeof globalThis.fetch } = {}) {
-        this.deliveryOptions = { ...DEFAULT_DELIVERY_OPTIONS, ...options };
-        // Use native fetch (Node.js 20+ requirement) or provided implementation for testing
-        this.fetchFn = options.fetchFn || fetch;
+    constructor({
+        fetchFn,
+        ...deliveryOptions
+    }: WebhookDeliveryOptions & { fetchFn?: typeof globalThis.fetch } = {}) {
+        this.deliveryOptions = { ...DEFAULT_DELIVERY_OPTIONS, ...deliveryOptions };
+        // Use native fetch (Node.js 20+) or injected implementation (tests)
+        this.fetchFn = fetchFn || fetch;
         logger.debug('WebhookEventSubscriber initialized');
     }
 
@@ -223,11 +226,13 @@ export class WebhookEventSubscriber implements EventSubscriber {
                 );
             }
 
-            // Wait before retry (exponential backoff)
+            // Wait before retry (exponential backoff with jitter)
             if (attempt < this.deliveryOptions.maxRetries) {
                 // Use shorter delays in test environment for faster tests
                 const baseDelay = process.env.NODE_ENV === 'test' ? 1 : 1000;
-                const backoffMs = Math.min(baseDelay * Math.pow(2, attempt - 1), 10000);
+                const exp = baseDelay * Math.pow(2, attempt - 1);
+                const jitter = exp * 0.2 * Math.random(); // ±20%
+                const backoffMs = Math.min(exp + jitter, 10000);
                 await new Promise((resolve) => setTimeout(resolve, backoffMs));
             }
         }
