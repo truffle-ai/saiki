@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { fetch } from 'undici';
 import { AgentEventBus, type AgentEventName } from '@core/events/index.js';
 import { logger } from '@core/index.js';
 import { EventSubscriber } from './types.js';
@@ -27,10 +26,11 @@ export class WebhookEventSubscriber implements EventSubscriber {
     private webhooks: Map<string, WebhookConfig> = new Map();
     private abortController?: AbortController;
     private deliveryOptions: Required<WebhookDeliveryOptions>;
-    private fetchFn: typeof fetch;
+    private fetchFn: typeof globalThis.fetch;
 
-    constructor(options: WebhookDeliveryOptions & { fetchFn?: typeof fetch } = {}) {
+    constructor(options: WebhookDeliveryOptions & { fetchFn?: typeof globalThis.fetch } = {}) {
         this.deliveryOptions = { ...DEFAULT_DELIVERY_OPTIONS, ...options };
+        // Use native fetch (Node.js 20+ requirement) or provided implementation for testing
         this.fetchFn = options.fetchFn || fetch;
         logger.debug('WebhookEventSubscriber initialized');
     }
