@@ -6,6 +6,8 @@ import { WebhookEventSubscriber } from './webhook-subscriber.js';
 // Create a mock fetch function
 const mockFetch = vi.fn();
 
+// We'll use fake timers selectively for specific tests
+
 describe('WebhookEventSubscriber', () => {
     let webhookSubscriber: WebhookEventSubscriber;
     let agentEventBus: AgentEventBus;
@@ -17,16 +19,12 @@ describe('WebhookEventSubscriber', () => {
         // Completely reset the mock
         mockFetch.mockReset();
 
-        // Set default mock implementation with a small delay to ensure responseTime > 0
-        mockFetch.mockImplementation(async () => {
-            // Add a small delay to ensure responseTime is measurable
-            await new Promise((resolve) => setTimeout(resolve, 1));
-            return {
-                ok: true,
-                status: 200,
-                statusText: 'OK',
-            } as any;
-        });
+        // Set default mock implementation (no artificial delay needed with fake timers)
+        mockFetch.mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+        } as any);
 
         // Create webhook subscriber with mocked fetch
         webhookSubscriber = new WebhookEventSubscriber({ fetchFn: mockFetch as any });
@@ -158,8 +156,8 @@ describe('WebhookEventSubscriber', () => {
             // Emit event and wait for async delivery
             agentEventBus.emit('saiki:conversationReset', { sessionId: 'test-session' });
 
-            // Wait for async delivery to complete
-            await new Promise((resolve) => setTimeout(resolve, 200));
+            // Wait for async delivery to complete (much shorter in test env due to 1ms delays)
+            await new Promise((resolve) => setTimeout(resolve, 10));
 
             // Check if fetch was called
             expect(mockFetch).toHaveBeenCalledWith(
@@ -182,7 +180,7 @@ describe('WebhookEventSubscriber', () => {
 
             agentEventBus.emit('saiki:conversationReset', { sessionId: 'test-session' });
 
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            await new Promise((resolve) => setTimeout(resolve, 5));
 
             expect(mockFetch).not.toHaveBeenCalled();
         });
@@ -204,7 +202,7 @@ describe('WebhookEventSubscriber', () => {
                 model: 'test-model',
             });
 
-            await new Promise((resolve) => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 10));
 
             expect(mockFetch).toHaveBeenCalled();
             expect(mockFetch.mock.calls[0]).toBeDefined();
@@ -318,7 +316,7 @@ describe('WebhookEventSubscriber', () => {
 
             agentEventBus.emit('saiki:conversationReset', { sessionId: 'test-session' });
 
-            await new Promise((resolve) => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 10));
 
             expect(mockFetch).toHaveBeenCalled();
             expect(mockFetch.mock.calls[0]).toBeDefined();
@@ -340,7 +338,7 @@ describe('WebhookEventSubscriber', () => {
 
             agentEventBus.emit('saiki:conversationReset', { sessionId: 'test-session' });
 
-            await new Promise((resolve) => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 10));
 
             expect(mockFetch).toHaveBeenCalled();
             expect(mockFetch.mock.calls[0]).toBeDefined();

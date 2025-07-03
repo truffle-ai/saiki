@@ -285,7 +285,9 @@ export class WebhookEventSubscriber implements EventSubscriber {
 
             // Wait before retry (exponential backoff)
             if (attempt < this.deliveryOptions.maxRetries) {
-                const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+                // Use shorter delays in test environment for faster tests
+                const baseDelay = process.env.NODE_ENV === 'test' ? 1 : 1000;
+                const backoffMs = Math.min(baseDelay * Math.pow(2, attempt - 1), 10000);
                 await new Promise((resolve) => setTimeout(resolve, backoffMs));
             }
         }
