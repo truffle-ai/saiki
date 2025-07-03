@@ -94,7 +94,7 @@ describe('Config Commands Core Functionality', () => {
 
             const github = serverMap['github'];
             expect(github).toBeDefined();
-            expect(github?.config.type).toBe('http');
+            expect(github?.config.type).toBe('stdio');
             expect(github?.category).toBe('Development');
         });
     });

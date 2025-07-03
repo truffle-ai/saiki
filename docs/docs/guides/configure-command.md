@@ -3,132 +3,187 @@ sidebar_position: 9
 sidebar_label: "Config Commands"
 ---
 
-# Interactive Configuration with `saiki config`
+# Configuration Management with `saiki config`
 
-The `saiki config` command provides a streamlined, intelligent CLI experience for building agent configurations without manually editing YAML files. Recent improvements include proper subcommand structure, smart load workflows, proper YAML export, and automatic file management.
+The `saiki config` command provides an interactive CLI for building and managing agent configurations without manually editing YAML files. Create, save, load, and export configurations with an intuitive wizard-style interface.
 
 ## Quick Start
 
 ```bash
-# Start the interactive configuration builder
+# Create a new configuration interactively
 saiki config create
 
-# List saved configurations
+# Update an existing configuration
+saiki config update my-config-id
+
+# List all saved configurations
 saiki config list
 
-# Load and modify an existing configuration (improved workflow)
-saiki config create --load my-config-id
-
-# Export a configuration to agents/ directory
+# Export a configuration to YAML file
 saiki config export my-config-id
 
-# Delete a configuration
+# Delete a saved configuration
 saiki config delete my-config-id
 ```
 
-## Key Improvements
+## Commands
 
-### ✨ **Streamlined User Experience**
-- **Smart Load Workflow**: When loading configurations, only asks about changes you want to make
-- **Context-Aware Prompts**: Different questions based on whether you're creating or modifying
-- **Intelligent Defaults**: Remembers previous choices and suggests appropriate defaults
-- **Preset-First Approach**: Recommends proven MCP server combinations
+### `saiki config create`
 
-### 📁 **Better File Management**
-- **Automatic `agents/` Directory**: All configurations export to `agents/` by default
-- **Complete YAML Export**: Properly includes all configuration fields including system prompts
-- **Clean Filenames**: Generates appropriate filenames based on configuration names
+Create a new agent configuration through an interactive wizard.
 
-### 🔧 **Improved Configuration Flow**
-- **No Redundant Prompts**: Removed unnecessary agent naming (not used in final config)
-- **Better API Key Handling**: Smarter detection of existing configurations
-- **Simplified MCP Selection**: Preset-focused with clear upgrade paths
+**Options:**
+- `--save` - Save the configuration for reuse (default: true)
+- `--no-save` - Don't save the configuration
+- `--output <path>` - Specify output file path
+- `--quick` - Use quick mode with sensible defaults
 
-### 🔄 **Fixed Configuration Lifecycle**
-- **Update vs Create**: When loading and modifying configurations, updates the existing one instead of creating duplicates
-- **Proper State Management**: Correctly tracks configuration IDs throughout the modification process
-- **No Name Conflicts**: Loading and saving configurations maintains proper unique identifiers
+**Examples:**
+```bash
+# Create a new configuration
+saiki config create
 
-## Features
+# Create with quick setup (skips most prompts)
+saiki config create --quick
 
-### 📦 **MCP Server Registry**
-Curated library of 13+ popular MCP servers organized by categories:
+# Create and save to specific location
+saiki config create --output ./my-config.yml
 
-- **Development**: filesystem, github, terminal
-- **Web**: puppeteer, search
-- **Database**: sqlite, postgres
-- **Cloud Storage**: aws-s3, google-drive
-- **Communication**: slack, discord
-- **Productivity**: notion, calendar
-- **System**: docker, kubernetes
+# Create without saving (export only)
+saiki config create --no-save
+```
 
-### 💾 **Configuration Management**
-- **Save Configurations**: Store reusable setups with names and descriptions
-- **Smart Load & Modify**: Intelligent change detection when loading existing configs
-- **Export to YAML**: Generate complete agent configuration files in `agents/`
-- **Search & Filter**: Find configurations by name and description
+### `saiki config update [id]`
 
-## Command Options
+Update an existing saved configuration. If no ID is provided, shows an interactive list to choose from.
 
-### `saiki config create` Options
+**Options:**
+- `--save` - Save the updated configuration (default: true)
+- `--no-save` - Don't save the updated configuration
+- `--output <path>` - Specify output file path
 
-| Option | Description |
-|--------|-------------|
-| `--save` | Save the configuration for later use (default: true) |
-| `--no-save` | Do not save the configuration |
-| `-o, --output <path>` | Output configuration file path (default: `agents/`) |
-| `--load <id>` | Load an existing configuration to modify |
-| `--quick` | Quick configuration mode with sensible defaults |
+**Examples:**
+```bash
+# Update specific configuration
+saiki config update my-config-123
 
-### Other Subcommands
+# Interactive selection of configuration to update
+saiki config update
 
-| Command | Description |
-|---------|-------------|
-| `saiki config list` | List all saved configurations |
-| `saiki config delete <id>` | Delete a saved configuration |
-| `saiki config export <id>` | Export a saved configuration to file |
+# Update and export to specific path
+saiki config update my-config-123 --output ./updated-config.yml
+```
 
-## Interactive Walkthrough
+### `saiki config list`
+
+Display all saved configurations with their details.
+
+```bash
+saiki config list
+```
+
+**Output:**
+```
+My Development Agent [dev-agent-123]
+  Development-focused agent with GitHub and terminal access
+  Created: 1/15/2024
+
+Production Bot [prod-bot-456]  
+  Production agent with essential tools only
+  Created: 1/10/2024
+```
+
+### `saiki config export [id]`
+
+Export a saved configuration to a YAML file. If no ID is provided, shows an interactive list to choose from.
+
+**Options:**
+- `--output <path>` - Specify output file path (defaults to `agents/<name>.yml`)
+
+**Examples:**
+```bash
+# Export with interactive selection
+saiki config export
+
+# Export specific configuration to default location
+saiki config export my-config-123
+
+# Export to specific path
+saiki config export my-config-123 --output ./custom/path.yml
+```
+
+### `saiki config delete [id]`
+
+Remove a saved configuration permanently. If no ID is provided, shows an interactive list to choose from.
+
+**Examples:**
+```bash
+# Delete with interactive selection
+saiki config delete
+
+# Delete specific configuration
+saiki config delete my-config-123
+```
+
+## Interactive Configuration Wizard
 
 ### Creating a New Configuration
 
+The wizard offers two modes:
+
+#### Quick Mode
+Uses sensible defaults with minimal prompts:
+- **Provider**: OpenAI
+- **Model**: gpt-4o-mini
+- **API Key**: Environment variable (`$OPENAI_API_KEY`)
+- **MCP Servers**: Essential preset (filesystem + puppeteer)
+- **System Prompt**: Default assistant prompt
+
+#### Full Interactive Mode
+Complete customization with guided prompts:
+
 ```
-┌   Saiki Agent Configuration
+┌   Create Agent Configuration
+│
+◇  Use quick setup with defaults? (Recommended for new users)
+│  ○ Yes / ● No
 │
 ◇  Choose your LLM provider
-│  ● OpenAI
-│  ○ Anthropic  
-│  ○ Google
-│  ○ Groq
+│  ● OpenAI (GPT-4, GPT-3.5, etc.)
+│  ○ Anthropic (Claude models)
+│  ○ Google (Gemini models)
+│  ○ Groq (Fast inference)
 │
-◇  Enter the model name for openai
-│  gpt-4o-mini
+◇  Choose the model for openai
+│  ● gpt-4o-mini
+│  ○ gpt-4o
+│  ○ gpt-4.1
+│  ○ o3-mini
 │
 ◇  How do you want to handle the openai API key?
 │  ● Use environment variable (Will use $OPENAI_API_KEY)
 │  ○ Enter manually (Not recommended for production)
 │  ○ Skip for now (Configure later)
 │
-◇  How would you like to choose MCP servers?
-│  ● Choose a preset (Recommended - common combinations)
-│  ○ Browse by category (Select from organized categories)
-│  ○ Select individually (Full control over selection)
-│  ○ Skip MCP servers (Add them later)
-│
-◇  Choose a preset configuration
-│  ● Essential Tools (Filesystem + Web browsing)
-│  ○ Developer Setup (Essential + GitHub + Terminal)
-│  ○ Productivity Suite (Essential + Notion + Slack)
-│  ○ Data & Analytics (Essential + Database tools)
+◇  Select MCP servers (space to select/deselect, arrows to navigate, enter to confirm)
+│  □ Filesystem (Development) - Secure file operations
+│  □ Git (Development) - Git repository tools
+│  □ GitHub (Development) - GitHub API integration
+│  □ Puppeteer (Web) - Browser automation
+│  □ Brave Search (Web) - Web search API
+│  □ PostgreSQL (Database) - Database access
+│  ... [22 total servers available]
 │
 ◇  Customize the system prompt?
 │  ○ Yes / ● No
 ```
 
-### Loading an Existing Configuration (Improved!)
+### Updating Existing Configurations
+
+When updating, the wizard shows current values and asks what to change:
 
 ```
-┌   Saiki Agent Configuration
+┌   Update Agent Configuration
 │
 ◆  Loaded configuration: My Development Agent
 │
@@ -142,31 +197,88 @@ Curated library of 13+ popular MCP servers organized by categories:
 ◇  Current model: gpt-4o-mini. Press Enter to keep, or type new model:
 │  gpt-4o-mini
 │
+◇  Current API key: $OPENAI_API_KEY. Change?
+│  ● Keep current API key configuration
+│  ○ Use environment variable
+│  ○ Enter manually
+│
 ◇  You have 3 MCP server(s) configured. What would you like to do?
-│  ● Keep current servers (No changes to MCP servers)
-│  ○ Modify server selection (Add or remove servers)
-│  ○ Replace all servers (Start fresh with server selection)
+│  ● Keep current servers
+│  ○ Modify server selection
+│  ○ Replace all servers
 │
 ◇  Modify the system prompt?
 │  ○ Yes / ● No
 ```
 
-### Smart MCP Server Presets
+## MCP Server Registry
 
-Choose from optimized combinations:
+The configuration wizard includes **22 official MCP servers** organized by category:
 
-- **Essential Tools**: filesystem + puppeteer (web browsing)
-- **Developer Setup**: Essential + github + terminal 
-- **Productivity Suite**: Essential + notion + slack
-- **Data & Analytics**: Essential + sqlite + postgres
+### Available Categories and Servers
 
-## Generated Configuration Files
+#### **Development (6 servers)**
+- **filesystem** - Secure file operations with configurable access controls
+- **git** - Tools to read, search, and manipulate Git repositories  
+- **github** - Repository management, file operations, and GitHub API integration
+- **gitlab** - GitLab API integration for project management
+- **sentry** - Retrieving and analyzing issues from Sentry.io
+- **everything** - Reference/test server with prompts, resources, and tools
 
-Configurations are automatically saved to `agents/` directory with complete YAML:
+#### **Web (3 servers)**
+- **puppeteer** - Browser automation and web scraping
+- **brave_search** - Web and local search using Brave's Search API
+- **fetch** - Web content fetching and conversion for efficient LLM usage
+
+#### **Database (2 servers)**
+- **postgres** - Read-only PostgreSQL database access with schema inspection
+- **sqlite** - Database interaction and business intelligence capabilities
+
+#### **Productivity (3 servers)**
+- **google_drive** - File access and search capabilities for Google Drive
+- **google_maps** - Location services, directions, and place details
+- **slack** - Channel management and messaging capabilities
+
+#### **AI Services (3 servers)**
+- **sequential_thinking** - Dynamic and reflective problem-solving through thought sequences
+- **everart** - AI image generation using various models
+- **hf_mcp_server** - Access to Hugging Face models and datasets through MCP
+
+#### **System (1 server)**
+- **memory** - Knowledge graph-based persistent memory system
+
+#### **Utility (2 servers)**
+- **time** - Time and timezone conversion capabilities
+- **google_maps** - Location services, directions, and place details
+
+#### **Cloud (1 server)**
+- **aws_kb_retrieval** - Retrieval from AWS Knowledge Base using Bedrock Agent Runtime
+
+### Quick Start Presets
+
+In quick mode, you get the **Essential** preset:
+- **filesystem** - Local file operations
+- **puppeteer** - Web browsing and automation
+
+### System Prompt Options
+
+When customizing the system prompt, you can choose from:
+
+1. **Default prompt** - General-purpose assistant
+2. **Specialist prompts** with predefined roles:
+   - **Software Developer** - Code-focused assistant
+   - **Content Writer** - Writing and editing assistance
+   - **Data Analyst** - Data and research focused
+   - **Project Manager** - Planning and coordination
+3. **Custom prompt** - Write your own system prompt
+
+## Configuration Files
+
+Generated configurations are saved as YAML files in the `agents/` directory:
 
 ```yaml
 # Saiki Agent Configuration
-# Generated on 2024-01-15T10:30:00.000Z
+# Generated by saiki config
 
 systemPrompt: "You are a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems."
 
@@ -177,8 +289,8 @@ mcpServers:
     args:
       - "-y"
       - "@modelcontextprotocol/server-filesystem"
-      - "/allowed/path"
-    connectionMode: lenient
+      - "."
+    connectionMode: strict
   
   puppeteer:
     type: stdio
@@ -194,60 +306,9 @@ llm:
   apiKey: ${OPENAI_API_KEY}
 ```
 
-## Configuration Lifecycle
-
-### 📝 **Creating New Configurations**
-When you run `saiki config create` without `--load`, you're creating a **new** configuration:
-- Generates a unique ID (e.g., `my-agent-abc123`)
-- Saves with your chosen name and description
-- Exports YAML to `agents/` directory
-
-### 🔄 **Updating Existing Configurations**
-When you use `--load` to modify an existing configuration:
-- **Updates the same configuration** (same ID)
-- **No duplicates created** - modifies the existing saved config
-- Maintains creation date but updates modification timestamp
-- Exports updated YAML to `agents/` directory
-
-```bash
-# Load and modify (updates existing, doesn't create new)
-saiki config create --load my-config-id
-
-# The updated config keeps the same ID but has modified content
-```
-
-### ⚠️ **Important Behavior Changes**
-Previously, loading and modifying a configuration would create a new saved configuration with the same name. **This has been fixed** - now it properly updates the existing configuration instead of creating duplicates.
-
-**Additional UX Improvements:**
-- **No More Double-Save Confusion**: Split save/export decisions for clarity - no more "update and export" confusion
-- **Fixed MCP Server Selection Bug**: Now correctly shows all 13 available servers instead of just current ones
-- **Better Selection Display**: Current servers marked with ✓, shows total available count, improved labeling
-- **Navigation Hints**: Clear guidance about using Ctrl+C to cancel and process flow
-- **Contextual Prompts**: Different messages based on whether creating new or modifying existing configs
-- **Debug Logging**: Added logging to help diagnose selection issues if they occur
-
-## Best Practices
-
-### 🔐 **Security**
-- **Use Environment Variables**: API keys stored as `${OPENAI_API_KEY}` format
-- **Never Commit Keys**: Generated files use environment variable references
-- **Review Generated YAML**: Check configurations before sharing
-
-### 📁 **Organization** 
-- **Use `agents/` Directory**: Default location keeps configurations organized
-- **Descriptive Names**: Choose clear names for saved configurations
-- **Version Control Safe**: Generated YAML files safe to commit (no hardcoded keys)
-
-### 🔄 **Workflow**
-1. **Start with Presets**: Use proven MCP server combinations
-2. **Load and Iterate**: Modify existing configurations as needs evolve (now properly updates!)
-3. **Save Templates**: Keep reusable configurations for different projects
-4. **Export for Deployment**: Generate clean YAML files for production
-
 ## Environment Setup
 
-Set required environment variables for your chosen provider:
+Set the required environment variables for your chosen LLM provider:
 
 ```bash
 # OpenAI
@@ -263,88 +324,113 @@ export GOOGLE_API_KEY="AIza..."
 export GROQ_API_KEY="gsk_..."
 ```
 
-## Integration with Other Commands
-
-Generated configurations work seamlessly with all Saiki commands:
+For MCP servers requiring setup, additional environment variables may be needed:
 
 ```bash
-# Run with generated configuration
-saiki run --config agents/my-agent.yml
+# GitHub integration
+export GITHUB_PERSONAL_ACCESS_TOKEN="ghp_..."
 
-# Start server
-saiki server --config agents/my-agent.yml
+# Brave Search
+export BRAVE_API_KEY="BSA..."
 
-# Validate configuration
-saiki validate --config agents/my-agent.yml
+# PostgreSQL
+export POSTGRES_CONNECTION_STRING="postgresql://user:pass@host:5432/db"
+
+# Slack integration
+export SLACK_BOT_TOKEN="xoxb-..."
+
+# Google services
+export GOOGLE_MAPS_API_KEY="AIza..."
+
+# AWS services
+export AWS_ACCESS_KEY_ID="AKIA..."
+export AWS_SECRET_ACCESS_KEY="..."
+export AWS_REGION="us-east-1"
+
+# Other services
+export SENTRY_AUTH_TOKEN="sntrys_..."
+export SENTRY_ORG_SLUG="my-org"
+export EVERART_API_KEY="..."
+export HUGGINGFACE_TOKEN="hf_..."
 ```
 
-## Configuration Management Examples
+## Using Generated Configurations
 
-### List and Manage Configurations
+Generated configuration files work with all Saiki CLI commands:
 
 ```bash
-# List all saved configurations
+
+# Start interactive session  
+saiki --agent agents/my-agent.yml
+
+# Start as MCP server
+saiki --mode mcp --agent agents/my-agent.yml
+
+# Start Discord bot
+saiki --mode discord --agent agents/my-agent.yml
+
+# Start Telegram bot
+saiki --mode telegram --agent agents/my-agent.yml
+```
+
+## Configuration Management Workflow
+
+### 1. Create Base Configuration
+```bash
+# Quick start with defaults
+saiki config create --quick
+
+# Or full interactive setup
+saiki config create
+```
+
+### 2. Save and Iterate
+```bash
+# List your configurations
 saiki config list
 
-# Output:
-# My Development Agent [dev-agent-123]
-#   Development-focused agent with GitHub and terminal access
-#   Created: 1/15/2024
-
-# Production Bot [prod-bot-456]  
-#   Production agent with essential tools only
-#   Created: 1/10/2024
-
-# Load and modify
-saiki config create --load dev-agent-123
-
-# Export to file
-saiki config export prod-bot-456
-
-# Delete configuration
-saiki config delete old-config-789
+# Update as needed
+saiki config update my-config-id
 ```
 
-### Custom Export Paths
+### 3. Export and Deploy
+```bash
+# Export to YAML for deployment
+saiki config export my-config-id
+
+# Use in different environments
+saiki --agent agents/my-agent.yml
+```
+
+## Best Practices
+
+### Security
+- **Use environment variables** for API keys - they're stored as `${API_KEY}` references
+- **Never commit hardcoded keys** - generated files use environment variable syntax
+- **Review exported YAML** before sharing or committing to version control
+
+### Organization
+- **Use descriptive names** when saving configurations
+- **Keep the `agents/` directory** organized with meaningful filenames
+- **Version control YAML files** - they're safe to commit (no hardcoded secrets)
+
+### Workflow
+- **Start with quick mode** for simple use cases
+- **Use full mode** for complex, specialized agents
+- **Update existing configs** instead of recreating from scratch
+- **Test configurations** before deploying to production
+
+
+## Getting Help
 
 ```bash
-# Export to specific location
-saiki config export my-config --output ./configs/production.yml
+# Command help
+saiki config --help
 
-# Export to agents/ (default)  
-saiki config export my-config
-# Creates: agents/my-development-agent.yml
+# Subcommand help
+saiki config create --help
+saiki config update --help
+
+# General CLI help
+saiki --help
 ```
-
-## Troubleshooting
-
-### Common Issues
-
-**"Configuration not found"**
-- Run `saiki config list` to see available configurations
-- Use the ID shown in brackets `[config-id]`
-
-**"Model not recognized"** 
-- Check model name against provider's supported models
-- Use the suggested defaults or verify custom model names
-
-**"Permission denied creating agents/ directory"**
-- Ensure you have write permissions in the current directory
-- Try running from a different directory or with appropriate permissions
-
-### Getting Help
-
-- `saiki config --help` - Command-specific options and usage
-- `saiki --help` - General Saiki CLI information
-- [MCP Server Guide](./mcp-servers.md) - Detailed server setup instructions
-- [Configuration Reference](../reference/configuration.md) - Complete YAML format documentation
-
-## Migration Notes
-
-If you have existing configurations from previous versions:
-- **Saved configurations work unchanged** - All existing saved configs are compatible
-- **Better load experience** - Loading now shows current values and asks for changes only
-- **Improved output format** - New exports include all fields and proper formatting
-- **New default location** - Files now export to `agents/` by default (can override with `--output`)
-
-The improved config command with subcommand structure maintains full backward compatibility while providing a much better user experience. 
