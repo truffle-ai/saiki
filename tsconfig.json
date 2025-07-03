@@ -25,6 +25,6 @@
         "allowImportingTsExtensions": false,
         "noEmit": false
     },
-    "include": ["src/**/*", "scripts/**/*", "**/*.test.ts", "**/*.spec.ts", "vitest.config.ts"],
+    "include": ["src/**/*", "scripts/**/*", "**/*.test.ts", "**/*.spec.ts", "vitest.config.ts", "mcp-registry.json"],
     "exclude": ["node_modules", "src/app/webui/**/*"]
 }

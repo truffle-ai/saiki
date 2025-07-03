@@ -24,7 +24,7 @@
 import { MCPManager } from '../client/manager.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
-import { ConfigManager } from '../config/config-manager.js';
+import { ConfigLoader } from '../config/config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager } from '../ai/session/session-manager.js';
 import { createStorageBackends, type StorageBackends, StorageManager } from '../storage/index.js';
@@ -54,7 +54,7 @@ export type AgentServices = {
  */
 export async function createAgentServices(agentConfig: AgentConfig): Promise<AgentServices> {
     // 1. Initialize config manager and validate
-    const configManager = new ConfigManager(agentConfig);
+    const configManager = new ConfigLoader(agentConfig);
     const config = configManager.getConfig();
 
     // 2. Initialize shared event bus

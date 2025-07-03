@@ -1,26 +1,29 @@
 ---
 sidebar_position: 9
-sidebar_label: "Configure Command"
+sidebar_label: "Config Commands"
 ---
 
-# Interactive Configuration with `saiki configure`
+# Interactive Configuration with `saiki config`
 
-The `saiki configure` command provides a streamlined, intelligent CLI experience for building agent configurations without manually editing YAML files. Recent improvements include smart load workflows, proper YAML export, and automatic file management.
+The `saiki config` command provides a streamlined, intelligent CLI experience for building agent configurations without manually editing YAML files. Recent improvements include proper subcommand structure, smart load workflows, proper YAML export, and automatic file management.
 
 ## Quick Start
 
 ```bash
 # Start the interactive configuration builder
-saiki configure
+saiki config create
 
 # List saved configurations
-saiki configure --list
+saiki config list
 
 # Load and modify an existing configuration (improved workflow)
-saiki configure --load my-config-id
+saiki config create --load my-config-id
 
 # Export a configuration to agents/ directory
-saiki configure --export my-config-id
+saiki config export my-config-id
+
+# Delete a configuration
+saiki config delete my-config-id
 ```
 
 ## Key Improvements
@@ -67,15 +70,23 @@ Curated library of 13+ popular MCP servers organized by categories:
 
 ## Command Options
 
+### `saiki config create` Options
+
 | Option | Description |
 |--------|-------------|
 | `--save` | Save the configuration for later use (default: true) |
 | `--no-save` | Do not save the configuration |
 | `-o, --output <path>` | Output configuration file path (default: `agents/`) |
 | `--load <id>` | Load an existing configuration to modify |
-| `--list` | List all saved configurations |
-| `--delete <id>` | Delete a saved configuration |
-| `--export <id>` | Export a saved configuration to file |
+| `--quick` | Quick configuration mode with sensible defaults |
+
+### Other Subcommands
+
+| Command | Description |
+|---------|-------------|
+| `saiki config list` | List all saved configurations |
+| `saiki config delete <id>` | Delete a saved configuration |
+| `saiki config export <id>` | Export a saved configuration to file |
 
 ## Interactive Walkthrough
 
@@ -186,7 +197,7 @@ llm:
 ## Configuration Lifecycle
 
 ### 📝 **Creating New Configurations**
-When you run `saiki configure` without `--load`, you're creating a **new** configuration:
+When you run `saiki config create` without `--load`, you're creating a **new** configuration:
 - Generates a unique ID (e.g., `my-agent-abc123`)
 - Saves with your chosen name and description
 - Exports YAML to `agents/` directory
@@ -200,7 +211,7 @@ When you use `--load` to modify an existing configuration:
 
 ```bash
 # Load and modify (updates existing, doesn't create new)
-saiki configure --load my-config-id
+saiki config create --load my-config-id
 
 # The updated config keeps the same ID but has modified content
 ```
@@ -273,7 +284,7 @@ saiki validate --config agents/my-agent.yml
 
 ```bash
 # List all saved configurations
-saiki configure --list
+saiki config list
 
 # Output:
 # My Development Agent [dev-agent-123]
@@ -285,23 +296,23 @@ saiki configure --list
 #   Created: 1/10/2024
 
 # Load and modify
-saiki configure --load dev-agent-123
+saiki config create --load dev-agent-123
 
 # Export to file
-saiki configure --export prod-bot-456
+saiki config export prod-bot-456
 
 # Delete configuration
-saiki configure --delete old-config-789
+saiki config delete old-config-789
 ```
 
 ### Custom Export Paths
 
 ```bash
 # Export to specific location
-saiki configure --export my-config --output ./configs/production.yml
+saiki config export my-config --output ./configs/production.yml
 
 # Export to agents/ (default)  
-saiki configure --export my-config
+saiki config export my-config
 # Creates: agents/my-development-agent.yml
 ```
 
@@ -310,7 +321,7 @@ saiki configure --export my-config
 ### Common Issues
 
 **"Configuration not found"**
-- Run `saiki configure --list` to see available configurations
+- Run `saiki config list` to see available configurations
 - Use the ID shown in brackets `[config-id]`
 
 **"Model not recognized"** 
@@ -323,7 +334,7 @@ saiki configure --export my-config
 
 ### Getting Help
 
-- `saiki configure --help` - Command-specific options and usage
+- `saiki config --help` - Command-specific options and usage
 - `saiki --help` - General Saiki CLI information
 - [MCP Server Guide](./mcp-servers.md) - Detailed server setup instructions
 - [Configuration Reference](../reference/configuration.md) - Complete YAML format documentation
@@ -336,4 +347,4 @@ If you have existing configurations from previous versions:
 - **Improved output format** - New exports include all fields and proper formatting
 - **New default location** - Files now export to `agents/` by default (can override with `--output`)
 
-The improved configure command maintains full backward compatibility while providing a much better user experience. 
+The improved config command with subcommand structure maintains full backward compatibility while providing a much better user experience. 

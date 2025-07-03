@@ -8,9 +8,9 @@ import os from 'os';
 import * as YAML from 'yaml';
 
 /**
- * ConfigManager: Handles pure configuration validation and access for the core layer.
+ * ConfigLoader: Handles pure configuration validation and access for the core layer.
  *
- * This class manages configuration that is already processed and focuses purely on
+ * This class loads configuration that is already processed and focuses purely on
  * validation and read-only access to configuration.
  *
  * **What this handles:**
@@ -23,7 +23,7 @@ import * as YAML from 'yaml';
  * - CLI argument processing
  * - Configuration merging logic
  */
-export class ConfigManager {
+export class ConfigLoader {
     private readonly config: ValidatedAgentConfig;
 
     constructor(config: AgentConfig) {
