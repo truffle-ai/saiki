@@ -43,6 +43,9 @@ export class WebhookEventSubscriber implements EventSubscriber {
         this.abortController = new AbortController();
         const { signal } = this.abortController;
 
+        // Note: This will generate MaxListenersExceededWarning since we subscribe to 11+ events
+        // with the same AbortSignal. This is expected and harmless.
+
         // Subscribe to all relevant events with abort signal (same as WebSocket subscriber)
         eventBus.on(
             'llmservice:thinking',
