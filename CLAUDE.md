@@ -132,6 +132,7 @@ User Input → WebUI → WebSocket/REST → API → SaikiAgent → Core Services
 - **Follow existing test patterns** - Check README and search codebase for test framework
 - **Verify before marking complete** - All quality checks must pass
 - **Add regression tests** - When fixing bugs, add tests to prevent recurrence
+- **Tests before style** - Ensure tests pass before fixing style checks
 
 ## Error Handling Patterns
 - Use proper type guards for error checking
