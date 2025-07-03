@@ -27,7 +27,7 @@ Complete API collection for testing Saiki webhook functionality including:
 3. **Start Saiki Server**
    ```bash
    npm run build
-   node dist/src/app/index.js server --config test-config.yml
+   node dist/src/app/index.js --mode server --agent test-config.yml
    ```
 
 4. **Test Workflow**
