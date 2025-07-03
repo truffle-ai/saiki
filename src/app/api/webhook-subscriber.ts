@@ -168,20 +168,31 @@ export class WebhookEventSubscriber implements EventSubscriber {
         logger.debug(`Delivering webhook event: ${eventType} to ${this.webhooks.size} webhooks`);
 
         // Deliver to all webhooks in parallel
-        const deliveryPromises = Array.from(this.webhooks.values()).map((webhook) =>
-            this.deliverToWebhook(webhook, webhookEvent).catch((error) => {
-                logger.error(
-                    `Webhook delivery failed for ${webhook.id}: ${error instanceof Error ? error.message : String(error)}`
-                );
-            })
-        );
+        const deliveryPromises = Array.from(this.webhooks.values()).map((webhook) => ({
+            webhook,
+            promise: this.deliverToWebhook(webhook, webhookEvent),
+        }));
+
+        const handleSettled = (results: PromiseSettledResult<WebhookDeliveryResult>[]) => {
+            results.forEach((result, i) => {
+                if (result.status === 'rejected') {
+                    const webhook = deliveryPromises[i]?.webhook;
+                    if (webhook) {
+                        logger.error(
+                            `Webhook delivery failed for ${webhook.id}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`
+                        );
+                    }
+                }
+            });
+        };
 
         // For testing purposes, we can await this if needed
         if (process.env.NODE_ENV === 'test') {
-            await Promise.allSettled(deliveryPromises);
+            const results = await Promise.allSettled(deliveryPromises.map((p) => p.promise));
+            handleSettled(results);
         } else {
             // Fire-and-forget in production
-            Promise.allSettled(deliveryPromises);
+            Promise.allSettled(deliveryPromises.map((p) => p.promise)).then(handleSettled);
         }
     }
 
