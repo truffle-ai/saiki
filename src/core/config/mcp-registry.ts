@@ -1,12 +1,7 @@
-/**
- * MCP Server Registry
- *
- * This registry contains predefined MCP server configurations that users can
- * interactively select from during the configuration process. Contributors
- * can easily add new MCP servers by adding entries to this registry.
- */
-
 import type { McpServerConfig } from './schemas.js';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
 
 export interface McpServerRegistryEntry {
     /** Unique identifier for the server */
@@ -32,292 +27,146 @@ export interface McpServerRegistryEntry {
 }
 
 /**
- * MCP Server Registry containing all available predefined servers
+ * Path to the local MCP registry file in the user's .saiki directory.
  */
-export const MCP_SERVER_REGISTRY: Record<string, McpServerRegistryEntry> = {
-    filesystem: {
-        id: 'filesystem',
-        name: 'Filesystem',
-        description: 'Read, write, and manage files on your local filesystem',
-        category: 'Development',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-filesystem', '.'],
-            connectionMode: 'strict',
-        },
-        setupInstructions: 'No setup required. Works out of the box.',
-        tags: ['files', 'local', 'development', 'essential'],
-    },
-
-    puppeteer: {
-        id: 'puppeteer',
-        name: 'Puppeteer (Web Browser)',
-        description: 'Automate web browsing, scraping, and interaction with websites',
-        category: 'Web',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@truffle-ai/puppeteer-server'],
-            connectionMode: 'lenient',
-        },
-        setupInstructions: 'Automatically installs Puppeteer server. No additional setup required.',
-        tags: ['web', 'browser', 'automation', 'scraping'],
-    },
-
-    github: {
-        id: 'github',
-        name: 'GitHub',
-        description: 'Interact with GitHub repositories, issues, and pull requests',
-        category: 'Development',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-github'],
-            env: {
-                GITHUB_PERSONAL_ACCESS_TOKEN: '$GITHUB_PERSONAL_ACCESS_TOKEN',
-            },
-            connectionMode: 'lenient',
-        },
-        setupInstructions:
-            'Requires a GitHub Personal Access Token. Create one at: https://github.com/settings/tokens',
-        requiredEnvVars: ['GITHUB_PERSONAL_ACCESS_TOKEN'],
-        requiresSetup: true,
-        tags: ['git', 'github', 'development', 'repositories'],
-    },
-
-    terminal: {
-        id: 'terminal',
-        name: 'Terminal',
-        description: 'Execute shell commands and interact with the terminal',
-        category: 'System',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-terminal'],
-            connectionMode: 'lenient',
-        },
-        setupInstructions: 'No setup required. Provides safe terminal access.',
-        tags: ['terminal', 'shell', 'system', 'commands'],
-    },
-
-    sqlite: {
-        id: 'sqlite',
-        name: 'SQLite Database',
-        description: 'Query and manage SQLite databases',
-        category: 'Database',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-sqlite'],
-            connectionMode: 'lenient',
-        },
-        setupInstructions: 'Provide database path as needed for your specific use case.',
-        tags: ['database', 'sql', 'sqlite', 'data'],
-    },
-
-    postgres: {
-        id: 'postgres',
-        name: 'PostgreSQL Database',
-        description: 'Connect and query PostgreSQL databases',
-        category: 'Database',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-postgres'],
-            env: {
-                POSTGRES_CONNECTION_STRING: '$POSTGRES_CONNECTION_STRING',
-            },
-            connectionMode: 'lenient',
-        },
-        setupInstructions:
-            'Requires PostgreSQL connection string. Format: postgresql://user:password@host:port/database',
-        requiredEnvVars: ['POSTGRES_CONNECTION_STRING'],
-        requiresSetup: true,
-        tags: ['database', 'sql', 'postgresql', 'data'],
-    },
-
-    everart: {
-        id: 'everart',
-        name: 'EverArt',
-        description: 'Generate and manipulate images using EverArt API',
-        category: 'AI Services',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-everart'],
-            env: {
-                EVERART_API_KEY: '$EVERART_API_KEY',
-            },
-            connectionMode: 'lenient',
-        },
-        setupInstructions: 'Requires EverArt API key. Sign up at: https://everart.ai/',
-        requiredEnvVars: ['EVERART_API_KEY'],
-        requiresSetup: true,
-        tags: ['ai', 'images', 'generation', 'art'],
-    },
-
-    brave_search: {
-        id: 'brave_search',
-        name: 'Brave Search',
-        description: 'Search the web using Brave Search API',
-        category: 'Web',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-brave-search'],
-            env: {
-                BRAVE_API_KEY: '$BRAVE_API_KEY',
-            },
-            connectionMode: 'lenient',
-        },
-        setupInstructions:
-            'Requires Brave Search API key. Get one at: https://api.search.brave.com/',
-        requiredEnvVars: ['BRAVE_API_KEY'],
-        requiresSetup: true,
-        tags: ['search', 'web', 'api', 'information'],
-    },
-
-    google_drive: {
-        id: 'google_drive',
-        name: 'Google Drive',
-        description: 'Access and manage Google Drive files and folders',
-        category: 'Cloud Storage',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-gdrive'],
-            connectionMode: 'lenient',
-        },
-        setupInstructions: 'Requires Google Drive API credentials. Follow OAuth setup process.',
-        requiresSetup: true,
-        tags: ['google', 'drive', 'cloud', 'storage', 'files'],
-    },
-
-    slack: {
-        id: 'slack',
-        name: 'Slack',
-        description: 'Send messages and interact with Slack workspaces',
-        category: 'Communication',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-slack'],
-            env: {
-                SLACK_BOT_TOKEN: '$SLACK_BOT_TOKEN',
-            },
-            connectionMode: 'lenient',
-        },
-        setupInstructions:
-            'Requires Slack Bot Token. Create a Slack app at: https://api.slack.com/apps',
-        requiredEnvVars: ['SLACK_BOT_TOKEN'],
-        requiresSetup: true,
-        tags: ['slack', 'communication', 'messaging', 'team'],
-    },
-
-    notion: {
-        id: 'notion',
-        name: 'Notion',
-        description: 'Manage Notion pages, databases, and content',
-        category: 'Productivity',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@makenotion/notion-mcp-server'],
-            env: {
-                NOTION_API_KEY: '$NOTION_API_KEY',
-            },
-            connectionMode: 'lenient',
-        },
-        setupInstructions:
-            'Requires Notion Integration Token. Create one at: https://www.notion.so/my-integrations',
-        requiredEnvVars: ['NOTION_API_KEY'],
-        requiresSetup: true,
-        tags: ['notion', 'productivity', 'notes', 'database'],
-    },
-
-    docker: {
-        id: 'docker',
-        name: 'Docker',
-        description: 'Manage Docker containers, images, and compose services',
-        category: 'DevOps',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-docker'],
-            connectionMode: 'lenient',
-        },
-        setupInstructions: 'Requires Docker to be installed and running on your system.',
-        requiresSetup: true,
-        tags: ['docker', 'containers', 'devops', 'deployment'],
-    },
-
-    kubernetes: {
-        id: 'kubernetes',
-        name: 'Kubernetes',
-        description: 'Manage Kubernetes clusters, pods, and resources',
-        category: 'DevOps',
-        config: {
-            type: 'stdio',
-            command: 'npx',
-            args: ['-y', '@kubernetes/mcp-server'],
-            env: {
-                KUBECONFIG: '$KUBECONFIG',
-            },
-            connectionMode: 'lenient',
-        },
-        setupInstructions: 'Requires kubectl configured with cluster access.',
-        optionalEnvVars: ['KUBECONFIG'],
-        requiresSetup: true,
-        tags: ['kubernetes', 'k8s', 'devops', 'orchestration'],
-    },
-};
+export const LOCAL_MCP_REGISTRY_PATH = path.join(os.homedir(), '.saiki', 'mcp-registry.local.json');
 
 /**
- * Get all available MCP server categories
+ * Path to the default MCP registry file in the project root.
  */
-export function getMcpServerCategories(): string[] {
+export const DEFAULT_MCP_REGISTRY_PATH = path.resolve(
+    path.join(process.cwd(), 'mcp-registry.json')
+);
+
+/**
+ * Loads the default MCP registry from the project root.
+ */
+export async function loadDefaultMcpRegistry(): Promise<Record<string, McpServerRegistryEntry>> {
+    try {
+        const data = await fs.readFile(DEFAULT_MCP_REGISTRY_PATH, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.warn(
+            `Failed to load default MCP registry from ${DEFAULT_MCP_REGISTRY_PATH}:`,
+            error
+        );
+        return {};
+    }
+}
+
+/**
+ * Loads the local MCP registry from the user's home directory.
+ */
+export async function loadLocalMcpRegistry(): Promise<Record<string, McpServerRegistryEntry>> {
+    try {
+        const data = await fs.readFile(LOCAL_MCP_REGISTRY_PATH, 'utf-8');
+        return JSON.parse(data);
+    } catch (_err) {
+        // File might not exist, which is fine.
+        return {};
+    }
+}
+
+/**
+ * Loads the combined MCP registry (default + local).
+ * Local entries override default entries with the same ID.
+ */
+export async function loadMcpRegistry(): Promise<Record<string, McpServerRegistryEntry>> {
+    const [defaultRegistry, localRegistry] = await Promise.all([
+        loadDefaultMcpRegistry(),
+        loadLocalMcpRegistry(),
+    ]);
+
+    // Merge registries, with local overriding default
+    return { ...defaultRegistry, ...localRegistry };
+}
+
+/**
+ * Gets all unique categories from the registry.
+ */
+export async function getMcpServerCategories(): Promise<string[]> {
+    const registry = await loadMcpRegistry();
     const categories = new Set<string>();
-    Object.values(MCP_SERVER_REGISTRY).forEach((server) => categories.add(server.category));
+
+    for (const entry of Object.values(registry)) {
+        categories.add(entry.category);
+    }
+
     return Array.from(categories).sort();
 }
 
 /**
- * Get MCP servers by category
+ * Gets all servers in a specific category.
  */
-export function getMcpServersByCategory(category: string): McpServerRegistryEntry[] {
-    return Object.values(MCP_SERVER_REGISTRY)
-        .filter((server) => server.category === category)
-        .sort((a, b) => a.name.localeCompare(b.name));
+export async function getMcpServersByCategory(category: string): Promise<McpServerRegistryEntry[]> {
+    const registry = await loadMcpRegistry();
+    return Object.values(registry).filter((entry) => entry.category === category);
 }
 
 /**
- * Get MCP servers by tags
+ * Gets servers that have all the specified tags.
  */
-export function getMcpServersByTags(tags: string[]): McpServerRegistryEntry[] {
-    return Object.values(MCP_SERVER_REGISTRY)
-        .filter((server) => tags.some((tag) => server.tags.includes(tag)))
-        .sort((a, b) => a.name.localeCompare(b.name));
+export async function getMcpServersByTags(tags: string[]): Promise<McpServerRegistryEntry[]> {
+    const registry = await loadMcpRegistry();
+    return Object.values(registry).filter((entry) => tags.every((tag) => entry.tags.includes(tag)));
 }
 
 /**
- * Search MCP servers by name or description
+ * Searches servers by name, description, or tags.
  */
-export function searchMcpServers(query: string): McpServerRegistryEntry[] {
-    const lowercaseQuery = query.toLowerCase();
-    return Object.values(MCP_SERVER_REGISTRY)
-        .filter(
-            (server) =>
-                server.name.toLowerCase().includes(lowercaseQuery) ||
-                server.description.toLowerCase().includes(lowercaseQuery) ||
-                server.tags.some((tag) => tag.toLowerCase().includes(lowercaseQuery))
-        )
-        .sort((a, b) => a.name.localeCompare(b.name));
+export async function searchMcpServers(query: string): Promise<McpServerRegistryEntry[]> {
+    const registry = await loadMcpRegistry();
+    const searchTerm = query.toLowerCase();
+
+    return Object.values(registry).filter(
+        (entry) =>
+            entry.name.toLowerCase().includes(searchTerm) ||
+            entry.description.toLowerCase().includes(searchTerm) ||
+            entry.tags.some((tag) => tag.toLowerCase().includes(searchTerm))
+    );
 }
 
 /**
- * Get a specific MCP server by ID
+ * Gets a specific server by ID.
  */
-export function getMcpServerById(id: string): McpServerRegistryEntry | undefined {
-    return MCP_SERVER_REGISTRY[id];
+export async function getMcpServerById(id: string): Promise<McpServerRegistryEntry | undefined> {
+    const registry = await loadMcpRegistry();
+    return registry[id];
+}
+
+/**
+ * Gets all available MCP servers.
+ */
+export async function getAllMcpServers(): Promise<McpServerRegistryEntry[]> {
+    const registry = await loadMcpRegistry();
+    return Object.values(registry);
+}
+
+/**
+ * Saves a custom MCP server to the local registry.
+ */
+export async function saveLocalMcpServer(entry: McpServerRegistryEntry): Promise<void> {
+    const localRegistry = await loadLocalMcpRegistry();
+    localRegistry[entry.id] = entry;
+
+    // Ensure the directory exists
+    const dir = path.dirname(LOCAL_MCP_REGISTRY_PATH);
+    await fs.mkdir(dir, { recursive: true });
+
+    await fs.writeFile(LOCAL_MCP_REGISTRY_PATH, JSON.stringify(localRegistry, null, 2));
+}
+
+/**
+ * Removes a custom MCP server from the local registry.
+ */
+export async function removeLocalMcpServer(id: string): Promise<boolean> {
+    const localRegistry = await loadLocalMcpRegistry();
+
+    if (!(id in localRegistry)) {
+        return false;
+    }
+
+    delete localRegistry[id];
+    await fs.writeFile(LOCAL_MCP_REGISTRY_PATH, JSON.stringify(localRegistry, null, 2));
+    return true;
 }
