@@ -27,6 +27,21 @@ import {
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
 
+/**
+ * Helper function to send JSON response with optional pretty printing
+ */
+function sendJsonResponse(res: any, data: any, statusCode = 200) {
+    const pretty = res.req.query.pretty === 'true' || res.req.query.pretty === '1';
+    res.status(statusCode);
+
+    if (pretty) {
+        res.set('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 2));
+    } else {
+        res.json(data);
+    }
+}
+
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
     const app = express();
@@ -700,14 +715,18 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
             logger.info(`Webhook registered: ${webhookId} -> ${url}`);
 
-            return res.status(201).json({
-                webhook: {
-                    id: webhook.id,
-                    url: webhook.url,
-                    description: webhook.description,
-                    createdAt: webhook.createdAt,
+            return sendJsonResponse(
+                res,
+                {
+                    webhook: {
+                        id: webhook.id,
+                        url: webhook.url,
+                        description: webhook.description,
+                        createdAt: webhook.createdAt,
+                    },
                 },
-            });
+                201
+            );
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Error registering webhook: ${errorMessage}`);
@@ -725,7 +744,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 createdAt: webhook.createdAt,
             }));
 
-            return res.json({ webhooks });
+            return sendJsonResponse(res, { webhooks });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Error listing webhooks: ${errorMessage}`);
@@ -743,7 +762,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 return res.status(404).json({ error: 'Webhook not found' });
             }
 
-            return res.json({
+            return sendJsonResponse(res, {
                 webhook: {
                     id: webhook.id,
                     url: webhook.url,
@@ -790,7 +809,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             logger.info(`Testing webhook: ${webhookId}`);
             const result = await webhookSubscriber.testWebhook(webhookId);
 
-            return res.json({
+            return sendJsonResponse(res, {
                 test: 'completed',
                 result: {
                     success: result.success,
