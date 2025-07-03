@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { AgentEventBus, type AgentEventName } from '@core/events/index.js';
+import { AgentEventBus, type AgentEventName, type AgentEventMap } from '@core/events/index.js';
 import { logger } from '@core/index.js';
 import { EventSubscriber } from './types.js';
 import {
@@ -47,101 +47,30 @@ export class WebhookEventSubscriber implements EventSubscriber {
         // with the same AbortSignal. This is expected and harmless.
 
         // Subscribe to all relevant events with abort signal (same as WebSocket subscriber)
-        eventBus.on(
+        const eventNames: AgentEventName[] = [
             'llmservice:thinking',
-            (payload) => {
-                this.deliverEvent('llmservice:thinking', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'llmservice:chunk',
-            (payload) => {
-                this.deliverEvent('llmservice:chunk', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'llmservice:toolCall',
-            (payload) => {
-                this.deliverEvent('llmservice:toolCall', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'llmservice:toolResult',
-            (payload) => {
-                this.deliverEvent('llmservice:toolResult', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'llmservice:response',
-            (payload) => {
-                this.deliverEvent('llmservice:response', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'llmservice:error',
-            (payload) => {
-                this.deliverEvent('llmservice:error', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'saiki:conversationReset',
-            (payload) => {
-                this.deliverEvent('saiki:conversationReset', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'saiki:mcpServerConnected',
-            (payload) => {
-                this.deliverEvent('saiki:mcpServerConnected', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'saiki:availableToolsUpdated',
-            (payload) => {
-                this.deliverEvent('saiki:availableToolsUpdated', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'saiki:toolConfirmationRequest',
-            (payload) => {
-                this.deliverEvent('saiki:toolConfirmationRequest', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'saiki:llmSwitched',
-            (payload) => {
-                this.deliverEvent('saiki:llmSwitched', payload);
-            },
-            { signal }
-        );
-
-        eventBus.on(
             'saiki:stateChanged',
-            (payload) => {
-                this.deliverEvent('saiki:stateChanged', payload);
-            },
-            { signal }
-        );
+        ];
+
+        eventNames.forEach((eventName) => {
+            eventBus.on(
+                eventName,
+                (payload) => {
+                    this.deliverEvent(eventName, payload);
+                },
+                { signal }
+            );
+        });
 
         logger.info(`Webhook subscriber active with ${this.webhooks.size} registered webhooks`);
     }
@@ -222,14 +151,14 @@ export class WebhookEventSubscriber implements EventSubscriber {
      */
     private async deliverEvent<T extends AgentEventName>(
         eventType: T,
-        eventData: any
+        eventData: AgentEventMap[T]
     ): Promise<void> {
         if (this.webhooks.size === 0) {
             return; // No webhooks to deliver to
         }
 
         const webhookEvent: SaikiWebhookEvent<T> = {
-            id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: `evt_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
             type: eventType,
             data: eventData,
             created: new Date(),
