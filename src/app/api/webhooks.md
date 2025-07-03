@@ -227,4 +227,4 @@ app.post('/webhooks/saiki', (req, res) => {
 
 ## Server Mode Requirement
 
-Webhooks are only available when Saiki is running in server mode (`saiki server` command). They are not available in CLI or other modes since webhooks require the HTTP API server to be running.
+Webhooks are only available when Saiki is running in server mode (`saiki --mode server` command). They are not available in CLI or other modes since webhooks require the HTTP API server to be running.
