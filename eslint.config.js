@@ -47,6 +47,7 @@ export default [
                 localStorage: 'readonly',
                 FileReader: 'readonly',
                 WebSocket: 'readonly',
+                fetch: 'readonly',
             },
         },
         plugins: {

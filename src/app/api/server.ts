@@ -4,6 +4,8 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 import { WebSocketEventSubscriber } from './websocket-subscriber.js';
+import { WebhookEventSubscriber } from './webhook-subscriber.js';
+import type { WebhookRegistrationRequest, WebhookConfig } from './webhook-types.js';
 import { logger } from '@core/index.js';
 import type { AgentCard } from '@core/index.js';
 import { setupA2ARoutes } from './a2a.js';
@@ -24,6 +26,21 @@ import {
     supportsBaseURL,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
+
+/**
+ * Helper function to send JSON response with optional pretty printing
+ */
+function sendJsonResponse(res: any, data: any, statusCode = 200) {
+    const pretty = res.req.query.pretty === 'true' || res.req.query.pretty === '1';
+    res.status(statusCode);
+
+    if (pretty) {
+        res.set('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 2));
+    } else {
+        res.json(data);
+    }
+}
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -660,7 +677,155 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
-    return { app, server, wss, webSubscriber };
+    // Webhook Management APIs
+
+    // Initialize webhook subscriber
+    const webhookSubscriber = new WebhookEventSubscriber();
+    logger.info('Setting up webhook event subscriptions...');
+    webhookSubscriber.subscribe(agent.agentEventBus);
+
+    // Register a new webhook endpoint
+    app.post('/api/webhooks', express.json(), async (req, res) => {
+        try {
+            const { url, secret, description }: WebhookRegistrationRequest = req.body;
+
+            if (!url || typeof url !== 'string') {
+                return res.status(400).json({ error: 'Invalid or missing webhook URL' });
+            }
+
+            // Validate URL format
+            try {
+                new URL(url);
+            } catch {
+                return res.status(400).json({ error: 'Invalid URL format' });
+            }
+
+            // Generate unique webhook ID
+            const webhookId = `wh_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            const webhook: WebhookConfig = {
+                id: webhookId,
+                url,
+                createdAt: new Date(),
+                ...(secret && { secret }),
+                ...(description && { description }),
+            };
+
+            webhookSubscriber.addWebhook(webhook);
+
+            logger.info(`Webhook registered: ${webhookId} -> ${url}`);
+
+            return sendJsonResponse(
+                res,
+                {
+                    webhook: {
+                        id: webhook.id,
+                        url: webhook.url,
+                        description: webhook.description,
+                        createdAt: webhook.createdAt,
+                    },
+                },
+                201
+            );
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error registering webhook: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to register webhook' });
+        }
+    });
+
+    // List all registered webhooks
+    app.get('/api/webhooks', async (req, res) => {
+        try {
+            const webhooks = webhookSubscriber.getWebhooks().map((webhook) => ({
+                id: webhook.id,
+                url: webhook.url,
+                description: webhook.description,
+                createdAt: webhook.createdAt,
+            }));
+
+            return sendJsonResponse(res, { webhooks });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error listing webhooks: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to list webhooks' });
+        }
+    });
+
+    // Get a specific webhook
+    app.get('/api/webhooks/:webhookId', async (req, res) => {
+        try {
+            const { webhookId } = req.params;
+            const webhook = webhookSubscriber.getWebhook(webhookId);
+
+            if (!webhook) {
+                return res.status(404).json({ error: 'Webhook not found' });
+            }
+
+            return sendJsonResponse(res, {
+                webhook: {
+                    id: webhook.id,
+                    url: webhook.url,
+                    description: webhook.description,
+                    createdAt: webhook.createdAt,
+                },
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error getting webhook ${req.params.webhookId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to get webhook' });
+        }
+    });
+
+    // Remove a webhook endpoint
+    app.delete('/api/webhooks/:webhookId', async (req, res) => {
+        try {
+            const { webhookId } = req.params;
+            const removed = webhookSubscriber.removeWebhook(webhookId);
+
+            if (!removed) {
+                return res.status(404).json({ error: 'Webhook not found' });
+            }
+
+            logger.info(`Webhook removed: ${webhookId}`);
+            return res.json({ status: 'removed', webhookId });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error removing webhook ${req.params.webhookId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to remove webhook' });
+        }
+    });
+
+    // Test a webhook endpoint
+    app.post('/api/webhooks/:webhookId/test', async (req, res) => {
+        try {
+            const { webhookId } = req.params;
+            const webhook = webhookSubscriber.getWebhook(webhookId);
+
+            if (!webhook) {
+                return res.status(404).json({ error: 'Webhook not found' });
+            }
+
+            logger.info(`Testing webhook: ${webhookId}`);
+            const result = await webhookSubscriber.testWebhook(webhookId);
+
+            return sendJsonResponse(res, {
+                test: 'completed',
+                result: {
+                    success: result.success,
+                    statusCode: result.statusCode,
+                    responseTime: result.responseTime,
+                    error: result.error,
+                },
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error testing webhook ${req.params.webhookId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to test webhook' });
+        }
+    });
+
+    return { app, server, wss, webSubscriber, webhookSubscriber };
 }
 
 /** Serves the legacy web UI on the express app. will be deprecated soon */
@@ -677,7 +842,10 @@ export async function startApiAndLegacyWebUIServer(
     serveLegacyWebUI?: boolean,
     agentCardOverride?: Partial<AgentCard>
 ) {
-    const { app, server, wss, webSubscriber } = await initializeApi(agent, agentCardOverride);
+    const { app, server, wss, webSubscriber, webhookSubscriber } = await initializeApi(
+        agent,
+        agentCardOverride
+    );
 
     // Serve legacy static UI from public/, for backward compatibility
     if (serveLegacyWebUI) {
@@ -716,5 +884,5 @@ export async function startApiAndLegacyWebUIServer(
         }
     });
 
-    return { server, wss, webSubscriber };
+    return { server, wss, webSubscriber, webhookSubscriber };
 }
