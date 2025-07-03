@@ -14,7 +14,7 @@ All webhook events follow a consistent structure inspired by Stripe's webhook ev
 interface SaikiWebhookEvent<T extends AgentEventName = AgentEventName> {
     id: string;              // Unique event ID (e.g., "evt_1234567890_abc123def")
     type: T;                 // Event type with TypeScript autocomplete
-    data: AgentEventTypeMap[T]; // Event-specific payload
+    data: AgentEventMap[T]; // Event-specific payload
     created: Date;           // When the event occurred
     api_version: string;     // API version (currently "2025-01-01")
 }
@@ -195,7 +195,7 @@ app.post('/webhooks/saiki', (req, res) => {
                 break;
                 
             case 'llmservice:toolCall':
-                console.log('Tool Called:', event.data.name);
+                console.log('Tool Called:', event.data.toolName);
                 break;
                 
             case 'saiki:conversationReset':
