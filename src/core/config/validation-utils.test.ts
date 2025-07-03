@@ -125,9 +125,9 @@ describe('buildLLMConfig', () => {
         expect(result.isValid).toBe(true);
         expect(result.config.provider).toBe('google');
         // Should switch to default Google model from registry
-        expect(result.config.model).toBe('gemini-2.5-pro-exp-03-25'); // Default Google model
+        expect(result.config.model).toBe('gemini-2.5-pro'); // Default Google model
         expect(result.warnings).toContain(
-            "Switched to default model 'gemini-2.5-pro-exp-03-25' for provider 'google'"
+            "Switched to default model 'gemini-2.5-pro' for provider 'google'"
         );
     });
 

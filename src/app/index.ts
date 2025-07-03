@@ -55,6 +55,7 @@ program
     .option('--no-verbose', 'Disable verbose output')
     .option('-m, --model <model>', 'Specify the LLM model to use. ')
     .option('-r, --router <router>', 'Specify the LLM router to use (vercel or in-built)')
+    .option('--new-session [sessionId]', 'Start with a new session (optionally specify session ID)')
     .option(
         '--mode <mode>',
         'The application in which saiki should talk to you - cli | web | server | discord | telegram | mcp',
@@ -151,7 +152,7 @@ program
         '--group-servers',
         'Aggregate and re-expose tools from configured MCP servers (required for now)'
     )
-    .option('--name <name>', 'Name for the MCP server', 'saiki-tools')
+    .option('--name <n>', 'Name for the MCP server', 'saiki-tools')
     .option('--version <version>', 'Version for the MCP server', '1.0.0')
     .action(async (options) => {
         try {
@@ -281,6 +282,7 @@ program
             'build complex AI applications like Cursor, and more.\n\n' +
             // TODO: Add `saiki tell me about your cli` starter prompt
             'Run saiki interactive CLI with `saiki` or run a one-shot prompt with `saiki <prompt>`\n' +
+            'Start with a new session using `saiki --new-session [sessionId]`\n' +
             'Run saiki web UI with `saiki --mode web`\n' +
             'Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`\n' +
             'Run saiki as a discord bot with `saiki --mode discord`\n' +
@@ -368,6 +370,27 @@ program
 
             // Start the agent (initialize async services)
             await agent.start();
+
+            // Handle --new-session flag
+            if (opts.newSession !== undefined) {
+                try {
+                    // Use provided session ID or generate a random one
+                    const sessionId =
+                        typeof opts.newSession === 'string' && opts.newSession
+                            ? opts.newSession
+                            : undefined; // Let agent generate random ID
+
+                    const session = await agent.createSession(sessionId);
+                    await agent.loadSession(session.id);
+
+                    logger.info(`Created and loaded new session: ${session.id}`, null, 'green');
+                } catch (err) {
+                    logger.error(
+                        `Failed to create new session: ${err instanceof Error ? err.message : String(err)}`
+                    );
+                    process.exit(1);
+                }
+            }
         } catch (err) {
             logger.error((err as Error).message);
             process.exit(1);
