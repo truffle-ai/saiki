@@ -2,7 +2,7 @@
   "filesystem": {
     "id": "filesystem",
     "name": "Filesystem",
-    "description": "Read, write, and manage files on your local filesystem",
+    "description": "Secure file operations with configurable access controls",
     "category": "Development",
     "config": {
       "type": "stdio",
@@ -10,106 +10,80 @@
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
       "connectionMode": "strict"
     },
-    "setupInstructions": "No setup required. Works out of the box.",
+    "setupInstructions": "No setup required. Specify directory path as argument.",
     "tags": ["files", "local", "development", "essential"]
   },
-  "puppeteer": {
-    "id": "puppeteer",
-    "name": "Puppeteer (Web Browser)",
-    "description": "Automate web browsing, scraping, and interaction with websites",
-    "category": "Web",
+  "git": {
+    "id": "git",
+    "name": "Git",
+    "description": "Tools to read, search, and manipulate Git repositories",
+    "category": "Development",
     "config": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@truffle-ai/puppeteer-server"],
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "."],
       "connectionMode": "lenient"
     },
-    "setupInstructions": "Automatically installs Puppeteer server. No additional setup required.",
-    "tags": ["web", "browser", "automation", "scraping"]
+    "setupInstructions": "No setup required. Specify repository path as needed.",
+    "tags": ["git", "version-control", "development", "history", "essential"]
   },
   "github": {
     "id": "github",
     "name": "GitHub",
-    "description": "Interact with GitHub repositories, issues, and pull requests",
+    "description": "Repository management, file operations, and GitHub API integration",
     "category": "Development",
     "config": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "connectionMode": "lenient"
-    },
-    "setupInstructions": "No setup required. Works out of the box.",
-    "tags": ["git", "github", "development", "repositories"]
-  },
-  "terminal": {
-    "id": "terminal",
-    "name": "Terminal",
-    "description": "Execute shell commands and interact with the terminal",
-    "category": "System",
-    "config": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-terminal"],
-      "connectionMode": "lenient"
-    },
-    "setupInstructions": "No setup required. Provides safe terminal access.",
-    "tags": ["terminal", "shell", "system", "commands"]
-  },
-  "sqlite": {
-    "id": "sqlite",
-    "name": "SQLite Database",
-    "description": "Query and manage SQLite databases",
-    "category": "Database",
-    "config": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sqlite"],
-      "connectionMode": "lenient"
-    },
-    "setupInstructions": "Provide database path as needed for your specific use case.",
-    "tags": ["database", "sql", "sqlite", "data"]
-  },
-  "postgres": {
-    "id": "postgres",
-    "name": "PostgreSQL Database",
-    "description": "Connect and query PostgreSQL databases",
-    "category": "Database",
-    "config": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {
-        "POSTGRES_CONNECTION_STRING": "$POSTGRES_CONNECTION_STRING"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PERSONAL_ACCESS_TOKEN"
       },
       "connectionMode": "lenient"
     },
-    "setupInstructions": "Requires PostgreSQL connection string. Format: postgresql://user:password@host:port/database",
-    "requiredEnvVars": ["POSTGRES_CONNECTION_STRING"],
+    "setupInstructions": "Requires GitHub Personal Access Token. Generate one in GitHub Settings > Developer settings > Personal access tokens.",
+    "requiredEnvVars": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
     "requiresSetup": true,
-    "tags": ["database", "sql", "postgresql", "data"]
+    "tags": ["git", "github", "development", "repositories", "api"]
   },
-  "everart": {
-    "id": "everart",
-    "name": "EverArt",
-    "description": "Generate and manipulate images using EverArt API",
-    "category": "AI Services",
+  "gitlab": {
+    "id": "gitlab",
+    "name": "GitLab",
+    "description": "GitLab API integration for project management",
+    "category": "Development",
     "config": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-everart"],
+      "args": ["-y", "@modelcontextprotocol/server-gitlab"],
       "env": {
-        "EVERART_API_KEY": "$EVERART_API_KEY"
+        "GITLAB_PERSONAL_ACCESS_TOKEN": "$GITLAB_PERSONAL_ACCESS_TOKEN",
+        "GITLAB_API_URL": "$GITLAB_API_URL"
       },
       "connectionMode": "lenient"
     },
-    "setupInstructions": "Requires EverArt API key. Sign up at: https://everart.ai/",
-    "requiredEnvVars": ["EVERART_API_KEY"],
+    "setupInstructions": "Requires GitLab Personal Access Token and API URL. Generate token in GitLab User Settings > Access Tokens.",
+    "requiredEnvVars": ["GITLAB_PERSONAL_ACCESS_TOKEN", "GITLAB_API_URL"],
     "requiresSetup": true,
-    "tags": ["ai", "images", "generation", "art"]
+    "tags": ["git", "gitlab", "development", "project-management", "api"]
+  },
+  "puppeteer": {
+    "id": "puppeteer",
+    "name": "Puppeteer",
+    "description": "Browser automation and web scraping",
+    "category": "Web",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Automatically installs Puppeteer dependencies.",
+    "tags": ["web", "browser", "automation", "scraping"]
   },
   "brave_search": {
     "id": "brave_search",
     "name": "Brave Search",
-    "description": "Search the web using Brave Search API",
+    "description": "Web and local search using Brave's Search API",
     "category": "Web",
     "config": {
       "type": "stdio",
@@ -125,10 +99,24 @@
     "requiresSetup": true,
     "tags": ["search", "web", "api", "information"]
   },
+  "fetch": {
+    "id": "fetch",
+    "name": "Fetch",
+    "description": "Web content fetching and conversion for efficient LLM usage",
+    "category": "Web",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Provides HTTP request capabilities.",
+    "tags": ["http", "api", "web", "requests", "fetch"]
+  },
   "google_drive": {
     "id": "google_drive",
     "name": "Google Drive",
-    "description": "Access and manage files in Google Drive",
+    "description": "File access and search capabilities for Google Drive",
     "category": "Productivity",
     "config": {
       "type": "stdio",
@@ -136,29 +124,33 @@
       "args": ["-y", "@modelcontextprotocol/server-google-drive"],
       "connectionMode": "lenient"
     },
-    "setupInstructions": "Requires Google Drive API credentials and OAuth setup.",
+    "setupInstructions": "Requires Google Drive API credentials and OAuth setup. Follow Google Cloud Console setup guide.",
     "requiresSetup": true,
-    "tags": ["cloud", "storage", "google", "productivity"]
+    "tags": ["cloud", "storage", "google", "productivity", "files"]
   },
-  "gdrive": {
-    "id": "gdrive",
-    "name": "Google Drive (Alternative)",
-    "description": "Alternative Google Drive integration with different features",
-    "category": "Productivity",
+  "google_maps": {
+    "id": "google_maps",
+    "name": "Google Maps",
+    "description": "Location services, directions, and place details",
+    "category": "Utility",
     "config": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-gdrive"],
+      "args": ["-y", "@modelcontextprotocol/server-google-maps"],
+      "env": {
+        "GOOGLE_MAPS_API_KEY": "$GOOGLE_MAPS_API_KEY"
+      },
       "connectionMode": "lenient"
     },
-    "setupInstructions": "Alternative Google Drive server with different authentication flow.",
+    "setupInstructions": "Requires Google Maps API key. Get one from Google Cloud Console with Maps JavaScript API enabled.",
+    "requiredEnvVars": ["GOOGLE_MAPS_API_KEY"],
     "requiresSetup": true,
-    "tags": ["cloud", "storage", "google", "productivity", "alternative"]
+    "tags": ["maps", "location", "navigation", "google", "places"]
   },
   "slack": {
     "id": "slack",
     "name": "Slack",
-    "description": "Send messages and interact with Slack workspaces",
+    "description": "Channel management and messaging capabilities",
     "category": "Productivity",
     "config": {
       "type": "stdio",
@@ -177,7 +169,7 @@
   "memory": {
     "id": "memory",
     "name": "Memory",
-    "description": "Persistent memory system for storing and retrieving information across sessions",
+    "description": "Knowledge graph-based persistent memory system",
     "category": "System",
     "config": {
       "type": "stdio",
@@ -186,111 +178,79 @@
       "connectionMode": "lenient"
     },
     "setupInstructions": "No setup required. Provides persistent memory capabilities.",
-    "tags": ["memory", "persistence", "system", "storage"]
+    "tags": ["memory", "persistence", "system", "storage", "knowledge"]
   },
-  "fetch": {
-    "id": "fetch",
-    "name": "Fetch (HTTP Client)",
-    "description": "Make HTTP requests to external APIs and websites",
-    "category": "Web",
+  "postgres": {
+    "id": "postgres",
+    "name": "PostgreSQL",
+    "description": "Read-only database access with schema inspection",
+    "category": "Database",
     "config": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_CONNECTION_STRING": "$POSTGRES_CONNECTION_STRING"
+      },
       "connectionMode": "lenient"
     },
-    "setupInstructions": "No setup required. Provides HTTP request capabilities.",
-    "tags": ["http", "api", "web", "requests", "fetch"]
-  },
-  "everything": {
-    "id": "everything",
-    "name": "Everything Search",
-    "description": "Search files on Windows using Everything search engine",
-    "category": "System",
-    "config": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-everything"],
-      "connectionMode": "lenient"
-    },
-    "setupInstructions": "Windows only. Requires Everything search engine to be installed and running.",
+    "setupInstructions": "Requires PostgreSQL connection string. Format: postgresql://user:password@host:port/database",
+    "requiredEnvVars": ["POSTGRES_CONNECTION_STRING"],
     "requiresSetup": true,
-    "tags": ["search", "files", "windows", "system"]
+    "tags": ["database", "sql", "postgresql", "data"]
+  },
+  "sqlite": {
+    "id": "sqlite",
+    "name": "SQLite",
+    "description": "Database interaction and business intelligence capabilities",
+    "category": "Database",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sqlite"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Provide database path as argument when configuring.",
+    "tags": ["database", "sql", "sqlite", "data", "local"]
   },
   "sentry": {
     "id": "sentry",
     "name": "Sentry",
-    "description": "Monitor and track errors with Sentry",
+    "description": "Retrieving and analyzing issues from Sentry.io",
     "category": "Development",
     "config": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sentry"],
       "env": {
-        "SENTRY_AUTH_TOKEN": "$SENTRY_AUTH_TOKEN"
+        "SENTRY_AUTH_TOKEN": "$SENTRY_AUTH_TOKEN",
+        "SENTRY_ORG_SLUG": "$SENTRY_ORG_SLUG"
       },
       "connectionMode": "lenient"
     },
-    "setupInstructions": "Requires Sentry authentication token. Get one from your Sentry project settings.",
-    "requiredEnvVars": ["SENTRY_AUTH_TOKEN"],
+    "setupInstructions": "Requires Sentry authentication token and organization slug. Get token from Sentry Settings > Auth Tokens.",
+    "requiredEnvVars": ["SENTRY_AUTH_TOKEN", "SENTRY_ORG_SLUG"],
     "requiresSetup": true,
-    "tags": ["monitoring", "errors", "debugging", "development"]
+    "tags": ["monitoring", "errors", "debugging", "development", "sentry"]
   },
-  "kubernetes": {
-    "id": "kubernetes",
-    "name": "Kubernetes",
-    "description": "Manage and interact with Kubernetes clusters",
-    "category": "DevOps",
+  "sequential_thinking": {
+    "id": "sequential_thinking",
+    "name": "Sequential Thinking",
+    "description": "Dynamic and reflective problem-solving through thought sequences",
+    "category": "AI Services",
     "config": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-kubernetes"],
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
       "connectionMode": "lenient"
     },
-    "setupInstructions": "Requires kubectl to be configured with cluster access.",
-    "requiresSetup": true,
-    "tags": ["kubernetes", "k8s", "devops", "containers", "orchestration"]
-  },
-  "aws": {
-    "id": "aws",
-    "name": "AWS",
-    "description": "Interact with Amazon Web Services",
-    "category": "Cloud",
-    "config": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-aws"],
-      "env": {
-        "AWS_ACCESS_KEY_ID": "$AWS_ACCESS_KEY_ID",
-        "AWS_SECRET_ACCESS_KEY": "$AWS_SECRET_ACCESS_KEY"
-      },
-      "connectionMode": "lenient"
-    },
-    "setupInstructions": "Requires AWS credentials. Configure AWS CLI or set environment variables.",
-    "requiredEnvVars": ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"],
-    "optionalEnvVars": ["AWS_REGION", "AWS_SESSION_TOKEN"],
-    "requiresSetup": true,
-    "tags": ["aws", "cloud", "amazon", "infrastructure"]
-  },
-  "docker": {
-    "id": "docker",
-    "name": "Docker",
-    "description": "Manage Docker containers and images",
-    "category": "DevOps",
-    "config": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-docker"],
-      "connectionMode": "lenient"
-    },
-    "setupInstructions": "Requires Docker to be installed and running.",
-    "requiresSetup": true,
-    "tags": ["docker", "containers", "devops", "deployment"]
+    "setupInstructions": "No setup required. Enhances reasoning capabilities.",
+    "tags": ["reasoning", "thinking", "ai", "logic", "problem-solving"]
   },
   "time": {
     "id": "time",
-    "name": "Time & Date",
-    "description": "Get current time, date, and timezone information",
+    "name": "Time",
+    "description": "Time and timezone conversion capabilities",
     "category": "Utility",
     "config": {
       "type": "stdio",
@@ -300,5 +260,77 @@
     },
     "setupInstructions": "No setup required. Provides time and date utilities.",
     "tags": ["time", "date", "timezone", "utility"]
+  },
+  "everart": {
+    "id": "everart",
+    "name": "EverArt",
+    "description": "AI image generation using various models",
+    "category": "AI Services",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everart"],
+      "env": {
+        "EVERART_API_KEY": "$EVERART_API_KEY"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires EverArt API key. Sign up at: https://everart.ai/",
+    "requiredEnvVars": ["EVERART_API_KEY"],
+    "requiresSetup": true,
+    "tags": ["ai", "images", "generation", "art"]
+  },
+  "everything": {
+    "id": "everything",
+    "name": "Everything",
+    "description": "Reference / test server with prompts, resources, and tools",
+    "category": "Development",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Comprehensive test server for MCP capabilities.",
+    "tags": ["testing", "development", "reference", "tools", "prompts"]
+  },
+  "aws_kb_retrieval": {
+    "id": "aws_kb_retrieval",
+    "name": "AWS KB Retrieval",
+    "description": "Retrieval from AWS Knowledge Base using Bedrock Agent Runtime",
+    "category": "Cloud",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-aws-kb-retrieval"],
+      "env": {
+        "AWS_ACCESS_KEY_ID": "$AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY": "$AWS_SECRET_ACCESS_KEY",
+        "AWS_REGION": "$AWS_REGION"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires AWS credentials and access to Bedrock Knowledge Base. Configure AWS CLI or set environment variables.",
+    "requiredEnvVars": ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"],
+    "requiresSetup": true,
+    "tags": ["aws", "bedrock", "knowledge", "retrieval", "ai"]
+  },
+  "hf_mcp_server": {
+    "id": "hf_mcp_server",
+    "name": "Hugging Face MCP Server",
+    "description": "Access to Hugging Face models and datasets through MCP",
+    "category": "AI",
+    "config": {
+      "type": "http",
+      "url": "https://huggingface.co/mcp",
+      "headers": {
+        "Authorization": "Bearer $HUGGINGFACE_TOKEN"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires Hugging Face API token. Get one from: https://huggingface.co/settings/tokens",
+    "requiredEnvVars": ["HUGGINGFACE_TOKEN"],
+    "requiresSetup": true,
+    "tags": ["ai", "models", "datasets", "huggingface", "machine-learning"]
   }
 } 
