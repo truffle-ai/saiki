@@ -1,5 +1,5 @@
 import type { ContributorConfig, SystemPromptConfig } from '../../config/schemas.js';
-import { StaticContributor } from './contributors.js';
+import { StaticContributor, FileContributor } from './contributors.js';
 import { getPromptGenerator } from './registry.js';
 import { registerPromptGenerator } from './registry.js';
 import type { DynamicPromptGenerator } from './registry.js';
@@ -69,6 +69,15 @@ export class PromptManager {
                         `No generator registered for dynamic contributor source: ${config.source}`
                     ); // Changed error message to match manager.ts previous one
                 return new DynamicContributor(config.id, config.priority, promptGenerator);
+            } else if (config.type === 'file') {
+                if (!config.files || config.files.length === 0)
+                    throw new Error(`File contributor "${config.id}" missing files`);
+                return new FileContributor(
+                    config.id,
+                    config.priority,
+                    config.files,
+                    config.options
+                );
             }
             throw new Error(`Invalid contributor config: ${JSON.stringify(config)}`);
         });

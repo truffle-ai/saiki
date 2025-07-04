@@ -108,22 +108,75 @@ const DynamicContributorSchema = BaseContributorSchema.extend({
     // No 'content' field here, as it's not relevant to dynamic contributors (source provides the content)
 }).strict();
 
+// Schema for 'file' contributors - includes file-specific configuration
+const FileContributorSchema = BaseContributorSchema.extend({
+    type: z.literal('file'),
+    files: z
+        .array(z.string())
+        .min(1)
+        .describe('Array of file paths to include as context (.md and .txt files)'),
+    options: z
+        .object({
+            includeFilenames: z
+                .boolean()
+                .optional()
+                .default(true)
+                .describe('Whether to include the filename as a header for each file'),
+            separator: z
+                .string()
+                .optional()
+                .default('\n\n---\n\n')
+                .describe('Separator to use between multiple files'),
+            errorHandling: z
+                .enum(['skip', 'placeholder', 'error'])
+                .optional()
+                .default('skip')
+                .describe(
+                    'How to handle missing or unreadable files: skip (ignore), placeholder (show error message), or error (throw)'
+                ),
+            maxFileSize: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .default(100000)
+                .describe('Maximum file size in bytes (default: 100KB)'),
+            encoding: z
+                .string()
+                .optional()
+                .default('utf-8')
+                .describe('File encoding to use when reading files'),
+            includeMetadata: z
+                .boolean()
+                .optional()
+                .default(false)
+                .describe(
+                    'Whether to include file metadata (size, modification time) in the context'
+                ),
+        })
+        .strict()
+        .optional()
+        .default({}),
+}).strict();
+
 export const ContributorConfigSchema = z
     .discriminatedUnion(
         'type', // The field to discriminate on
-        [StaticContributorSchema, DynamicContributorSchema],
+        [StaticContributorSchema, DynamicContributorSchema, FileContributorSchema],
         {
             // Optional: Custom error message for invalid discriminator
             errorMap: (issue, ctx) => {
                 if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
-                    return { message: `Invalid contributor type. Expected 'static' or 'dynamic'.` };
+                    return {
+                        message: `Invalid contributor type. Expected 'static', 'dynamic', or 'file'.`,
+                    };
                 }
                 return { message: ctx.defaultError };
             },
         }
     )
     .describe(
-        "Configuration for a system prompt contributor. Type 'static' requires 'content', type 'dynamic' requires 'source'."
+        "Configuration for a system prompt contributor. Type 'static' requires 'content', type 'dynamic' requires 'source', type 'file' requires 'files'."
     );
 
 // Input type for user-facing API (pre-parsing)
