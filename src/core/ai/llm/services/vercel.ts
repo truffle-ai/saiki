@@ -98,18 +98,16 @@ export class VercelLLMService implements ILLMService {
             return this.toolSupportCache.get(modelKey)!;
         }
 
-        // Only test tool support for openai-compatible providers with baseURL
-        // Built-in providers (openai, anthropic, google, groq) have known tool support
-        if (this.provider !== 'openai-compatible' || !this.baseURL) {
-            logger.debug(
-                `Skipping tool validation for ${modelKey} - not openai-compatible with baseURL`
-            );
+        // Only test tool support for providers using custom baseURL endpoints
+        // Built-in providers without baseURL have known tool support
+        if (!this.baseURL) {
+            logger.debug(`Skipping tool validation for ${modelKey} - no custom baseURL`);
             // Assume built-in providers support tools
             this.toolSupportCache.set(modelKey, true);
             return true;
         }
 
-        logger.debug(`Testing tool support for openai-compatible model: ${modelKey}`);
+        logger.debug(`Testing tool support for custom endpoint model: ${modelKey}`);
 
         // Create a minimal test tool
         const testTool = {
