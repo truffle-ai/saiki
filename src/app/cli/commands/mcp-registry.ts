@@ -60,20 +60,55 @@ export async function mcpRegistryCommand(
                 },
                 {
                     onCancel() {
-                        throw 'CANCEL_PROMPT';
+                        throw new Error('CANCEL_PROMPT');
                     },
                 }
             );
 
+            // Validate prompt values before proceeding
+            if (!entry.id || typeof entry.id !== 'string' || entry.id.trim() === '') {
+                p.note('Server ID is required and cannot be empty', 'Error');
+                return;
+            }
+
+            if (!entry.name || typeof entry.name !== 'string' || entry.name.trim() === '') {
+                p.note('Display name is required and cannot be empty', 'Error');
+                return;
+            }
+
+            if (!entry.description || typeof entry.description !== 'string') {
+                p.note('Description is required', 'Error');
+                return;
+            }
+
+            if (
+                !entry.category ||
+                typeof entry.category !== 'string' ||
+                entry.category.trim() === ''
+            ) {
+                p.note('Category is required and cannot be empty', 'Error');
+                return;
+            }
+
+            if (
+                !entry.command ||
+                typeof entry.command !== 'string' ||
+                entry.command.trim() === ''
+            ) {
+                p.note('Command is required and cannot be empty', 'Error');
+                return;
+            }
+
             const newEntry: McpServerRegistryEntry = {
-                id: entry.id as string,
-                name: entry.name as string,
-                description: entry.description as string,
-                category: entry.category as string,
+                id: entry.id.trim(),
+                name: entry.name.trim(),
+                description: entry.description.trim(),
+                category: entry.category.trim(),
                 config: {
                     type: 'stdio',
-                    command: (entry.command as string).split(' ')[0],
-                    args: (entry.command as string)
+                    command: entry.command.trim().split(' ')[0],
+                    args: entry.command
+                        .trim()
                         .split(' ')
                         .slice(1)
                         .concat(((entry.args as string) || '').split(',').filter(Boolean)),
