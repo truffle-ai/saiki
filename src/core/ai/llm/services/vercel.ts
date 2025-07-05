@@ -154,7 +154,6 @@ export class VercelLLMService implements ILLMService {
             `[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`
         );
 
-        // If the model supports tools, format them otherwise use an empty object
         const formattedTools = this.formatTools(tools);
 
         logger.silly(
