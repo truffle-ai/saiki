@@ -4,6 +4,9 @@ import {
     getSupportedModels,
     isValidProviderModel,
     getMaxInputTokensForModel,
+    supportsBaseURL,
+    requiresBaseURL,
+    acceptsAnyModel,
 } from '../ai/llm/registry.js';
 
 // (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
@@ -217,19 +220,27 @@ export const LLMConfigSchema = z
 
         // When user provides a custom baseURL
         if (baseURLIsSet) {
-            // 1. Provider must be set to 'openai'
-            if (providerLower !== 'openai') {
+            // 1. Check if provider supports baseURL using registry
+            if (!supportsBaseURL(providerLower)) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     path: ['provider'],
-                    message: "If 'baseURL' is provided, provider must be set to 'openai'",
+                    message: `Provider '${data.provider}' does not support baseURL`,
                 });
             }
         }
+        // Check if provider requires baseURL but none is provided
+        else if (requiresBaseURL(providerLower)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['baseURL'],
+                message: `Provider '${data.provider}' requires a 'baseURL' to be set`,
+            });
+        }
         // If no base URL
         else {
-            // 1. Model must be valid for the provider
-            if (supportedProvidersList.includes(providerLower)) {
+            // 1. Model must be valid for the provider (skip for providers that accept any model)
+            if (supportedProvidersList.includes(providerLower) && !acceptsAnyModel(providerLower)) {
                 const supportedModelsList = getSupportedModels(providerLower);
                 if (!isValidProviderModel(providerLower, data.model)) {
                     ctx.addIssue({
@@ -239,8 +250,8 @@ export const LLMConfigSchema = z
                     });
                 }
             }
-            // 2. maxInputTokens must be within the model's limit
-            if (maxInputTokensIsSet) {
+            // 2. maxInputTokens must be within the model's limit (skip for providers that accept any model)
+            if (maxInputTokensIsSet && !acceptsAnyModel(providerLower)) {
                 try {
                     const registryMaxInputTokens = getMaxInputTokensForModel(
                         providerLower,

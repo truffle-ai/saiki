@@ -159,14 +159,23 @@ describe('buildLLMConfig', () => {
         expect(result.warnings).toContain('API key seems too short - please verify it is correct');
     });
 
-    it('should handle baseURL updates', async () => {
+    it('should handle baseURL updates for openai-compatible', async () => {
+        // Set OPENAI_API_KEY since openai-compatible uses same API key as openai
+        process.env.OPENAI_API_KEY = 'sk-test-key-123456789';
+
         const result = await buildLLMConfig(
-            { baseURL: 'https://custom.openai.com' },
+            {
+                provider: 'openai-compatible',
+                model: 'custom-model',
+                baseURL: 'https://custom.openai.com',
+            },
             baseLLMConfig
         );
 
         expect(result.isValid).toBe(true);
         expect(result.config.baseURL).toBe('https://custom.openai.com');
+        expect(result.config.provider).toBe('openai-compatible');
+        expect(result.config.model).toBe('custom-model');
     });
 
     it('should reject baseURL for unsupported providers', async () => {
@@ -275,13 +284,16 @@ describe('buildLLMConfig', () => {
     it('should keep current baseURL when provider supports it', async () => {
         const configWithBaseURL = {
             ...baseLLMConfig,
+            provider: 'openai-compatible',
+            model: 'custom-model',
             baseURL: 'https://custom.openai.com',
         };
 
-        const result = await buildLLMConfig({ model: 'gpt-4o-mini' }, configWithBaseURL);
+        const result = await buildLLMConfig({ model: 'another-custom-model' }, configWithBaseURL);
 
         expect(result.isValid).toBe(true);
         expect(result.config.baseURL).toBe('https://custom.openai.com');
+        expect(result.config.provider).toBe('openai-compatible');
     });
 
     it('should remove baseURL when switching to unsupported provider', async () => {
@@ -289,10 +301,15 @@ describe('buildLLMConfig', () => {
 
         const configWithBaseURL = {
             ...baseLLMConfig,
+            provider: 'openai-compatible',
+            model: 'custom-model',
             baseURL: 'https://custom.openai.com',
         };
 
-        const result = await buildLLMConfig({ provider: 'anthropic' }, configWithBaseURL);
+        const result = await buildLLMConfig(
+            { provider: 'anthropic', model: 'claude-4-sonnet-20250514' },
+            configWithBaseURL
+        );
 
         expect(result.isValid).toBe(true);
         expect(result.config.baseURL).toBeUndefined();

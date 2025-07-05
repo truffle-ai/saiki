@@ -25,6 +25,7 @@ export class VercelLLMService implements ILLMService {
     private temperature: number | undefined;
     private maxOutputTokens: number | undefined;
     private readonly sessionId: string;
+    private baseURL: string | undefined;
     private toolSupportCache: Map<string, boolean> = new Map();
 
     constructor(
@@ -36,7 +37,8 @@ export class VercelLLMService implements ILLMService {
         maxIterations: number = 10,
         sessionId: string,
         temperature?: number,
-        maxOutputTokens?: number
+        maxOutputTokens?: number,
+        baseURL?: string
     ) {
         this.model = model;
         this.provider = provider;
@@ -47,6 +49,7 @@ export class VercelLLMService implements ILLMService {
         this.temperature = temperature;
         this.maxOutputTokens = maxOutputTokens;
         this.sessionId = sessionId;
+        this.baseURL = baseURL;
 
         logger.debug(
             `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, temperature: ${temperature}, maxOutputTokens: ${maxOutputTokens}`
@@ -95,7 +98,18 @@ export class VercelLLMService implements ILLMService {
             return this.toolSupportCache.get(modelKey)!;
         }
 
-        logger.debug(`Testing tool support for model: ${modelKey}`);
+        // Only test tool support for openai-compatible providers with baseURL
+        // Built-in providers (openai, anthropic, google, groq) have known tool support
+        if (this.provider !== 'openai-compatible' || !this.baseURL) {
+            logger.debug(
+                `Skipping tool validation for ${modelKey} - not openai-compatible with baseURL`
+            );
+            // Assume built-in providers support tools
+            this.toolSupportCache.set(modelKey, true);
+            return true;
+        }
+
+        logger.debug(`Testing tool support for openai-compatible model: ${modelKey}`);
 
         // Create a minimal test tool
         const testTool = {

@@ -217,19 +217,19 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(configUpperCase)).not.toThrow();
         });
 
-        it('rejects if baseURL is set but provider is not openai', () => {
+        it('rejects if baseURL is set but provider does not support it', () => {
             const config = {
                 provider: 'anthropic',
                 model: 'claude-3-opus-20240229',
                 apiKey: '123',
-                baseURL: 'https://api.custom.com/v1', // baseURL is set but provider is not openai
+                baseURL: 'https://api.custom.com/v1', // baseURL is set but anthropic doesn't support it
             };
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('accepts if baseURL is set but maxInputTokens is missing', () => {
+        it('accepts if baseURL is set but maxInputTokens is missing for openai-compatible', () => {
             const config = {
-                provider: 'openai',
+                provider: 'openai-compatible',
                 model: 'my-custom-model',
                 apiKey: '123',
                 baseURL: 'https://api.custom.com/v1', // baseURL is set
@@ -238,15 +238,25 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
         });
 
-        it('accepts valid config with baseURL and maxInputTokens for openai', () => {
+        it('accepts valid config with baseURL and maxInputTokens for openai-compatible', () => {
             const config = {
-                provider: 'openai',
+                provider: 'openai-compatible',
                 model: 'my-company-finetune-v3',
                 apiKey: '123',
                 baseURL: 'https://api.custom.com/v1',
                 maxInputTokens: 8192,
             };
             expect(() => LLMConfigSchema.parse(config)).not.toThrow();
+        });
+
+        it('rejects if openai-compatible provider is used without baseURL', () => {
+            const config = {
+                provider: 'openai-compatible',
+                model: 'my-custom-model',
+                apiKey: '123',
+                // baseURL is missing - should be required for openai-compatible
+            };
+            expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
         it('rejects if maxInputTokens exceeds limit for a known model (no baseURL)', () => {
