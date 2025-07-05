@@ -1,33 +1,35 @@
 import chalk from 'chalk';
 import * as p from '@clack/prompts';
 import { ConfigurationManager } from '@core/config/config-manager.js';
+import { formatConfigListOutput } from './utils.js';
+
+export interface ListCommandOptions {
+    format?: 'table' | 'json' | 'yaml';
+    verbose?: boolean;
+}
 
 /**
  * Lists all saved configurations.
  */
-export async function listConfigurationsCommand(): Promise<void> {
+export async function listConfigurationsCommand(options: ListCommandOptions = {}): Promise<void> {
     const configManager = new ConfigurationManager();
-    p.intro(chalk.inverse(' Saved Configurations '));
+    const { format = 'table', verbose = false } = options;
+
+    if (format === 'table') {
+        p.intro(chalk.inverse(' Saved Configurations '));
+    }
 
     const configurations = await configManager.listConfigurations();
+    const output = await formatConfigListOutput(configurations, { format, verbose });
 
-    if (configurations.length === 0) {
-        p.note('No saved configurations found.', 'Info');
-        return;
+    if (format === 'table') {
+        if (configurations.length === 0) {
+            p.note('No configurations found. Create one with `saiki config create`', 'Empty');
+        } else {
+            console.log(output);
+        }
+        p.outro(chalk.green('Configuration list complete'));
+    } else {
+        console.log(output);
     }
-
-    console.log('\n');
-    for (const config of configurations) {
-        const createdDate = new Date(config.createdAt).toLocaleDateString();
-        const tags = config.tags.length > 0 ? ` (${config.tags.join(', ')})` : '';
-
-        console.log(chalk.bold.cyan(`${config.name}`) + chalk.gray(` [${config.id}]`));
-        console.log(chalk.dim(`  ${config.description}`));
-        console.log(chalk.dim(`  Created: ${createdDate}${tags}`));
-        console.log('');
-    }
-
-    p.outro(
-        'Use `saiki config create --load <id>` to load or `saiki config delete <id>` to remove one.'
-    );
 }

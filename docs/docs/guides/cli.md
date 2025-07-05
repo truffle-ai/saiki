@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
 
 ---
 
@@ -55,6 +55,29 @@ saiki --agent <path_to_agent_config_file>
 ```
 
 Check [Configuration Guide](./configuring-saiki/overview) to understand more about saiki config files
+
+#### **Create and manage agent configurations**
+
+Use the `saiki config` commands to create, update, and manage agent configurations:
+
+```bash
+# Interactive configuration creation
+saiki config create
+
+# Non-interactive configuration with flags
+saiki config create --provider openai --model gpt-4o-mini --mcp-preset developer --name "My Agent"
+
+# List all saved configurations
+saiki config list
+
+# Update existing configuration
+saiki config update my-config-id --model gpt-4o
+
+# Export configuration to file
+saiki config export my-config-id --output ./my-agent.yml
+```
+
+Check [Config Commands Guide](./configure-command) for comprehensive documentation.
 
 #### **Require all MCP servers to connect successfully**
 

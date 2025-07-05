@@ -1,8 +1,6 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import fs from 'fs/promises';
-import path from 'path';
-import * as YAML from 'yaml';
 import { getAllMcpServers } from '@core/config/mcp-registry.js';
 import { ConfigurationManager } from '@core/config/config-manager.js';
 import {
@@ -13,16 +11,142 @@ import {
 } from '@core/index.js';
 import type { AgentConfig, McpServerConfig } from '@core/config/schemas.js';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
-
-const AGENTS_DIR = 'agents';
-const DEFAULT_SYSTEM_PROMPT =
-    'You are a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems.';
+import {
+    DEFAULT_SYSTEM_PROMPT,
+    getMcpServersFromIds,
+    getPresetServers,
+    getSystemPromptByType,
+    formatConfigAsYaml,
+    resolveOutputPath,
+} from './utils.js';
 
 export interface UpdateCommandOptions {
     /** Whether to save the configuration after creation */
     save?: boolean;
     /** Output path for the configuration file */
     output?: string;
+
+    // LLM Configuration
+    provider?: string;
+    llmModel?: string;
+    apiKey?: string;
+    envVar?: string;
+    baseUrl?: string;
+    maxIterations?: number;
+    temperature?: number;
+
+    // MCP Server Configuration
+    mcpPreset?: string;
+    mcpServers?: string;
+    noMcp?: boolean;
+    mcp?: boolean;
+    addMcpServers?: string;
+    removeMcpServers?: string;
+    clearMcp?: boolean;
+
+    // System Prompt Configuration
+    systemPrompt?: string;
+    promptType?: string;
+    specialistRole?: string;
+
+    // Metadata
+    name?: string;
+    description?: string;
+}
+
+/**
+ * Check if we have enough flags for non-interactive mode
+ */
+function hasNonInteractiveFlags(options: UpdateCommandOptions): boolean {
+    // For update, we need at least one flag that indicates what to update
+    return !!(
+        options.provider ||
+        options.llmModel ||
+        options.mcpPreset ||
+        options.mcpServers ||
+        options.systemPrompt ||
+        options.promptType ||
+        options.addMcpServers ||
+        options.removeMcpServers ||
+        options.clearMcp ||
+        options.noMcp
+    );
+}
+
+/**
+ * Build updated configuration from command line flags (non-interactive mode)
+ */
+async function buildConfigFromFlags(
+    baseConfig: AgentConfig,
+    options: UpdateCommandOptions
+): Promise<AgentConfig> {
+    // Start with the base configuration
+    const config: AgentConfig = JSON.parse(JSON.stringify(baseConfig)); // Deep copy
+
+    // Update LLM configuration
+    if (options.provider) {
+        config.llm.provider = options.provider as LLMProvider;
+    }
+
+    if (options.llmModel) {
+        config.llm.model = options.llmModel;
+    }
+
+    // Handle API key configuration
+    if (options.apiKey) {
+        config.llm.apiKey = options.apiKey;
+    } else if (options.envVar) {
+        config.llm.apiKey = `$${options.envVar}`;
+    } else if (options.provider) {
+        // If provider changed, update the API key env var
+        config.llm.apiKey = `$${getPrimaryApiKeyEnvVar(options.provider as LLMProvider)}`;
+    }
+
+    // Update optional LLM settings
+    if (options.baseUrl !== undefined) config.llm.baseURL = options.baseUrl;
+    if (options.temperature !== undefined) config.llm.temperature = options.temperature;
+    if (options.maxIterations !== undefined) config.llm.maxIterations = options.maxIterations;
+
+    // Handle MCP servers updates
+    if (options.clearMcp) {
+        config.mcpServers = {};
+    } else if (options.noMcp) {
+        config.mcpServers = {};
+    } else if (options.mcpPreset) {
+        config.mcpServers = await getPresetServers(options.mcpPreset);
+    } else if (options.mcpServers) {
+        config.mcpServers = await getMcpServersFromIds(
+            options.mcpServers.split(',').map((s) => s.trim())
+        );
+    } else {
+        // Handle add/remove MCP servers
+        if (options.addMcpServers) {
+            const serversToAdd = await getMcpServersFromIds(
+                options.addMcpServers.split(',').map((s) => s.trim())
+            );
+            config.mcpServers = { ...config.mcpServers, ...serversToAdd };
+        }
+
+        if (options.removeMcpServers) {
+            const serversToRemove = options.removeMcpServers.split(',').map((s) => s.trim());
+            config.mcpServers = config.mcpServers || {};
+            serversToRemove.forEach((serverId) => {
+                delete config.mcpServers![serverId];
+            });
+        }
+    }
+
+    // Handle system prompt updates
+    if (options.systemPrompt) {
+        config.systemPrompt = options.systemPrompt;
+    } else if (options.promptType) {
+        config.systemPrompt = await getSystemPromptByType(
+            options.promptType,
+            options.specialistRole
+        );
+    }
+
+    return config;
 }
 
 /**
@@ -35,22 +159,31 @@ export async function updateCommand(
     const configManager = new ConfigurationManager();
 
     try {
-        p.intro(chalk.inverse(' Update Agent Configuration '));
-
         let selectedConfigId = configId;
         let baseConfig: AgentConfig | undefined;
         let configName: string | undefined;
 
-        // If no config ID provided, show interactive selection
+        // Handle config ID resolution first (needed for both modes)
         if (!selectedConfigId) {
             const configurations = await configManager.listConfigurations();
 
             if (configurations.length === 0) {
-                p.note('No saved configurations found to update.', 'Info');
-                p.outro('Use `saiki config create` to create a new configuration.');
-                return;
+                if (hasNonInteractiveFlags(options)) {
+                    logger.error('No saved configurations found to update');
+                    process.exit(1);
+                } else {
+                    p.note('No saved configurations found to update.', 'Info');
+                    p.outro('Use `saiki config create` to create a new configuration.');
+                    return;
+                }
             }
 
+            if (hasNonInteractiveFlags(options)) {
+                logger.error('Configuration ID is required for non-interactive mode');
+                process.exit(1);
+            }
+
+            // Interactive selection
             const selectedId = await p.select({
                 message: 'Choose a configuration to update',
                 options: configurations.map((config) => ({
@@ -73,30 +206,53 @@ export async function updateCommand(
         // Load the configuration
         const loaded = await configManager.loadConfiguration(selectedConfigId);
         if (!loaded) {
-            p.note(`Configuration '${selectedConfigId}' not found.`, 'Error');
-            return;
+            if (hasNonInteractiveFlags(options)) {
+                logger.error(`Configuration '${selectedConfigId}' not found`);
+                process.exit(1);
+            } else {
+                p.note(`Configuration '${selectedConfigId}' not found.`, 'Error');
+                return;
+            }
         }
 
         baseConfig = loaded.config;
         configName = loaded.name;
-        p.note(`Loaded configuration: ${loaded.name}`, 'Base Configuration');
 
-        p.note(
-            '💡 Updating existing configuration. Use Ctrl+C to cancel or continue with prompts',
-            'Navigation'
-        );
+        // Check if we have enough flags for non-interactive mode
+        const isNonInteractive = hasNonInteractiveFlags(options);
 
-        // Interactive configuration builder (no quick mode for updates)
-        const config = await buildAgentConfiguration(baseConfig);
+        let config: AgentConfig;
 
-        // ───────────────── Summary Preview ─────────────────
-        const summaryLines = [
-            chalk.cyanBright.bold('─ Configuration Preview ─'),
-            `LLM         : ${config.llm.provider} / ${config.llm.model}`,
-            `MCP Servers : ${Object.keys(config.mcpServers || {}).join(', ') || 'none'}`,
-            `SystemPrompt: ${typeof config.systemPrompt === 'string' ? (config.systemPrompt as string).slice(0, 60) + '…' : '[object]'}`,
-        ];
-        p.note(summaryLines.join('\n'), 'Preview');
+        if (isNonInteractive) {
+            // Non-interactive mode: build config from flags
+            config = await buildConfigFromFlags(baseConfig, options);
+
+            // Show a brief summary for non-interactive mode
+            logger.info(
+                `Updating configuration: ${configName} (${config.llm.provider}/${config.llm.model})`
+            );
+        } else {
+            // Interactive mode: use prompts
+            p.intro(chalk.inverse(' Update Agent Configuration '));
+            p.note(`Loaded configuration: ${loaded.name}`, 'Base Configuration');
+
+            p.note(
+                '💡 Updating existing configuration. Use Ctrl+C to cancel or continue with prompts',
+                'Navigation'
+            );
+
+            // Interactive configuration builder (no quick mode for updates)
+            config = await buildAgentConfiguration(baseConfig);
+
+            // ───────────────── Summary Preview ─────────────────
+            const summaryLines = [
+                chalk.cyanBright.bold('─ Configuration Preview ─'),
+                `LLM         : ${config.llm.provider} / ${config.llm.model}`,
+                `MCP Servers : ${Object.keys(config.mcpServers || {}).join(', ') || 'none'}`,
+                `SystemPrompt: ${typeof config.systemPrompt === 'string' ? (config.systemPrompt as string).slice(0, 60) + '…' : '[object]'}`,
+            ];
+            p.note(summaryLines.join('\n'), 'Preview');
+        }
 
         // Handle configuration output
         await handleConfigurationOutput(
@@ -107,7 +263,11 @@ export async function updateCommand(
             selectedConfigId
         );
 
-        p.outro(chalk.greenBright('Configuration updated successfully! 🎉'));
+        if (isNonInteractive) {
+            logger.info('Configuration updated successfully! 🎉');
+        } else {
+            p.outro(chalk.greenBright('Configuration updated successfully! 🎉'));
+        }
     } catch (error) {
         if (p.isCancel(error)) {
             p.cancel('Update cancelled');
@@ -115,7 +275,9 @@ export async function updateCommand(
         }
 
         logger.error(`Configuration update failed: ${error}`);
-        p.outro(chalk.red('Update failed. Check the logs for details.'));
+        if (!hasNonInteractiveFlags(options)) {
+            p.outro(chalk.red('Update failed. Check the logs for details.'));
+        }
         process.exit(1);
     }
 }
@@ -389,75 +551,55 @@ async function handleConfigurationOutput(
     configName: string,
     configId: string
 ): Promise<void> {
-    // For updates, ask about save and export separately
-    const shouldSave = await p.confirm({
-        message: 'Update the saved configuration?',
-        initialValue: true,
-    });
-    if (p.isCancel(shouldSave)) process.exit(0);
+    const isNonInteractive = hasNonInteractiveFlags(options);
 
-    const shouldExport = await p.confirm({
-        message: 'Export updated configuration to YAML file?',
-        initialValue: true,
-    });
-    if (p.isCancel(shouldExport)) process.exit(0);
+    let shouldSave = options.save !== false; // Default to true unless explicitly false
+    let shouldExport = !!options.output; // Export if output path is provided
+
+    if (!isNonInteractive) {
+        // Interactive mode: ask about save and export
+        const saveResult = await p.confirm({
+            message: 'Update the saved configuration?',
+            initialValue: true,
+        });
+        if (p.isCancel(saveResult)) process.exit(0);
+        shouldSave = saveResult;
+
+        const exportResult = await p.confirm({
+            message: 'Export updated configuration to YAML file?',
+            initialValue: true,
+        });
+        if (p.isCancel(exportResult)) process.exit(0);
+        shouldExport = exportResult;
+    }
 
     // Handle saving to manager
     if (shouldSave) {
         const success = await configManager.updateConfiguration(configId, { config });
         if (success) {
-            p.note(`Configuration updated successfully`, 'Updated');
+            if (isNonInteractive) {
+                logger.info(`Configuration '${configName}' updated`);
+            } else {
+                p.note(`Configuration updated successfully`, 'Updated');
+            }
         } else {
-            p.note(`Failed to update configuration`, 'Error');
+            if (isNonInteractive) {
+                logger.error(`Failed to update configuration '${configName}'`);
+            } else {
+                p.note(`Failed to update configuration`, 'Error');
+            }
         }
     }
 
     // Handle YAML export
     if (shouldExport) {
         const finalOutputPath = await resolveOutputPath(options.output, configName);
-        const yamlContent = formatConfigAsYaml(config);
+        const yamlContent = await formatConfigAsYaml(config);
         await fs.writeFile(finalOutputPath, yamlContent);
-        p.note(`Configuration exported to: ${finalOutputPath}`, 'Exported');
+        if (isNonInteractive) {
+            logger.info(`Configuration exported to: ${finalOutputPath}`);
+        } else {
+            p.note(`Configuration exported to: ${finalOutputPath}`, 'Exported');
+        }
     }
-}
-
-/**
- * Format configuration as YAML
- */
-function formatConfigAsYaml(config: AgentConfig): string {
-    // Use the YAML library to properly format the entire config
-    const yamlContent = YAML.stringify(config, { lineWidth: -1 });
-
-    // Add header comment
-    const header =
-        '# Saiki Agent Configuration\n# Generated on ' + new Date().toISOString() + '\n\n';
-
-    return header + yamlContent;
-}
-
-/**
- * Generates a sanitized, URL-friendly filename for an agent configuration.
- */
-function generateAgentFilename(name: string): string {
-    return `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.yml`;
-}
-
-/**
- * Resolves the final output path for the configuration file.
- * Creates the 'agents' directory if it doesn't exist.
- */
-async function resolveOutputPath(outputPath?: string, configName?: string): Promise<string> {
-    if (outputPath) {
-        return path.resolve(outputPath);
-    }
-
-    const agentsDir = path.resolve(AGENTS_DIR);
-    await fs.mkdir(agentsDir, { recursive: true }).catch(() => {}); // Ignore if exists
-
-    if (configName) {
-        return path.join(agentsDir, generateAgentFilename(configName));
-    }
-
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-    return path.join(agentsDir, `agent-updated-${timestamp}.yml`);
 }

@@ -1,8 +1,6 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import fs from 'fs/promises';
-import path from 'path';
-import * as YAML from 'yaml';
 import { getAllMcpServers } from '@core/config/mcp-registry.js';
 import { ConfigurationManager } from '@core/config/config-manager.js';
 import {
@@ -13,10 +11,14 @@ import {
 } from '@core/index.js';
 import type { AgentConfig, McpServerConfig } from '@core/config/schemas.js';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
-
-const AGENTS_DIR = 'agents';
-const DEFAULT_SYSTEM_PROMPT =
-    'You are a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems.';
+import {
+    DEFAULT_SYSTEM_PROMPT,
+    getMcpServersFromIds,
+    getPresetServers,
+    getSystemPromptByType,
+    formatConfigAsYaml,
+    resolveOutputPath,
+} from './utils.js';
 
 export interface CreateCommandOptions {
     /** Whether to save the configuration after creation */
@@ -25,38 +27,80 @@ export interface CreateCommandOptions {
     output?: string;
     /** Quick path (minimal prompts) */
     quick?: boolean;
+
+    // LLM Configuration
+    provider?: string;
+    llmModel?: string;
+    apiKey?: string;
+    envVar?: string;
+    baseUrl?: string;
+    maxIterations?: number;
+    temperature?: number;
+
+    // MCP Server Configuration
+    mcpPreset?: string;
+    mcpServers?: string;
+    noMcp?: boolean;
+    mcp?: boolean;
+
+    // System Prompt Configuration
+    systemPrompt?: string;
+    promptType?: string;
+    specialistRole?: string;
+
+    // Metadata
+    name?: string;
+    description?: string;
 }
 
 /**
- * Main command for interactively creating and configuring an agent.
+ * Main command for creating and configuring an agent.
+ * Supports both interactive and non-interactive (flag-based) modes.
  */
 export async function createCommand(options: CreateCommandOptions = {}): Promise<void> {
     const configManager = new ConfigurationManager();
 
     try {
-        p.intro(chalk.inverse(' Create Agent Configuration '));
+        // Check if we have enough flags for non-interactive mode
+        const isNonInteractive = hasNonInteractiveFlags(options);
 
-        p.note(
-            '💡 Creating new configuration. Use Ctrl+C to cancel or follow prompts to build your agent',
-            'Navigation'
-        );
+        let config: AgentConfig;
 
-        // Interactive configuration builder
-        const config = await buildAgentConfiguration(options.quick);
+        if (isNonInteractive) {
+            // Non-interactive mode: build config from flags
+            config = await buildConfigFromFlags(options);
 
-        // ───────────────── Summary Preview ─────────────────
-        const summaryLines = [
-            chalk.cyanBright.bold('─ Configuration Preview ─'),
-            `LLM         : ${config.llm.provider} / ${config.llm.model}`,
-            `MCP Servers : ${Object.keys(config.mcpServers || {}).join(', ') || 'none'}`,
-            `SystemPrompt: ${typeof config.systemPrompt === 'string' ? (config.systemPrompt as string).slice(0, 60) + '…' : '[object]'}`,
-        ];
-        p.note(summaryLines.join('\n'), 'Preview');
+            // Show a brief summary for non-interactive mode
+            logger.info(`Creating configuration: ${config.llm.provider}/${config.llm.model}`);
+        } else {
+            // Interactive mode: use prompts
+            p.intro(chalk.inverse(' Create Agent Configuration '));
+
+            p.note(
+                '💡 Creating new configuration. Use Ctrl+C to cancel or follow prompts to build your agent',
+                'Navigation'
+            );
+
+            config = await buildAgentConfiguration(options.quick);
+
+            // ───────────────── Summary Preview ─────────────────
+            const summaryLines = [
+                chalk.cyanBright.bold('─ Configuration Preview ─'),
+                `LLM         : ${config.llm.provider} / ${config.llm.model}`,
+                `MCP Servers : ${Object.keys(config.mcpServers || {}).join(', ') || 'none'}`,
+                `SystemPrompt: ${typeof config.systemPrompt === 'string' ? (config.systemPrompt as string).slice(0, 60) + '…' : '[object]'}`,
+            ];
+            p.note(summaryLines.join('\n'), 'Preview');
+        }
 
         // Save or output the configuration
         await handleConfigurationOutput(configManager, config, options);
 
-        p.outro(chalk.greenBright('Configuration complete! 🎉'));
+        if (isNonInteractive) {
+            logger.info('Configuration created successfully! 🎉');
+        } else {
+            p.outro(chalk.greenBright('Configuration complete! 🎉'));
+        }
     } catch (error) {
         if (p.isCancel(error)) {
             p.cancel('Configuration cancelled');
@@ -64,9 +108,83 @@ export async function createCommand(options: CreateCommandOptions = {}): Promise
         }
 
         logger.error(`Configuration failed: ${error}`);
-        p.outro(chalk.red('Configuration failed. Check the logs for details.'));
+        if (!hasNonInteractiveFlags(options)) {
+            p.outro(chalk.red('Configuration failed. Check the logs for details.'));
+        }
         process.exit(1);
     }
+}
+
+/**
+ * Check if we have enough flags for non-interactive mode
+ */
+function hasNonInteractiveFlags(options: CreateCommandOptions): boolean {
+    // At minimum, we need a provider to run non-interactively
+    return !!options.provider;
+}
+
+/**
+ * Build configuration from command line flags (non-interactive mode)
+ */
+async function buildConfigFromFlags(options: CreateCommandOptions): Promise<AgentConfig> {
+    if (!options.provider) {
+        throw new Error('Provider is required for non-interactive mode');
+    }
+
+    const provider = options.provider as LLMProvider;
+    const model = options.llmModel || getDefaultModelForProvider(provider) || 'gpt-4o-mini';
+
+    // Handle API key configuration
+    let apiKey: string;
+    if (options.apiKey) {
+        apiKey = options.apiKey;
+    } else if (options.envVar) {
+        apiKey = `$${options.envVar}`;
+    } else {
+        // Default to standard environment variable
+        apiKey = `$${getPrimaryApiKeyEnvVar(provider)}`;
+    }
+
+    // Build LLM config
+    const llmConfig: any = {
+        provider,
+        model,
+        apiKey,
+    };
+
+    // Add optional LLM settings
+    if (options.baseUrl) llmConfig.baseUrl = options.baseUrl;
+    if (options.temperature !== undefined) llmConfig.temperature = options.temperature;
+    if (options.maxIterations !== undefined) llmConfig.maxIterations = options.maxIterations;
+
+    // Handle MCP servers
+    let mcpServers: Record<string, McpServerConfig> = {};
+    if (options.noMcp || options.mcp === false) {
+        mcpServers = {};
+    } else if (options.mcpPreset) {
+        mcpServers = await getPresetServers(options.mcpPreset);
+    } else if (options.mcpServers) {
+        mcpServers = await getMcpServersFromIds(options.mcpServers.split(',').map((s) => s.trim()));
+    } else {
+        // Default to essential preset if no MCP options specified
+        mcpServers = await getPresetServers('essential');
+    }
+
+    // Handle system prompt
+    let systemPrompt: string | object = DEFAULT_SYSTEM_PROMPT;
+    if (options.systemPrompt) {
+        systemPrompt = options.systemPrompt;
+    } else if (options.promptType) {
+        systemPrompt = await getSystemPromptByType(options.promptType, options.specialistRole);
+    }
+
+    const config: AgentConfig = {
+        systemPrompt,
+        mcpServers,
+        llm: llmConfig,
+    } as AgentConfig;
+
+    return config;
 }
 
 /**
@@ -253,33 +371,6 @@ async function buildAgentConfiguration(quick?: boolean): Promise<AgentConfig> {
 }
 
 /**
- * Get preset server configurations
- */
-async function getPresetServers(preset: string): Promise<Record<string, McpServerConfig>> {
-    const presets = {
-        essential: ['filesystem', 'puppeteer'],
-        developer: ['filesystem', 'puppeteer', 'github', 'terminal'],
-        productivity: ['filesystem', 'puppeteer', 'notion', 'slack'],
-        data: ['filesystem', 'sqlite', 'postgres'],
-    };
-
-    const serverIds = presets[preset as keyof typeof presets] || [];
-    const servers: Record<string, McpServerConfig> = {};
-
-    const allServers = await getAllMcpServers();
-    const serverMap = Object.fromEntries(allServers.map((s) => [s.id, s]));
-
-    for (const id of serverIds) {
-        const server = serverMap[id];
-        if (server) {
-            servers[id] = server.config;
-        }
-    }
-
-    return servers;
-}
-
-/**
  * Configure system prompt
  */
 async function configureSystemPrompt(): Promise<string | object> {
@@ -392,54 +483,8 @@ async function handleConfigurationOutput(
             finalConfigName,
             !shouldSave
         );
-        const yamlContent = formatConfigAsYaml(config);
+        const yamlContent = await formatConfigAsYaml(config);
         await fs.writeFile(finalOutputPath, yamlContent);
         p.note(`Configuration exported to: ${finalOutputPath}`, 'Exported');
     }
-}
-
-/**
- * Format configuration as YAML
- */
-function formatConfigAsYaml(config: AgentConfig): string {
-    // Use the YAML library to properly format the entire config
-    const yamlContent = YAML.stringify(config, { lineWidth: -1 });
-
-    // Add header comment
-    const header =
-        '# Saiki Agent Configuration\n# Generated on ' + new Date().toISOString() + '\n\n';
-
-    return header + yamlContent;
-}
-
-/**
- * Generates a sanitized, URL-friendly filename for an agent configuration.
- */
-function generateAgentFilename(name: string): string {
-    return `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.yml`;
-}
-
-/**
- * Resolves the final output path for the configuration file.
- * Creates the 'agents' directory if it doesn't exist.
- */
-async function resolveOutputPath(
-    outputPath: string | undefined,
-    configName?: string,
-    isUnsaved: boolean = false
-): Promise<string> {
-    if (outputPath) {
-        return path.resolve(outputPath);
-    }
-
-    const agentsDir = path.resolve(AGENTS_DIR);
-    await fs.mkdir(agentsDir, { recursive: true }).catch(() => {}); // Ignore if exists
-
-    if (configName) {
-        return path.join(agentsDir, generateAgentFilename(configName));
-    }
-
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-    const prefix = isUnsaved ? 'agent-unsaved' : 'agent';
-    return path.join(agentsDir, `${prefix}-${timestamp}.yml`);
 }

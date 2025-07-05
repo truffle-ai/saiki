@@ -1,17 +1,21 @@
 import * as p from '@clack/prompts';
 import fs from 'fs/promises';
 import path from 'path';
-import * as YAML from 'yaml';
 import { ConfigurationManager } from '@core/config/config-manager.js';
-import type { AgentConfig } from '@core/config/schemas.js';
+import { formatAgentConfigOutput, AGENTS_DIR } from './utils.js';
 
-const AGENTS_DIR = 'agents';
+export interface ExportCommandOptions {
+    output?: string;
+    format?: 'yaml' | 'json';
+    minify?: boolean;
+}
 
 /**
  * Generates a sanitized, URL-friendly filename for an agent configuration.
  */
-function generateAgentFilename(name: string): string {
-    return `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.yml`;
+function generateAgentFilename(name: string, format: 'yaml' | 'json' = 'yaml'): string {
+    const extension = format === 'json' ? 'json' : 'yml';
+    return `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${extension}`;
 }
 
 /**
@@ -20,7 +24,8 @@ function generateAgentFilename(name: string): string {
  */
 async function resolveOutputPath(
     outputPath: string | undefined,
-    configName: string
+    configName: string,
+    format: 'yaml' | 'json' = 'yaml'
 ): Promise<string> {
     if (outputPath) {
         return path.resolve(outputPath);
@@ -29,26 +34,20 @@ async function resolveOutputPath(
     const agentsDir = path.resolve(AGENTS_DIR);
     await fs.mkdir(agentsDir, { recursive: true }).catch(() => {}); // Ignore if exists
 
-    return path.join(agentsDir, generateAgentFilename(configName));
+    return path.join(agentsDir, generateAgentFilename(configName, format));
 }
 
 /**
- * Format configuration as YAML
- */
-function formatConfigAsYaml(config: AgentConfig): string {
-    const yamlContent = YAML.stringify(config, { lineWidth: -1 });
-    const header =
-        '# Saiki Agent Configuration\n# Generated on ' + new Date().toISOString() + '\n\n';
-    return header + yamlContent;
-}
-
-/**
- * Exports a saved configuration to a YAML file.
+ * Exports a saved configuration to a file.
  * @param id The ID of the configuration to export (interactive selection if not provided).
- * @param outputPath Optional path to save the file to.
+ * @param options Export options including output path, format, and minify settings.
  */
-export async function exportConfigurationCommand(id?: string, outputPath?: string): Promise<void> {
+export async function exportConfigurationCommand(
+    id?: string,
+    options: ExportCommandOptions = {}
+): Promise<void> {
     const configManager = new ConfigurationManager();
+    const { output: outputPath, format = 'yaml', minify = false } = options;
 
     let selectedConfigId = id;
 
@@ -92,11 +91,13 @@ export async function exportConfigurationCommand(id?: string, outputPath?: strin
         return;
     }
 
-    const targetPath = await resolveOutputPath(outputPath, loadedConfig.name);
-    const yamlContent = formatConfigAsYaml(loadedConfig.config);
+    const targetPath = await resolveOutputPath(outputPath, loadedConfig.name, format);
+
+    // Use the consolidated formatting utility
+    const content = await formatAgentConfigOutput(loadedConfig.config, { format, minify });
 
     try {
-        await fs.writeFile(targetPath, yamlContent);
+        await fs.writeFile(targetPath, content);
         p.outro(`Configuration '${loadedConfig.name}' exported successfully to: ${targetPath}`);
     } catch (error) {
         p.outro(

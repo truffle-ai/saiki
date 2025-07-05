@@ -1,286 +1,331 @@
 ---
-sidebar_position: 9
+sidebar_position: 2
 sidebar_label: "Config Commands"
 ---
 
 # Configuration Management with `saiki config`
 
-The `saiki config` command provides an interactive CLI for building and managing agent configurations without manually editing YAML files. Create, save, load, and export configurations with an intuitive wizard-style interface.
+The `saiki config` command provides both interactive and non-interactive CLI interfaces for building and managing agent configurations. Create, save, load, and export configurations either through an intuitive wizard-style interface or with comprehensive command-line flags for automation.
 
 ## Quick Start
 
 ```bash
-# Create a new configuration interactively
+# Interactive mode - create a new configuration with prompts
 saiki config create
 
-# Update an existing configuration
-saiki config update my-config-id
+# Non-interactive mode - create a complete configuration with flags
+saiki config create \
+  --provider openai \
+  --model gpt-4o-mini \
+  --name "My Dev Agent" \
+  --description "Development-focused agent"
 
 # List all saved configurations
 saiki config list
 
-# Export a configuration to YAML file
-saiki config export my-config-id
+# Show a configuration in different formats
+saiki config show my-config-id --format table
 
-# Delete a saved configuration
-saiki config delete my-config-id
+# Update specific settings
+saiki config update my-config-id \
+  --model gpt-4o \
+  --add-mcp-servers github,slack
+
+# Export to different formats
+saiki config export my-config-id --format json
+
+# Validate a configuration file
+saiki config validate ./my-config.yml
 ```
 
-## Commands
+## Available Commands
 
 ### `saiki config create`
 
-Create a new agent configuration through an interactive wizard.
+Create a new agent configuration through interactive prompts or command-line flags.
 
-**Options:**
-- `--save` - Save the configuration for reuse (default: true)
-- `--no-save` - Don't save the configuration
-- `--output <path>` - Specify output file path
-- `--quick` - Use quick mode with sensible defaults
-
-**Examples:**
+#### Interactive Mode
 ```bash
-# Create a new configuration
+# Launch interactive wizard
 saiki config create
 
-# Create with quick setup (skips most prompts)
+# Quick setup with defaults
 saiki config create --quick
+```
 
-# Create and save to specific location
-saiki config create --output ./my-config.yml
+#### Non-Interactive Mode
+```bash
+# Complete configuration with flags
+saiki config create \
+  --provider anthropic \
+  --model claude-4-sonnet-20250514 \
+  --mcp-servers filesystem,puppeteer,github \
+  --system-prompt "You are a helpful coding assistant" \
+  --name "Code Helper" \
+  --description "Assistant for coding tasks" \
+  --router vercel \
+  --temperature 0.7 \
+  --max-iterations 25
+```
 
-# Create without saving (export only)
-saiki config create --no-save
+#### All Options
+
+**Basic Options:**
+- `--save` / `--no-save` - Save configuration for reuse (default: true)
+- `--output <path>` - Output file path
+- `--quick` - Quick mode with sensible defaults
+
+**LLM Configuration:**
+- `--provider <provider>` - LLM provider (`openai`, `anthropic`, `google`, `groq`)
+- `--model <model>` - Model name (e.g., `gpt-4o-mini`, `claude-4-sonnet-20250514`)
+- `--api-key <key>` - API key (not recommended, use environment variables)
+- `--env-var <var>` - Environment variable name for API key
+- `--base-url <url>` - Custom base URL (OpenAI only)
+- `--router <router>` - LLM router (`vercel`, `in-built`) (default: `vercel`)
+- `--max-iterations <num>` - Maximum iterations for agentic loops (default: `50`)
+- `--max-input-tokens <num>` - Maximum input tokens for conversation history
+- `--max-output-tokens <num>` - Maximum output tokens per response
+- `--temperature <temp>` - Temperature for response randomness (0-1)
+
+**MCP Server Configuration:**
+- `--mcp-preset <preset>` - Server preset (`essential`, `developer`, `productivity`, `data`)
+- `--mcp-servers <servers>` - Comma-separated list of server IDs
+- `--no-mcp` - Skip MCP server configuration
+
+**System Prompt Configuration:**
+- `--system-prompt <prompt>` - Custom system prompt text
+- `--prompt-type <type>` - Prompt type (`default`, `specialist`, `custom`)
+- `--specialist-role <role>` - Specialist role (`developer`, `writer`, `analyst`, `manager`)
+
+**Metadata:**
+- `--name <name>` - Configuration name for saving
+- `--description <desc>` - Configuration description
+
+#### Examples
+
+**Quick Development Setup:**
+```bash
+saiki config create \
+  --provider openai \
+  --model gpt-4o-mini \
+  --mcp-preset developer \
+  --specialist-role developer \
+  --name "Dev Agent"
+```
+
+**Production Configuration:**
+```bash
+saiki config create \
+  --provider anthropic \
+  --model claude-4-sonnet-20250514 \
+  --mcp-servers filesystem,puppeteer \
+  --system-prompt "You are a production assistant with security awareness" \
+  --temperature 0.3 \
+  --max-iterations 10 \
+  --name "Production Bot" \
+  --description "Conservative agent for production environments"
 ```
 
 ### `saiki config update [id]`
 
-Update an existing saved configuration. If no ID is provided, shows an interactive list to choose from.
+Update an existing saved configuration. Supports both interactive selection and direct flag updates.
 
-**Options:**
-- `--save` - Save the updated configuration (default: true)
-- `--no-save` - Don't save the updated configuration
-- `--output <path>` - Specify output file path
-
-**Examples:**
+#### Interactive Mode
 ```bash
-# Update specific configuration
-saiki config update my-config-123
-
-# Interactive selection of configuration to update
+# Interactive selection and prompts
 saiki config update
 
-# Update and export to specific path
-saiki config update my-config-123 --output ./updated-config.yml
+# Update specific configuration interactively
+saiki config update my-config-123
+```
+
+#### Non-Interactive Mode
+```bash
+# Update specific settings with flags
+saiki config update my-config-123 \
+  --model gpt-4o \
+  --add-mcp-servers github,slack \
+  --temperature 0.8
+
+# Switch providers completely
+saiki config update my-config-123 \
+  --provider anthropic \
+  --model claude-4-sonnet-20250514
+```
+
+#### Update-Specific Options
+
+All create options plus:
+
+**MCP Server Management:**
+- `--add-mcp-servers <servers>` - Add servers to existing configuration
+- `--remove-mcp-servers <servers>` - Remove specific servers
+- `--clear-mcp` - Remove all MCP servers
+
+#### Examples
+
+**Add Tools to Existing Agent:**
+```bash
+saiki config update dev-agent-123 \
+  --add-mcp-servers github,slack \
+  --description "Dev agent with GitHub and Slack integration"
+```
+
+**Switch to More Powerful Model:**
+```bash
+saiki config update my-config \
+  --model gpt-4o \
+  --max-input-tokens 128000 \
+  --temperature 0.9
+```
+
+**Remove Expensive Tools:**
+```bash
+saiki config update cost-conscious-agent \
+  --remove-mcp-servers puppeteer,brave_search \
+  --max-iterations 5
 ```
 
 ### `saiki config list`
 
-Display all saved configurations with their details.
+Display all saved configurations with flexible formatting options.
 
+#### Options
+- `--format <format>` - Output format (`table`, `json`, `yaml`) (default: `table`)
+- `--verbose` - Show detailed information
+
+#### Examples
+
+**Default Table View:**
 ```bash
 saiki config list
 ```
 
-**Output:**
+**JSON Output for Scripting:**
+```bash
+saiki config list --format json
 ```
-My Development Agent [dev-agent-123]
-  Development-focused agent with GitHub and terminal access
-  Created: 1/15/2024
 
-Production Bot [prod-bot-456]  
-  Production agent with essential tools only
-  Created: 1/10/2024
+**Detailed Information:**
+```bash
+saiki config list --verbose
+```
+
+**YAML Output:**
+```bash
+saiki config list --format yaml --verbose
+```
+
+### `saiki config show [id]`
+
+Display a specific configuration with detailed information.
+
+#### Options
+- `--format <format>` - Output format (`yaml`, `json`, `table`) (default: `yaml`)
+- `--minify` - Minify JSON output
+
+#### Examples
+
+**Human-Readable Table:**
+```bash
+saiki config show my-config --format table
+```
+
+**Complete YAML Configuration:**
+```bash
+saiki config show my-config --format yaml
+```
+
+**Minified JSON for APIs:**
+```bash
+saiki config show my-config --format json --minify
 ```
 
 ### `saiki config export [id]`
 
-Export a saved configuration to a YAML file. If no ID is provided, shows an interactive list to choose from.
+Export a saved configuration to a file with multiple format options.
 
-**Options:**
-- `--output <path>` - Specify output file path (defaults to `agents/<name>.yml`)
+#### Options
+- `--output <path>` - Output file path (defaults to `agents/<name>.yml`)
+- `--format <format>` - Export format (`yaml`, `json`) (default: `yaml`)
+- `--minify` - Minify JSON output
 
-**Examples:**
+#### Examples
+
+**Export to Default Location:**
 ```bash
-# Export with interactive selection
-saiki config export
+saiki config export my-config
+```
 
-# Export specific configuration to default location
-saiki config export my-config-123
+**Export as JSON:**
+```bash
+saiki config export my-config --format json --output ./config.json
+```
 
-# Export to specific path
-saiki config export my-config-123 --output ./custom/path.yml
+**Export Minified for Production:**
+```bash
+saiki config export prod-config --format json --minify --output ./dist/config.json
+```
+
+### `saiki config validate <file>`
+
+Validate a configuration file against the schema with detailed error reporting.
+
+#### Options
+- `--format <format>` - Input format (`auto`, `yaml`, `json`) (default: `auto`)
+- `--strict` - Enable strict validation mode
+
+#### Examples
+
+**Validate YAML File:**
+```bash
+saiki config validate ./my-config.yml
+```
+
+**Validate JSON with Strict Mode:**
+```bash
+saiki config validate ./config.json --format json --strict
+```
+
+**Auto-Detect Format:**
+```bash
+saiki config validate ./unknown-format-file --format auto
 ```
 
 ### `saiki config delete [id]`
 
-Remove a saved configuration permanently. If no ID is provided, shows an interactive list to choose from.
+Remove saved configurations with force options for automation.
 
-**Examples:**
+#### Options
+- `--force` - Skip confirmation prompt
+- `--all` - Delete all configurations (requires `--force`)
+
+#### Examples
+
+**Interactive Deletion:**
 ```bash
-# Delete with interactive selection
 saiki config delete
-
-# Delete specific configuration
-saiki config delete my-config-123
 ```
 
-## Interactive Configuration Wizard
-
-### Creating a New Configuration
-
-The wizard offers two modes:
-
-#### Quick Mode
-Uses sensible defaults with minimal prompts:
-- **Provider**: OpenAI
-- **Model**: gpt-4o-mini
-- **API Key**: Environment variable (`$OPENAI_API_KEY`)
-- **MCP Servers**: Essential preset (filesystem + puppeteer)
-- **System Prompt**: Default assistant prompt
-
-#### Full Interactive Mode
-Complete customization with guided prompts:
-
-```
-┌   Create Agent Configuration
-│
-◇  Use quick setup with defaults? (Recommended for new users)
-│  ○ Yes / ● No
-│
-◇  Choose your LLM provider
-│  ● OpenAI (GPT-4, GPT-3.5, etc.)
-│  ○ Anthropic (Claude models)
-│  ○ Google (Gemini models)
-│  ○ Groq (Fast inference)
-│
-◇  Choose the model for openai
-│  ● gpt-4o-mini
-│  ○ gpt-4o
-│  ○ gpt-4.1
-│  ○ o3-mini
-│
-◇  How do you want to handle the openai API key?
-│  ● Use environment variable (Will use $OPENAI_API_KEY)
-│  ○ Enter manually (Not recommended for production)
-│  ○ Skip for now (Configure later)
-│
-◇  Select MCP servers (space to select/deselect, arrows to navigate, enter to confirm)
-│  □ Filesystem (Development) - Secure file operations
-│  □ Git (Development) - Git repository tools
-│  □ GitHub (Development) - GitHub API integration
-│  □ Puppeteer (Web) - Browser automation
-│  □ Brave Search (Web) - Web search API
-│  □ PostgreSQL (Database) - Database access
-│  ... [22 total servers available]
-│
-◇  Customize the system prompt?
-│  ○ Yes / ● No
+**Force Delete Specific Config:**
+```bash
+saiki config delete old-config-123 --force
 ```
 
-### Updating Existing Configurations
-
-When updating, the wizard shows current values and asks what to change:
-
+**Delete All Configurations:**
+```bash
+saiki config delete --all --force
 ```
-┌   Update Agent Configuration
-│
-◆  Loaded configuration: My Development Agent
-│
-◇  Current LLM provider: openai. Change?
-│  ● Keep openai
-│  ○ OpenAI
-│  ○ Anthropic
-│  ○ Google
-│  ○ Groq
-│
-◇  Current model: gpt-4o-mini. Press Enter to keep, or type new model:
-│  gpt-4o-mini
-│
-◇  Current API key: $OPENAI_API_KEY. Change?
-│  ● Keep current API key configuration
-│  ○ Use environment variable
-│  ○ Enter manually
-│
-◇  You have 3 MCP server(s) configured. What would you like to do?
-│  ● Keep current servers
-│  ○ Modify server selection
-│  ○ Replace all servers
-│
-◇  Modify the system prompt?
-│  ○ Yes / ● No
-```
-
-## MCP Server Registry
-
-The configuration wizard includes **22 official MCP servers** organized by category:
-
-### Available Categories and Servers
-
-#### **Development (6 servers)**
-- **filesystem** - Secure file operations with configurable access controls
-- **git** - Tools to read, search, and manipulate Git repositories  
-- **github** - Repository management, file operations, and GitHub API integration
-- **gitlab** - GitLab API integration for project management
-- **sentry** - Retrieving and analyzing issues from Sentry.io
-- **everything** - Reference/test server with prompts, resources, and tools
-
-#### **Web (3 servers)**
-- **puppeteer** - Browser automation and web scraping
-- **brave_search** - Web and local search using Brave's Search API
-- **fetch** - Web content fetching and conversion for efficient LLM usage
-
-#### **Database (2 servers)**
-- **postgres** - Read-only PostgreSQL database access with schema inspection
-- **sqlite** - Database interaction and business intelligence capabilities
-
-#### **Productivity (3 servers)**
-- **google_drive** - File access and search capabilities for Google Drive
-- **google_maps** - Location services, directions, and place details
-- **slack** - Channel management and messaging capabilities
-
-#### **AI Services (3 servers)**
-- **sequential_thinking** - Dynamic and reflective problem-solving through thought sequences
-- **everart** - AI image generation using various models
-- **hf_mcp_server** - Access to Hugging Face models and datasets through MCP
-
-#### **System (1 server)**
-- **memory** - Knowledge graph-based persistent memory system
-
-#### **Utility (2 servers)**
-- **time** - Time and timezone conversion capabilities
-- **google_maps** - Location services, directions, and place details
-
-#### **Cloud (1 server)**
-- **aws_kb_retrieval** - Retrieval from AWS Knowledge Base using Bedrock Agent Runtime
-
-### Quick Start Presets
-
-In quick mode, you get the **Essential** preset:
-- **filesystem** - Local file operations
-- **puppeteer** - Web browsing and automation
-
-### System Prompt Options
-
-When customizing the system prompt, you can choose from:
-
-1. **Default prompt** - General-purpose assistant
-2. **Specialist prompts** with predefined roles:
-   - **Software Developer** - Code-focused assistant
-   - **Content Writer** - Writing and editing assistance
-   - **Data Analyst** - Data and research focused
-   - **Project Manager** - Planning and coordination
-3. **Custom prompt** - Write your own system prompt
 
 ## Configuration Files
 
-Generated configurations are saved as YAML files in the `agents/` directory:
+Generated configurations are saved as YAML files:
 
 ```yaml
 # Saiki Agent Configuration
-# Generated by saiki config
+# Generated on 2024-01-15T10:30:00.000Z
 
-systemPrompt: "You are a helpful AI assistant with access to tools. Use these tools when appropriate to answer user queries. You can use multiple tools in sequence to solve complex problems."
+systemPrompt: "You are a helpful AI assistant with access to tools."
 
 mcpServers:
   filesystem:
@@ -292,23 +337,26 @@ mcpServers:
       - "."
     connectionMode: strict
   
-  puppeteer:
+  github:
     type: stdio
     command: npx
     args:
       - "-y"
-      - "@modelcontextprotocol/server-puppeteer"
+      - "@modelcontextprotocol/server-github"
     connectionMode: lenient
 
 llm:
   provider: openai
   model: gpt-4o-mini
   apiKey: ${OPENAI_API_KEY}
+  router: vercel
+  maxIterations: 50
+  temperature: 0.7
 ```
 
 ## Environment Setup
 
-Set the required environment variables for your chosen LLM provider:
+Set required environment variables for your chosen LLM provider:
 
 ```bash
 # OpenAI
@@ -324,42 +372,11 @@ export GOOGLE_API_KEY="AIza..."
 export GROQ_API_KEY="gsk_..."
 ```
 
-For MCP servers requiring setup, additional environment variables may be needed:
-
-```bash
-# GitHub integration
-export GITHUB_PERSONAL_ACCESS_TOKEN="ghp_..."
-
-# Brave Search
-export BRAVE_API_KEY="BSA..."
-
-# PostgreSQL
-export POSTGRES_CONNECTION_STRING="postgresql://user:pass@host:5432/db"
-
-# Slack integration
-export SLACK_BOT_TOKEN="xoxb-..."
-
-# Google services
-export GOOGLE_MAPS_API_KEY="AIza..."
-
-# AWS services
-export AWS_ACCESS_KEY_ID="AKIA..."
-export AWS_SECRET_ACCESS_KEY="..."
-export AWS_REGION="us-east-1"
-
-# Other services
-export SENTRY_AUTH_TOKEN="sntrys_..."
-export SENTRY_ORG_SLUG="my-org"
-export EVERART_API_KEY="..."
-export HUGGINGFACE_TOKEN="hf_..."
-```
-
 ## Using Generated Configurations
 
-Generated configuration files work with all Saiki CLI commands:
+All generated configuration files work with Saiki CLI commands:
 
 ```bash
-
 # Start interactive session  
 saiki --agent agents/my-agent.yml
 
@@ -373,55 +390,42 @@ saiki --mode discord --agent agents/my-agent.yml
 saiki --mode telegram --agent agents/my-agent.yml
 ```
 
-## Configuration Management Workflow
-
-### 1. Create Base Configuration
-```bash
-# Quick start with defaults
-saiki config create --quick
-
-# Or full interactive setup
-saiki config create
-```
-
-### 2. Save and Iterate
-```bash
-# List your configurations
-saiki config list
-
-# Update as needed
-saiki config update my-config-id
-```
-
-### 3. Export and Deploy
-```bash
-# Export to YAML for deployment
-saiki config export my-config-id
-
-# Use in different environments
-saiki --agent agents/my-agent.yml
-```
-
 ## Best Practices
 
+### Interactive vs Non-Interactive
+
+**Use Interactive Mode When:**
+- Learning about available options
+- Exploring MCP servers and their capabilities
+- Creating one-off configurations
+- You want guided assistance
+
+**Use Non-Interactive Mode When:**
+- Automating configuration creation
+- CI/CD pipelines
+- Scripting batch operations
+- You know exactly what you want
+
 ### Security
-- **Use environment variables** for API keys - they're stored as `${API_KEY}` references
-- **Never commit hardcoded keys** - generated files use environment variable syntax
-- **Review exported YAML** before sharing or committing to version control
+- **Use environment variables** for API keys
+- **Never commit hardcoded keys** to version control
+- **Review exported YAML** before sharing
+- **Use `--force` carefully** in automation scripts
 
 ### Organization
-- **Use descriptive names** when saving configurations
-- **Keep the `agents/` directory** organized with meaningful filenames
-- **Version control YAML files** - they're safe to commit (no hardcoded secrets)
+- **Use descriptive names** for saved configurations
+- **Keep consistent naming** across environments
+- **Version control YAML files** (they're safe to commit)
+- **Validate configurations** before deployment
 
-### Workflow
-- **Start with quick mode** for simple use cases
-- **Use full mode** for complex, specialized agents
-- **Update existing configs** instead of recreating from scratch
-- **Test configurations** before deploying to production
+### Performance
+- **Use appropriate models** for your use case
+- **Set reasonable `maxIterations`** to control costs
+- **Choose `temperature`** based on task requirements
+- **Configure `maxInputTokens`** for large contexts
 
 
-## Getting Help
+### Getting Help
 
 ```bash
 # Command help
@@ -431,6 +435,6 @@ saiki config --help
 saiki config create --help
 saiki config update --help
 
-# General CLI help
-saiki --help
+# List available options
+saiki config create --help | grep -E "^\s*--"
 ```

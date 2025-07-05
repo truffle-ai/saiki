@@ -1,12 +1,49 @@
 import * as p from '@clack/prompts';
 import { ConfigurationManager } from '@core/config/config-manager.js';
 
+export interface DeleteCommandOptions {
+    force?: boolean;
+    all?: boolean;
+}
+
 /**
  * Deletes a saved configuration.
  * @param id The ID of the configuration to delete (interactive selection if not provided).
+ * @param options Command options including force and all flags.
  */
-export async function deleteConfigurationCommand(id?: string): Promise<void> {
+export async function deleteConfigurationCommand(
+    id?: string,
+    options: DeleteCommandOptions = {}
+): Promise<void> {
     const configManager = new ConfigurationManager();
+    const { force = false, all = false } = options;
+
+    // Handle --all flag
+    if (all) {
+        if (!force) {
+            console.error(
+                'Error: --all flag requires --force to confirm deletion of all configurations'
+            );
+            process.exit(1);
+        }
+
+        const configurations = await configManager.listConfigurations();
+        if (configurations.length === 0) {
+            console.log('No configurations found to delete.');
+            return;
+        }
+
+        for (const config of configurations) {
+            const success = await configManager.deleteConfiguration(config.id);
+            if (success) {
+                console.log(`Deleted configuration: ${config.name} [${config.id}]`);
+            } else {
+                console.error(`Failed to delete configuration: ${config.name} [${config.id}]`);
+            }
+        }
+        console.log(`Deleted ${configurations.length} configuration(s).`);
+        return;
+    }
 
     let selectedConfigId = id;
 
@@ -50,22 +87,36 @@ export async function deleteConfigurationCommand(id?: string): Promise<void> {
         return;
     }
 
-    const confirm = await p.confirm({
-        message: `Are you sure you want to delete the configuration '${config.name}'?`,
-        initialValue: false,
-    });
+    let shouldDelete = force;
 
-    if (p.isCancel(confirm)) {
-        p.cancel('Deletion cancelled.');
-        return;
+    if (!force) {
+        const confirm = await p.confirm({
+            message: `Are you sure you want to delete the configuration '${config.name}'?`,
+            initialValue: false,
+        });
+
+        if (p.isCancel(confirm)) {
+            p.cancel('Deletion cancelled.');
+            return;
+        }
+
+        shouldDelete = confirm;
     }
 
-    if (confirm) {
+    if (shouldDelete) {
         const success = await configManager.deleteConfiguration(selectedConfigId);
         if (success) {
-            p.outro(`Configuration '${config.name}' deleted successfully.`);
+            if (force) {
+                console.log(`Configuration '${config.name}' deleted successfully.`);
+            } else {
+                p.outro(`Configuration '${config.name}' deleted successfully.`);
+            }
         } else {
-            p.outro(`Failed to delete configuration '${config.name}'.`);
+            if (force) {
+                console.error(`Failed to delete configuration '${config.name}'.`);
+            } else {
+                p.outro(`Failed to delete configuration '${config.name}'.`);
+            }
         }
     } else {
         p.outro('Deletion cancelled.');
