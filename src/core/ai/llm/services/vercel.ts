@@ -25,6 +25,7 @@ export class VercelLLMService implements ILLMService {
     private temperature: number | undefined;
     private maxOutputTokens: number | undefined;
     private readonly sessionId: string;
+    private toolSupportCache: Map<string, boolean> = new Map();
 
     constructor(
         mcpManager: MCPManager,
@@ -86,6 +87,56 @@ export class VercelLLMService implements ILLMService {
         }, {});
     }
 
+    private async validateToolSupport(): Promise<boolean> {
+        const modelKey = `${this.provider}:${this.model.modelId}`;
+
+        // Check cache first
+        if (this.toolSupportCache.has(modelKey)) {
+            return this.toolSupportCache.get(modelKey)!;
+        }
+
+        logger.debug(`Testing tool support for model: ${modelKey}`);
+
+        // Create a minimal test tool
+        const testTool = {
+            test_tool: {
+                parameters: jsonSchema({
+                    type: 'object',
+                    properties: {},
+                    additionalProperties: false,
+                }),
+                execute: async () => ({ result: 'test' }),
+            },
+        };
+
+        try {
+            // Make a minimal generateText call with tools to test support
+            await generateText({
+                model: this.model,
+                messages: [{ role: 'user', content: 'Hello' }],
+                tools: testTool,
+                maxSteps: 1,
+            });
+
+            // If we get here, tools are supported
+            this.toolSupportCache.set(modelKey, true);
+            logger.debug(`Model ${modelKey} supports tools`);
+            return true;
+        } catch (error: any) {
+            if (error.message.includes('does not support tools')) {
+                this.toolSupportCache.set(modelKey, false);
+                logger.debug(`Model ${modelKey} does not support tools`);
+                return false;
+            }
+            // Other errors - assume tools are supported and let the actual call handle it
+            logger.debug(
+                `Tool validation error for ${modelKey}, assuming supported: ${error.message}`
+            );
+            this.toolSupportCache.set(modelKey, true);
+            return true;
+        }
+    }
+
     async completeTask(
         userInput: string,
         imageData?: ImageData,
@@ -104,6 +155,7 @@ export class VercelLLMService implements ILLMService {
         );
 
         const formattedTools = this.formatTools(tools);
+
         logger.silly(
             `[VercelLLMService] Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`
         );
@@ -180,10 +232,20 @@ export class VercelLLMService implements ILLMService {
         const temperature = this.temperature;
         const maxTokens = this.maxOutputTokens;
 
+        // Check if model supports tools and adjust accordingly
+        const supportsTools = await this.validateToolSupport();
+        const effectiveTools = supportsTools ? tools : {};
+
+        if (!supportsTools && Object.keys(tools).length > 0) {
+            logger.debug(
+                `Model ${this.model.modelId} does not support tools, using empty tools object for generation`
+            );
+        }
+
         const response = await generateText({
             model: this.model,
             messages: messages,
-            tools,
+            tools: effectiveTools,
             onStepFinish: (step) => {
                 logger.debug(`Step iteration: ${stepIteration}`);
                 stepIteration++;
@@ -259,11 +321,21 @@ export class VercelLLMService implements ILLMService {
         const temperature = this.temperature;
         const maxTokens = this.maxOutputTokens;
 
-        // use vercel's streamText with mcp
+        // Check if model supports tools and adjust accordingly
+        const supportsTools = await this.validateToolSupport();
+        const effectiveTools = supportsTools ? tools : {};
+
+        if (!supportsTools && Object.keys(tools).length > 0) {
+            logger.debug(
+                `Model ${this.model.modelId} does not support tools, using empty tools object for streaming`
+            );
+        }
+
+        // use vercel's streamText
         const response = streamText({
             model: this.model,
             messages: messages,
-            tools,
+            tools: effectiveTools,
             onChunk: (chunk) => {
                 logger.debug(`Chunk type: ${chunk.chunk.type}`);
                 if (chunk.chunk.type === 'text-delta') {
@@ -367,7 +439,6 @@ export class VercelLLMService implements ILLMService {
             ...(maxTokens && { maxTokens }),
             ...(temperature !== undefined && { temperature }),
         });
-
         // Consume the stream to get the final text
         let fullResponse = '';
         for await (const textPart of response.textStream) {
