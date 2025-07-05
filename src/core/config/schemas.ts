@@ -225,7 +225,7 @@ export const LLMConfigSchema = z
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     path: ['provider'],
-                    message: `Provider '${data.provider}' does not support baseURL`,
+                    message: `Provider '${data.provider}' does not support baseURL. Use 'openai-compatible' or corresponding name instead`,
                 });
             }
         }

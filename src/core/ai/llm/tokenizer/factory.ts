@@ -2,6 +2,7 @@ import { ITokenizer, TokenizationError } from './types.js';
 import { OpenAITokenizer } from './openai.js';
 import { AnthropicTokenizer } from './anthropic.js';
 import { GoogleTokenizer } from './google.js';
+import { DefaultTokenizer } from './default.js';
 
 /**
  * Creates the appropriate tokenizer for the specified provider and model
@@ -22,8 +23,6 @@ export function createTokenizer(provider: string, model: string): ITokenizer {
             return new GoogleTokenizer(model);
         // Add cases for other providers here
         default:
-            throw new TokenizationError(
-                `No tokenizer implementation available for provider: ${provider}`
-            );
+            return new DefaultTokenizer();
     }
 }
