@@ -103,7 +103,9 @@ export class VercelLLMService implements ILLMService {
             `[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`
         );
 
+        // If the model supports tools, format them otherwise use an empty object
         const formattedTools = this.formatTools(tools);
+
         logger.silly(
             `[VercelLLMService] Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`
         );
@@ -180,71 +182,82 @@ export class VercelLLMService implements ILLMService {
         const temperature = this.temperature;
         const maxTokens = this.maxOutputTokens;
 
-        const response = await generateText({
-            model: this.model,
-            messages: messages,
-            tools,
-            onStepFinish: (step) => {
-                logger.debug(`Step iteration: ${stepIteration}`);
-                stepIteration++;
-                logger.debug(`Step finished, step type: ${step.stepType}`);
-                logger.debug(`Step finished, step text: ${step.text}`);
-                logger.debug(
-                    `Step finished, step tool calls: ${JSON.stringify(step.toolCalls, null, 2)}`
-                );
-                logger.debug(
-                    `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
-                );
+        let response;
+        try {
+            response = await generateText({
+                model: this.model,
+                messages: messages,
+                tools,
+                onStepFinish: (step) => {
+                    logger.debug(`Step iteration: ${stepIteration}`);
+                    stepIteration++;
+                    logger.debug(`Step finished, step type: ${step.stepType}`);
+                    logger.debug(`Step finished, step text: ${step.text}`);
+                    logger.debug(
+                        `Step finished, step tool calls: ${JSON.stringify(step.toolCalls, null, 2)}`
+                    );
+                    logger.debug(
+                        `Step finished, step tool results: ${JSON.stringify(step.toolResults, null, 2)}`
+                    );
 
-                // Track token usage from each step
-                if (step.usage?.totalTokens !== undefined) {
-                    totalTokens += step.usage.totalTokens;
-                }
+                    // Track token usage from each step
+                    if (step.usage?.totalTokens !== undefined) {
+                        totalTokens += step.usage.totalTokens;
+                    }
 
-                if (step.text) {
-                    this.sessionEventBus.emit('llmservice:response', {
-                        content: step.text,
-                        model: this.model.modelId,
-                        tokenCount: totalTokens > 0 ? totalTokens : undefined,
-                    });
-                }
-                // Emit events based on step content (kept from original)
-                if (step.toolCalls && step.toolCalls.length > 0) {
-                    for (const toolCall of step.toolCalls) {
-                        this.sessionEventBus.emit('llmservice:toolCall', {
-                            toolName: toolCall.toolName,
-                            args: toolCall.args,
-                            callId: toolCall.toolCallId,
+                    if (step.text) {
+                        this.sessionEventBus.emit('llmservice:response', {
+                            content: step.text,
+                            model: this.model.modelId,
+                            tokenCount: totalTokens > 0 ? totalTokens : undefined,
                         });
                     }
-                }
-                if (step.toolResults && step.toolResults.length > 0) {
-                    for (const toolResult of step.toolResults as any) {
-                        this.sessionEventBus.emit('llmservice:toolResult', {
-                            toolName: toolResult.toolName,
-                            result: toolResult.result,
-                            callId: toolResult.toolCallId,
-                            success: true,
-                        });
+                    // Emit events based on step content (kept from original)
+                    if (step.toolCalls && step.toolCalls.length > 0) {
+                        for (const toolCall of step.toolCalls) {
+                            this.sessionEventBus.emit('llmservice:toolCall', {
+                                toolName: toolCall.toolName,
+                                args: toolCall.args,
+                                callId: toolCall.toolCallId,
+                            });
+                        }
                     }
-                }
-                // NOTE: Message manager additions are now handled after generateText completes
-            },
-            maxSteps: maxSteps,
-            ...(maxTokens && { maxTokens }),
-            ...(temperature !== undefined && { temperature }),
-        });
+                    if (step.toolResults && step.toolResults.length > 0) {
+                        for (const toolResult of step.toolResults as any) {
+                            this.sessionEventBus.emit('llmservice:toolResult', {
+                                toolName: toolResult.toolName,
+                                result: toolResult.result,
+                                callId: toolResult.toolCallId,
+                                success: true,
+                            });
+                        }
+                    }
+                    // NOTE: Message manager additions are now handled after generateText completes
+                },
+                maxSteps: maxSteps,
+                ...(maxTokens && { maxTokens }),
+                ...(temperature !== undefined && { temperature }),
+            });
 
-        // Parse and append each new InternalMessage from the formatter using ContextManager
-        await this.contextManager.processLLMResponse(response);
+            // Parse and append each new InternalMessage from the formatter using ContextManager
+            await this.contextManager.processLLMResponse(response);
 
-        // Update ContextManager with actual token count for hybrid approach
-        if (totalTokens > 0) {
-            this.contextManager.updateActualTokenCount(totalTokens);
+            // Update ContextManager with actual token count for hybrid approach
+            if (totalTokens > 0) {
+                this.contextManager.updateActualTokenCount(totalTokens);
+            }
+
+            // Return the plain text of the response
+            return response.text;
+        } catch (error: any) {
+            // If model doesn't support tools, remove the tools and retry generation recursively
+            if (error.message.includes('does not support tools')) {
+                logger.debug('Model does not support tools, updating tools to empty object');
+                return await this.generateText(messages, {}, maxSteps);
+            } else {
+                throw error;
+            }
         }
-
-        // Return the plain text of the response
-        return response.text;
     }
 
     // Updated streamText to behave like generateText - returns string and handles message processing internally
@@ -259,7 +272,7 @@ export class VercelLLMService implements ILLMService {
         const temperature = this.temperature;
         const maxTokens = this.maxOutputTokens;
 
-        // use vercel's streamText with mcp
+        // use vercel's streamText
         const response = streamText({
             model: this.model,
             messages: messages,
@@ -367,7 +380,6 @@ export class VercelLLMService implements ILLMService {
             ...(maxTokens && { maxTokens }),
             ...(temperature !== undefined && { temperature }),
         });
-
         // Consume the stream to get the final text
         let fullResponse = '';
         for await (const textPart of response.textStream) {
