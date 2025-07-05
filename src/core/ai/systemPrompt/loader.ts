@@ -1,6 +1,6 @@
 import { ContributorConfig, SystemPromptConfig } from '../../config/schemas.js';
 import { SystemPromptContributor } from './types.js';
-import { StaticContributor, DynamicContributor } from './contributors.js';
+import { StaticContributor, DynamicContributor, FileContributor } from './contributors.js';
 import { getPromptGenerator } from './registry.js';
 
 export function loadContributors(
@@ -42,6 +42,10 @@ export function loadContributors(
             if (!promptGenerator)
                 throw new Error(`No handler for dynamic contributor source: ${c.source}`);
             return new DynamicContributor(c.id, c.priority, promptGenerator);
+        } else if (c.type === 'file') {
+            if (!c.files || c.files.length === 0)
+                throw new Error(`File contributor "${c.id}" missing files`);
+            return new FileContributor(c.id, c.priority, c.files, c.options);
         }
         throw new Error(`Invalid contributor config: ${JSON.stringify(c)}`);
     });

@@ -1,0 +1,60 @@
+# Example: Agent Configuration with File-Based Context
+# This demonstrates how to use the new file contributor feature
+# to automatically include local files as context for your agent
+
+# Configure the Large Language Model
+llm:
+  provider: openai
+  model: gpt-4o
+  apiKey: $OPENAI_API_KEY
+
+# Define system prompt with file-based context
+systemPrompt:
+  contributors:
+    # Main agent instructions
+    - id: base-prompt
+      type: static
+      priority: 0
+      content: |
+        You are a helpful coding assistant with knowledge of the current project.
+        You have access to project documentation and context files.
+        
+    # Include project documentation files
+    - id: project-docs
+      type: file
+      priority: 10
+      files:
+        - ./README.md
+        - ./docs/architecture.md
+        - ./CONTRIBUTING.md
+      options:
+        includeFilenames: true
+        separator: "\n\n---\n\n"
+        errorHandling: skip
+        maxFileSize: 50000
+        includeMetadata: false
+        
+    # Include coding guidelines
+    - id: coding-standards
+      type: file
+      priority: 20
+      files:
+        - ./docs/coding-standards.md
+        - ./docs/best-practices.txt
+      options:
+        includeFilenames: true
+        includeMetadata: true
+        errorHandling: placeholder
+        
+    # Add current date/time
+    - id: current-time
+      type: dynamic
+      priority: 30
+      source: dateTime
+
+# Optional: Connect to MCP servers for additional tools
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '.'] 
