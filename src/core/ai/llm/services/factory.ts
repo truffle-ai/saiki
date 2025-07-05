@@ -59,11 +59,22 @@ function _createInBuiltLLMService(
 
     switch (config.provider.toLowerCase()) {
         case 'openai': {
+            // Regular OpenAI - no baseURL support
+            const openai = new OpenAI({ apiKey });
+            return new OpenAIService(
+                mcpManager,
+                openai,
+                sessionEventBus,
+                contextManager,
+                config.model,
+                config.maxIterations,
+                sessionId
+            );
+        }
+        case 'openai-compatible': {
+            // OpenAI-compatible - requires baseURL
             const baseURL = getOpenAICompatibleBaseURL(config);
-            // This will correctly handle both cases:
-            // 1. When baseURL is set, it will be included in the options
-            // 2. When baseURL is undefined/null/empty, the spread operator won't add the baseURL property
-            const openai = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
+            const openai = new OpenAI({ apiKey, baseURL });
             return new OpenAIService(
                 mcpManager,
                 openai,
@@ -98,17 +109,13 @@ function _createVercelModel(llmConfig: ValidatedLLMConfig): LanguageModelV1 {
 
     switch (provider.toLowerCase()) {
         case 'openai': {
+            // Regular OpenAI - strict compatibility, no baseURL
+            return createOpenAI({ apiKey, compatibility: 'strict' })(model);
+        }
+        case 'openai-compatible': {
+            // OpenAI-compatible - requires baseURL, uses compatible mode
             const baseURL = getOpenAICompatibleBaseURL(llmConfig);
-            const options: {
-                apiKey: string;
-                baseURL?: string;
-                compatibility?: 'strict' | 'compatible';
-            } = { apiKey, compatibility: 'strict' };
-            if (baseURL) {
-                options.baseURL = baseURL;
-                options.compatibility = 'compatible';
-            }
-            return createOpenAI(options)(model);
+            return createOpenAI({ apiKey, baseURL, compatibility: 'compatible' })(model);
         }
         case 'anthropic':
             return createAnthropic({ apiKey })(model);
@@ -157,7 +164,8 @@ function _createVercelLLMService(
         config.maxIterations,
         sessionId,
         config.temperature,
-        config.maxOutputTokens
+        config.maxOutputTokens,
+        config.baseURL
     );
 }
 

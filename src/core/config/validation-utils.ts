@@ -9,6 +9,7 @@ import {
     getProviderFromModel,
     getDefaultModelForProvider,
     getEffectiveMaxInputTokens,
+    acceptsAnyModel,
 } from '../ai/llm/registry.js';
 import type {
     ValidatedLLMConfig,
@@ -98,8 +99,8 @@ function validateLLMCore(config: {
         });
     }
 
-    // Validate provider/model combination if both provided
-    if (provider && model && !isValidProviderModel(provider, model)) {
+    // Validate provider/model combination if both provided (skip for providers that accept any model)
+    if (provider && model && !acceptsAnyModel(provider) && !isValidProviderModel(provider, model)) {
         const supportedModels = getSupportedModels(provider);
         errors.push({
             type: 'incompatible_model_provider',
@@ -351,7 +352,13 @@ function resolveProvider(
 
         return providerName;
     } else if (updates.model !== undefined && model !== currentConfig.model) {
-        // Model changed but provider not specified - infer provider
+        // Model changed but provider not specified
+        // If current provider accepts any model, keep it
+        if (acceptsAnyModel(currentConfig.provider)) {
+            return currentConfig.provider;
+        }
+
+        // Otherwise, try to infer provider from new model
         try {
             const inferredProvider = getProviderFromModel(model);
             if (inferredProvider !== currentConfig.provider) {
@@ -379,7 +386,7 @@ function resolveModelProviderCompatibility(
     errors: ValidationError[],
     warnings: string[]
 ): { finalModel: string; finalProvider: string } {
-    if (isValidProviderModel(provider, model)) {
+    if (acceptsAnyModel(provider) || isValidProviderModel(provider, model)) {
         return { finalModel: model, finalProvider: provider };
     }
 

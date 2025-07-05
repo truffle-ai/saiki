@@ -32,11 +32,11 @@ llm:
 ```yaml
 llm:
   provider: google
-  model: gemini-2.5-pro-exp-03-25  # Default
+  model: gemini-2.5-pro  # Default
   apiKey: $GOOGLE_GENERATIVE_AI_API_KEY
 ```
 
-**Supported models**: `gemini-2.5-pro-exp-03-25`, `gemini-2.5-flash-preview-05-20`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`, `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest`
+**Supported models**: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`, `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest`
 
 ### **Groq**
 ```yaml
@@ -48,13 +48,14 @@ llm:
 
 **Supported models**: `gemma-2-9b-it`, `llama-3.3-70b-versatile`
 
-## Custom/OpenAI-Compatible Providers
 
-You can use any provider that implements the OpenAI SDK interface by setting `provider: openai` and providing a custom `baseURL`:
+## OpenAI-Compatible Providers
+
+You can use any provider that implements the OpenAI SDK interface by setting `provider: openai-compatible` and providing a custom `baseURL`:
 
 ```yaml
 llm:
-  provider: openai
+  provider: openai-compatible
   model: your-custom-model
   apiKey: $YOUR_API_KEY
   baseURL: https://api.your-provider.com/v1
@@ -68,8 +69,8 @@ Run models locally using Ollama, LM Studio, or similar:
 
 ```yaml
 llm:
-  provider: openai
-  model: llama3.2
+  provider: openai-compatible
+  model: gemma3n:e2b
   apiKey: dummy  # Required but ignored for local
   baseURL: http://localhost:11434/v1  # Ollama default
   maxInputTokens: 8000
@@ -84,7 +85,7 @@ llm:
 #### **Azure OpenAI**
 ```yaml
 llm:
-  provider: openai
+  provider: openai-compatible
   model: gpt-4
   apiKey: $AZURE_OPENAI_API_KEY
   baseURL: https://your-resource.openai.azure.com/openai/deployments/gpt-4
@@ -101,7 +102,7 @@ Access 100+ models through one API:
 
 ```yaml
 llm:
-  provider: openai
+  provider: openai-compatible
   model: anthropic/claude-3.5-sonnet
   apiKey: $OPENROUTER_API_KEY
   baseURL: https://openrouter.ai/api/v1
@@ -117,7 +118,7 @@ llm:
 #### **Together.ai**
 ```yaml
 llm:
-  provider: openai
+  provider: openai-compatible
   model: meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo
   apiKey: $TOGETHER_API_KEY
   baseURL: https://api.together.xyz/v1
@@ -132,7 +133,7 @@ llm:
 #### **Anyscale**
 ```yaml
 llm:
-  provider: openai
+  provider: openai-compatible
   model: meta-llama/Llama-2-70b-chat-hf
   apiKey: $ANYSCALE_API_KEY
   baseURL: https://api.endpoints.anyscale.com/v1
@@ -142,7 +143,7 @@ llm:
 #### **Perplexity**
 ```yaml
 llm:
-  provider: openai
+  provider: openai-compatible
   model: llama-3.1-sonar-huge-128k-online
   apiKey: $PERPLEXITY_API_KEY
   baseURL: https://api.perplexity.ai

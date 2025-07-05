@@ -209,7 +209,7 @@ Saiki supports multiple LLM providers out-of-the-box, plus any OpenAI SDK-compat
 
 - **OpenAI**: `gpt-4.1-mini`, `gpt-4o`, `o3`, `o1` and more
 - **Anthropic**: `claude-4-sonnet-20250514`, `claude-3-7-sonnet-20250219`, and more  
-- **Google**: `gemini-2.5-pro-exp-03-25`, `gemini-2.0-flash` and more
+- **Google**: `gemini-2.5-pro`, `gemini-2.0-flash` and more
 - **Groq**: `llama-3.3-70b-versatile`, `gemma-2-9b-it`
 
 ### Quick Setup

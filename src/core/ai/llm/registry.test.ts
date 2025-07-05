@@ -8,6 +8,9 @@ import {
     getProviderFromModel,
     getAllSupportedModels,
     getEffectiveMaxInputTokens,
+    supportsBaseURL,
+    requiresBaseURL,
+    acceptsAnyModel,
 } from './registry.js';
 import { ModelNotFoundError } from './errors.js';
 import { EffectiveMaxInputTokensError } from './errors.js';
@@ -116,8 +119,8 @@ describe('LLM Registry', () => {
 
         it('defaults to 128000 when baseURL is set and maxInputTokens is missing', () => {
             const config = {
-                provider: 'openai',
-                model: 'o4-mini',
+                provider: 'openai-compatible',
+                model: 'custom-model',
                 baseURL: 'https://example.com',
             } as any;
             expect(getEffectiveMaxInputTokens(config)).toBe(128000);
@@ -125,8 +128,8 @@ describe('LLM Registry', () => {
 
         it('returns provided maxInputTokens when baseURL is set and maxInputTokens provided', () => {
             const config = {
-                provider: 'openai',
-                model: 'o4-mini',
+                provider: 'openai-compatible',
+                model: 'custom-model',
                 baseURL: 'https://example.com',
                 maxInputTokens: 12345,
             } as any;
@@ -142,6 +145,48 @@ describe('LLM Registry', () => {
         it('throws EffectiveMaxInputTokensError when lookup fails without override or baseURL', () => {
             const config = { provider: 'openai', model: 'non-existent-model' } as any;
             expect(() => getEffectiveMaxInputTokens(config)).toThrow(EffectiveMaxInputTokensError);
+        });
+    });
+
+    describe('supportsBaseURL', () => {
+        it('returns true for openai-compatible provider', () => {
+            expect(supportsBaseURL('openai-compatible')).toBe(true);
+        });
+
+        it('returns false for anthropic provider', () => {
+            expect(supportsBaseURL('anthropic')).toBe(false);
+        });
+
+        it('returns false for unknown provider', () => {
+            expect(supportsBaseURL('unknown')).toBe(false);
+        });
+    });
+
+    describe('requiresBaseURL', () => {
+        it('returns true for openai-compatible provider', () => {
+            expect(requiresBaseURL('openai-compatible')).toBe(true);
+        });
+
+        it('returns false for openai provider', () => {
+            expect(requiresBaseURL('openai')).toBe(false);
+        });
+
+        it('returns false for unknown provider', () => {
+            expect(requiresBaseURL('unknown')).toBe(false);
+        });
+    });
+
+    describe('acceptsAnyModel', () => {
+        it('returns true for openai-compatible provider', () => {
+            expect(acceptsAnyModel('openai-compatible')).toBe(true);
+        });
+
+        it('returns false for openai provider', () => {
+            expect(acceptsAnyModel('openai')).toBe(false);
+        });
+
+        it('returns false for unknown provider', () => {
+            expect(acceptsAnyModel('unknown')).toBe(false);
         });
     });
 });
