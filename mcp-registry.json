@@ -237,7 +237,7 @@
     "id": "sequential_thinking",
     "name": "Sequential Thinking",
     "description": "Dynamic and reflective problem-solving through thought sequences",
-    "category": "AI Services",
+    "category": "AI",
     "config": {
       "type": "stdio",
       "command": "npx",
@@ -265,7 +265,7 @@
     "id": "everart",
     "name": "EverArt",
     "description": "AI image generation using various models",
-    "category": "AI Services",
+    "category": "AI",
     "config": {
       "type": "stdio",
       "command": "npx",

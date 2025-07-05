@@ -356,7 +356,12 @@ export async function resolveOutputPath(
     }
 
     const agentsDir = path.resolve(AGENTS_DIR);
-    await fs.mkdir(agentsDir, { recursive: true }).catch(() => {}); // Ignore if exists
+    await fs.mkdir(agentsDir, { recursive: true }).catch((error) => {
+        // Only ignore EEXIST errors, log others
+        if (error.code !== 'EEXIST') {
+            logger.warn(`Failed to create agents directory: ${error.message}`);
+        }
+    });
 
     if (configName) {
         return path.join(agentsDir, generateAgentFilename(configName));

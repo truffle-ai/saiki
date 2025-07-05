@@ -1,37 +1,17 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import os from 'os';
-import path from 'path';
 import type { McpServerRegistryEntry } from '@core/config/mcp-registry.js';
-
-const LOCAL_REGISTRY_PATH = path.join(os.homedir(), '.saiki', 'mcp-registry.local.json');
-
-/**
- * Load local registry entries from file
- */
-async function loadLocalRegistry(): Promise<Record<string, McpServerRegistryEntry>> {
-    try {
-        const data = await fs.readFile(LOCAL_REGISTRY_PATH, 'utf-8');
-        return JSON.parse(data);
-    } catch (_err) {
-        return {}; // no local registry yet
-    }
-}
-
-/**
- * Save local registry to file
- */
-async function saveLocalRegistry(registry: Record<string, McpServerRegistryEntry>): Promise<void> {
-    await fs.mkdir(path.dirname(LOCAL_REGISTRY_PATH), { recursive: true });
-    await fs.writeFile(LOCAL_REGISTRY_PATH, JSON.stringify(registry, null, 2), 'utf-8');
-}
+import {
+    loadLocalMcpRegistry,
+    saveLocalMcpServer,
+    removeLocalMcpServer,
+} from '@core/config/mcp-registry.js';
 
 export async function mcpRegistryCommand(
     action: 'add' | 'list' | 'remove',
     id?: string
 ): Promise<void> {
-    const registry = await loadLocalRegistry();
+    const registry = await loadLocalMcpRegistry();
 
     switch (action) {
         case 'list': {
@@ -53,9 +33,12 @@ export async function mcpRegistryCommand(
                 p.note(`Server '${id}' not found in local registry`, 'Error');
                 return;
             }
-            delete registry[id];
-            await saveLocalRegistry(registry);
-            p.outro(chalk.green(`Removed '${id}' from local registry`));
+            const removed = await removeLocalMcpServer(id);
+            if (removed) {
+                p.outro(chalk.green(`Removed '${id}' from local registry`));
+            } else {
+                p.note(`Failed to remove '${id}' from local registry`, 'Error');
+            }
             return;
         }
 
@@ -98,8 +81,7 @@ export async function mcpRegistryCommand(
                 tags: ['custom'],
             } as McpServerRegistryEntry;
 
-            registry[newEntry.id] = newEntry;
-            await saveLocalRegistry(registry);
+            await saveLocalMcpServer(newEntry);
             p.outro(chalk.green(`Added '${newEntry.id}' to local registry`));
             return;
         }

@@ -2,6 +2,9 @@ import type { McpServerConfig } from './schemas.js';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { logger } from '../logger/index.js';
+import { isSaikiProject } from '../utils/path.js';
 
 export interface McpServerRegistryEntry {
     /** Unique identifier for the server */
@@ -27,16 +30,28 @@ export interface McpServerRegistryEntry {
 }
 
 /**
- * Path to the local MCP registry file in the user's .saiki directory.
- */
-export const LOCAL_MCP_REGISTRY_PATH = path.join(os.homedir(), '.saiki', 'mcp-registry.local.json');
-
-/**
  * Path to the default MCP registry file in the project root.
  */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export const DEFAULT_MCP_REGISTRY_PATH = path.resolve(
-    path.join(process.cwd(), 'mcp-registry.json')
+    path.join(__dirname, '../../../mcp-registry.json')
 );
+
+/**
+ * Resolve the local MCP registry path based on whether we're in a Saiki project or not.
+ * Follows the same pattern as storage backends:
+ * - Local: .saiki/mcp-registry.local.json in current working directory (when in Saiki project)
+ * - Global: .saiki/mcp-registry.local.json in user's home directory (when not in Saiki project)
+ */
+async function resolveLocalMcpRegistryPath(): Promise<string> {
+    const isInSaikiProject = await isSaikiProject();
+
+    const baseDir = isInSaikiProject ? process.cwd() : os.homedir();
+
+    return path.join(baseDir, '.saiki', 'mcp-registry.local.json');
+}
 
 /**
  * Loads the default MCP registry from the project root.
@@ -46,20 +61,20 @@ export async function loadDefaultMcpRegistry(): Promise<Record<string, McpServer
         const data = await fs.readFile(DEFAULT_MCP_REGISTRY_PATH, 'utf-8');
         return JSON.parse(data);
     } catch (error) {
-        console.warn(
-            `Failed to load default MCP registry from ${DEFAULT_MCP_REGISTRY_PATH}:`,
-            error
+        logger.warn(
+            `Failed to load default MCP registry from ${DEFAULT_MCP_REGISTRY_PATH}: ${error}`
         );
         return {};
     }
 }
 
 /**
- * Loads the local MCP registry from the user's home directory.
+ * Loads the local MCP registry from the appropriate directory (local or global).
  */
 export async function loadLocalMcpRegistry(): Promise<Record<string, McpServerRegistryEntry>> {
     try {
-        const data = await fs.readFile(LOCAL_MCP_REGISTRY_PATH, 'utf-8');
+        const localRegistryPath = await resolveLocalMcpRegistryPath();
+        const data = await fs.readFile(localRegistryPath, 'utf-8');
         return JSON.parse(data);
     } catch (_err) {
         // File might not exist, which is fine.
@@ -150,10 +165,11 @@ export async function saveLocalMcpServer(entry: McpServerRegistryEntry): Promise
     localRegistry[entry.id] = entry;
 
     // Ensure the directory exists
-    const dir = path.dirname(LOCAL_MCP_REGISTRY_PATH);
+    const localRegistryPath = await resolveLocalMcpRegistryPath();
+    const dir = path.dirname(localRegistryPath);
     await fs.mkdir(dir, { recursive: true });
 
-    await fs.writeFile(LOCAL_MCP_REGISTRY_PATH, JSON.stringify(localRegistry, null, 2));
+    await fs.writeFile(localRegistryPath, JSON.stringify(localRegistry, null, 2));
 }
 
 /**
@@ -167,6 +183,7 @@ export async function removeLocalMcpServer(id: string): Promise<boolean> {
     }
 
     delete localRegistry[id];
-    await fs.writeFile(LOCAL_MCP_REGISTRY_PATH, JSON.stringify(localRegistry, null, 2));
+    const localRegistryPath = await resolveLocalMcpRegistryPath();
+    await fs.writeFile(localRegistryPath, JSON.stringify(localRegistry, null, 2));
     return true;
 }
