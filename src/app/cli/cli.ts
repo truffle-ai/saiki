@@ -201,8 +201,8 @@ export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promi
             await executeCommand(parsed.command, parsed.args || [], agent);
         } else {
             // Execute the task as a regular AI prompt
-            // reset conversation for headless mode
-            await agent.resetConversation();
+            // uncomment if we need to reset conversation for headless mode
+            // await agent.resetConversation();
             await agent.run(prompt);
         }
     } catch (error) {
