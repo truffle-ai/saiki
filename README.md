@@ -319,6 +319,13 @@ Join our Discord to share projects, ask questions, or just say hi!
 
 If you enjoy Saiki, please give us a ⭐ on GitHub—it helps a lot!
 
+ <div align="left"/>
+
+[![Twitter Follow](https://img.shields.io/twitter/follow/Rahul?style=social)](https://x.com/intent/user?screen_name=Road_Kill11)
+[![Twitter Follow](https://img.shields.io/twitter/follow/Shaunak?style=social)](https://x.com/intent/user?screen_name=shaun5k_)
+
+</div>
+
 ---
 
 ## Contributors
