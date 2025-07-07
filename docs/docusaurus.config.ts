@@ -201,14 +201,6 @@ const config: Config = {
                             label: 'GitHub',
                             href: 'https://github.com/truffle-ai',
                         },
-                        {
-                            label: 'Privacy Policy',
-                            href: 'https://trytruffle.ai/privacy',
-                        },
-                        {
-                            label: 'Terms of Service',
-                            href: 'https://trytruffle.ai/terms',
-                        },
                     ],
                 },
             ],
