@@ -51,7 +51,7 @@ const config: Config = {
                     blogSidebarCount: 'ALL',
                 },
                 theme: {
-                    customCss: './src/css/custom.css',
+                    customCss: ['./src/css/brand.css', './src/css/custom.css'],
                 },
             } satisfies Preset.Options,
         ],
@@ -115,6 +115,16 @@ const config: Config = {
                     position: 'right',
                     className: 'header-github-link',
                     'aria-label': 'GitHub repository',
+                },
+                // Mobile-only social links (Discord + GitHub in one row at bottom of sidebar)
+                {
+                    type: 'html',
+                    position: 'right',
+                    className: 'mobile-social-links',
+                    value: `
+                        <a href="https://discord.gg/GFzWFAAZcm" aria-label="Discord community" class="header-discord-link"></a>
+                        <a href="https://github.com/truffle-ai/saiki" aria-label="GitHub repository" class="header-github-link"></a>
+                    `,
                 },
             ],
         },
@@ -190,14 +200,6 @@ const config: Config = {
                         {
                             label: 'GitHub',
                             href: 'https://github.com/truffle-ai',
-                        },
-                        {
-                            label: 'Privacy Policy',
-                            href: 'https://trytruffle.ai/privacy',
-                        },
-                        {
-                            label: 'Terms of Service',
-                            href: 'https://trytruffle.ai/terms',
                         },
                     ],
                 },

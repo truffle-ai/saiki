@@ -1,0 +1,4 @@
+.darkNavbarColorModeToggle:hover,
+.darkNavbarColorModeToggle:focus-visible {
+   background: var(--ifm-color-gray-800);
+ }
