@@ -1,5 +1,5 @@
 .navbarHideable {
-  transition: transform var(--ifm-transition-fast) ease;
+  transition: transform var(--ifm-transition-fast);
 }
 
 .navbarHidden {
