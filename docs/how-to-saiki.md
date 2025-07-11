@@ -89,6 +89,12 @@ systemPrompt:
       type: dynamic
       priority: 20
       source: dateTime
+    
+    - id: mcp-resources
+      type: dynamic
+      priority: 25
+      source: resources
+      enabled: true
 ```
 
 **File Contributor Options:**
@@ -99,12 +105,24 @@ systemPrompt:
 - `options.maxFileSize`: Maximum file size in bytes (default: 100000)
 - `options.includeMetadata`: Include file size and modification time (default: false)
 
+**Note:** Files are always read using UTF-8 encoding.
+
+**Dynamic Contributor Sources:**
+- `dateTime`: Automatically adds current date and time
+- `resources`: Includes resources from connected MCP servers (disabled by default for performance)
+
 **Use Cases for File Contributors:**
 - Include project documentation and guidelines
 - Add code style guides and best practices
 - Provide domain-specific knowledge from markdown files
 - Include API documentation or specification files
 - Add context-specific instructions for different projects
+
+**Use Cases for MCP Resources:**
+- Include database schemas from database MCP servers
+- Add configuration files from configuration MCP servers  
+- Include documentation from documentation MCP servers
+- Provide real-time context from connected services
 
 ---
 
