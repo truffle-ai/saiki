@@ -3,7 +3,7 @@ import { MCPManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
-import { MessageManager } from '../messages/manager.js';
+import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
@@ -16,41 +16,44 @@ import type { SessionEventBus } from '../../../events/index.js';
 export class OpenAIService implements ILLMService {
     private openai: OpenAI;
     private model: string;
-    private clientManager: MCPManager;
-    private messageManager: MessageManager;
+    private mcpManager: MCPManager;
+    private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
+    private readonly sessionId: string;
 
     constructor(
-        clientManager: MCPManager,
+        mcpManager: MCPManager,
         openai: OpenAI,
         sessionEventBus: SessionEventBus,
-        messageManager: MessageManager,
+        contextManager: ContextManager,
         model: string,
-        maxIterations: number = 10
+        maxIterations: number = 10,
+        sessionId: string
     ) {
         this.maxIterations = maxIterations;
         this.model = model;
         this.openai = openai;
-        this.clientManager = clientManager;
+        this.mcpManager = mcpManager;
         this.sessionEventBus = sessionEventBus;
-        this.messageManager = messageManager;
+        this.contextManager = contextManager;
+        this.sessionId = sessionId;
     }
 
     getAllTools(): Promise<ToolSet> {
-        return this.clientManager.getAllTools();
+        return this.mcpManager.getAllTools();
     }
 
     async completeTask(
         userInput: string,
         imageData?: ImageData,
-        stream?: boolean
+        _stream?: boolean
     ): Promise<string> {
         // Add user message with optional image data
-        await this.messageManager.addUserMessage(userInput, imageData);
+        await this.contextManager.addUserMessage(userInput, imageData);
 
         // Get all tools
-        const rawTools = await this.clientManager.getAllTools();
+        const rawTools = await this.mcpManager.getAllTools();
         const formattedTools = this.formatToolsForOpenAI(rawTools);
 
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
@@ -78,11 +81,11 @@ export class OpenAIService implements ILLMService {
                     const responseText = message.content || '';
 
                     // Add assistant message to history
-                    await this.messageManager.addAssistantMessage(responseText);
+                    await this.contextManager.addAssistantMessage(responseText);
 
-                    // Update MessageManager with actual token count for hybrid approach
+                    // Update ContextManager with actual token count for hybrid approach
                     if (totalTokens > 0) {
-                        this.messageManager.updateActualTokenCount(totalTokens);
+                        this.contextManager.updateActualTokenCount(totalTokens);
                     }
 
                     // Emit final response
@@ -95,7 +98,7 @@ export class OpenAIService implements ILLMService {
                 }
 
                 // Add assistant message with tool calls to history
-                await this.messageManager.addAssistantMessage(message.content, message.tool_calls);
+                await this.contextManager.addAssistantMessage(message.content, message.tool_calls);
 
                 // Handle tool calls
                 for (const toolCall of message.tool_calls) {
@@ -107,7 +110,7 @@ export class OpenAIService implements ILLMService {
                         args = JSON.parse(toolCall.function.arguments);
                     } catch (e) {
                         logger.error(`Error parsing arguments for ${toolName}:`, e);
-                        await this.messageManager.addToolResult(toolCall.id, toolName, {
+                        await this.contextManager.addToolResult(toolCall.id, toolName, {
                             error: `Failed to parse arguments: ${e}`,
                         });
                         // Notify failure so UI & logging subscribers stay in sync
@@ -129,10 +132,14 @@ export class OpenAIService implements ILLMService {
 
                     // Execute tool
                     try {
-                        const result = await this.clientManager.executeTool(toolName, args);
+                        const result = await this.mcpManager.executeTool(
+                            toolName,
+                            args,
+                            this.sessionId
+                        );
 
                         // Add tool result to message manager
-                        await this.messageManager.addToolResult(toolCall.id, toolName, result);
+                        await this.contextManager.addToolResult(toolCall.id, toolName, result);
 
                         // Notify tool result
                         this.sessionEventBus.emit('llmservice:toolResult', {
@@ -147,7 +154,7 @@ export class OpenAIService implements ILLMService {
                         logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
 
                         // Add error as tool result
-                        await this.messageManager.addToolResult(toolCall.id, toolName, {
+                        await this.contextManager.addToolResult(toolCall.id, toolName, {
                             error: errorMessage,
                         });
 
@@ -167,11 +174,11 @@ export class OpenAIService implements ILLMService {
             // If we reached max iterations, return a message
             logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
             const finalResponse = 'Task completed but reached maximum tool call iterations.';
-            await this.messageManager.addAssistantMessage(finalResponse);
+            await this.contextManager.addAssistantMessage(finalResponse);
 
-            // Update MessageManager with actual token count for hybrid approach
+            // Update ContextManager with actual token count for hybrid approach
             if (totalTokens > 0) {
-                this.messageManager.updateActualTokenCount(totalTokens);
+                this.contextManager.updateActualTokenCount(totalTokens);
             }
 
             // Emit final response
@@ -194,7 +201,7 @@ export class OpenAIService implements ILLMService {
                 context: 'OpenAI API call',
                 recoverable: false,
             });
-            await this.messageManager.addAssistantMessage(
+            await this.contextManager.addAssistantMessage(
                 `Error processing request: ${errorMessage}`
             );
             return `Error processing request: ${errorMessage}`;
@@ -206,7 +213,7 @@ export class OpenAIService implements ILLMService {
      * @returns Configuration object with provider and model information
      */
     getConfig(): LLMServiceConfig {
-        const configuredMaxInputTokens = this.messageManager.getMaxInputTokens();
+        const configuredMaxInputTokens = this.contextManager.getMaxInputTokens();
         let modelMaxInputTokens: number;
 
         // Fetching max tokens from LLM registry - default to configured max tokens if not found
@@ -248,9 +255,12 @@ export class OpenAIService implements ILLMService {
 
             try {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = { clientManager: this.clientManager };
-                const { formattedMessages, systemPrompt, tokensUsed } =
-                    await this.messageManager.getFormattedMessagesWithCompression(context);
+                const context = { mcpManager: this.mcpManager };
+                const {
+                    formattedMessages,
+                    systemPrompt: _systemPrompt,
+                    tokensUsed,
+                } = await this.contextManager.getFormattedMessagesWithCompression(context);
 
                 logger.silly(
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`
@@ -271,7 +281,7 @@ export class OpenAIService implements ILLMService {
                 );
 
                 // Get the response message
-                const message = response.choices[0].message;
+                const message = response.choices[0]?.message;
                 if (!message) {
                     throw new Error('Received empty message from OpenAI API');
                 }
@@ -289,7 +299,7 @@ export class OpenAIService implements ILLMService {
 
                 if (apiError.status === 400 && apiError.error?.code === 'context_length_exceeded') {
                     logger.warn(
-                        `Context length exceeded. MessageManager compression might not be sufficient. Error details: ${JSON.stringify(apiError.error)}`
+                        `Context length exceeded. ContextManager compression might not be sufficient. Error details: ${JSON.stringify(apiError.error)}`
                     );
                 }
 

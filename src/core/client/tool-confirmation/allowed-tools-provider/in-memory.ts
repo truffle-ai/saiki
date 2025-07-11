@@ -1,44 +1,43 @@
 import type { IAllowedToolsProvider } from './types.js';
-import { getUserId } from '../../../utils/user-info.js';
 
 export class InMemoryAllowedToolsProvider implements IAllowedToolsProvider {
-    private allowedToolsPerUser: Map<string, Set<string>>;
+    /**
+     * Map key is sessionId (undefined => global approvals). Value is a set of
+     * approved tool names.
+     */
+    private store: Map<string | undefined, Set<string>> = new Map();
 
-    constructor(allowedToolsMap?: Map<string, Set<string>>) {
-        this.allowedToolsPerUser = allowedToolsMap ?? new Map();
-    }
-
-    // if userId is not provided, use getUserId() as the default
-    private getAllowedSet(userId: string): Set<string> {
-        const effectiveUserId = userId ?? getUserId();
-        if (!this.allowedToolsPerUser.has(effectiveUserId)) {
-            this.allowedToolsPerUser.set(effectiveUserId, new Set());
+    constructor(initialGlobal?: Set<string>) {
+        if (initialGlobal) {
+            this.store.set(undefined, new Set(initialGlobal));
         }
-        return this.allowedToolsPerUser.get(effectiveUserId)!;
     }
 
-    // If userId is omitted, use getUserId() as the default
-    async allowTool(toolName: string, userId?: string): Promise<void> {
-        const effectiveUserId = userId ?? getUserId();
-        this.getAllowedSet(effectiveUserId).add(toolName);
+    private getSet(sessionId?: string): Set<string> {
+        const key = sessionId ?? undefined;
+        let set = this.store.get(key);
+        if (!set) {
+            set = new Set<string>();
+            this.store.set(key, set);
+        }
+        return set;
     }
 
-    // If userId is omitted, use getUserId() as the default
-    async disallowTool(toolName: string, userId?: string): Promise<void> {
-        const effectiveUserId = userId ?? getUserId();
-        this.getAllowedSet(effectiveUserId).delete(toolName);
+    async allowTool(toolName: string, sessionId?: string): Promise<void> {
+        this.getSet(sessionId).add(toolName);
     }
 
-    // If userId is omitted, use getUserId() as the default
-    async isToolAllowed(toolName: string, userId?: string): Promise<boolean> {
-        const effectiveUserId = userId ?? getUserId();
-        return this.getAllowedSet(effectiveUserId).has(toolName);
+    async disallowTool(toolName: string, sessionId?: string): Promise<void> {
+        this.getSet(sessionId).delete(toolName);
     }
 
-    // If userId is omitted, use getUserId() as the default
-    async getAllowedTools(userId?: string): Promise<Set<string>> {
-        const effectiveUserId = userId ?? getUserId();
-        // Return a copy to prevent external mutation
-        return new Set(this.getAllowedSet(effectiveUserId));
+    async isToolAllowed(toolName: string, sessionId?: string): Promise<boolean> {
+        const scopedSet = this.store.get(sessionId ?? undefined);
+        const globalSet = this.store.get(undefined);
+        return Boolean(scopedSet?.has(toolName) || globalSet?.has(toolName));
+    }
+
+    async getAllowedTools(sessionId?: string): Promise<Set<string>> {
+        return new Set(this.getSet(sessionId));
     }
 }

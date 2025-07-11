@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentStateManager } from './agent-state-manager.js';
 import { AgentEventBus } from '../events/index.js';
+import { AgentConfigSchema } from './schemas.js';
 import type { AgentConfig } from './schemas.js';
 
 describe('AgentStateManager Events', () => {
@@ -11,42 +12,53 @@ describe('AgentStateManager Events', () => {
     beforeEach(() => {
         eventBus = new AgentEventBus();
         mockConfig = {
+            systemPrompt: 'You are a helpful assistant',
             mcpServers: {
                 test: {
                     type: 'stdio',
                     command: 'test',
                     args: [],
+                    env: {},
+                    timeout: 30000,
+                    connectionMode: 'lenient',
                 },
             },
             llm: {
                 provider: 'openai',
-                model: 'gpt-4',
-                systemPrompt: 'test',
+                model: 'gpt-4o',
                 apiKey: 'test-key',
                 router: 'in-built',
+                maxIterations: 50,
             },
             storage: {
-                cache: { type: 'memory' },
-                database: { type: 'memory' },
+                cache: { type: 'in-memory' },
+                database: { type: 'in-memory' },
             },
             sessions: {
                 maxSessions: 100,
                 sessionTTL: 3600000,
             },
+            toolConfirmation: {
+                mode: 'event-based',
+                timeout: 30000,
+                allowedToolsStorage: 'storage',
+            },
         };
-        stateManager = new AgentStateManager(mockConfig, eventBus);
+        // Parse through schema to validate and apply defaults, converting input to ValidatedAgentConfig
+        const validatedConfig = AgentConfigSchema.parse(mockConfig);
+        stateManager = new AgentStateManager(validatedConfig, eventBus);
     });
 
     it('emits saiki:stateChanged when LLM config is updated', () => {
         const eventSpy = vi.fn();
         eventBus.on('saiki:stateChanged', eventSpy);
 
-        stateManager.updateLLM({ model: 'gpt-4o' });
+        stateManager.updateLLM({ model: 'gpt-4o-mini' });
 
         expect(eventSpy).toHaveBeenCalledWith({
             field: 'llm',
-            oldValue: expect.objectContaining({ model: 'gpt-4' }),
-            newValue: expect.objectContaining({ model: 'gpt-4o' }),
+            oldValue: expect.objectContaining({ model: 'gpt-4o' }),
+            newValue: expect.objectContaining({ model: 'gpt-4o-mini' }),
             sessionId: undefined,
         });
     });
@@ -59,6 +71,9 @@ describe('AgentStateManager Events', () => {
             type: 'stdio' as const,
             command: 'new-server',
             args: [],
+            env: {},
+            timeout: 30000,
+            connectionMode: 'lenient' as const,
         };
 
         stateManager.addMcpServer('new-server', newServerConfig);
@@ -126,6 +141,6 @@ describe('AgentStateManager Events', () => {
 
         const exported = stateManager.exportAsConfig();
 
-        expect(eventSpy).toHaveBeenCalledWith(exported);
+        expect(eventSpy).toHaveBeenCalledWith({ config: exported });
     });
 });

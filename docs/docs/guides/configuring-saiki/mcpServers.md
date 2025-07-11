@@ -24,6 +24,7 @@ export interface StdioServerConfig {
     args: string[];
     env?: Record<string, string>;
     timeout?: number; // in milliseconds
+    connectionMode?: 'strict' | 'lenient'; // defaults to 'lenient'
 }
 ```
 
@@ -33,6 +34,7 @@ export interface StdioServerConfig {
 - `args`: Array of arguments for the command
 - `env` (optional): Environment variables for the server process
 - `timeout` (optional): Timeout in milliseconds for server startup or communication
+- `connectionMode` (optional): Connection requirement mode - `'strict'` requires successful connection, `'lenient'` allows failures (defaults to `'lenient'`)
 
 **Example:**
 ```yaml
@@ -44,14 +46,14 @@ mcpServers:
       - -y
       - "@modelcontextprotocol/server-filesystem"
       - .
+    connectionMode: strict  # This server must connect successfully
   puppeteer:
     type: stdio
     command: node
     args:
       - dist/src/servers/puppeteerServer.js
-    env:
-      DEBUG: "puppeteer:*"
     timeout: 30000
+    connectionMode: lenient  # This server is optional
 ```
 
 ## Remote MCP Server (sse)
@@ -69,6 +71,7 @@ export interface SSEServerConfig {
     url: string;
     headers?: Record<string, string>;
     timeout?: number; // in milliseconds
+    connectionMode?: 'strict' | 'lenient'; // defaults to 'lenient'
 }
 ```
 
@@ -77,6 +80,7 @@ export interface SSEServerConfig {
 - `url`: The URL of the remote MCP server
 - `headers` (optional): HTTP headers to send with the connection (e.g., for authentication)
 - `timeout` (optional): Timeout in milliseconds for server communication
+- `connectionMode` (optional): Connection requirement mode - `'strict'` requires successful connection, `'lenient'` allows failures (defaults to `'lenient'`)
 
 **Example:**
 ```yaml
@@ -101,6 +105,7 @@ export interface HttpServerConfig {
     baseUrl: string;
     headers?: Record<string, string>;
     timeout?: number; // in milliseconds
+    connectionMode?: 'strict' | 'lenient'; // defaults to 'lenient'
 }
 ```
 
@@ -109,6 +114,7 @@ export interface HttpServerConfig {
 - `baseUrl`: The base URL of the HTTP MCP server
 - `headers` (optional): HTTP headers to send with requests (e.g., for authentication)
 - `timeout` (optional): Timeout in milliseconds for server communication
+- `connectionMode` (optional): Connection requirement mode - `'strict'` requires successful connection, `'lenient'` allows failures (defaults to `'lenient'`)
 
 **Example:**
 ```yaml
@@ -187,6 +193,39 @@ mcpServers:
 | **sse** | Real-time events, streaming data | Efficient for live updates | Limited to SSE-compatible servers |
 | **http** | RESTful APIs, reliable connections | Widely supported, robust | May have higher latency |
 
+## Connection Modes
+
+Each MCP server can be configured with a `connectionMode` that determines how Saiki handles connection failures:
+
+- **`strict`**: The server must connect successfully or Saiki will fail to start
+- **`lenient`** (default): The server can fail to connect and Saiki will continue running
+
+### Per-Server Configuration
+
+```yaml
+mcpServers:
+  critical-database:
+    type: stdio
+    command: npx
+    args: ["-y", "@truffle-ai/database-server"]
+    connectionMode: strict  # Must connect or fail startup
+  
+  optional-analytics:
+    type: http
+    baseUrl: https://analytics.example.com/mcp
+    connectionMode: lenient  # Can fail without breaking startup
+```
+
+### Global --strict Flag
+
+You can override all server connection modes using the `--strict` CLI flag:
+
+```bash
+saiki --strict  # Makes ALL servers strict, regardless of config
+```
+
+This is useful for production environments where you want to ensure all configured servers are available.
+
 ## Best Practices
 
 1. **Use environment variables** for sensitive data like API keys and tokens
@@ -194,6 +233,8 @@ mcpServers:
 3. **Group related servers** logically in your configuration
 4. **Test server connections** during development with appropriate fallbacks
 5. **Document server purposes** in comments for team collaboration
+6. **Use `strict` mode for critical servers** that your agent depends on
+7. **Use `lenient` mode for optional enhancements** like analytics or debugging tools
 
 ## Troubleshooting
 
@@ -215,7 +256,7 @@ mcpServers:
 
 ## Additional Resources
 
-- [Saiki GitHub repository examples](https://github.com/truffle-ai/saiki/tree/main/configuration/examples) - More configuration examples
+- [Saiki GitHub repository examples](https://github.com/truffle-ai/saiki/tree/main/agents/examples) - More configuration examples
 - [Model Context Protocol specification](https://spec.modelcontextprotocol.io/) - Official MCP documentation
 - [Available MCP servers](https://github.com/modelcontextprotocol/servers) - Community-maintained server list
 

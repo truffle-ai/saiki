@@ -47,6 +47,7 @@ export default [
                 localStorage: 'readonly',
                 FileReader: 'readonly',
                 WebSocket: 'readonly',
+                fetch: 'readonly',
             },
         },
         plugins: {
@@ -57,7 +58,7 @@ export default [
             'no-unused-vars': 'off',
             '@typescript-eslint/explicit-module-boundary-types': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
-            '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+            '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
             'no-dupe-class-members': 'off', // Allow TypeScript method overloading
         },
     },

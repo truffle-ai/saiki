@@ -204,11 +204,14 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
             }
         }
         // Push assistant message with optional tool calls
-        internal.push({
+        const assistantMessage: any = {
             role: 'assistant',
             content: combinedText,
-            toolCalls: calls.length > 0 ? calls : undefined,
-        });
+        };
+        if (calls.length > 0) {
+            assistantMessage.toolCalls = calls;
+        }
+        internal.push(assistantMessage);
         return internal;
     }
 
@@ -230,7 +233,7 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
                     } else if (raw.startsWith('data:')) {
                         // Data URI: split metadata and base64 data
                         const [meta, b64] = raw.split(',', 2);
-                        const mediaTypeMatch = meta.match(/data:(.*);base64/);
+                        const mediaTypeMatch = meta?.match(/data:(.*);base64/);
                         const media_type =
                             (mediaTypeMatch && mediaTypeMatch[1]) ||
                             part.mimeType ||

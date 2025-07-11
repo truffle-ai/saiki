@@ -52,12 +52,12 @@ RUN mkdir -p /app/.saiki/database && \
 COPY --from=builder --chown=saiki:saiki /app/dist ./dist
 COPY --from=builder --chown=saiki:saiki /app/node_modules ./node_modules
 COPY --from=builder --chown=saiki:saiki /app/package.json ./
-COPY --from=builder --chown=saiki:saiki /app/configuration ./configuration
+COPY --from=builder --chown=saiki:saiki /app/agents ./agents
 
 # Environment variables
 ENV NODE_ENV=production \
     PORT=3000 \
-    CONFIG_FILE=/app/configuration/saiki.yml \
+    CONFIG_FILE=/app/agents/agent.yml \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
@@ -72,4 +72,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE $PORT
 
 # Server mode: REST APIs + WebSocket on single port
-CMD ["sh", "-c", "node dist/src/app/index.js --mode server --web-port $PORT --config-file $CONFIG_FILE"] 
+CMD ["sh", "-c", "node dist/src/app/index.js --mode server --web-port $PORT --agent $CONFIG_FILE"] 

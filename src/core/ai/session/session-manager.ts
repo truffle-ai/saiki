@@ -5,7 +5,7 @@ import { MCPManager } from '../../client/manager.js';
 import { AgentEventBus } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
-import type { LLMConfig } from '../../config/schemas.js';
+import type { ValidatedLLMConfig } from '../../config/schemas.js';
 import type { StorageBackends } from '../../storage/index.js';
 
 export interface SessionMetadata {
@@ -45,7 +45,7 @@ export class SessionManager {
     private readonly sessionTTL: number;
     private initialized = false;
     private cleanupInterval?: NodeJS.Timeout;
-    private initializationPromise: Promise<void>;
+    private initializationPromise!: Promise<void>;
     // Add a Map to track ongoing session creation operations to prevent race conditions
     private readonly pendingCreations = new Map<string, Promise<ChatSession>>();
 
@@ -53,7 +53,7 @@ export class SessionManager {
         private services: {
             stateManager: AgentStateManager;
             promptManager: PromptManager;
-            clientManager: MCPManager;
+            mcpManager: MCPManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
         },
@@ -292,26 +292,51 @@ export class SessionManager {
     }
 
     /**
-     * Deletes a session and removes it from memory and storage.
+     * Ends a session by removing it from memory without deleting conversation history.
+     * Used for cleanup, agent shutdown, and session expiry.
+     *
+     * @param sessionId The session ID to end
+     */
+    public async endSession(sessionId: string): Promise<void> {
+        await this.ensureInitialized();
+
+        // Remove from memory only - preserve conversation history in storage
+        const session = this.sessions.get(sessionId);
+        if (session) {
+            await session.cleanup(); // Clean up memory resources only
+            this.sessions.delete(sessionId);
+        }
+
+        // Remove from cache but preserve database storage
+        const sessionKey = `session:${sessionId}`;
+        await this.services.storage.cache.delete(sessionKey);
+
+        logger.debug(`Ended session (removed from memory, chat history preserved): ${sessionId}`);
+    }
+
+    /**
+     * Deletes a session and its conversation history, removing everything from memory and storage.
+     * Used for user-initiated permanent deletion.
      *
      * @param sessionId The session ID to delete
      */
     public async deleteSession(sessionId: string): Promise<void> {
         await this.ensureInitialized();
 
-        // Remove from memory
-        const session = this.sessions.get(sessionId);
+        // Get session (load from storage if not in memory) to clear conversation history
+        const session = await this.getSession(sessionId);
         if (session) {
-            await session.cleanup();
+            await session.reset(); // This deletes the conversation history
+            await session.cleanup(); // This cleans up memory resources
             this.sessions.delete(sessionId);
         }
 
-        // Remove from storage
+        // Remove session metadata from storage
         const sessionKey = `session:${sessionId}`;
         await this.services.storage.database.delete(sessionKey);
         await this.services.storage.cache.delete(sessionKey);
 
-        logger.debug(`Deleted session: ${sessionId}`);
+        logger.debug(`Deleted session and conversation history: ${sessionId}`);
     }
 
     /**
@@ -342,14 +367,6 @@ export class SessionManager {
         }
 
         logger.debug(`Reset session conversation: ${sessionId}`);
-    }
-
-    /**
-     * @deprecated Use deleteSession instead. This method will be removed in a future version.
-     */
-    public async endSession(sessionId: string): Promise<void> {
-        logger.warn('endSession is deprecated, use deleteSession instead');
-        return this.deleteSession(sessionId);
     }
 
     /**
@@ -426,31 +443,40 @@ export class SessionManager {
     }
 
     /**
-     * Cleans up expired sessions from both memory and storage.
+     * Cleans up expired sessions from memory only, preserving chat history in storage.
+     * This allows inactive sessions to be garbage collected while keeping conversations restorable.
      */
     private async cleanupExpiredSessions(): Promise<void> {
         const now = Date.now();
-        const sessionKeys = await this.services.storage.database.list('session:');
+        const expiredSessions: string[] = [];
 
-        for (const sessionKey of sessionKeys) {
+        // Check in-memory sessions for expiry
+        for (const [sessionId, _session] of this.sessions.entries()) {
+            const sessionKey = `session:${sessionId}`;
             const sessionData = await this.services.storage.database.get<SessionData>(sessionKey);
 
             if (sessionData && now - sessionData.lastActivity > this.sessionTTL) {
-                const sessionId = sessionKey.replace('session:', '');
-
-                // Remove from memory
-                const session = this.sessions.get(sessionId);
-                if (session) {
-                    await session.cleanup();
-                    this.sessions.delete(sessionId);
-                }
-
-                // Remove from storage
-                await this.services.storage.database.delete(sessionKey);
-                await this.services.storage.cache.delete(sessionKey);
-
-                logger.debug(`Cleaned up expired session: ${sessionId}`);
+                expiredSessions.push(sessionId);
             }
+        }
+
+        // Remove expired sessions from memory only (preserve storage)
+        for (const sessionId of expiredSessions) {
+            const session = this.sessions.get(sessionId);
+            if (session) {
+                // Only dispose memory resources, don't delete chat history
+                session.dispose();
+                this.sessions.delete(sessionId);
+                logger.debug(
+                    `Removed expired session from memory: ${sessionId} (chat history preserved)`
+                );
+            }
+        }
+
+        if (expiredSessions.length > 0) {
+            logger.debug(
+                `Memory cleanup: removed ${expiredSessions.length} inactive sessions, chat history preserved`
+            );
         }
     }
 
@@ -460,7 +486,7 @@ export class SessionManager {
      * @returns Result object with success message and any warnings
      */
     public async switchLLMForAllSessions(
-        newLLMConfig: LLMConfig
+        newLLMConfig: ValidatedLLMConfig
     ): Promise<{ message: string; warnings: string[] }> {
         await this.ensureInitialized();
 
@@ -471,7 +497,7 @@ export class SessionManager {
             const session = await this.getSession(sId);
             if (session) {
                 try {
-                    // Validate for this specific session
+                    // Update LLM with validated config
                     const sessionValidation = this.services.stateManager.updateLLM(
                         newLLMConfig,
                         sId
@@ -521,7 +547,7 @@ export class SessionManager {
      * @returns Result object with success message and any warnings
      */
     public async switchLLMForSpecificSession(
-        newLLMConfig: LLMConfig,
+        newLLMConfig: ValidatedLLMConfig,
         sessionId: string
     ): Promise<{ message: string; warnings: string[] }> {
         const session = await this.getSession(sessionId);
@@ -549,7 +575,7 @@ export class SessionManager {
      * @returns Result object with success message and any warnings
      */
     public async switchLLMForDefaultSession(
-        newLLMConfig: LLMConfig
+        newLLMConfig: ValidatedLLMConfig
     ): Promise<{ message: string; warnings: string[] }> {
         const defaultSession = await this.getDefaultSession();
 
@@ -601,15 +627,15 @@ export class SessionManager {
         // Stop periodic cleanup
         if (this.cleanupInterval) {
             clearInterval(this.cleanupInterval);
-            this.cleanupInterval = undefined;
+            delete this.cleanupInterval;
             logger.debug('Periodic session cleanup stopped');
         }
 
-        // Close all in-memory sessions
+        // End all in-memory sessions (preserve conversation history)
         const sessionIds = Array.from(this.sessions.keys());
         for (const sessionId of sessionIds) {
             try {
-                await this.deleteSession(sessionId);
+                await this.endSession(sessionId);
             } catch (error) {
                 logger.error(
                     `Failed to cleanup session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`

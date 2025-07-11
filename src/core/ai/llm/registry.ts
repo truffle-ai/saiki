@@ -17,14 +17,14 @@ export interface ModelInfo {
 export interface ProviderInfo {
     models: ModelInfo[];
     supportedRouters: string[];
-    supportsBaseURL: boolean;
+    baseURLSupport: 'none' | 'optional' | 'required'; // Cleaner single field
     // Add other provider-specific metadata if needed
 }
 
 /** Fallback when we cannot determine the model's input-token limit */
 export const DEFAULT_MAX_INPUT_TOKENS = 128000;
 
-export type LLMProvider = 'openai' | 'anthropic' | 'google' | 'groq';
+export type LLMProvider = 'openai' | 'openai-compatible' | 'anthropic' | 'google' | 'groq' | 'xai';
 
 // Central registry of supported LLM providers and their models
 export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
@@ -41,7 +41,12 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
             { name: 'o1', maxInputTokens: 200000 },
         ],
         supportedRouters: ['vercel', 'in-built'],
-        supportsBaseURL: true,
+        baseURLSupport: 'none',
+    },
+    'openai-compatible': {
+        models: [], // Empty - accepts any model name for custom endpoints
+        supportedRouters: ['vercel', 'in-built'],
+        baseURLSupport: 'required',
     },
     anthropic: {
         models: [
@@ -54,19 +59,19 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
             { name: 'claude-3-sonnet-20240229', maxInputTokens: 200000 },
         ],
         supportedRouters: ['vercel', 'in-built'],
-        supportsBaseURL: false,
+        baseURLSupport: 'none',
     },
     google: {
         models: [
-            { name: 'gemini-2.5-pro-exp-03-25', maxInputTokens: 1048576, default: true },
-            { name: 'gemini-2.5-flash-preview-05-20', maxInputTokens: 1048576 },
+            { name: 'gemini-2.5-pro', maxInputTokens: 1048576, default: true },
+            { name: 'gemini-2.5-flash', maxInputTokens: 1048576 },
             { name: 'gemini-2.0-flash', maxInputTokens: 1048576 },
             { name: 'gemini-2.0-flash-lite', maxInputTokens: 1048576 },
             { name: 'gemini-1.5-pro-latest', maxInputTokens: 1048576 },
             { name: 'gemini-1.5-flash-latest', maxInputTokens: 1048576 },
         ],
         supportedRouters: ['vercel'],
-        supportsBaseURL: false,
+        baseURLSupport: 'none',
     },
     // https://console.groq.com/docs/models
     groq: {
@@ -75,7 +80,17 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
             { name: 'llama-3.3-70b-versatile', maxInputTokens: 128000, default: true },
         ],
         supportedRouters: ['vercel'],
-        supportsBaseURL: false,
+        baseURLSupport: 'none',
+    },
+    // https://docs.x.ai/docs/models
+    xai: {
+        models: [
+            { name: 'grok-4', maxInputTokens: 256000, default: true },
+            { name: 'grok-3', maxInputTokens: 131072 },
+            { name: 'grok-3-mini', maxInputTokens: 131072 },
+        ],
+        supportedRouters: ['vercel'],
+        baseURLSupport: 'none',
     },
     // Add other providers like Cohere, etc., as needed
 };
@@ -205,7 +220,27 @@ export function getSupportedRoutersForProvider(provider: string): string[] {
  */
 export function supportsBaseURL(provider: string): boolean {
     const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
-    return providerInfo ? providerInfo.supportsBaseURL : false; // Default to false for unknown providers
+    return providerInfo ? providerInfo.baseURLSupport !== 'none' : false; // Default to false for unknown providers
+}
+
+/**
+ * Checks if a provider requires a custom baseURL.
+ * @param provider The name of the provider.
+ * @returns True if the provider requires a custom baseURL, false otherwise.
+ */
+export function requiresBaseURL(provider: string): boolean {
+    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
+    return providerInfo ? providerInfo.baseURLSupport === 'required' : false;
+}
+
+/**
+ * Checks if a provider accepts any model name (i.e., has empty models list).
+ * @param provider The name of the provider.
+ * @returns True if the provider accepts any model name, false otherwise.
+ */
+export function acceptsAnyModel(provider: string): boolean {
+    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
+    return providerInfo ? providerInfo.models.length === 0 : false;
 }
 
 /**
@@ -307,7 +342,15 @@ export function getEffectiveMaxInputTokens(config: LLMConfig): number {
         return DEFAULT_MAX_INPUT_TOKENS;
     }
 
-    // Priority 3: No override, no baseURL - use registry.
+    // Priority 3: Check if provider accepts any model (like openai-compatible)
+    if (acceptsAnyModel(config.provider)) {
+        logger.debug(
+            `Provider ${config.provider} accepts any model, defaulting to ${DEFAULT_MAX_INPUT_TOKENS} tokens`
+        );
+        return DEFAULT_MAX_INPUT_TOKENS;
+    }
+
+    // Priority 4: No override, no baseURL - use registry.
     try {
         const registryMaxInputTokens = getMaxInputTokensForModel(config.provider, config.model);
         logger.debug(

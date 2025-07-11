@@ -9,7 +9,7 @@ import { createRequire } from 'module';
 import { findProjectRoot } from '../utils/path.js';
 import { getDefaultModelForProvider, LLMProvider, logger } from '@core/index.js';
 import { parseDocument } from 'yaml';
-import { PROVIDER_API_KEY_MAP, getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
+import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
 
 const require = createRequire(import.meta.url);
 
@@ -158,9 +158,11 @@ export async function initSaiki(
         logger.debug(`Saiki config file created at ${configPath}`);
 
         // update saiki config file based on llmProvider
-        logger.debug(`Updating saiki config file based on llmProvider: ${llmProvider}`);
-        await updateSaikiConfigFile(configPath, llmProvider);
-        logger.debug(`Saiki config file updated with llmProvider: ${llmProvider}`);
+        if (llmProvider) {
+            logger.debug(`Updating saiki config file based on llmProvider: ${llmProvider}`);
+            await updateSaikiConfigFile(configPath, llmProvider);
+            logger.debug(`Saiki config file updated with llmProvider: ${llmProvider}`);
+        }
         // create saiki example file if requested
         if (createExampleFile) {
             logger.debug('Creating saiki example file...');
@@ -188,8 +190,8 @@ export async function postInitSaiki(directory: string) {
     const nextSteps = [
         `1. Run the example: ${chalk.cyan(`node --loader ts-node/esm ${path.join(directory, 'saiki', 'saiki-example.ts')}`)}`,
         `2. Add/update your API key(s) in ${chalk.cyan('.env')}`,
-        `3. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'saiki.yml'))}`,
-        `4. Try out different LLMs and MCP servers in the saiki.yml file`,
+        `3. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'agent.yml'))}`,
+        `4. Try out different LLMs and MCP servers in the agent.yml file`,
         `5. Read more about Saiki: ${chalk.cyan('https://github.com/truffle-ai/saiki')}`,
     ].join('\n');
     p.note(nextSteps, chalk.yellow('Next steps:'));
@@ -228,9 +230,9 @@ export async function createSaikiConfigFile(directory: string): Promise<string> 
     const pkgJsonPath = require.resolve('@truffle-ai/saiki/package.json');
     const pkgDir = path.dirname(pkgJsonPath);
     // Build path to the configuration template inside the package
-    const templateConfigSrc = path.join(pkgDir, 'configuration', 'saiki.yml');
+    const templateConfigSrc = path.join(pkgDir, 'agents', 'agent.yml');
     // Path to the destination config file
-    const destConfigPath = path.join(directory, 'saiki.yml');
+    const destConfigPath = path.join(directory, 'agent.yml');
     // Copy the config file from the Saiki package
     await fsExtra.copy(templateConfigSrc, destConfigPath);
     return destConfigPath;
@@ -260,22 +262,28 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
     // Extract the base directory from the given path (e.g., "src" from "src/saiki")
     const baseDir = path.dirname(directory);
 
-    const configPath = `./${path.join(baseDir, 'saiki/agents/saiki.yml')}`;
+    const configPath = `./${path.join(baseDir, 'saiki/agents/agent.yml')}`;
 
     const indexTsLines = [
         "import 'dotenv/config';",
-        "import { loadConfigFile, SaikiAgent, createSaikiAgent } from '@truffle-ai/saiki';",
+        "import { loadAgentConfig, SaikiAgent } from '@truffle-ai/saiki';",
         '',
         '// 1. Initialize the agent from the config file',
         '// Every agent is defined by its own config file',
-        `const config = await loadConfigFile('${configPath}');`,
-        'export const agent = await createSaikiAgent(config);',
+        `const config = await loadAgentConfig('${configPath}');`,
+        'const agent = new SaikiAgent(config);',
         '',
-        '// 2. Run the agent',
-        'const response = await agent.run("Hello saiki! What are the files in this directory");',
+        '// 2. Start the agent (initialize async services)',
+        'await agent.start();',
+        '',
+        '// 3. Run the agent',
+        'const response = await agent.run("What are the files in this directory");',
         'console.log("Agent response:", response);',
         '',
-        '// 3. Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki',
+        '// 4. Clean shutdown when done',
+        'await agent.stop();',
+        '',
+        '// 5. Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki',
     ];
     const indexTsContent = indexTsLines.join('\n');
     const outputPath = path.join(directory, 'saiki-example.ts');
@@ -346,7 +354,7 @@ export async function updateEnvFile(
     const currentValues: Record<string, string> = {};
     envLines.forEach((line) => {
         const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && saikiEnvKeys.includes(match[1])) {
+        if (match && match[1] && match[2] !== undefined && saikiEnvKeys.includes(match[1])) {
             currentValues[match[1]] = match[2];
         }
     });
@@ -382,12 +390,12 @@ export async function updateEnvFile(
 
         // Find the end of the section
         let sectionEnd = headerIndex + 1;
-        while (sectionEnd < envLines.length && envLines[sectionEnd].trim() !== '') {
+        while (sectionEnd < envLines.length && envLines[sectionEnd]?.trim() !== '') {
             sectionEnd++;
         }
 
         // Skip the blank line after the section if present
-        if (sectionEnd < envLines.length && envLines[sectionEnd].trim() === '') {
+        if (sectionEnd < envLines.length && envLines[sectionEnd]?.trim() === '') {
             sectionEnd++;
         }
 
@@ -404,7 +412,7 @@ export async function updateEnvFile(
     const existingEnvVars: Record<string, string> = {};
     contentLines.forEach((line) => {
         const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && saikiEnvKeys.includes(match[1])) {
+        if (match && match[1] && match[2] !== undefined && saikiEnvKeys.includes(match[1])) {
             existingEnvVars[match[1]] = match[2];
         }
     });
@@ -412,7 +420,7 @@ export async function updateEnvFile(
     // Ensure exactly one blank line before adding the new section
     if (contentLines.length > 0) {
         // If the last line is not blank, add a blank line
-        if (contentLines[contentLines.length - 1].trim() !== '') {
+        if (contentLines[contentLines.length - 1]?.trim() !== '') {
             contentLines.push('');
         }
     } else {

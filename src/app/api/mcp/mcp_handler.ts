@@ -35,7 +35,7 @@ export async function createMcpTransport(
             return new StreamableHTTPServerTransport({
                 sessionIdGenerator: randomUUID,
                 enableJsonResponse: true,
-            });
+            }) as Transport;
     }
 }
 
@@ -68,9 +68,9 @@ export async function initializeMcpServer(
             );
             const text = await agent.run(message);
             logger.info(
-                `MCP tool '${toolName}' sending response: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`
+                `MCP tool '${toolName}' sending response: ${text?.substring(0, 100)}${(text?.length ?? 0) > 100 ? '...' : ''}`
             );
-            return { content: [{ type: 'text', text }] }; // Output structure
+            return { content: [{ type: 'text', text: text ?? '' }] }; // Output structure
         }
     );
     logger.info(
@@ -78,6 +78,24 @@ export async function initializeMcpServer(
     );
 
     // Register Agent Card data as an MCP Resource
+    await initializeAgentCardResource(mcpServer, agentCardData);
+
+    // Connect server to transport AFTER all registrations
+    logger.info(`Initializing MCP protocol server connection...`);
+    await mcpServer.connect(mcpTransport);
+    logger.info(`✅ MCP server protocol connected via transport.`);
+    return mcpServer;
+}
+
+/**
+ * Initializes the Agent Card resource for the MCP server.
+ * @param mcpServer - The MCP server instance.
+ * @param agentCardData - The agent card data to be registered as an MCP resource.
+ */
+export async function initializeAgentCardResource(
+    mcpServer: McpServer,
+    agentCardData: AgentCard
+): Promise<void> {
     const agentCardResourceProgrammaticName = 'agentCard';
     const agentCardResourceUri = 'saiki://agent/card';
     try {
@@ -102,12 +120,6 @@ export async function initializeMcpServer(
             `Error attempting to register MCP Resource '${agentCardResourceProgrammaticName}': ${e.message}. Check SDK.`
         );
     }
-
-    // Connect server to transport AFTER all registrations
-    logger.info(`Initializing MCP protocol server connection...`);
-    await mcpServer.connect(mcpTransport);
-    logger.info(`✅ MCP server protocol connected via transport.`);
-    return mcpServer;
 }
 
 /**

@@ -51,10 +51,20 @@ saiki -m gemini-2.0-flash
 
 This allows you to configure saiki CLI to use a different AI agent
 ```bash
-saiki --config-file <path_to_agent_config_file>
+saiki --agent <path_to_agent_config_file>
 ```
 
 Check [Configuration Guide](./configuring-saiki/overview) to understand more about saiki config files
+
+#### **Require all MCP servers to connect successfully**
+
+By default, Saiki uses "lenient" mode where individual servers can fail to connect without preventing startup. Use the `--strict` flag to require all servers to connect successfully:
+
+```bash
+saiki --strict
+```
+
+This overrides any individual `connectionMode` settings in your MCP server configurations. See [MCP Configuration](./configuring-saiki/mcpServers) for more details on connection modes.
 
 #### **Run a specific command with Saiki CLI:**
 
@@ -80,7 +90,7 @@ saiki --mode telegram
 ```
 To use a specific agent config file for the telegram bot:
 ```bash
-saiki --mode telegram --config-file ./telegram-agent-config.yml
+saiki --mode telegram --agent ./telegram-agent-config.yml
 ```
 
 <!-- Todo: add telegram demo -->
@@ -91,7 +101,7 @@ saiki --mode discord
 ```
 To use a specific agent config file for the discord bot:
 ```bash
-saiki --mode discord --config-file ./discord-agent-config.yml
+saiki --mode discord --agent ./discord-agent-config.yml
 ```
 
 <!-- Todo: add discord demo -->
@@ -104,6 +114,20 @@ saiki --mode mcp
 With this, you can now connect this agent to Cursor, claude desktop, or even other Saiki agents!
 
 Check [Using saiki as an MCP Server](./saiki-as-mcp-server.md) to understand more about MCP servers.
+
+#### **Group MCP servers with saiki**
+```bash
+saiki mcp --group-servers
+```
+
+This starts Saiki as an MCP server that aggregates and re-exposes tools from multiple configured MCP servers. This is useful when you want to access tools from multiple MCP servers through a single connection.
+
+To use a specific config file:
+```bash
+saiki mcp --group-servers -a ./saiki-tools.yml
+```
+
+Check [Using Saiki to group MCP servers](./saiki-group-mcp-servers.md) to understand more about MCP server aggregation.
 
 
 #### **Change log level for saiki CLI**
@@ -131,7 +155,7 @@ Add saiki into an existing typescript project
 saiki init-app
 ```
 
-Check [Building with Saiki Guide](../tutorials/building-with-saiki/introduction) for more information!
+Check [Building with Saiki Guide](../tutorials/index.md) for more information!
 
 ## Coming soon!
 

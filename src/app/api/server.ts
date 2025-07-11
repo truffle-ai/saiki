@@ -1,9 +1,11 @@
 import express from 'express';
-import type { Express, Request, Response } from 'express';
+import type { Express } from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 import { WebSocketEventSubscriber } from './websocket-subscriber.js';
+import { WebhookEventSubscriber } from './webhook-subscriber.js';
+import type { WebhookRegistrationRequest, WebhookConfig } from './webhook-types.js';
 import { logger } from '@core/index.js';
 import type { AgentCard } from '@core/index.js';
 import { setupA2ARoutes } from './a2a.js';
@@ -20,14 +22,25 @@ import os from 'os';
 import { resolvePackagePath } from '@core/index.js';
 import {
     LLM_REGISTRY,
-    getSupportedModels,
-    getSupportedProviders,
     getSupportedRoutersForProvider,
     supportsBaseURL,
-    isValidProvider,
-    getEffectiveMaxInputTokens,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
+
+/**
+ * Helper function to send JSON response with optional pretty printing
+ */
+function sendJsonResponse(res: any, data: any, statusCode = 200) {
+    const pretty = res.req.query.pretty === 'true' || res.req.query.pretty === '1';
+    res.status(statusCode);
+
+    if (pretty) {
+        res.set('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 2));
+    } else {
+        res.json(data);
+    }
+}
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
@@ -39,6 +52,22 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     const webSubscriber = new WebSocketEventSubscriber(wss);
     logger.info('Setting up API event subscriptions...');
     webSubscriber.subscribe(agent.agentEventBus);
+
+    // —— Tool confirmation response handler ——
+    // Handle toolConfirmationResponse messages from WebUI by emitting them as AgentEventBus events
+    wss.on('connection', (ws: WebSocket) => {
+        ws.on('message', async (data) => {
+            try {
+                const msg = JSON.parse(data.toString());
+                if (msg?.type === 'toolConfirmationResponse' && msg.data) {
+                    // Emit confirmation response directly to AgentEventBus
+                    agent.agentEventBus.emit('saiki:toolConfirmationResponse', msg.data);
+                }
+            } catch (_err) {
+                // Ignore malformed messages
+            }
+        });
+    });
 
     // HTTP endpoints
 
@@ -56,10 +85,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const sessionId = req.body.sessionId as string | undefined;
             const stream = req.body.stream === true; // Extract stream preference, default to false
             await agent.run(req.body.message, undefined, sessionId, stream);
-            res.status(202).send({ status: 'processing', sessionId });
+            return res.status(202).send({ status: 'processing', sessionId });
         } catch (error) {
-            logger.error(`Error handling POST /api/message: ${error.message}`);
-            res.status(500).send({ error: 'Internal server error' });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error handling POST /api/message: ${errorMessage}`);
+            return res.status(500).send({ error: 'Internal server error' });
         }
     });
 
@@ -82,10 +112,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 sessionId,
                 stream
             );
-            res.status(200).send({ response: responseText, sessionId });
+            return res.status(200).send({ response: responseText, sessionId });
         } catch (error) {
-            logger.error(`Error handling POST /api/message-sync: ${error.message}`);
-            res.status(500).send({ error: 'Internal server error' });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error handling POST /api/message-sync: ${errorMessage}`);
+            return res.status(500).send({ error: 'Internal server error' });
         }
     });
 
@@ -94,10 +125,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             const sessionId = req.body.sessionId as string | undefined;
             await agent.resetConversation(sessionId);
-            res.status(200).send({ status: 'reset initiated', sessionId });
+            return res.status(200).send({ status: 'reset initiated', sessionId });
         } catch (error) {
-            logger.error(`Error handling POST /api/reset: ${error.message}`);
-            res.status(500).send({ error: 'Internal server error' });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error handling POST /api/reset: ${errorMessage}`);
+            return res.status(500).send({ error: 'Internal server error' });
         }
     });
 
@@ -113,12 +145,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             await agent.connectMcpServer(name, config);
             logger.info(`Successfully connected to new server '${name}' via API request.`);
-            res.status(200).send({ status: 'connected', name });
+            return res.status(200).send({ status: 'connected', name });
         } catch (error) {
             const errorMessage =
                 error instanceof Error ? error.message : 'Unknown error during connection';
             logger.error(`Error handling POST /api/connect-server for '${name}': ${errorMessage}`);
-            res.status(500).send({
+            return res.status(500).send({
                 error: `Failed to connect to server '${name}': ${errorMessage}`,
             });
         }
@@ -132,10 +164,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
         try {
             await agent.connectMcpServer(name, config);
-            res.status(201).json({ status: 'connected', name });
-        } catch (error: any) {
-            logger.error(`Error connecting MCP server '${name}': ${error.message}`);
-            res.status(500).json({ error: `Failed to connect server: ${error.message}` });
+            return res.status(201).json({ status: 'connected', name });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error connecting MCP server '${name}': ${errorMessage}`);
+            return res.status(500).json({ error: `Failed to connect server: ${errorMessage}` });
         }
     });
 
@@ -151,10 +184,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             for (const name of Object.keys(failedConnections)) {
                 servers.push({ id: name, name, status: 'error' });
             }
-            res.status(200).json({ servers });
-        } catch (error: any) {
-            logger.error(`Error listing MCP servers: ${error.message}`);
-            res.status(500).json({ error: 'Failed to list servers' });
+            return res.status(200).json({ servers });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error listing MCP servers: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to list servers' });
         }
     });
 
@@ -173,10 +207,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 description: toolDef.description || '',
                 inputSchema: toolDef.parameters,
             }));
-            res.status(200).json({ tools });
-        } catch (error: any) {
-            logger.error(`Error fetching tools for server '${serverId}': ${error.message}`);
-            res.status(500).json({ error: 'Failed to fetch tools for server' });
+            return res.status(200).json({ tools });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error fetching tools for server '${serverId}': ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to fetch tools for server' });
         }
     });
 
@@ -195,11 +230,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             }
 
             await agent.removeMcpServer(serverId);
-            res.status(200).json({ status: 'disconnected', id: serverId });
-        } catch (error: any) {
-            logger.error(`Error deleting server '${serverId}': ${error.message}`);
-            res.status(500).json({
-                error: `Failed to delete server '${serverId}': ${error.message}`,
+            return res.status(200).json({ status: 'disconnected', id: serverId });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error deleting server '${serverId}': ${errorMessage}`);
+            return res.status(500).json({
+                error: `Failed to delete server '${serverId}': ${errorMessage}`,
             });
         }
     });
@@ -221,12 +257,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 // Execute tool through the agent's wrapper method
                 const rawResult = await agent.executeMcpTool(toolName, req.body);
                 // Return standardized result shape
-                res.json({ success: true, data: rawResult });
-            } catch (error: any) {
+                return res.json({ success: true, data: rawResult });
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                 logger.error(
-                    `Error executing tool '${toolName}' on server '${serverId}': ${error.message}`
+                    `Error executing tool '${toolName}' on server '${serverId}': ${errorMessage}`
                 );
-                res.status(500).json({ success: false, error: error.message });
+                return res.status(500).json({ success: false, error: errorMessage });
             }
         }
     );
@@ -241,7 +278,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             logger.debug(`WebSocket received message: ${messageString}`);
             try {
                 const data = JSON.parse(messageString);
-                if (data.type === 'message' && data.content) {
+                if (data.type === 'toolConfirmationResponse' && data.data) {
+                    // Route confirmation back via AgentEventBus and do not broadcast an error
+                    agent.agentEventBus.emit('saiki:toolConfirmationResponse', data.data);
+                    return;
+                } else if (data.type === 'message' && data.content) {
                     logger.info(
                         `Processing message from WebSocket: ${data.content.substring(0, 50)}...`
                     );
@@ -269,7 +310,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     );
                 }
             } catch (error) {
-                logger.error(`Error processing WebSocket message: ${error.message}`);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                logger.error(`Error processing WebSocket message: ${errorMessage}`);
                 ws.send(
                     JSON.stringify({
                         event: 'error',
@@ -282,7 +324,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             logger.info('WebSocket client disconnected.');
         });
         ws.on('error', (error) => {
-            logger.error(`WebSocket error: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`WebSocket error: ${errorMessage}`);
         });
     });
 
@@ -299,8 +342,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         },
         overrides
     );
-    const agentName = agentCardData.name;
-    const agentVersion = agentCardData.version;
+    const _agentName = agentCardData.name;
+    const _agentVersion = agentCardData.version;
 
     // Setup A2A routes
     setupA2ARoutes(app, agentCardData);
@@ -327,6 +370,51 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     }
 
     // Configuration export endpoint
+    /**
+     * Helper function to redact sensitive environment variables
+     */
+    function redactEnvValue(value: any): any {
+        if (value && typeof value === 'string' && value.length > 0) {
+            return '[REDACTED]';
+        }
+        return value;
+    }
+
+    /**
+     * Helper function to redact environment variables in a server config
+     */
+    function redactServerEnvVars(serverConfig: any): any {
+        if (!serverConfig.env) {
+            return serverConfig;
+        }
+
+        const redactedEnv: Record<string, any> = {};
+        for (const [key, value] of Object.entries(serverConfig.env)) {
+            redactedEnv[key] = redactEnvValue(value);
+        }
+
+        return {
+            ...serverConfig,
+            env: redactedEnv,
+        };
+    }
+
+    /**
+     * Helper function to redact all MCP servers configuration
+     */
+    function redactMcpServersConfig(mcpServers: any): Record<string, any> {
+        if (!mcpServers) {
+            return {};
+        }
+
+        const redactedServers: Record<string, any> = {};
+        for (const [name, serverConfig] of Object.entries(mcpServers)) {
+            redactedServers[name] = redactServerEnvVars(serverConfig);
+        }
+
+        return redactedServers;
+    }
+
     app.get('/api/config.yaml', async (req, res) => {
         try {
             const sessionId = req.query.sessionId as string | undefined;
@@ -339,24 +427,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     ...config.llm,
                     apiKey: config.llm.apiKey ? '[REDACTED]' : undefined,
                 },
-                mcpServers: Object.fromEntries(
-                    Object.entries(config.mcpServers).map(([name, serverConfig]: [string, any]) => [
-                        name,
-                        {
-                            ...serverConfig,
-                            env: serverConfig.env
-                                ? Object.fromEntries(
-                                      Object.entries(serverConfig.env).map(([key, value]) => [
-                                          key,
-                                          value && typeof value === 'string' && value.length > 0
-                                              ? '[REDACTED]'
-                                              : value,
-                                      ])
-                                  )
-                                : undefined,
-                        },
-                    ])
-                ),
+                mcpServers: redactMcpServersConfig(config.mcpServers),
             };
 
             const yamlStr = yamlStringify(maskedConfig);
@@ -437,12 +508,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             Object.assign(llmConfig, otherFields);
 
             const result = await agent.switchLLM(llmConfig, sessionId);
-            res.json(result);
-        } catch (error: any) {
-            logger.error(`Error switching LLM: ${error.message}`);
-            res.status(400).json({
+            return res.json(result);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error switching LLM: ${errorMessage}`);
+            return res.status(400).json({
                 success: false,
-                error: error.message,
+                error: errorMessage,
             });
         }
     });
@@ -464,10 +536,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     };
                 })
             );
-            res.json({ sessions });
+            return res.json({ sessions });
         } catch (error) {
-            logger.error(`Error listing sessions: ${error.message}`);
-            res.status(500).json({ error: 'Failed to list sessions' });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error listing sessions: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to list sessions' });
         }
     });
 
@@ -477,7 +550,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const { sessionId } = req.body;
             const session = await agent.createSession(sessionId);
             const metadata = await agent.getSessionMetadata(session.id);
-            res.status(201).json({
+            return res.status(201).json({
                 session: {
                     id: session.id,
                     createdAt: metadata?.createdAt || null,
@@ -486,8 +559,9 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 },
             });
         } catch (error) {
-            logger.error(`Error creating session: ${error.message}`);
-            res.status(500).json({ error: 'Failed to create session' });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error creating session: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to create session' });
         }
     });
 
@@ -503,7 +577,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const metadata = await agent.getSessionMetadata(sessionId);
             const history = await agent.getSessionHistory(sessionId);
 
-            res.json({
+            return res.json({
                 session: {
                     id: sessionId,
                     createdAt: metadata?.createdAt || null,
@@ -513,8 +587,9 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 },
             });
         } catch (error) {
-            logger.error(`Error getting session ${req.params.sessionId}: ${error.message}`);
-            res.status(500).json({ error: 'Failed to get session details' });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error getting session ${req.params.sessionId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to get session details' });
         }
     });
 
@@ -528,12 +603,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             }
 
             const history = await agent.getSessionHistory(sessionId);
-            res.json({ history });
+            return res.json({ history });
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(
-                `Error getting session history for ${req.params.sessionId}: ${error.message}`
+                `Error getting session history for ${req.params.sessionId}: ${errorMessage}`
             );
-            res.status(500).json({ error: 'Failed to get session history' });
+            return res.status(500).json({ error: 'Failed to get session history' });
         }
     });
 
@@ -547,27 +623,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             }
 
             await agent.deleteSession(sessionId);
-            res.json({ status: 'deleted', sessionId });
+            return res.json({ status: 'deleted', sessionId });
         } catch (error) {
-            logger.error(`Error deleting session ${req.params.sessionId}: ${error.message}`);
-            res.status(500).json({ error: 'Failed to delete session' });
-        }
-    });
-
-    // Reset session conversation
-    app.post('/api/sessions/:sessionId/reset', async (req, res) => {
-        try {
-            const { sessionId } = req.params;
-            const session = await agent.getSession(sessionId);
-            if (!session) {
-                return res.status(404).json({ error: 'Session not found' });
-            }
-
-            await agent.resetConversation(sessionId);
-            res.json({ status: 'reset', sessionId });
-        } catch (error) {
-            logger.error(`Error resetting session ${req.params.sessionId}: ${error.message}`);
-            res.status(500).json({ error: 'Failed to reset session' });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error deleting session ${req.params.sessionId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to delete session' });
         }
     });
 
@@ -593,10 +653,15 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             }
 
             await agent.loadSession(sessionId);
-            res.json({ status: 'loaded', sessionId, currentSession: agent.getCurrentSessionId() });
+            return res.json({
+                status: 'loaded',
+                sessionId,
+                currentSession: agent.getCurrentSessionId(),
+            });
         } catch (error) {
-            logger.error(`Error loading session ${req.params.sessionId}: ${error.message}`);
-            res.status(500).json({ error: 'Failed to load session' });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error loading session ${req.params.sessionId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to load session' });
         }
     });
 
@@ -604,14 +669,163 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     app.get('/api/sessions/current', async (req, res) => {
         try {
             const currentSessionId = agent.getCurrentSessionId();
-            res.json({ currentSessionId });
+            return res.json({ currentSessionId });
         } catch (error) {
-            logger.error(`Error getting current session: ${error.message}`);
-            res.status(500).json({ error: 'Failed to get current session' });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error getting current session: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to get current session' });
         }
     });
 
-    return { app, server, wss, webSubscriber };
+    // Webhook Management APIs
+
+    // Initialize webhook subscriber
+    const webhookSubscriber = new WebhookEventSubscriber();
+    logger.info('Setting up webhook event subscriptions...');
+    webhookSubscriber.subscribe(agent.agentEventBus);
+
+    // Register a new webhook endpoint
+    app.post('/api/webhooks', express.json(), async (req, res) => {
+        try {
+            const { url, secret, description }: WebhookRegistrationRequest = req.body;
+
+            if (!url || typeof url !== 'string') {
+                return res.status(400).json({ error: 'Invalid or missing webhook URL' });
+            }
+
+            // Validate URL format
+            try {
+                new URL(url);
+            } catch {
+                return res.status(400).json({ error: 'Invalid URL format' });
+            }
+
+            // Generate unique webhook ID
+            const webhookId = `wh_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            const webhook: WebhookConfig = {
+                id: webhookId,
+                url,
+                createdAt: new Date(),
+                ...(secret && { secret }),
+                ...(description && { description }),
+            };
+
+            webhookSubscriber.addWebhook(webhook);
+
+            logger.info(`Webhook registered: ${webhookId} -> ${url}`);
+
+            return sendJsonResponse(
+                res,
+                {
+                    webhook: {
+                        id: webhook.id,
+                        url: webhook.url,
+                        description: webhook.description,
+                        createdAt: webhook.createdAt,
+                    },
+                },
+                201
+            );
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error registering webhook: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to register webhook' });
+        }
+    });
+
+    // List all registered webhooks
+    app.get('/api/webhooks', async (req, res) => {
+        try {
+            const webhooks = webhookSubscriber.getWebhooks().map((webhook) => ({
+                id: webhook.id,
+                url: webhook.url,
+                description: webhook.description,
+                createdAt: webhook.createdAt,
+            }));
+
+            return sendJsonResponse(res, { webhooks });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error listing webhooks: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to list webhooks' });
+        }
+    });
+
+    // Get a specific webhook
+    app.get('/api/webhooks/:webhookId', async (req, res) => {
+        try {
+            const { webhookId } = req.params;
+            const webhook = webhookSubscriber.getWebhook(webhookId);
+
+            if (!webhook) {
+                return res.status(404).json({ error: 'Webhook not found' });
+            }
+
+            return sendJsonResponse(res, {
+                webhook: {
+                    id: webhook.id,
+                    url: webhook.url,
+                    description: webhook.description,
+                    createdAt: webhook.createdAt,
+                },
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error getting webhook ${req.params.webhookId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to get webhook' });
+        }
+    });
+
+    // Remove a webhook endpoint
+    app.delete('/api/webhooks/:webhookId', async (req, res) => {
+        try {
+            const { webhookId } = req.params;
+            const removed = webhookSubscriber.removeWebhook(webhookId);
+
+            if (!removed) {
+                return res.status(404).json({ error: 'Webhook not found' });
+            }
+
+            logger.info(`Webhook removed: ${webhookId}`);
+            return res.json({ status: 'removed', webhookId });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error removing webhook ${req.params.webhookId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to remove webhook' });
+        }
+    });
+
+    // Test a webhook endpoint
+    app.post('/api/webhooks/:webhookId/test', async (req, res) => {
+        try {
+            const { webhookId } = req.params;
+            const webhook = webhookSubscriber.getWebhook(webhookId);
+
+            if (!webhook) {
+                return res.status(404).json({ error: 'Webhook not found' });
+            }
+
+            logger.info(`Testing webhook: ${webhookId}`);
+            const result = await webhookSubscriber.testWebhook(webhookId);
+
+            return sendJsonResponse(res, {
+                test: 'completed',
+                result: {
+                    success: result.success,
+                    statusCode: result.statusCode,
+                    responseTime: result.responseTime,
+                    error: result.error,
+                },
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error testing webhook ${req.params.webhookId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to test webhook' });
+        }
+    });
+
+    return { app, server, wss, webSubscriber, webhookSubscriber };
 }
 
 /** Serves the legacy web UI on the express app. will be deprecated soon */
@@ -628,7 +842,10 @@ export async function startApiAndLegacyWebUIServer(
     serveLegacyWebUI?: boolean,
     agentCardOverride?: Partial<AgentCard>
 ) {
-    const { app, server, wss, webSubscriber } = await initializeApi(agent, agentCardOverride);
+    const { app, server, wss, webSubscriber, webhookSubscriber } = await initializeApi(
+        agent,
+        agentCardOverride
+    );
 
     // Serve legacy static UI from public/, for backward compatibility
     if (serveLegacyWebUI) {
@@ -667,5 +884,5 @@ export async function startApiAndLegacyWebUIServer(
         }
     });
 
-    return { server, wss, webSubscriber };
+    return { server, wss, webSubscriber, webhookSubscriber };
 }

@@ -11,7 +11,7 @@ This document provides best practices for creating and maintaining the Zod schem
 
 ## Core Principles
 
-1.  **Single Source of Truth**: All configuration shapes for the application should be defined here. This includes `saiki.yml`, agent states, and other structured data.
+1.  **Single Source of Truth**: All configuration shapes for the application should be defined here. This includes `agent.yml`, agent states, and other structured data.
 2.  **Clarity and Safety**: Schemas should be as descriptive and strict as possible to catch errors early and guide developers.
 3.  **Maintainability**: Keep schemas clean, well-documented, and easy to understand.
 
@@ -23,7 +23,7 @@ This document provides best practices for creating and maintaining the Zod schem
 
 To prevent typos and unknown fields from being silently ignored, all top-level configuration objects and nested objects should use `.strict()`.
 
--   **Why?** It ensures that the configuration files (`saiki.yml`, etc.) match the schema exactly, catching common errors like misspelled keys.
+-   **Why?** It ensures that the configuration files (`agent.yml`, etc.) match the schema exactly, catching common errors like misspelled keys.
 
 ```typescript
 // ✅ DO: Use .strict() for object schemas

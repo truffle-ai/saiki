@@ -18,18 +18,18 @@ To run Saiki as a Telegram bot, you need to configure the following environment 
 
 Once the `TELEGRAM_BOT_TOKEN` is set (e.g., in a `.env` file at the project root), you can start the Telegram bot.
 
-To use the default Saiki configuration (`configuration/saiki.yml`):
+To use the default Saiki configuration (`agents/agent.yml`):
 ```bash
 saiki --mode telegram
 # With a custom config path:
-# saiki --mode telegram --config-file ./configuration/telegram_bot_config.yml
+# saiki --mode telegram --agent ./agents/telegram_bot_config.yml
 ```
 
 Or, if you are running directly from the source without a global installation:
 ```bash
 npm start -- --mode telegram
 # With a custom config path:
-# npm start -- --mode telegram --config-file ./configuration/telegram_bot_config.yml
+# npm start -- --mode telegram --agent ./agents/telegram_bot_config.yml
 ```
 
 Refer to the main project [README.md](../../../README.md) for more details on general Saiki setup and configuration.

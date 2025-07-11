@@ -15,6 +15,7 @@ interface ChatContextType {
   returnToWelcome: () => void;
   isStreaming: boolean;
   setStreaming: (streaming: boolean) => void;
+  websocket: WebSocket | null;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -38,7 +39,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isWelcomeState, setIsWelcomeState] = useState(true);
   const [isStreaming, setIsStreaming] = useState(true); // Default to streaming enabled
-  const { messages, sendMessage: originalSendMessage, status, reset: originalReset, setMessages } = useChat(wsUrl);
+  const { messages, sendMessage: originalSendMessage, status, reset: originalReset, setMessages, websocket } = useChat(wsUrl);
 
   // Auto-create session on first message with random UUID
   const createAutoSession = useCallback(async (): Promise<string> => {
@@ -269,7 +270,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       isWelcomeState,
       returnToWelcome,
       isStreaming,
-      setStreaming: setIsStreaming
+      setStreaming: setIsStreaming,
+      websocket
     }}>
       {children}
     </ChatContext.Provider>

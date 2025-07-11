@@ -94,6 +94,7 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
                     .filter(Boolean),
                 env: {},
                 timeout: 30000,
+                connectionMode: 'lenient',
             };
         } else if (serverType === 'sse') {
             if (!url.trim()) {
@@ -113,6 +114,7 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
                 url: url.trim(),
                 headers: headerPairs.length ? headersToRecord(headerPairs) : {},
                 timeout: 30000,
+                connectionMode: 'lenient',
             };
         } else {
             if (!url.trim()) {
@@ -133,6 +135,7 @@ export default function ConnectServerModal({ isOpen, onClose }: ConnectServerMod
                 url: url.trim(),
                 headers: headerPairs.length ? headersToRecord(headerPairs) : {},
                 timeout: 30000,
+                connectionMode: 'lenient',
             };
         }
 

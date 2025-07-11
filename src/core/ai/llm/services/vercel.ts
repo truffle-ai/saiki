@@ -1,17 +1,15 @@
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { CoreMessage, generateText, LanguageModelV1, streamText } from 'ai';
-import { z } from 'zod';
+import { generateText, LanguageModelV1, streamText } from 'ai';
 import { MCPManager } from '../../../client/manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../logger/index.js';
 import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
-import { MessageManager } from '../messages/manager.js';
+import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
+import { ToolExecutionDeniedError } from '../../../client/tool-confirmation/errors.js';
 
 /**
  * Vercel AI SDK implementation of LLMService
@@ -20,31 +18,38 @@ import type { SessionEventBus } from '../../../events/index.js';
 export class VercelLLMService implements ILLMService {
     private model: LanguageModelV1;
     private provider: string;
-    private clientManager: MCPManager;
-    private messageManager: MessageManager;
+    private mcpManager: MCPManager;
+    private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
     private temperature: number | undefined;
     private maxOutputTokens: number | undefined;
+    private readonly sessionId: string;
+    private baseURL: string | undefined;
+    private toolSupportCache: Map<string, boolean> = new Map();
 
     constructor(
-        clientManager: MCPManager,
+        mcpManager: MCPManager,
         model: LanguageModelV1,
         provider: string,
         sessionEventBus: SessionEventBus,
-        messageManager: MessageManager,
+        contextManager: ContextManager,
         maxIterations: number = 10,
+        sessionId: string,
         temperature?: number,
-        maxOutputTokens?: number
+        maxOutputTokens?: number,
+        baseURL?: string
     ) {
         this.model = model;
         this.provider = provider;
         this.maxIterations = maxIterations;
-        this.clientManager = clientManager;
+        this.mcpManager = mcpManager;
         this.sessionEventBus = sessionEventBus;
-        this.messageManager = messageManager;
+        this.contextManager = contextManager;
         this.temperature = temperature;
         this.maxOutputTokens = maxOutputTokens;
+        this.sessionId = sessionId;
+        this.baseURL = baseURL;
 
         logger.debug(
             `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, temperature: ${temperature}, maxOutputTokens: ${maxOutputTokens}`
@@ -52,21 +57,96 @@ export class VercelLLMService implements ILLMService {
     }
 
     getAllTools(): Promise<ToolSet> {
-        return this.clientManager.getAllTools();
+        return this.mcpManager.getAllTools();
     }
 
     formatTools(tools: ToolSet): VercelToolSet {
         logger.debug(`Formatting tools for vercel`);
         return Object.keys(tools).reduce<VercelToolSet>((acc, toolName) => {
-            acc[toolName] = {
-                description: tools[toolName].description,
-                parameters: jsonSchema(tools[toolName].parameters as any),
-                execute: async (args: any) => {
-                    return await this.clientManager.executeTool(toolName, args);
-                },
-            };
+            const tool = tools[toolName];
+            if (tool) {
+                acc[toolName] = {
+                    parameters: jsonSchema(tool.parameters as any),
+                    execute: async (args: any) => {
+                        try {
+                            return await this.mcpManager.executeTool(
+                                toolName,
+                                args,
+                                this.sessionId
+                            );
+                        } catch (err: any) {
+                            if (err instanceof ToolExecutionDeniedError) {
+                                return { error: err.message, denied: true };
+                            }
+                            // Other failures
+                            const message = err instanceof Error ? err.message : String(err);
+                            return { error: message };
+                        }
+                    },
+                    ...(tool.description && { description: tool.description }),
+                };
+            }
             return acc;
         }, {});
+    }
+
+    private async validateToolSupport(): Promise<boolean> {
+        const modelKey = `${this.provider}:${this.model.modelId}`;
+
+        // Check cache first
+        if (this.toolSupportCache.has(modelKey)) {
+            return this.toolSupportCache.get(modelKey)!;
+        }
+
+        // Only test tool support for providers using custom baseURL endpoints
+        // Built-in providers without baseURL have known tool support
+        if (!this.baseURL) {
+            logger.debug(`Skipping tool validation for ${modelKey} - no custom baseURL`);
+            // Assume built-in providers support tools
+            this.toolSupportCache.set(modelKey, true);
+            return true;
+        }
+
+        logger.debug(`Testing tool support for custom endpoint model: ${modelKey}`);
+
+        // Create a minimal test tool
+        const testTool = {
+            test_tool: {
+                parameters: jsonSchema({
+                    type: 'object',
+                    properties: {},
+                    additionalProperties: false,
+                }),
+                execute: async () => ({ result: 'test' }),
+            },
+        };
+
+        try {
+            // Make a minimal generateText call with tools to test support
+            await generateText({
+                model: this.model,
+                messages: [{ role: 'user', content: 'Hello' }],
+                tools: testTool,
+                maxSteps: 1,
+            });
+
+            // If we get here, tools are supported
+            this.toolSupportCache.set(modelKey, true);
+            logger.debug(`Model ${modelKey} supports tools`);
+            return true;
+        } catch (error: any) {
+            if (error.message.includes('does not support tools')) {
+                this.toolSupportCache.set(modelKey, false);
+                logger.debug(`Model ${modelKey} does not support tools`);
+                return false;
+            }
+            // Other errors - assume tools are supported and let the actual call handle it
+            logger.debug(
+                `Tool validation error for ${modelKey}, assuming supported: ${error.message}`
+            );
+            this.toolSupportCache.set(modelKey, true);
+            return true;
+        }
     }
 
     async completeTask(
@@ -78,15 +158,16 @@ export class VercelLLMService implements ILLMService {
         logger.debug(
             `VercelLLMService: Adding user message: ${userInput} and imageData: ${imageData}`
         );
-        await this.messageManager.addUserMessage(userInput, imageData);
+        await this.contextManager.addUserMessage(userInput, imageData);
 
         // Get all tools
-        const tools: any = await this.clientManager.getAllTools();
+        const tools = await this.mcpManager.getAllTools();
         logger.silly(
             `[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`
         );
 
         const formattedTools = this.formatTools(tools);
+
         logger.silly(
             `[VercelLLMService] Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`
         );
@@ -101,11 +182,14 @@ export class VercelLLMService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = { clientManager: this.clientManager };
-                const { formattedMessages, systemPrompt, tokensUsed } =
-                    await this.messageManager.getFormattedMessagesWithCompression(context);
+                const context = { mcpManager: this.mcpManager };
+                const {
+                    formattedMessages,
+                    systemPrompt: _systemPrompt,
+                    tokensUsed,
+                } = await this.contextManager.getFormattedMessagesWithCompression(context);
 
-                logger.debug(
+                logger.silly(
                     `Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`
                 );
                 logger.silly(`Tools: ${JSON.stringify(formattedTools, null, 2)}`);
@@ -160,10 +244,20 @@ export class VercelLLMService implements ILLMService {
         const temperature = this.temperature;
         const maxTokens = this.maxOutputTokens;
 
+        // Check if model supports tools and adjust accordingly
+        const supportsTools = await this.validateToolSupport();
+        const effectiveTools = supportsTools ? tools : {};
+
+        if (!supportsTools && Object.keys(tools).length > 0) {
+            logger.debug(
+                `Model ${this.model.modelId} does not support tools, using empty tools object for generation`
+            );
+        }
+
         const response = await generateText({
             model: this.model,
             messages: messages,
-            tools,
+            tools: effectiveTools,
             onStepFinish: (step) => {
                 logger.debug(`Step iteration: ${stepIteration}`);
                 stepIteration++;
@@ -215,12 +309,12 @@ export class VercelLLMService implements ILLMService {
             ...(temperature !== undefined && { temperature }),
         });
 
-        // Parse and append each new InternalMessage from the formatter using MessageManager
-        await this.messageManager.processLLMResponse(response);
+        // Parse and append each new InternalMessage from the formatter using ContextManager
+        await this.contextManager.processLLMResponse(response);
 
-        // Update MessageManager with actual token count for hybrid approach
+        // Update ContextManager with actual token count for hybrid approach
         if (totalTokens > 0) {
-            this.messageManager.updateActualTokenCount(totalTokens);
+            this.contextManager.updateActualTokenCount(totalTokens);
         }
 
         // Return the plain text of the response
@@ -239,11 +333,21 @@ export class VercelLLMService implements ILLMService {
         const temperature = this.temperature;
         const maxTokens = this.maxOutputTokens;
 
-        // use vercel's streamText with mcp
+        // Check if model supports tools and adjust accordingly
+        const supportsTools = await this.validateToolSupport();
+        const effectiveTools = supportsTools ? tools : {};
+
+        if (!supportsTools && Object.keys(tools).length > 0) {
+            logger.debug(
+                `Model ${this.model.modelId} does not support tools, using empty tools object for streaming`
+            );
+        }
+
+        // use vercel's streamText
         const response = streamText({
             model: this.model,
             messages: messages,
-            tools,
+            tools: effectiveTools,
             onChunk: (chunk) => {
                 logger.debug(`Chunk type: ${chunk.chunk.type}`);
                 if (chunk.chunk.type === 'text-delta') {
@@ -347,20 +451,19 @@ export class VercelLLMService implements ILLMService {
             ...(maxTokens && { maxTokens }),
             ...(temperature !== undefined && { temperature }),
         });
-
         // Consume the stream to get the final text
         let fullResponse = '';
         for await (const textPart of response.textStream) {
             fullResponse += textPart;
         }
 
-        // Process the LLM response through MessageManager using the new stream method
-        await this.messageManager.processLLMStreamResponse(response);
+        // Process the LLM response through ContextManager using the new stream method
+        await this.contextManager.processLLMStreamResponse(response);
 
-        // Update MessageManager with actual token count for hybrid approach
+        // Update ContextManager with actual token count for hybrid approach
         if (totalTokens > 0) {
             logger.debug(`Stream finished, updating actual token count: ${totalTokens}`);
-            this.messageManager.updateActualTokenCount(totalTokens);
+            this.contextManager.updateActualTokenCount(totalTokens);
         }
 
         // Emit final response event with token count
@@ -381,7 +484,7 @@ export class VercelLLMService implements ILLMService {
      * @returns Configuration object with provider and model information
      */
     getConfig(): LLMServiceConfig {
-        const configuredMaxTokens = this.messageManager.getMaxInputTokens();
+        const configuredMaxTokens = this.contextManager.getMaxInputTokens();
         let modelMaxInputTokens: number;
 
         // Fetching max tokens from LLM registry - default to configured max tokens if not found

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 7
+sidebar_position: 6
 ---
 
 # MCP Manager
@@ -45,356 +45,43 @@ const result = await manager.executeTool('readFile', { path: './README.md' });
 console.log(result);
 ```
 
-## API Reference
+## Core Concepts
 
-### Constructor
+### MCP Servers
 
-```typescript
-constructor(confirmationProvider?: ToolConfirmationProvider)
-```
+MCP servers are external processes that provide tools, resources, and prompts. Common types include:
 
-**Parameters:**
-- `confirmationProvider` (optional): Custom tool confirmation provider. Defaults to CLI confirmation.
+- **File system servers**: Read/write files and directories
+- **Web search servers**: Search the internet for information
+- **Database servers**: Query and manage databases
+- **API servers**: Interact with external APIs
+- **Custom servers**: Your own domain-specific tools
 
-**Example:**
+### Connection Types
+
+MCPManager supports three connection types:
+
+- **`stdio`**: Most common, spawns a child process (e.g., Node.js packages)
+- **`http`**: Connect to HTTP-based MCP servers
+- **`sse`**: Server-sent events for real-time communication
+
+### Tool Execution
+
+Tools are functions provided by MCP servers. The manager:
+1. Discovers all available tools from connected servers
+2. Routes tool calls to the appropriate server
+3. Handles confirmation prompts for sensitive operations
+4. Returns structured results
+
+## Common Usage Patterns
+
+### File Operations
+
+Perfect for automating file system tasks:
+
 ```typescript
 const manager = new MCPManager();
 
-// With custom confirmation provider
-const manager = new MCPManager(customConfirmationProvider);
-```
-
-### Connection Management
-
-#### `connectServer(name, config)`
-
-Connect to a new MCP server.
-
-```typescript
-async connectServer(name: string, config: McpServerConfig): Promise<void>
-```
-
-**Parameters:**
-- `name`: Unique identifier for the server connection
-- `config`: Server configuration object
-
-**Server Configuration Types:**
-
-```typescript
-// stdio server (most common)
-{
-  type: 'stdio',
-  command: 'npx',
-  args: ['-y', '@modelcontextprotocol/server-filesystem', '.'],
-  env?: { [key: string]: string }
-}
-
-// HTTP server
-{
-  type: 'http',
-  baseUrl: 'http://localhost:3001/mcp',
-  timeout?: number
-}
-
-// SSE (Server-Sent Events) server  
-{
-  type: 'sse',
-  url: 'http://localhost:3001/sse'
-}
-```
-
-**Examples:**
-
-```typescript
-// File system server
-await manager.connectServer('filesystem', {
-  type: 'stdio',
-  command: 'npx',
-  args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
-});
-
-// Web search server with API key
-await manager.connectServer('tavily-search', {
-  type: 'stdio',
-  command: 'npx', 
-  args: ['-y', 'tavily-mcp@0.1.2'],
-  env: {
-    TAVILY_API_KEY: process.env.TAVILY_API_KEY
-  }
-});
-
-// HTTP MCP server (like another Saiki agent)
-await manager.connectServer('remote-agent', {
-  type: 'http',
-  baseUrl: 'http://localhost:3001/mcp',
-  timeout: 30000
-});
-
-// Database server
-await manager.connectServer('postgres', {
-  type: 'stdio',
-  command: 'npx',
-  args: ['-y', '@truffle-ai/postgres-mcp'],
-  env: {
-    DATABASE_URL: process.env.DATABASE_URL
-  }
-});
-```
-
-#### `initializeFromConfig(serverConfigs, connectionMode)`
-
-Initialize multiple servers from configuration.
-
-```typescript
-async initializeFromConfig(
-  serverConfigs: ServerConfigs, 
-  connectionMode: 'strict' | 'lenient' = 'lenient'
-): Promise<void>
-```
-
-**Parameters:**
-- `serverConfigs`: Object mapping server names to configurations
-- `connectionMode`: 
-  - `'strict'`: All servers must connect successfully
-  - `'lenient'`: At least one server must connect successfully
-
-**Example:**
-```typescript
-const serverConfigs = {
-  filesystem: {
-    type: 'stdio',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
-  },
-  search: {
-    type: 'stdio',
-    command: 'npx',
-    args: ['-y', 'tavily-mcp@0.1.2'],
-    env: { TAVILY_API_KEY: process.env.TAVILY_API_KEY }
-  }
-};
-
-// Initialize all servers
-await manager.initializeFromConfig(serverConfigs, 'lenient');
-```
-
-#### `removeClient(name)`
-
-Disconnect and remove a specific server.
-
-```typescript
-async removeClient(name: string): Promise<void>
-```
-
-**Example:**
-```typescript
-await manager.removeClient('filesystem');
-```
-
-#### `disconnectAll()`
-
-Disconnect all servers and clear caches.
-
-```typescript
-async disconnectAll(): Promise<void>
-```
-
-**Example:**
-```typescript
-await manager.disconnectAll();
-```
-
-### Tool Management
-
-#### `getAllTools()`
-
-Get all available tools from all connected servers.
-
-```typescript
-async getAllTools(): Promise<ToolSet>
-```
-
-**Returns:** Object mapping tool names to tool definitions
-
-**Example:**
-```typescript
-const tools = await manager.getAllTools();
-console.log('Available tools:', Object.keys(tools));
-
-// Inspect a specific tool
-const readFileTool = tools.readFile;
-console.log('Tool schema:', readFileTool.inputSchema);
-```
-
-#### `getToolClient(toolName)`
-
-Get the client that provides a specific tool.
-
-```typescript
-getToolClient(toolName: string): IMCPClient | undefined
-```
-
-**Example:**
-```typescript
-const client = manager.getToolClient('readFile');
-if (client) {
-  console.log('Tool is provided by:', client);
-}
-```
-
-#### `executeTool(toolName, args)`
-
-Execute a specific tool with arguments.
-
-```typescript
-async executeTool(toolName: string, args: any): Promise<any>
-```
-
-**Example:**
-```typescript
-// Read a file
-const content = await manager.executeTool('readFile', { 
-  path: './package.json' 
-});
-
-// Search the web
-const searchResults = await manager.executeTool('search', {
-  query: 'latest AI developments',
-  max_results: 5
-});
-
-// Write a file
-await manager.executeTool('writeFile', {
-  path: './output.txt',
-  content: 'Hello from MCP!'
-});
-```
-
-### Resource Management
-
-#### `listAllResources()`
-
-Get all available resource URIs from all connected servers.
-
-```typescript
-async listAllResources(): Promise<string[]>
-```
-
-**Example:**
-```typescript
-const resources = await manager.listAllResources();
-console.log('Available resources:', resources);
-```
-
-#### `getResourceClient(resourceUri)`
-
-Get the client that provides a specific resource.
-
-```typescript
-getResourceClient(resourceUri: string): IMCPClient | undefined
-```
-
-#### `readResource(uri)`
-
-Read a specific resource by URI.
-
-```typescript
-async readResource(uri: string): Promise<ReadResourceResult>
-```
-
-**Example:**
-```typescript
-const resource = await manager.readResource('file:///project/README.md');
-console.log('Resource content:', resource.contents);
-```
-
-### Prompt Management
-
-#### `listAllPrompts()`
-
-Get all available prompt names from all connected servers.
-
-```typescript
-async listAllPrompts(): Promise<string[]>
-```
-
-**Example:**
-```typescript
-const prompts = await manager.listAllPrompts();
-console.log('Available prompts:', prompts);
-```
-
-#### `getPromptClient(promptName)`
-
-Get the client that provides a specific prompt.
-
-```typescript
-getPromptClient(promptName: string): IMCPClient | undefined
-```
-
-#### `getPrompt(name, args)`
-
-Get a specific prompt definition by name.
-
-```typescript
-async getPrompt(name: string, args?: any): Promise<GetPromptResult>
-```
-
-**Example:**
-```typescript
-const prompt = await manager.getPrompt('code-review', {
-  language: 'typescript',
-  file: 'src/index.ts'
-});
-console.log('Prompt:', prompt.messages);
-```
-
-### Status and Monitoring
-
-#### `getClients()`
-
-Get all registered clients.
-
-```typescript
-getClients(): Map<string, IMCPClient>
-```
-
-**Example:**
-```typescript
-const clients = manager.getClients();
-console.log('Connected servers:', Array.from(clients.keys()));
-
-for (const [name, client] of clients) {
-  console.log(`Server: ${name}, Tools available: ${Object.keys(await client.getTools()).length}`);
-}
-```
-
-#### `getFailedConnections()`
-
-Get errors from failed connections.
-
-```typescript
-getFailedConnections(): { [key: string]: string }
-```
-
-**Example:**
-```typescript
-const errors = manager.getFailedConnections();
-if (Object.keys(errors).length > 0) {
-  console.log('Failed connections:', errors);
-}
-```
-
-## Usage Patterns
-
-### Basic File Operations
-
-```typescript
-import { MCPManager } from '@truffle-ai/saiki';
-
-const manager = new MCPManager();
-
-// Setup filesystem access
 await manager.connectServer('fs', {
   type: 'stdio',
   command: 'npx',
@@ -418,12 +105,11 @@ await manager.executeTool('writeFile', {
 });
 ```
 
-### Web Search and Research
+### Web Research
+
+Integrate web search capabilities:
 
 ```typescript
-const manager = new MCPManager();
-
-// Setup web search
 await manager.connectServer('search', {
   type: 'stdio',
   command: 'npx',
@@ -431,48 +117,18 @@ await manager.connectServer('search', {
   env: { TAVILY_API_KEY: process.env.TAVILY_API_KEY }
 });
 
-// Search for information
 const results = await manager.executeTool('search', {
   query: 'Model Context Protocol specifications',
   max_results: 10
-});
-
-console.log('Search results:', results);
-```
-
-### Database Operations
-
-```typescript
-const manager = new MCPManager();
-
-// Setup database connection
-await manager.connectServer('db', {
-  type: 'stdio',
-  command: 'npx',
-  args: ['-y', '@truffle-ai/postgres-mcp'],
-  env: {
-    DATABASE_URL: 'postgresql://user:pass@localhost:5432/mydb'
-  }
-});
-
-// Execute SQL queries
-const users = await manager.executeTool('query', {
-  sql: 'SELECT * FROM users WHERE active = true',
-  params: []
-});
-
-// Get schema information
-const schema = await manager.executeTool('describe_table', {
-  table: 'users'
 });
 ```
 
 ### Multi-Server Workflows
 
-```typescript
-const manager = new MCPManager();
+Combine multiple servers for complex tasks:
 
-// Connect to multiple servers
+```typescript
+// Initialize multiple servers at once
 await manager.initializeFromConfig({
   filesystem: {
     type: 'stdio',
@@ -488,107 +144,38 @@ await manager.initializeFromConfig({
   git: {
     type: 'stdio',
     command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-git']
+    args: ['-y', '@cyanheads/git-mcp-server'],
+    env: {
+        MCP_LOG_LEVEL: "info",
+        GIT_SIGN_COMMITS: "false"
   }
 });
 
 // Complex workflow using multiple tools
 async function generateProjectReport() {
-  // Get project files
   const files = await manager.executeTool('listFiles', { path: './src' });
-  
-  // Get git information
   const commits = await manager.executeTool('git_log', { limit: 10 });
-  
-  // Search for related information
   const research = await manager.executeTool('search', {
     query: 'project documentation best practices'
   });
   
-  // Generate report
-  const report = `
-# Project Report
-
-## Files: ${files.length} files found
-## Recent commits: ${commits.length} commits
-## Research findings: ${research.length} results
-
-...
-  `;
+  const report = `# Project Report
+Files: ${files.length}
+Recent commits: ${commits.length}
+Research findings: ${research.length}`;
   
-  // Save report
   await manager.executeTool('writeFile', {
     path: './PROJECT_REPORT.md',
     content: report
   });
 }
-
-await generateProjectReport();
-```
-
-### Error Handling
-
-```typescript
-const manager = new MCPManager();
-
-try {
-  await manager.connectServer('filesystem', {
-    type: 'stdio',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
-  });
-} catch (error) {
-  console.error('Failed to connect to filesystem server:', error);
-  
-  // Check what connections failed
-  const failed = manager.getFailedConnections();
-  console.log('Connection errors:', failed);
-}
-
-// Handle tool execution errors
-try {
-  const result = await manager.executeTool('readFile', { path: './nonexistent.txt' });
-} catch (error) {
-  console.error('Tool execution failed:', error);
-}
-
-// Graceful cleanup
-process.on('SIGINT', async () => {
-  console.log('Shutting down...');
-  await manager.disconnectAll();
-  process.exit(0);
-});
-```
-
-### Custom Confirmation Provider
-
-```typescript
-import { ToolConfirmationProvider } from '@truffle-ai/saiki';
-
-class CustomConfirmationProvider implements ToolConfirmationProvider {
-  async requestConfirmation({ toolName, args }): Promise<boolean> {
-    // Custom logic - for example, auto-approve safe operations
-    if (['readFile', 'listFiles', 'search'].includes(toolName)) {
-      return true;
-    }
-    
-    // Require manual approval for destructive operations
-    if (['writeFile', 'deleteFile'].includes(toolName)) {
-      console.log(`Approve ${toolName} with args:`, args);
-      // Custom approval logic here
-      return confirm('Approve this operation?');
-    }
-    
-    return false;
-  }
-}
-
-const manager = new MCPManager(new CustomConfirmationProvider());
 ```
 
 ## Integration Examples
 
 ### Express.js API
+
+Create an API that exposes MCP tools:
 
 ```typescript
 import express from 'express';
@@ -598,8 +185,6 @@ const app = express();
 app.use(express.json());
 
 const manager = new MCPManager();
-
-// Initialize MCP servers
 await manager.initializeFromConfig({
   filesystem: {
     type: 'stdio',
@@ -608,13 +193,11 @@ await manager.initializeFromConfig({
   }
 });
 
-// API endpoint to list available tools
 app.get('/api/tools', async (req, res) => {
   const tools = await manager.getAllTools();
   res.json({ tools: Object.keys(tools) });
 });
 
-// API endpoint to execute tools
 app.post('/api/execute/:toolName', async (req, res) => {
   try {
     const { toolName } = req.params;
@@ -630,111 +213,11 @@ app.post('/api/execute/:toolName', async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  console.log('MCP API server running on port 3000');
-});
+app.listen(3000);
 ```
 
-### CLI Tool
-
-```typescript
-#!/usr/bin/env node
-import { MCPManager } from '@truffle-ai/saiki';
-import { Command } from 'commander';
-
-const program = new Command();
-const manager = new MCPManager();
-
-program
-  .name('mcp-cli')
-  .description('CLI for MCP server management')
-  .version('1.0.0');
-
-program
-  .command('connect <name> <command>')
-  .description('Connect to an MCP server')
-  .action(async (name, command) => {
-    await manager.connectServer(name, {
-      type: 'stdio',
-      command: 'npx',
-      args: ['-y', command]
-    });
-    console.log(`Connected to server: ${name}`);
-  });
-
-program
-  .command('tools')
-  .description('List available tools')
-  .action(async () => {
-    const tools = await manager.getAllTools();
-    console.log('Available tools:', Object.keys(tools));
-  });
-
-program
-  .command('exec <tool> [args...]')
-  .description('Execute a tool')
-  .action(async (tool, args) => {
-    const toolArgs = args.reduce((acc, arg) => {
-      const [key, value] = arg.split('=');
-      acc[key] = value;
-      return acc;
-    }, {});
-    
-    const result = await manager.executeTool(tool, toolArgs);
-    console.log(JSON.stringify(result, null, 2));
-  });
-
-program.parse();
-```
-
-## Best Practices
-
-### Connection Management
-
-1. **Use connection pooling**: Keep connections alive for better performance
-2. **Handle failures gracefully**: Use lenient mode and check for failed connections
-3. **Clean up resources**: Always call `disconnectAll()` on shutdown
-
-### Error Handling
-
-1. **Wrap operations in try-catch**: MCP operations can fail
-2. **Check server availability**: Use `getClients()` to verify connections
-3. **Monitor failed connections**: Regularly check `getFailedConnections()`
-
-### Performance
-
-1. **Cache tool lists**: Call `getAllTools()` sparingly
-2. **Batch operations**: Group related tool calls together  
-3. **Use appropriate timeouts**: Configure timeouts for HTTP servers
-
-### Security
-
-1. **Validate tool arguments**: Always validate inputs before execution
-2. **Use confirmation providers**: Implement approval workflows for sensitive operations
-3. **Limit tool access**: Only connect to necessary MCP servers
-
-## Troubleshooting
-
-### Common Issues
-
-**"No client found for tool" errors**
-- Ensure the server providing the tool is connected
-- Check tool availability with `getAllTools()`
-- Verify server configuration
-
-**Connection timeouts**
-- Increase timeout values for HTTP servers
-- Check server availability
-- Verify network connectivity
-
-**Permission errors**
-- Check file/directory permissions for stdio servers
-- Verify API keys for external services
-- Ensure proper environment variables
+For detailed API reference, see the [MCPManager API documentation](/api/mcp-manager). 🛠️
 
 **Tool execution failures**
-- Validate tool arguments match the expected schema
-- Check server logs for detailed error information
-- Verify tool confirmation settings
-
-The MCPManager provides a powerful, flexible foundation for building MCP-based applications. Whether you're creating simple automation scripts or complex multi-server workflows, it handles the complexity of MCP protocol management while providing a clean, intuitive API. 🛠️ 
+- Validate tool arguments match expected schema
+- Check server logs for detailed error information 

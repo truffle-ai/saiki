@@ -1,8 +1,7 @@
-import { describe, test, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, it, expect, vi, beforeEach } from 'vitest';
 import {
     buildLLMConfig,
     validateLLMSwitchRequest,
-    validateRuntimeUpdate,
     validateMcpServerConfig,
 } from './validation-utils.js';
 import type { LLMConfig, McpServerConfig } from './schemas.js';
@@ -16,7 +15,6 @@ describe('buildLLMConfig', () => {
         model: 'gpt-4o',
         apiKey: 'sk-1234567890abcdef',
         router: 'vercel',
-        systemPrompt: 'You are a helpful assistant.',
         maxIterations: 50,
     };
 
@@ -113,8 +111,8 @@ describe('buildLLMConfig', () => {
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('missing_api_key');
-        expect(result.errors[0].message).toContain("No API key found for provider 'anthropic'");
+        expect(result.errors?.[0]?.type).toBe('missing_api_key');
+        expect(result.errors?.[0]?.message).toContain("No API key found for provider 'anthropic'");
     });
 
     it('should validate provider/model compatibility', async () => {
@@ -127,9 +125,9 @@ describe('buildLLMConfig', () => {
         expect(result.isValid).toBe(true);
         expect(result.config.provider).toBe('google');
         // Should switch to default Google model from registry
-        expect(result.config.model).toBe('gemini-2.5-pro-exp-03-25'); // Default Google model
+        expect(result.config.model).toBe('gemini-2.5-pro'); // Default Google model
         expect(result.warnings).toContain(
-            "Switched to default model 'gemini-2.5-pro-exp-03-25' for provider 'google'"
+            "Switched to default model 'gemini-2.5-pro' for provider 'google'"
         );
     });
 
@@ -142,8 +140,8 @@ describe('buildLLMConfig', () => {
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('incompatible_model_provider');
-        expect(result.errors[0].message).toContain(
+        expect(result.errors?.[0]?.type).toBe('incompatible_model_provider');
+        expect(result.errors?.[0]?.message).toContain(
             "Model 'gpt-4o' is not supported for provider 'google'"
         );
     });
@@ -161,14 +159,23 @@ describe('buildLLMConfig', () => {
         expect(result.warnings).toContain('API key seems too short - please verify it is correct');
     });
 
-    it('should handle baseURL updates', async () => {
+    it('should handle baseURL updates for openai-compatible', async () => {
+        // Set OPENAI_API_KEY since openai-compatible uses same API key as openai
+        process.env.OPENAI_API_KEY = 'sk-test-key-123456789';
+
         const result = await buildLLMConfig(
-            { baseURL: 'https://custom.openai.com' },
+            {
+                provider: 'openai-compatible',
+                model: 'custom-model',
+                baseURL: 'https://custom.openai.com',
+            },
             baseLLMConfig
         );
 
         expect(result.isValid).toBe(true);
         expect(result.config.baseURL).toBe('https://custom.openai.com');
+        expect(result.config.provider).toBe('openai-compatible');
+        expect(result.config.model).toBe('custom-model');
     });
 
     it('should reject baseURL for unsupported providers', async () => {
@@ -185,8 +192,8 @@ describe('buildLLMConfig', () => {
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('invalid_base_url');
-        expect(result.errors[0].message).toContain(
+        expect(result.errors?.[0]?.type).toBe('invalid_base_url');
+        expect(result.errors?.[0]?.message).toContain(
             'Custom baseURL is not supported for anthropic provider'
         );
     });
@@ -203,8 +210,8 @@ describe('buildLLMConfig', () => {
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('invalid_model');
-        expect(result.errors[0].message).toBe('Model must be a non-empty string');
+        expect(result.errors?.[0]?.type).toBe('invalid_model');
+        expect(result.errors?.[0]?.message).toBe('Model must be a non-empty string');
     });
 
     it('should validate empty provider', async () => {
@@ -212,8 +219,8 @@ describe('buildLLMConfig', () => {
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('invalid_provider');
-        expect(result.errors[0].message).toBe('Provider must be a non-empty string');
+        expect(result.errors?.[0]?.type).toBe('invalid_provider');
+        expect(result.errors?.[0]?.message).toBe('Provider must be a non-empty string');
     });
 
     it('should validate unknown provider', async () => {
@@ -221,8 +228,8 @@ describe('buildLLMConfig', () => {
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('invalid_provider');
-        expect(result.errors[0].message).toBe('Unknown provider: unknown');
+        expect(result.errors?.[0]?.type).toBe('invalid_provider');
+        expect(result.errors?.[0]?.message).toBe('Unknown provider: unknown');
     });
 
     it('should validate negative maxInputTokens', async () => {
@@ -230,8 +237,8 @@ describe('buildLLMConfig', () => {
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('invalid_max_tokens');
-        expect(result.errors[0].message).toBe('maxInputTokens must be a positive number');
+        expect(result.errors?.[0]?.type).toBe('invalid_max_tokens');
+        expect(result.errors?.[0]?.message).toBe('maxInputTokens must be a positive number');
     });
 
     it('should validate invalid router', async () => {
@@ -239,8 +246,8 @@ describe('buildLLMConfig', () => {
 
         expect(result.isValid).toBe(false);
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('unsupported_router');
-        expect(result.errors[0].message).toBe('Router must be either "vercel" or "in-built"');
+        expect(result.errors?.[0]?.type).toBe('unsupported_router');
+        expect(result.errors?.[0]?.message).toBe('Router must be either "vercel" or "in-built"');
     });
 
     it('should handle temperature and maxOutputTokens validation', async () => {
@@ -277,13 +284,16 @@ describe('buildLLMConfig', () => {
     it('should keep current baseURL when provider supports it', async () => {
         const configWithBaseURL = {
             ...baseLLMConfig,
+            provider: 'openai-compatible',
+            model: 'custom-model',
             baseURL: 'https://custom.openai.com',
         };
 
-        const result = await buildLLMConfig({ model: 'gpt-4o-mini' }, configWithBaseURL);
+        const result = await buildLLMConfig({ model: 'another-custom-model' }, configWithBaseURL);
 
         expect(result.isValid).toBe(true);
         expect(result.config.baseURL).toBe('https://custom.openai.com');
+        expect(result.config.provider).toBe('openai-compatible');
     });
 
     it('should remove baseURL when switching to unsupported provider', async () => {
@@ -291,10 +301,15 @@ describe('buildLLMConfig', () => {
 
         const configWithBaseURL = {
             ...baseLLMConfig,
+            provider: 'openai-compatible',
+            model: 'custom-model',
             baseURL: 'https://custom.openai.com',
         };
 
-        const result = await buildLLMConfig({ provider: 'anthropic' }, configWithBaseURL);
+        const result = await buildLLMConfig(
+            { provider: 'anthropic', model: 'claude-4-sonnet-20250514' },
+            configWithBaseURL
+        );
 
         expect(result.isValid).toBe(true);
         expect(result.config.baseURL).toBeUndefined();
@@ -308,8 +323,8 @@ describe('buildLLMConfig', () => {
 
         expect(result.isValid).toBe(false); // Will fail due to missing API key
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('missing_api_key');
-        expect(result.errors[0].message).toContain("No API key found for provider 'anthropic'");
+        expect(result.errors?.[0]?.type).toBe('missing_api_key');
+        expect(result.errors?.[0]?.message).toContain("No API key found for provider 'anthropic'");
     });
 });
 
@@ -329,8 +344,8 @@ describe('validateLLMSwitchRequest', () => {
         const errors = validateLLMSwitchRequest({});
 
         expect(errors).toHaveLength(1);
-        expect(errors[0].type).toBe('general');
-        expect(errors[0].message).toBe('Provider and model are required');
+        expect(errors?.[0]?.type).toBe('general');
+        expect(errors?.[0]?.message).toBe('Provider and model are required');
     });
 
     test('should validate router', () => {
@@ -344,41 +359,7 @@ describe('validateLLMSwitchRequest', () => {
         expect(errors.length).toBeGreaterThan(0);
         const routerError = errors.find((e) => e.type === 'unsupported_router');
         expect(routerError).toBeDefined();
-        expect(routerError.message).toBe('Router must be either "vercel" or "in-built"');
-    });
-});
-
-describe('validateRuntimeUpdate', () => {
-    test('should validate valid runtime update', () => {
-        const result = validateRuntimeUpdate({
-            debugMode: true,
-            logLevel: 'debug',
-        });
-
-        expect(result.isValid).toBe(true);
-        expect(result.errors).toEqual([]);
-    });
-
-    test('should error on invalid debugMode', () => {
-        const result = validateRuntimeUpdate({
-            debugMode: 'true' as any,
-        });
-
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('general');
-        expect(result.errors[0].message).toBe('debugMode must be a boolean');
-    });
-
-    test('should error on invalid logLevel', () => {
-        const result = validateRuntimeUpdate({
-            logLevel: 'invalid' as any,
-        });
-
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].type).toBe('general');
-        expect(result.errors[0].message).toBe('logLevel must be one of: error, warn, info, debug');
+        expect(routerError?.message).toBe('Router must be either "vercel" or "in-built"');
     });
 });
 
@@ -389,6 +370,9 @@ describe('validateMcpServerConfig', () => {
                 type: 'stdio',
                 command: 'node',
                 args: ['server.js'],
+                env: {},
+                timeout: 30000,
+                connectionMode: 'lenient',
             };
 
             const result = validateMcpServerConfig('test-server', serverConfig);
@@ -401,6 +385,9 @@ describe('validateMcpServerConfig', () => {
             const serverConfig: McpServerConfig = {
                 type: 'sse',
                 url: 'https://example.com/sse',
+                timeout: 30000,
+                connectionMode: 'lenient',
+                headers: {},
             };
 
             const result = validateMcpServerConfig('test-server', serverConfig);
@@ -413,6 +400,9 @@ describe('validateMcpServerConfig', () => {
             const serverConfig: McpServerConfig = {
                 type: 'http',
                 url: 'https://api.example.com',
+                timeout: 30000,
+                connectionMode: 'lenient',
+                headers: {},
             };
 
             const result = validateMcpServerConfig('test-server', serverConfig);
@@ -428,12 +418,15 @@ describe('validateMcpServerConfig', () => {
                 type: 'stdio',
                 command: 'node',
                 args: ['server.js'],
+                env: {},
+                timeout: 30000,
+                connectionMode: 'lenient',
             };
 
             const result = validateMcpServerConfig('', serverConfig);
 
             expect(result.isValid).toBe(false);
-            expect(result.errors[0].message).toBe('Server name must be a non-empty string');
+            expect(result.errors?.[0]?.message).toBe('Server name must be a non-empty string');
         });
 
         test('should reject empty stdio command', () => {
@@ -441,36 +434,45 @@ describe('validateMcpServerConfig', () => {
                 type: 'stdio',
                 command: '',
                 args: ['server.js'],
+                env: {},
+                timeout: 30000,
+                connectionMode: 'lenient',
             };
 
             const result = validateMcpServerConfig('test-server', serverConfig);
 
             expect(result.isValid).toBe(false);
-            expect(result.errors[0].message).toBe('Stdio server requires a non-empty command');
+            expect(result.errors?.[0]?.message).toBe('Stdio server requires a non-empty command');
         });
 
         test('should reject invalid sse url', () => {
             const serverConfig: McpServerConfig = {
                 type: 'sse',
                 url: 'not-a-valid-url',
+                timeout: 30000,
+                connectionMode: 'lenient',
+                headers: {},
             };
 
             const result = validateMcpServerConfig('test-server', serverConfig);
 
             expect(result.isValid).toBe(false);
-            expect(result.errors[0].message).toContain('Invalid server configuration');
+            expect(result.errors?.[0]?.message).toContain('Invalid server configuration');
         });
 
         test('should reject invalid http url', () => {
             const serverConfig: McpServerConfig = {
                 type: 'http',
                 url: 'invalid-url',
+                timeout: 30000,
+                connectionMode: 'lenient',
+                headers: {},
             };
 
             const result = validateMcpServerConfig('test-server', serverConfig);
 
             expect(result.isValid).toBe(false);
-            expect(result.errors[0].message).toContain('Invalid server configuration');
+            expect(result.errors?.[0]?.message).toContain('Invalid server configuration');
         });
     });
 
@@ -480,6 +482,9 @@ describe('validateMcpServerConfig', () => {
                 type: 'stdio',
                 command: 'node',
                 args: ['server.js'],
+                env: {},
+                timeout: 30000,
+                connectionMode: 'lenient',
             };
             const existingNames = ['MyServer'];
 

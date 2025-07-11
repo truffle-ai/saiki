@@ -11,8 +11,8 @@ import { PromptManager } from '../../systemPrompt/manager.js';
 import { IConversationHistoryProvider } from './history/types.js';
 import { SessionEventBus } from '../../../events/index.js';
 /**
- * Manages conversation history and provides message formatting capabilities.
- * The MessageManager is responsible for:
+ * Manages conversation history and provides message formatting capabilities for the LLM context.
+ * The ContextManager is responsible for:
  * - Validating and storing conversation messages via the history provider
  * - Managing the system prompt
  * - Formatting messages for specific LLM providers through an injected formatter
@@ -21,11 +21,11 @@ import { SessionEventBus } from '../../../events/index.js';
  * - Providing access to conversation history
  *
  * Note: All conversation history is stored and retrieved via the injected ConversationHistoryProvider.
- * The MessageManager does not maintain an internal history cache.
+ * The ContextManager does not maintain an internal history cache.
  * TOOD: clean up tokenizer logic if we are relying primarily on LLM API to give us token count.
  * Right now its weaker because it doesn't account for tools and other non-text content in the prompt.
  */
-export class MessageManager {
+export class ContextManager {
     /**
      * PromptManager used to generate/manage the system prompt
      */
@@ -74,7 +74,7 @@ export class MessageManager {
     private readonly sessionId: string;
 
     /**
-     * Creates a new MessageManager instance
+     * Creates a new ContextManager instance
      *
      * @param formatter Formatter implementation for the target LLM provider
      * @param promptManager PromptManager instance for the conversation
@@ -117,7 +117,7 @@ export class MessageManager {
         this.compressionStrategies = compressionStrategies;
 
         logger.debug(
-            `MessageManager: Initialized for session ${sessionId} - history will be managed by ${historyProvider.constructor.name}`
+            `ContextManager: Initialized for session ${sessionId} - history will be managed by ${historyProvider.constructor.name}`
         );
     }
 
@@ -143,13 +143,13 @@ export class MessageManager {
             // Get system prompt
             const systemPrompt = await this.getSystemPrompt(context);
 
-            // Get history and apply compression (same logic as getFormattedMessages)
+            // Get conversation history
             let history = await this.historyProvider.getHistory();
 
             // Count system prompt tokens
             const systemPromptTokens = this.tokenizer.countTokens(systemPrompt);
 
-            // Apply compression with actual system prompt token count
+            // Compress history if it exceeds the token limit
             history = await this.compressHistoryIfNeeded(history, systemPromptTokens);
 
             // Count history message tokens (after compression)
@@ -181,7 +181,7 @@ export class MessageManager {
     }
 
     /**
-     * Updates the MessageManager configuration when LLM config changes.
+     * Updates the ContextManager configuration when LLM config changes.
      * This is called when SaikiAgent.switchLLM() updates the LLM configuration.
      *
      * @param newMaxInputTokens New maximum token limit
@@ -205,7 +205,7 @@ export class MessageManager {
         }
 
         logger.debug(
-            `MessageManager config updated: maxInputTokens ${oldMaxInputTokens} -> ${newMaxInputTokens}`
+            `ContextManager config updated: maxInputTokens ${oldMaxInputTokens} -> ${newMaxInputTokens}`
         );
     }
 
@@ -269,7 +269,7 @@ export class MessageManager {
     async addMessage(message: InternalMessage): Promise<void> {
         // Validation based on role
         if (!message.role) {
-            throw new Error('MessageManager: Message must have a role.');
+            throw new Error('ContextManager: Message must have a role.');
         }
 
         switch (message.role) {
@@ -280,7 +280,7 @@ export class MessageManager {
                     (typeof message.content !== 'string' || message.content.trim() === '')
                 ) {
                     throw new Error(
-                        'MessageManager: User message content should be a non-empty string or a non-empty array of parts.'
+                        'ContextManager: User message content should be a non-empty string or a non-empty array of parts.'
                     );
                 }
                 // Optional: Add validation for the structure of array parts if needed
@@ -292,7 +292,7 @@ export class MessageManager {
                     (!message.toolCalls || message.toolCalls.length === 0)
                 ) {
                     throw new Error(
-                        'MessageManager: Assistant message must have content or toolCalls.'
+                        'ContextManager: Assistant message must have content or toolCalls.'
                     );
                 }
                 if (message.toolCalls) {
@@ -303,7 +303,7 @@ export class MessageManager {
                         )
                     ) {
                         throw new Error(
-                            'MessageManager: Invalid toolCalls structure in assistant message.'
+                            'ContextManager: Invalid toolCalls structure in assistant message.'
                         );
                     }
                 }
@@ -311,27 +311,27 @@ export class MessageManager {
             case 'tool':
                 if (!message.toolCallId || !message.name || message.content === null) {
                     throw new Error(
-                        'MessageManager: Tool message missing required fields (toolCallId, name, content).'
+                        'ContextManager: Tool message missing required fields (toolCallId, name, content).'
                     );
                 }
                 break;
             case 'system':
                 // System messages should ideally be handled via setSystemPrompt
                 logger.warn(
-                    'MessageManager: Adding system message directly to history. Use setSystemPrompt instead.'
+                    'ContextManager: Adding system message directly to history. Use setSystemPrompt instead.'
                 );
                 if (typeof message.content !== 'string' || message.content.trim() === '') {
                     throw new Error(
-                        'MessageManager: System message content must be a non-empty string.'
+                        'ContextManager: System message content must be a non-empty string.'
                     );
                 }
                 break;
             default:
-                throw new Error(`MessageManager: Unknown message role: ${(message as any).role}`);
+                throw new Error(`ContextManager: Unknown message role: ${(message as any).role}`);
         }
 
         logger.debug(
-            `MessageManager: Adding message to history provider: ${JSON.stringify(message, null, 2)}`
+            `ContextManager: Adding message to history provider: ${JSON.stringify(message, null, 2)}`
         );
 
         try {
@@ -340,10 +340,10 @@ export class MessageManager {
 
             // Get updated history for logging
             const history = await this.historyProvider.getHistory();
-            logger.debug(`MessageManager: History now contains ${history.length} messages`);
+            logger.debug(`ContextManager: History now contains ${history.length} messages`);
         } catch (error) {
             logger.error(
-                `MessageManager: Failed to save message for session ${this.sessionId}:`,
+                `ContextManager: Failed to save message for session ${this.sessionId}:`,
                 error
             );
             throw new Error(
@@ -367,11 +367,15 @@ export class MessageManager {
         const messageParts: InternalMessage['content'] = imageData
             ? [
                   { type: 'text', text: textContent },
-                  { type: 'image', image: imageData.image, mimeType: imageData.mimeType },
+                  {
+                      type: 'image',
+                      image: imageData.image,
+                      mimeType: imageData.mimeType || 'image/jpeg',
+                  },
               ]
             : [{ type: 'text', text: textContent }];
         logger.debug(
-            `MessageManager: Adding user message: ${JSON.stringify(messageParts, null, 2)}`
+            `ContextManager: Adding user message: ${JSON.stringify(messageParts, null, 2)}`
         );
         await this.addMessage({ role: 'user', content: messageParts });
     }
@@ -393,7 +397,11 @@ export class MessageManager {
             throw new Error('addAssistantMessage: Must provide content or toolCalls.');
         }
         // Further validation happens within addMessage
-        await this.addMessage({ role: 'assistant', content, toolCalls });
+        await this.addMessage({
+            role: 'assistant' as const,
+            content,
+            ...(toolCalls && toolCalls.length > 0 && { toolCalls }),
+        });
     }
 
     /**
@@ -421,7 +429,7 @@ export class MessageManager {
                 {
                     type: 'image',
                     image: getImageData(imagePart),
-                    mimeType: imagePart.mimeType,
+                    mimeType: imagePart.mimeType || 'image/jpeg',
                 },
             ];
         } else if (typeof result === 'string') {
@@ -442,7 +450,7 @@ export class MessageManager {
      *
      * @param prompt The system prompt text
      */
-    setSystemPrompt(prompt: string): void {
+    setSystemPrompt(_prompt: string): void {
         // This method is no longer used with systemPromptContributors
     }
 
@@ -469,7 +477,7 @@ export class MessageManager {
             messageHistory = history ?? (await this.historyProvider.getHistory());
         } catch (error) {
             logger.error(
-                `MessageManager: Failed to get history for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`
+                `ContextManager: Failed to get history for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`
             );
             throw new Error(
                 `Failed to get conversation history: ${error instanceof Error ? error.message : String(error)}`
@@ -569,7 +577,7 @@ export class MessageManager {
     async resetConversation(): Promise<void> {
         // Clear persisted history
         await this.historyProvider.clearHistory();
-        logger.debug(`MessageManager: Conversation history cleared for session ${this.sessionId}`);
+        logger.debug(`ContextManager: Conversation history cleared for session ${this.sessionId}`);
     }
 
     /**
@@ -586,7 +594,7 @@ export class MessageManager {
         let currentTotalTokens: number = countMessagesTokens(history, this.tokenizer);
         currentTotalTokens += systemPromptTokens;
 
-        logger.debug(`MessageManager: Checking if history compression is needed.`);
+        logger.debug(`ContextManager: Checking if history compression is needed.`);
         logger.debug(
             `History tokens: ${countMessagesTokens(history, this.tokenizer)}, System prompt tokens: ${systemPromptTokens}, Total: ${currentTotalTokens}`
         );
@@ -594,13 +602,13 @@ export class MessageManager {
         // If counting failed or we are within limits, do nothing
         if (currentTotalTokens <= this.maxInputTokens) {
             logger.debug(
-                `MessageManager: History compression not needed. Total token count: ${currentTotalTokens}, Max tokens: ${this.maxInputTokens}`
+                `ContextManager: History compression not needed. Total token count: ${currentTotalTokens}, Max tokens: ${this.maxInputTokens}`
             );
             return history;
         }
 
         logger.info(
-            `MessageManager: History exceeds token limit (${currentTotalTokens} > ${this.maxInputTokens}). Applying compression strategies sequentially.`
+            `ContextManager: History exceeds token limit (${currentTotalTokens} > ${this.maxInputTokens}). Applying compression strategies sequentially.`
         );
 
         const initialLength = history.length;
@@ -612,7 +620,7 @@ export class MessageManager {
         // Iterate through the configured compression strategies sequentially
         for (const strategy of this.compressionStrategies) {
             const strategyName = strategy.constructor.name; // Get the class name for logging
-            logger.debug(`MessageManager: Applying ${strategyName}...`);
+            logger.debug(`ContextManager: Applying ${strategyName}...`);
 
             try {
                 // Pass a copy of the history to avoid potential side effects within the strategy
@@ -623,7 +631,7 @@ export class MessageManager {
                     targetHistoryTokens // Use target tokens that account for system prompt
                 );
             } catch (error) {
-                logger.error(`MessageManager: Error applying ${strategyName}:`, error);
+                logger.error(`ContextManager: Error applying ${strategyName}:`, error);
                 // Decide if we should stop or try the next strategy. Let's stop for now.
                 break;
             }
@@ -636,7 +644,7 @@ export class MessageManager {
             // If counting failed or we are now within limits, stop applying strategies
             if (currentTotalTokens <= this.maxInputTokens) {
                 logger.debug(
-                    `MessageManager: Compression successful after ${strategyName}. New total count: ${currentTotalTokens}, messages removed: ${messagesRemoved}`
+                    `ContextManager: Compression successful after ${strategyName}. New total count: ${currentTotalTokens}, messages removed: ${messagesRemoved}`
                 );
                 break;
             }
@@ -659,7 +667,7 @@ export class MessageManager {
                     await this.addMessage(msg);
                 } catch (error) {
                     logger.error(
-                        `MessageManager: Failed to process LLM stream response message for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`
+                        `ContextManager: Failed to process LLM stream response message for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`
                     );
                     // Continue processing other messages rather than failing completely
                 }
@@ -682,7 +690,7 @@ export class MessageManager {
                 await this.addMessage(msg);
             } catch (error) {
                 logger.error(
-                    `MessageManager: Failed to process LLM response message for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`
+                    `ContextManager: Failed to process LLM response message for session ${this.sessionId}: ${error instanceof Error ? error.message : String(error)}`
                 );
                 // Continue processing other messages rather than failing completely
             }

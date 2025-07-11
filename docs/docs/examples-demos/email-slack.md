@@ -8,7 +8,7 @@ hide_title: true
 ## 📧 Email Summaries in Slack
 
 ```bash
-saiki --config-file ./configuration/examples/email_slack.yml
+saiki --agent ./agents/examples/email_slack.yml
 ```
 **Task:**
 > Summarize emails and send highlights to Slack

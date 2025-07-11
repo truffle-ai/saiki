@@ -13,40 +13,34 @@ We chose `yml` instead of the more popular `json` because of its support for com
 
 ## Where to Place Your Config
 
-By default, Saiki uses a configuration file named `configuration/saiki.yml`. You can also specify a custom config path using the CLI:
+By default, Saiki uses a configuration file named `agents/agent.yml`. You can also specify a custom config path using the CLI:
 
 ```bash
-saiki --config-file path/to/your-config.yml
+saiki --agent path/to/your-config.yml
 ```
 
 ## Example Configuration File
 
 ```yaml
-# saiki.yml
-mcpServers:
-  filesystem:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-filesystem"
-      - .
-  puppeteer:
-    type: stdio
-    command: node
-    args:
-      - dist/src/servers/puppeteerServer.js
+# agent.yml - Basic agent configuration
+systemPrompt: |
+  You are a helpful AI assistant with access to tools.
+  Use these tools when appropriate to answer user queries.
+  You can use multiple tools in sequence to solve complex problems.
+  After each tool result, determine if you need more information or can provide a final answer.
 
 llm:
   provider: openai
   model: gpt-4.1-mini
   # you can update the system prompt to change the behavior of the llm
-  systemPrompt: |
-    You are Saiki, a helpful AI assistant with access to tools.
-    Use these tools when appropriate to answer user queries.
-    You can use multiple tools in sequence to solve complex problems.
-    After each tool result, determine if you need more information or can provide a final answer.
   apiKey: $OPENAI_API_KEY
+
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
 ```
 
 ## Key Sections Explained
@@ -61,6 +55,10 @@ llm:
 - **storage:**
   - This section defines where the agent will store conversation history, settings, and other data. 
   - [Complete Reference](./storage)
+- **toolConfirmation:**
+  - This section controls how and when users are prompted to approve tool execution
+  - Configure confirmation modes, timeouts, and approval storage
+  - [Complete Reference](./toolConfirmation)
 
 ## Best Practices
 
@@ -68,5 +66,5 @@ llm:
 - **Keep your config in version control** (but never commit secrets!). Use `.env` files or CI secrets for sensitive values.
 - **Document your config** for your team. Add comments to your YML files. We chose YML for this reason.
 - **Validate your config** before running Saiki in production.
-- **See the `configuration/examples/` folder for more templates and advanced use cases.**
+- **See the `agents/examples/` folder for more templates and advanced use cases.**
  

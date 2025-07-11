@@ -1,24 +1,28 @@
 // src/ai/agent/SaikiAgent.ts
 import { MCPManager } from '../../client/manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
-import { StaticConfigManager } from '../../config/static-config-manager.js';
 import { AgentStateManager } from '../../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
-import { McpServerConfig, LLMConfig } from '../../config/schemas.js';
+import { ValidatedLLMConfig, LLMConfig, McpServerConfig } from '../../config/schemas.js';
+import {
+    getSupportedProviders,
+    getDefaultModelForProvider,
+    getProviderFromModel,
+    LLMProvider,
+    LLM_REGISTRY,
+    ModelInfo,
+} from '../llm/registry.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
-import { loadConfigFile } from '../../config/loader.js';
 import type { AgentConfig } from '../../config/schemas.js';
-import type { CLIConfigOverrides } from '../../config/types.js';
-import type { InitializeServicesOptions } from '../../utils/service-initializer.js';
 import { AgentEventBus } from '../../events/index.js';
-import { LLMConfigSchema } from '../../config/schemas.js';
-import { buildLLMConfig, type ValidationError } from '../../config/validation-utils.js';
+import { buildLLMConfig } from '../../config/validation-utils.js';
 import type { IMCPClient } from '../../client/types.js';
+import type { ToolSet } from '../types.js';
 
 const requiredServices: (keyof AgentServices)[] = [
-    'clientManager',
+    'mcpManager',
     'promptManager',
     'agentEventBus',
     'stateManager',
@@ -39,6 +43,7 @@ const requiredServices: (keyof AgentServices)[] = [
  * - **Dynamic LLM Switching**: Change language models while preserving conversation history
  * - **MCP Server Integration**: Connect to and manage Model Context Protocol servers
  * - **Tool Execution**: Execute tools from connected MCP servers
+ * - **Prompt Management**: Build and inspect dynamic system prompts with context
  * - **Event System**: Emit events for integration with external systems
  *
  * Design Principles:
@@ -49,14 +54,15 @@ const requiredServices: (keyof AgentServices)[] = [
  *
  * @example
  * ```typescript
- * // Create agent
- * const agent = await createSaikiAgent(config);
+ * // Create and start agent
+ * const agent = new SaikiAgent(config);
+ * await agent.start();
  *
  * // Process user messages
  * const response = await agent.run("Hello, how are you?");
  *
- * // Switch LLM models
- * await agent.switchLLM({ model: 'gpt-4o', provider: 'openai' });
+ * // Switch LLM models (provider inferred automatically)
+ * await agent.switchLLM({ model: 'gpt-4o' });
  *
  * // Manage sessions
  * const session = agent.createSession('user-123');
@@ -64,6 +70,13 @@ const requiredServices: (keyof AgentServices)[] = [
  *
  * // Connect MCP servers
  * await agent.connectMcpServer('filesystem', { command: 'mcp-filesystem' });
+ *
+ * // Inspect available tools and system prompt
+ * const tools = await agent.getAllMcpTools();
+ * const prompt = await agent.getSystemPrompt();
+ *
+ * // Gracefully stop the agent when done
+ * await agent.stop();
  * ```
  */
 export class SaikiAgent {
@@ -72,12 +85,12 @@ export class SaikiAgent {
      * This gives users the option to use methods of the services directly if they know what they are doing
      * But the main recommended entry points/functions would still be the wrapper methods we define below
      */
-    public readonly clientManager: MCPManager;
-    public readonly promptManager: PromptManager;
-    public readonly agentEventBus: AgentEventBus;
-    public readonly stateManager: AgentStateManager;
-    public readonly sessionManager: SessionManager;
-    public readonly services: AgentServices;
+    public readonly mcpManager!: MCPManager;
+    public readonly promptManager!: PromptManager;
+    public readonly agentEventBus!: AgentEventBus;
+    public readonly stateManager!: AgentStateManager;
+    public readonly sessionManager!: SessionManager;
+    public readonly services!: AgentServices;
 
     // Default session for backward compatibility
     private defaultSession: ChatSession | null = null;
@@ -85,22 +98,161 @@ export class SaikiAgent {
     // Current default session ID for loadSession functionality
     private currentDefaultSessionId: string = 'default';
 
-    constructor(services: AgentServices) {
-        // Validate all required services are provided
-        for (const service of requiredServices) {
-            if (!services[service]) {
-                throw new Error(`Required service ${service} is missing in SaikiAgent constructor`);
-            }
+    // Track initialization state
+    private _isStarted: boolean = false;
+    private _isStopped: boolean = false;
+
+    // Store config for async initialization
+    private config: AgentConfig;
+
+    constructor(config: AgentConfig) {
+        this.config = config;
+
+        // call start() to initialize services
+        logger.info('SaikiAgent created.');
+    }
+
+    /**
+     * Starts the agent by initializing all async services.
+     * This method handles storage backends, MCP connections, session manager initialization, and other async operations.
+     * Must be called before using any agent functionality.
+     *
+     * @throws Error if agent is already started or initialization fails
+     */
+    public async start(): Promise<void> {
+        if (this._isStarted) {
+            throw new Error('Agent is already started');
         }
 
-        this.clientManager = services.clientManager;
-        this.promptManager = services.promptManager;
-        this.agentEventBus = services.agentEventBus;
-        this.stateManager = services.stateManager;
-        this.sessionManager = services.sessionManager;
-        this.services = services;
+        try {
+            logger.info('Starting SaikiAgent...');
 
-        logger.info('SaikiAgent initialized.');
+            // Initialize all services asynchronously
+            const services = await createAgentServices(this.config);
+
+            // Validate all required services are provided
+            for (const service of requiredServices) {
+                if (!services[service]) {
+                    throw new Error(`Required service ${service} is missing during agent start`);
+                }
+            }
+
+            // Use Object.assign to set readonly properties
+            Object.assign(this, {
+                mcpManager: services.mcpManager,
+                promptManager: services.promptManager,
+                agentEventBus: services.agentEventBus,
+                stateManager: services.stateManager,
+                sessionManager: services.sessionManager,
+                services: services,
+            });
+
+            this._isStarted = true;
+            logger.info('SaikiAgent started successfully.');
+        } catch (error) {
+            logger.error('Failed to start SaikiAgent', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Stops the agent and gracefully shuts down all services.
+     * This method handles disconnecting MCP clients, cleaning up sessions, closing storage connections,
+     * and releasing all resources. The agent cannot be restarted after being stopped.
+     *
+     * @throws Error if agent has not been started or shutdown fails
+     */
+    public async stop(): Promise<void> {
+        if (this._isStopped) {
+            logger.warn('Agent is already stopped');
+            return;
+        }
+
+        if (!this._isStarted) {
+            throw new Error('Agent must be started before it can be stopped');
+        }
+
+        try {
+            logger.info('Stopping SaikiAgent...');
+
+            const shutdownErrors: Error[] = [];
+
+            // 1. Clean up session manager (stop accepting new sessions, clean existing ones)
+            try {
+                if (this.sessionManager) {
+                    await this.sessionManager.cleanup();
+                    logger.debug('SessionManager cleaned up successfully');
+                }
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                shutdownErrors.push(new Error(`SessionManager cleanup failed: ${err.message}`));
+            }
+
+            // 2. Disconnect all MCP clients
+            try {
+                if (this.mcpManager) {
+                    await this.mcpManager.disconnectAll();
+                    logger.debug('MCPManager disconnected all clients successfully');
+                }
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                shutdownErrors.push(new Error(`MCPManager disconnect failed: ${err.message}`));
+            }
+
+            // 3. Close storage backends
+            try {
+                if (this.services?.storageManager) {
+                    await this.services.storageManager.disconnect();
+                    logger.debug('Storage manager disconnected successfully');
+                }
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                shutdownErrors.push(new Error(`Storage disconnect failed: ${err.message}`));
+            }
+
+            this._isStopped = true;
+            this._isStarted = false;
+
+            if (shutdownErrors.length > 0) {
+                const errorMessages = shutdownErrors.map((e) => e.message).join('; ');
+                logger.warn(`SaikiAgent stopped with some errors: ${errorMessages}`);
+                // Still consider it stopped, but log the errors
+            } else {
+                logger.info('SaikiAgent stopped successfully.');
+            }
+        } catch (error) {
+            logger.error('Failed to stop SaikiAgent', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Checks if the agent has been started.
+     * @returns true if agent is started, false otherwise
+     */
+    public isStarted(): boolean {
+        return this._isStarted;
+    }
+
+    /**
+     * Checks if the agent has been stopped.
+     * @returns true if agent is stopped, false otherwise
+     */
+    public isStopped(): boolean {
+        return this._isStopped;
+    }
+
+    /**
+     * Ensures the agent is started before executing operations.
+     * @throws Error if agent is not started or has been stopped
+     */
+    private ensureStarted(): void {
+        if (this._isStopped) {
+            throw new Error('Agent has been stopped and cannot be used');
+        }
+        if (!this._isStarted) {
+            throw new Error('Agent must be started before use. Call agent.start() first.');
+        }
     }
 
     // ============= CORE AGENT FUNCTIONALITY =============
@@ -121,6 +273,7 @@ export class SaikiAgent {
         sessionId?: string,
         stream: boolean = false
     ): Promise<string | null> {
+        this.ensureStarted();
         try {
             let session: ChatSession;
 
@@ -175,6 +328,7 @@ export class SaikiAgent {
      * @returns The created or existing ChatSession
      */
     public async createSession(sessionId?: string): Promise<ChatSession> {
+        this.ensureStarted();
         return await this.sessionManager.createSession(sessionId);
     }
 
@@ -184,6 +338,7 @@ export class SaikiAgent {
      * @returns The ChatSession if found, undefined otherwise
      */
     public async getSession(sessionId: string): Promise<ChatSession | undefined> {
+        this.ensureStarted();
         return await this.sessionManager.getSession(sessionId);
     }
 
@@ -192,14 +347,31 @@ export class SaikiAgent {
      * @returns Array of session IDs
      */
     public async listSessions(): Promise<string[]> {
+        this.ensureStarted();
         return await this.sessionManager.listSessions();
     }
 
     /**
-     * Deletes a session and cleans up its resources.
+     * Ends a session by removing it from memory without deleting conversation history.
+     * Used for cleanup, agent shutdown, and session expiry.
+     * @param sessionId The session ID to end
+     */
+    public async endSession(sessionId: string): Promise<void> {
+        this.ensureStarted();
+        // If ending the currently loaded default session, clear our reference
+        if (sessionId === this.currentDefaultSessionId) {
+            this.defaultSession = null;
+        }
+        return this.sessionManager.endSession(sessionId);
+    }
+
+    /**
+     * Deletes a session and its conversation history permanently.
+     * Used for user-initiated permanent deletion.
      * @param sessionId The session ID to delete
      */
     public async deleteSession(sessionId: string): Promise<void> {
+        this.ensureStarted();
         // If deleting the currently loaded default session, clear our reference
         if (sessionId === this.currentDefaultSessionId) {
             this.defaultSession = null;
@@ -208,19 +380,12 @@ export class SaikiAgent {
     }
 
     /**
-     * @deprecated Use deleteSession instead. This method will be removed in a future version.
-     */
-    public async endSession(sessionId: string): Promise<void> {
-        logger.warn('endSession is deprecated, use deleteSession instead');
-        return this.deleteSession(sessionId);
-    }
-
-    /**
      * Gets metadata for a specific session.
      * @param sessionId The session ID
      * @returns The session metadata or undefined if session doesn't exist
      */
     public async getSessionMetadata(sessionId: string): Promise<SessionMetadata | undefined> {
+        this.ensureStarted();
         return await this.sessionManager.getSessionMetadata(sessionId);
     }
 
@@ -231,6 +396,7 @@ export class SaikiAgent {
      * @throws Error if session doesn't exist
      */
     public async getSessionHistory(sessionId: string) {
+        this.ensureStarted();
         const session = await this.sessionManager.getSession(sessionId);
         if (!session) {
             throw new Error(`Session '${sessionId}' not found`);
@@ -258,6 +424,7 @@ export class SaikiAgent {
      * ```
      */
     public async loadSession(sessionId: string | null = null): Promise<void> {
+        this.ensureStarted();
         if (sessionId === null) {
             this.currentDefaultSessionId = 'default';
             this.defaultSession = null; // Clear cached session to force reload
@@ -293,6 +460,7 @@ export class SaikiAgent {
      * @returns The current default ChatSession
      */
     public async getDefaultSession(): Promise<ChatSession> {
+        this.ensureStarted();
         if (!this.defaultSession || this.defaultSession.id !== this.currentDefaultSessionId) {
             this.defaultSession = await this.sessionManager.createSession(
                 this.currentDefaultSessionId
@@ -307,6 +475,7 @@ export class SaikiAgent {
      * @param sessionId Optional session ID. If not provided, resets the currently loaded default session.
      */
     public async resetConversation(sessionId?: string): Promise<void> {
+        this.ensureStarted();
         try {
             const targetSessionId = sessionId || this.currentDefaultSessionId;
 
@@ -341,16 +510,21 @@ export class SaikiAgent {
     // ============= LLM MANAGEMENT =============
 
     /**
-     * Gets the current LLM configuration.
+     * Gets the current LLM configuration with all defaults applied.
      * @returns Current LLM configuration
      */
     public getCurrentLLMConfig(): LLMConfig {
-        return structuredClone(this.stateManager.getRuntimeState().llm);
+        this.ensureStarted();
+        return structuredClone(this.stateManager.getLLMConfig()) as LLMConfig;
     }
 
     /**
      * Switches the LLM service while preserving conversation history.
      * This is a comprehensive method that handles ALL validation, configuration building, and switching internally.
+     *
+     * Design:
+     * - Input: Partial<LLMConfig> (allows optional fields like maxIterations?, router?)
+     * - Output: LLMConfig (user-friendly type with all defaults applied)
      *
      * Key features:
      * - Accepts partial LLM configuration object
@@ -398,6 +572,7 @@ export class SaikiAgent {
             suggestedAction?: string;
         }>;
     }> {
+        this.ensureStarted();
         // Basic validation
         if (!llmUpdates.model && !llmUpdates.provider) {
             return {
@@ -414,8 +589,8 @@ export class SaikiAgent {
         try {
             // Get current config for the session
             const currentLLMConfig = sessionId
-                ? this.stateManager.getEffectiveState(sessionId).llm
-                : this.stateManager.getEffectiveState().llm;
+                ? this.stateManager.getRuntimeConfig(sessionId).llm
+                : this.stateManager.getRuntimeConfig().llm;
 
             // Build and validate the new configuration
             const result = await buildLLMConfig(llmUpdates, currentLLMConfig);
@@ -425,15 +600,19 @@ export class SaikiAgent {
                 return {
                     success: false,
                     errors: result.errors.map((err) => ({
-                        type: err.type,
+                        type: err.type as string,
                         message: err.message,
-                        provider: err.provider,
-                        model: err.model,
-                        router: err.router,
-                        suggestedAction:
-                            err.type === 'missing_api_key'
-                                ? `Please set the ${err.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
-                                : err.suggestedAction,
+                        ...(err.provider && { provider: err.provider }),
+                        ...(err.model && { model: err.model }),
+                        ...(err.router && { router: err.router }),
+                        ...((err.type === 'missing_api_key'
+                            ? `Please set the ${err.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
+                            : err.suggestedAction) && {
+                            suggestedAction:
+                                err.type === 'missing_api_key'
+                                    ? `Please set the ${err.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
+                                    : err.suggestedAction,
+                        }),
                     })),
                     warnings: result.warnings,
                 };
@@ -442,8 +621,9 @@ export class SaikiAgent {
             // Perform the actual LLM switch with validated config
             return await this.performLLMSwitch(result.config, sessionId, result.warnings);
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error('Error switching LLM', {
-                error: error.message,
+                error: errorMessage,
                 config: llmUpdates,
                 sessionScope: sessionId,
             });
@@ -452,7 +632,7 @@ export class SaikiAgent {
                 errors: [
                     {
                         type: 'general',
-                        message: error.message,
+                        message: errorMessage,
                     },
                 ],
             };
@@ -469,7 +649,7 @@ export class SaikiAgent {
      * @returns Promise resolving to switch result
      */
     private async performLLMSwitch(
-        validatedConfig: LLMConfig,
+        validatedConfig: ValidatedLLMConfig,
         sessionScope?: string,
         configWarnings: string[] = []
     ): Promise<{
@@ -492,12 +672,12 @@ export class SaikiAgent {
             return {
                 success: false,
                 errors: stateValidation.errors.map((err) => ({
-                    type: err.type,
+                    type: err.type as string,
                     message: err.message,
-                    provider: err.provider,
-                    model: err.model,
-                    router: err.router,
-                    suggestedAction: err.suggestedAction,
+                    ...(err.provider && { provider: err.provider }),
+                    ...(err.model && { model: err.model }),
+                    ...(err.router && { router: err.router }),
+                    ...(err.suggestedAction && { suggestedAction: err.suggestedAction }),
                 })),
             };
         }
@@ -536,10 +716,125 @@ export class SaikiAgent {
 
         return {
             success: true,
-            config: validatedConfig,
+            config: validatedConfig as LLMConfig,
             message: switchResult.message,
-            warnings: allWarnings.length > 0 ? allWarnings : undefined,
+            ...(allWarnings.length > 0 && { warnings: allWarnings }),
         };
+    }
+
+    /**
+     * Gets all supported LLM providers.
+     * Returns a strongly-typed array of valid provider names that can be used with the agent.
+     *
+     * @returns Array of supported provider names
+     *
+     * @example
+     * ```typescript
+     * const providers = agent.getSupportedProviders();
+     * console.log(providers); // ['openai', 'anthropic', 'google', 'groq']
+     * ```
+     */
+    public getSupportedProviders(): LLMProvider[] {
+        return getSupportedProviders() as LLMProvider[];
+    }
+
+    /**
+     * Gets all supported models grouped by provider with detailed information.
+     * Returns a strongly-typed object mapping each provider to its available models,
+     * including model metadata such as token limits and default status.
+     *
+     * @returns Object mapping provider names to their model information
+     *
+     * @example
+     * ```typescript
+     * const models = agent.getSupportedModels();
+     * console.log(models.openai); // Array of OpenAI models with metadata
+     * console.log(models.anthropic[0].maxInputTokens); // Token limit for first Anthropic model
+     *
+     * // Check if a model is the default for its provider
+     * const hasDefault = models.google.some(model => model.isDefault);
+     * ```
+     */
+    public getSupportedModels(): Record<LLMProvider, Array<ModelInfo & { isDefault: boolean }>> {
+        const result = {} as Record<LLMProvider, Array<ModelInfo & { isDefault: boolean }>>;
+
+        const providers = getSupportedProviders() as LLMProvider[];
+        for (const provider of providers) {
+            const defaultModel = getDefaultModelForProvider(provider);
+            const providerInfo = LLM_REGISTRY[provider];
+
+            result[provider] = providerInfo.models.map((model) => ({
+                ...model,
+                isDefault: model.name === defaultModel,
+            }));
+        }
+
+        return result;
+    }
+
+    /**
+     * Gets supported models for a specific provider.
+     * Returns model information including metadata for the specified provider only.
+     *
+     * @param provider The provider to get models for
+     * @returns Array of model information for the specified provider
+     * @throws Error if provider is not supported
+     *
+     * @example
+     * ```typescript
+     * try {
+     *   const openaiModels = agent.getSupportedModelsForProvider('openai');
+     *   const defaultModel = openaiModels.find(model => model.isDefault);
+     *   console.log(`Default OpenAI model: ${defaultModel?.name}`);
+     * } catch (error) {
+     *   console.error('Unsupported provider');
+     * }
+     * ```
+     */
+    public getSupportedModelsForProvider(
+        provider: LLMProvider
+    ): Array<ModelInfo & { isDefault: boolean }> {
+        const supportedProviders = getSupportedProviders() as LLMProvider[];
+        if (!supportedProviders.includes(provider)) {
+            throw new Error(
+                `Unsupported provider: ${provider}. Supported providers: ${supportedProviders.join(', ')}`
+            );
+        }
+
+        const defaultModel = getDefaultModelForProvider(provider);
+        const providerInfo = LLM_REGISTRY[provider];
+
+        return providerInfo.models.map((model) => ({
+            ...model,
+            isDefault: model.name === defaultModel,
+        }));
+    }
+
+    /**
+     * Infers the provider from a model name.
+     * Searches through all supported providers to find which one supports the given model.
+     *
+     * @param modelName The model name to search for
+     * @returns The provider name if found, null if the model is not supported
+     *
+     * @example
+     * ```typescript
+     * const provider = agent.inferProviderFromModel('gpt-4o');
+     * console.log(provider); // 'openai'
+     *
+     * const provider2 = agent.inferProviderFromModel('claude-4-sonnet-20250514');
+     * console.log(provider2); // 'anthropic'
+     *
+     * const provider3 = agent.inferProviderFromModel('unknown-model');
+     * console.log(provider3); // null
+     * ```
+     */
+    public inferProviderFromModel(modelName: string): LLMProvider | null {
+        try {
+            return getProviderFromModel(modelName) as LLMProvider;
+        } catch {
+            return null;
+        }
     }
 
     // ============= MCP SERVER MANAGEMENT =============
@@ -547,10 +842,17 @@ export class SaikiAgent {
     /**
      * Connects a new MCP server and adds it to the runtime configuration.
      * This method handles both adding the server to runtime state and establishing the connection.
+     *
+     * TODO: USER-FACING API DECISION NEEDED
+     * Currently accepts McpServerConfig (input type with optional fields like timeout?, env?)
+     * This is appropriate for user-facing API as users expect to provide minimal config.
+     * Internal validation will apply defaults and convert to ValidatedMcpServerConfig.
+     *
      * @param name The name of the server to connect.
      * @param config The configuration object for the server.
      */
     public async connectMcpServer(name: string, config: McpServerConfig): Promise<void> {
+        this.ensureStarted();
         try {
             // Add to runtime state first with validation
             const validation = this.stateManager.addMcpServer(name, config);
@@ -561,14 +863,14 @@ export class SaikiAgent {
             }
 
             // Then connect the server
-            await this.clientManager.connectServer(name, config);
+            await this.mcpManager.connectServer(name, config);
 
             this.agentEventBus.emit('saiki:mcpServerConnected', {
                 name,
                 success: true,
             });
             this.agentEventBus.emit('saiki:availableToolsUpdated', {
-                tools: Object.keys(await this.clientManager.getAllTools()),
+                tools: Object.keys(await this.mcpManager.getAllTools()),
                 source: 'mcp',
             });
             logger.info(`SaikiAgent: Successfully added and connected to MCP server '${name}'.`);
@@ -593,8 +895,9 @@ export class SaikiAgent {
      * @param name The name of the server to remove.
      */
     public async removeMcpServer(name: string): Promise<void> {
+        this.ensureStarted();
         // Disconnect the client first
-        await this.clientManager.removeClient(name);
+        await this.mcpManager.removeClient(name);
 
         // Then remove from runtime state
         this.stateManager.removeMcpServer(name);
@@ -608,7 +911,8 @@ export class SaikiAgent {
      * @returns The result of the tool execution
      */
     public async executeMcpTool(toolName: string, args: any): Promise<any> {
-        return await this.clientManager.executeTool(toolName, args);
+        this.ensureStarted();
+        return await this.mcpManager.executeTool(toolName, args);
     }
 
     /**
@@ -616,8 +920,9 @@ export class SaikiAgent {
      * Useful for users to discover what tools are available.
      * @returns Promise resolving to a map of tool names to tool definitions
      */
-    public async getAllMcpTools(): Promise<any> {
-        return await this.clientManager.getAllTools();
+    public async getAllMcpTools(): Promise<ToolSet> {
+        this.ensureStarted();
+        return await this.mcpManager.getAllTools();
     }
 
     /**
@@ -626,7 +931,8 @@ export class SaikiAgent {
      * @returns Map of client names to client instances
      */
     public getMcpClients(): Map<string, IMCPClient> {
-        return this.clientManager.getClients();
+        this.ensureStarted();
+        return this.mcpManager.getClients();
     }
 
     /**
@@ -635,7 +941,42 @@ export class SaikiAgent {
      * @returns Record of failed connection names to error messages
      */
     public getMcpFailedConnections(): Record<string, string> {
-        return this.clientManager.getFailedConnections();
+        this.ensureStarted();
+        return this.mcpManager.getFailedConnections();
+    }
+
+    // ============= PROMPT MANAGEMENT =============
+
+    /**
+     * Gets the current system prompt with all dynamic content resolved.
+     * This method builds the complete prompt by invoking all configured prompt contributors
+     * (static content, dynamic placeholders, MCP resources, etc.) and returns the final
+     * prompt string that will be sent to the LLM.
+     *
+     * Useful for debugging prompt issues, inspecting what context the AI receives,
+     * and understanding how dynamic content is being incorporated.
+     *
+     * @returns Promise resolving to the complete system prompt string
+     *
+     * @example
+     * ```typescript
+     * // Get the current system prompt for inspection
+     * const prompt = await agent.getSystemPrompt();
+     * console.log('Current system prompt:', prompt);
+     *
+     * // Useful for debugging prompt-related issues
+     * if (response.quality === 'poor') {
+     *   const prompt = await agent.getSystemPrompt();
+     *   console.log('Check if prompt includes expected context:', prompt);
+     * }
+     * ```
+     */
+    public async getSystemPrompt(): Promise<string> {
+        this.ensureStarted();
+        const context = {
+            mcpManager: this.mcpManager,
+        };
+        return await this.promptManager.build(context);
     }
 
     // ============= CONFIGURATION ACCESS =============
@@ -646,9 +987,10 @@ export class SaikiAgent {
      * @returns The effective configuration object
      */
     public getEffectiveConfig(sessionId?: string): Readonly<AgentConfig> {
+        this.ensureStarted();
         return sessionId
-            ? this.stateManager.getEffectiveConfig(sessionId)
-            : this.stateManager.getEffectiveConfig();
+            ? this.stateManager.getRuntimeConfig(sessionId)
+            : this.stateManager.getRuntimeConfig();
     }
 
     // Future methods could encapsulate more complex agent behaviors:
@@ -656,45 +998,4 @@ export class SaikiAgent {
     // - Memory and context management across sessions
     // - Tool chaining and workflow automation
     // - Agent collaboration and delegation
-}
-
-/**
- * Factory function to create a new SaikiAgent instance with properly initialized services.
- * This is the recommended way to create new agent instances.
- *
- * @param config Agent configuration object or path to config file
- * @param overrides Optional configuration overrides from CLI or other sources
- * @param options Optional service initialization options
- * @returns Promise that resolves to initialized SaikiAgent instance
- * @throws Error if initialization fails
- *
- * @example
- * ```typescript
- * // Create agent with configuration file
- * const agent = await createSaikiAgent('./saiki.yml');
- *
- * // Create agent with config object and CLI overrides
- * const agent = await createSaikiAgent(configObject, { model: 'gpt-4o' });
- *
- * // Create agent with custom service options
- * const agent = await createSaikiAgent(configObject, undefined, {
- *   skipMcpConnections: true
- * });
- * ```
- */
-export async function createSaikiAgent(
-    config: AgentConfig,
-    overrides?: CLIConfigOverrides,
-    options?: InitializeServicesOptions
-): Promise<SaikiAgent> {
-    try {
-        logger.info('Creating SaikiAgent...');
-        const services = await createAgentServices(config, overrides, options);
-        const agent = new SaikiAgent(services);
-        logger.info('SaikiAgent created successfully.');
-        return agent;
-    } catch (error) {
-        logger.error('Failed to create SaikiAgent', error);
-        throw error;
-    }
 }
