@@ -141,11 +141,6 @@ const FileContributorSchema = BaseContributorSchema.extend({
                 .optional()
                 .default(100000)
                 .describe('Maximum file size in bytes (default: 100KB)'),
-            encoding: z
-                .string()
-                .optional()
-                .default('utf-8')
-                .describe('File encoding to use when reading files'),
             includeMetadata: z
                 .boolean()
                 .optional()
