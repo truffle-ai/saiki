@@ -1,12 +1,12 @@
 import { describe, test, expect } from 'vitest';
-import { ConfigManager } from './config-manager.js';
+import { ConfigLoader } from './config-manager.js';
 import type { AgentConfig } from './schemas.js';
 
 function clone<T>(obj: T): T {
     return JSON.parse(JSON.stringify(obj));
 }
 
-describe('ConfigManager', () => {
+describe('ConfigLoader', () => {
     const baseConfig: AgentConfig = {
         systemPrompt: 'hi',
         mcpServers: {
@@ -24,7 +24,7 @@ describe('ConfigManager', () => {
     };
 
     test('loads and validates valid config', () => {
-        const cm = new ConfigManager(clone(baseConfig));
+        const cm = new ConfigLoader(clone(baseConfig));
         const config = cm.getConfig();
 
         expect(config.llm.provider).toBe('openai');
@@ -33,7 +33,7 @@ describe('ConfigManager', () => {
     });
 
     test('applies schema defaults', () => {
-        const cm = new ConfigManager(clone(baseConfig));
+        const cm = new ConfigLoader(clone(baseConfig));
         const config = cm.getConfig();
 
         // Check that schema defaults are applied
@@ -48,7 +48,7 @@ describe('ConfigManager', () => {
             ...clone(baseConfig),
             mcpServers: {},
         };
-        expect(() => new ConfigManager(configWithNoServers)).not.toThrow();
+        expect(() => new ConfigLoader(configWithNoServers)).not.toThrow();
     });
 
     test('throws when LLM config is missing', () => {
@@ -62,11 +62,11 @@ describe('ConfigManager', () => {
                 },
             },
         } as any;
-        expect(() => new ConfigManager(bad)).toThrow();
+        expect(() => new ConfigLoader(bad)).toThrow();
     });
 
     test('returns readonly config to prevent external modifications', () => {
-        const cm = new ConfigManager(clone(baseConfig));
+        const cm = new ConfigLoader(clone(baseConfig));
         const config = cm.getConfig();
 
         expect(Object.isFrozen(config)).toBe(true);
@@ -74,7 +74,7 @@ describe('ConfigManager', () => {
 
     test('constructor validates config automatically', () => {
         // If constructor doesn't throw, validation passed
-        expect(() => new ConfigManager(clone(baseConfig))).not.toThrow();
+        expect(() => new ConfigLoader(clone(baseConfig))).not.toThrow();
     });
 
     describe('validation and error handling', () => {
@@ -87,7 +87,7 @@ describe('ConfigManager', () => {
                 },
             };
 
-            expect(() => new ConfigManager(invalidConfig)).toThrow(
+            expect(() => new ConfigLoader(invalidConfig)).toThrow(
                 /Configuration validation failed/
             );
         });
@@ -95,14 +95,14 @@ describe('ConfigManager', () => {
 
     describe('immutability protection', () => {
         test('prevents external mutation of returned configs', () => {
-            const cm = new ConfigManager(clone(baseConfig));
+            const cm = new ConfigLoader(clone(baseConfig));
             const config = cm.getConfig();
 
             expect(Object.isFrozen(config)).toBe(true);
         });
 
         test('returns new instances on each call to prevent reference sharing', () => {
-            const cm = new ConfigManager(clone(baseConfig));
+            const cm = new ConfigLoader(clone(baseConfig));
             const config1 = cm.getConfig();
             const config2 = cm.getConfig();
 

@@ -1,0 +1,336 @@
+{
+  "filesystem": {
+    "id": "filesystem",
+    "name": "Filesystem",
+    "description": "Secure file operations with configurable access controls",
+    "category": "Development",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "connectionMode": "strict"
+    },
+    "setupInstructions": "No setup required. Specify directory path as argument.",
+    "tags": ["files", "local", "development", "essential"]
+  },
+  "git": {
+    "id": "git",
+    "name": "Git",
+    "description": "Tools to read, search, and manipulate Git repositories",
+    "category": "Development",
+    "config": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "."],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Specify repository path as needed.",
+    "tags": ["git", "version-control", "development", "history", "essential"]
+  },
+  "github": {
+    "id": "github",
+    "name": "GitHub",
+    "description": "Repository management, file operations, and GitHub API integration",
+    "category": "Development",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PERSONAL_ACCESS_TOKEN"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires GitHub Personal Access Token. Generate one in GitHub Settings > Developer settings > Personal access tokens.",
+    "requiredEnvVars": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+    "requiresSetup": true,
+    "tags": ["git", "github", "development", "repositories", "api"]
+  },
+  "gitlab": {
+    "id": "gitlab",
+    "name": "GitLab",
+    "description": "GitLab API integration for project management",
+    "category": "Development",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-gitlab"],
+      "env": {
+        "GITLAB_PERSONAL_ACCESS_TOKEN": "$GITLAB_PERSONAL_ACCESS_TOKEN",
+        "GITLAB_API_URL": "$GITLAB_API_URL"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires GitLab Personal Access Token and API URL. Generate token in GitLab User Settings > Access Tokens.",
+    "requiredEnvVars": ["GITLAB_PERSONAL_ACCESS_TOKEN", "GITLAB_API_URL"],
+    "requiresSetup": true,
+    "tags": ["git", "gitlab", "development", "project-management", "api"]
+  },
+  "puppeteer": {
+    "id": "puppeteer",
+    "name": "Puppeteer",
+    "description": "Browser automation and web scraping",
+    "category": "Web",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Automatically installs Puppeteer dependencies.",
+    "tags": ["web", "browser", "automation", "scraping"]
+  },
+  "brave_search": {
+    "id": "brave_search",
+    "name": "Brave Search",
+    "description": "Web and local search using Brave's Search API",
+    "category": "Web",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "$BRAVE_API_KEY"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires Brave Search API key. Get one at: https://api.search.brave.com/",
+    "requiredEnvVars": ["BRAVE_API_KEY"],
+    "requiresSetup": true,
+    "tags": ["search", "web", "api", "information"]
+  },
+  "fetch": {
+    "id": "fetch",
+    "name": "Fetch",
+    "description": "Web content fetching and conversion for efficient LLM usage",
+    "category": "Web",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Provides HTTP request capabilities.",
+    "tags": ["http", "api", "web", "requests", "fetch"]
+  },
+  "google_drive": {
+    "id": "google_drive",
+    "name": "Google Drive",
+    "description": "File access and search capabilities for Google Drive",
+    "category": "Productivity",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-drive"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires Google Drive API credentials and OAuth setup. Follow Google Cloud Console setup guide.",
+    "requiresSetup": true,
+    "tags": ["cloud", "storage", "google", "productivity", "files"]
+  },
+  "google_maps": {
+    "id": "google_maps",
+    "name": "Google Maps",
+    "description": "Location services, directions, and place details",
+    "category": "Utility",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-maps"],
+      "env": {
+        "GOOGLE_MAPS_API_KEY": "$GOOGLE_MAPS_API_KEY"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires Google Maps API key. Get one from Google Cloud Console with Maps JavaScript API enabled.",
+    "requiredEnvVars": ["GOOGLE_MAPS_API_KEY"],
+    "requiresSetup": true,
+    "tags": ["maps", "location", "navigation", "google", "places"]
+  },
+  "slack": {
+    "id": "slack",
+    "name": "Slack",
+    "description": "Channel management and messaging capabilities",
+    "category": "Productivity",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
+      "env": {
+        "SLACK_BOT_TOKEN": "$SLACK_BOT_TOKEN"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires Slack Bot Token. Create a Slack app and generate a bot token.",
+    "requiredEnvVars": ["SLACK_BOT_TOKEN"],
+    "requiresSetup": true,
+    "tags": ["communication", "messaging", "productivity", "slack"]
+  },
+  "memory": {
+    "id": "memory",
+    "name": "Memory",
+    "description": "Knowledge graph-based persistent memory system",
+    "category": "System",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Provides persistent memory capabilities.",
+    "tags": ["memory", "persistence", "system", "storage", "knowledge"]
+  },
+  "postgres": {
+    "id": "postgres",
+    "name": "PostgreSQL",
+    "description": "Read-only database access with schema inspection",
+    "category": "Database",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_CONNECTION_STRING": "$POSTGRES_CONNECTION_STRING"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires PostgreSQL connection string. Format: postgresql://user:password@host:port/database",
+    "requiredEnvVars": ["POSTGRES_CONNECTION_STRING"],
+    "requiresSetup": true,
+    "tags": ["database", "sql", "postgresql", "data"]
+  },
+  "sqlite": {
+    "id": "sqlite",
+    "name": "SQLite",
+    "description": "Database interaction and business intelligence capabilities",
+    "category": "Database",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sqlite"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Provide database path as argument when configuring.",
+    "tags": ["database", "sql", "sqlite", "data", "local"]
+  },
+  "sentry": {
+    "id": "sentry",
+    "name": "Sentry",
+    "description": "Retrieving and analyzing issues from Sentry.io",
+    "category": "Development",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sentry"],
+      "env": {
+        "SENTRY_AUTH_TOKEN": "$SENTRY_AUTH_TOKEN",
+        "SENTRY_ORG_SLUG": "$SENTRY_ORG_SLUG"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires Sentry authentication token and organization slug. Get token from Sentry Settings > Auth Tokens.",
+    "requiredEnvVars": ["SENTRY_AUTH_TOKEN", "SENTRY_ORG_SLUG"],
+    "requiresSetup": true,
+    "tags": ["monitoring", "errors", "debugging", "development", "sentry"]
+  },
+  "sequential_thinking": {
+    "id": "sequential_thinking",
+    "name": "Sequential Thinking",
+    "description": "Dynamic and reflective problem-solving through thought sequences",
+    "category": "AI",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Enhances reasoning capabilities.",
+    "tags": ["reasoning", "thinking", "ai", "logic", "problem-solving"]
+  },
+  "time": {
+    "id": "time",
+    "name": "Time",
+    "description": "Time and timezone conversion capabilities",
+    "category": "Utility",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-time"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Provides time and date utilities.",
+    "tags": ["time", "date", "timezone", "utility"]
+  },
+  "everart": {
+    "id": "everart",
+    "name": "EverArt",
+    "description": "AI image generation using various models",
+    "category": "AI",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everart"],
+      "env": {
+        "EVERART_API_KEY": "$EVERART_API_KEY"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires EverArt API key. Sign up at: https://everart.ai/",
+    "requiredEnvVars": ["EVERART_API_KEY"],
+    "requiresSetup": true,
+    "tags": ["ai", "images", "generation", "art"]
+  },
+  "everything": {
+    "id": "everything",
+    "name": "Everything",
+    "description": "Reference / test server with prompts, resources, and tools",
+    "category": "Development",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "No setup required. Comprehensive test server for MCP capabilities.",
+    "tags": ["testing", "development", "reference", "tools", "prompts"]
+  },
+  "aws_kb_retrieval": {
+    "id": "aws_kb_retrieval",
+    "name": "AWS KB Retrieval",
+    "description": "Retrieval from AWS Knowledge Base using Bedrock Agent Runtime",
+    "category": "Cloud",
+    "config": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-aws-kb-retrieval"],
+      "env": {
+        "AWS_ACCESS_KEY_ID": "$AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY": "$AWS_SECRET_ACCESS_KEY",
+        "AWS_REGION": "$AWS_REGION"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires AWS credentials and access to Bedrock Knowledge Base. Configure AWS CLI or set environment variables.",
+    "requiredEnvVars": ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"],
+    "requiresSetup": true,
+    "tags": ["aws", "bedrock", "knowledge", "retrieval", "ai"]
+  },
+  "hf_mcp_server": {
+    "id": "hf_mcp_server",
+    "name": "Hugging Face MCP Server",
+    "description": "Access to Hugging Face models and datasets through MCP",
+    "category": "AI",
+    "config": {
+      "type": "http",
+      "url": "https://huggingface.co/mcp",
+      "headers": {
+        "Authorization": "Bearer $HUGGINGFACE_TOKEN"
+      },
+      "connectionMode": "lenient"
+    },
+    "setupInstructions": "Requires Hugging Face API token. Get one from: https://huggingface.co/settings/tokens",
+    "requiredEnvVars": ["HUGGINGFACE_TOKEN"],
+    "requiresSetup": true,
+    "tags": ["ai", "models", "datasets", "huggingface", "machine-learning"]
+  }
+} 
