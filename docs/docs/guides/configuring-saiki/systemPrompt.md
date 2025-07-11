@@ -87,15 +87,99 @@ systemPrompt:
 
 #### Available Dynamic Sources
 - **`dateTime`:** Automatically adds current date/time context
+- **`resources`:** Automatically includes resources from connected MCP servers (disabled by default)
+
+##### MCP Resources Contributor
+
+The `resources` dynamic contributor automatically fetches and includes resources from all connected MCP servers. This is particularly useful when you have MCP servers that provide contextual information like documentation, database schemas, or configuration files.
+
+**Key Features:**
+- Automatically discovers all available resources from connected MCP servers
+- Fetches and includes resource content in the system prompt
+- Wraps each resource in XML tags with the resource URI for clear identification
+- Handles errors gracefully (shows error message if resource can't be loaded)
+- **Disabled by default** to avoid performance impact
+
+**Example Usage:**
+```yaml
+systemPrompt:
+  contributors:
+    - id: main-prompt
+      type: static
+      priority: 1
+      content: |
+        You are a helpful assistant with access to project resources.
+    
+    - id: resources
+      type: dynamic
+      priority: 10
+      source: resources
+      enabled: true  # Enable MCP resources
+```
+
+**Output Format:**
+The resources contributor wraps all resources in XML tags:
+```xml
+<resources>
+<resource uri="file:///project/schema.sql">CREATE TABLE users...</resource>
+<resource uri="config://app-settings">{"debug": true, ...}</resource>
+</resources>
+```
+
+### File Contributors
+- **Type:** `file`
+- **Required:** `files` field
+- **Use case:** Include content from external files in your system prompt
+- **Supported formats:** Only `.md` and `.txt` files are supported
+- **Control:** Enable/disable with `enabled` field
+
+```yaml
+systemPrompt:
+  contributors:
+    - id: project-context
+      type: file
+      priority: 10
+      files:
+        - ./README.md
+        - ./docs/guidelines.md
+        - ./CONTRIBUTING.txt
+      options:
+        includeFilenames: true
+        separator: "\n\n---\n\n"
+        errorHandling: "skip"
+        maxFileSize: 50000
+        includeMetadata: false
+```
+
+#### File Contributor Options
+- **`files`** (array): List of file paths to include (only `.md` and `.txt` files)
+- **`options.includeFilenames`** (boolean): Whether to include filename headers (default: `true`)
+- **`options.separator`** (string): Text to separate multiple files (default: `"\n\n---\n\n"`)
+- **`options.errorHandling`** (string): How to handle missing/invalid files - `"skip"`, `"error"` (default: `"skip"`)
+- **`options.maxFileSize`** (number): Maximum file size in bytes (default: `100000`)
+- **`options.includeMetadata`** (boolean): Include file size and modification time (default: `false`)
+
+**Note:** Files are always read using UTF-8 encoding.
+
+#### File Contributor Use Cases
+- Include project documentation and guidelines
+- Add code style guides and best practices
+- Provide domain-specific knowledge from markdown files
+- Include API documentation or specification files
+- Add context-specific instructions for different projects
+
+**Note:** File contributors only support `.md` and `.txt` files. Other file types will be skipped (or cause an error if `errorHandling: "error"` is set).
 
 ### Contributor Fields
 
 - **`id`** (string): Unique identifier for the contributor
-- **`type`** (`static` | `dynamic`): Type of contributor
+- **`type`** (`static` | `dynamic` | `file`): Type of contributor
 - **`priority`** (number): Execution order (lower numbers first)
 - **`enabled`** (boolean, optional): Whether contributor is active (default: true)
 - **`content`** (string): Static content (required for `static` type)
 - **`source`** (string): Dynamic source identifier (required for `dynamic` type)
+- **`files`** (array): List of file paths to include (required for `file` type)
+- **`options`** (object, optional): Configuration options for `file` type contributors
 
 ## Examples
 
@@ -147,6 +231,50 @@ systemPrompt:
         - Escalate complex technical issues to engineering team
 ```
 
+### Complete Multi-Contributor Example
+```yaml
+systemPrompt:
+  contributors:
+    - id: core-behavior
+      type: static
+      priority: 1
+      content: |
+        You are a professional software development assistant.
+        You help with coding, documentation, and project management.
+        You have access to project files and MCP resources.
+    
+    - id: project-context
+      type: file
+      priority: 5
+      files:
+        - ./README.md
+        - ./CONTRIBUTING.md
+        - ./docs/architecture.md
+      options:
+        includeFilenames: true
+        separator: "\n\n---\n\n"
+        errorHandling: "skip"
+        maxFileSize: 50000
+    
+    - id: current-time
+      type: dynamic
+      priority: 10
+      source: dateTime
+    
+    - id: mcp-resources
+      type: dynamic
+      priority: 12
+      source: resources
+      enabled: true
+    
+    - id: additional-instructions
+      type: static
+      priority: 15
+      content: |
+        Always provide code examples when relevant.
+        Reference the project documentation and available resources when making suggestions.
+```
+
 ## Best Practices
 
 1. **Keep it focused:** Clear, specific instructions work better than lengthy prompts
@@ -154,4 +282,10 @@ systemPrompt:
 3. **Test behavior:** Validate that your prompt produces the desired agent behavior
 4. **Dynamic content:** Use dynamic sources for time-sensitive or contextual information
 5. **Modular approach:** Break complex prompts into separate contributors for easier management
+6. **File contributors:** Use File contributors to include project-specific documentation and guidelines
+7. **File format restrictions:** Remember that File contributors only support `.md` and `.txt` files
+8. **Error handling:** Use `"skip"` error handling for optional files, `"error"` for required files
+9. **File size limits:** Set appropriate `maxFileSize` limits to prevent memory issues with large files
+10. **MCP resources:** Enable the `resources` contributor when you want to include context from MCP servers
+11. **Performance considerations:** Be mindful that the `resources` contributor fetches all MCP resources on each prompt build
 
