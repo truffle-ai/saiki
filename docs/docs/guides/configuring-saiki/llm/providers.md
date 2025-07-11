@@ -48,6 +48,16 @@ llm:
 
 **Supported models**: `gemma-2-9b-it`, `llama-3.3-70b-versatile`
 
+### **xAI**
+```yaml
+llm:
+  provider: xai
+  model: grok-3  # Default
+  apiKey: $XAI_API_KEY
+```
+
+**Supported models**: `grok-3`, `grok-3-mini`
+
 
 ## OpenAI-Compatible Providers
 
@@ -162,6 +172,7 @@ OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_key
 GROQ_API_KEY=your_groq_key
+XAI_API_KEY=your_xai_key
 
 # Custom providers
 OPENROUTER_API_KEY=your_openrouter_key
@@ -195,6 +206,12 @@ PERPLEXITY_API_KEY=your_perplexity_key
 - **Ultra-fast inference**: Fastest API responses
 - **Cost-effective**: Competitive pricing
 - **Open source models**: Access to Llama and other OSS models
+
+### xAI
+- **Grok models**: Access to xAI's Grok language models
+- **Large context**: Up to 131K tokens for Grok-3
+- **Real-time knowledge**: Trained on real-time data
+- **Reasoning**: Strong performance on complex reasoning tasks
 
 ## Choosing the Right Provider
 
