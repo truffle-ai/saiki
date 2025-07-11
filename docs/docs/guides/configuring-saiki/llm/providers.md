@@ -38,6 +38,17 @@ llm:
 
 **Supported models**: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`, `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest`
 
+
+### **xAI**
+```yaml
+llm:
+  provider: xai
+  model: grok-4  # Default
+  apiKey: $XAI_API_KEY
+```
+
+**Supported models**: `grok-4`, `grok-3`, `grok-3-mini`
+
 ### **Groq**
 ```yaml
 llm:
@@ -47,16 +58,6 @@ llm:
 ```
 
 **Supported models**: `gemma-2-9b-it`, `llama-3.3-70b-versatile`
-
-### **xAI**
-```yaml
-llm:
-  provider: xai
-  model: grok-3  # Default
-  apiKey: $XAI_API_KEY
-```
-
-**Supported models**: `grok-3`, `grok-3-mini`
 
 
 ## OpenAI-Compatible Providers

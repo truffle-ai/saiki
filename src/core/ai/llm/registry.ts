@@ -85,8 +85,8 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     // https://docs.x.ai/docs/models
     xai: {
         models: [
-            { name: 'grok-4', maxInputTokens: 256000 },
-            { name: 'grok-3', maxInputTokens: 131072, default: true },
+            { name: 'grok-4', maxInputTokens: 256000, default: true },
+            { name: 'grok-3', maxInputTokens: 131072 },
             { name: 'grok-3-mini', maxInputTokens: 131072 },
         ],
         supportedRouters: ['vercel'],
