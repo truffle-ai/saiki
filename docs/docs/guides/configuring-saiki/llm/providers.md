@@ -38,6 +38,17 @@ llm:
 
 **Supported models**: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`, `gemini-1.5-pro-latest`, `gemini-1.5-flash-latest`
 
+
+### **xAI**
+```yaml
+llm:
+  provider: xai
+  model: grok-4  # Default
+  apiKey: $XAI_API_KEY
+```
+
+**Supported models**: `grok-4`, `grok-3`, `grok-3-mini`
+
 ### **Groq**
 ```yaml
 llm:
@@ -162,6 +173,7 @@ OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_key
 GROQ_API_KEY=your_groq_key
+XAI_API_KEY=your_xai_key
 
 # Custom providers
 OPENROUTER_API_KEY=your_openrouter_key
@@ -195,6 +207,12 @@ PERPLEXITY_API_KEY=your_perplexity_key
 - **Ultra-fast inference**: Fastest API responses
 - **Cost-effective**: Competitive pricing
 - **Open source models**: Access to Llama and other OSS models
+
+### xAI
+- **Grok models**: Access to xAI's Grok language models
+- **State of the art**: Grok 4 is the leader in all benchmarks!
+- **Real-time knowledge**: Trained on real-time data
+- **Reasoning**: Strong performance on complex reasoning tasks
 
 ## Choosing the Right Provider
 

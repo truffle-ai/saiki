@@ -24,7 +24,7 @@ export interface ProviderInfo {
 /** Fallback when we cannot determine the model's input-token limit */
 export const DEFAULT_MAX_INPUT_TOKENS = 128000;
 
-export type LLMProvider = 'openai' | 'openai-compatible' | 'anthropic' | 'google' | 'groq';
+export type LLMProvider = 'openai' | 'openai-compatible' | 'anthropic' | 'google' | 'groq' | 'xai';
 
 // Central registry of supported LLM providers and their models
 export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
@@ -78,6 +78,16 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
         models: [
             { name: 'gemma-2-9b-it', maxInputTokens: 8192 },
             { name: 'llama-3.3-70b-versatile', maxInputTokens: 128000, default: true },
+        ],
+        supportedRouters: ['vercel'],
+        baseURLSupport: 'none',
+    },
+    // https://docs.x.ai/docs/models
+    xai: {
+        models: [
+            { name: 'grok-4', maxInputTokens: 256000, default: true },
+            { name: 'grok-3', maxInputTokens: 131072 },
+            { name: 'grok-3-mini', maxInputTokens: 131072 },
         ],
         supportedRouters: ['vercel'],
         baseURLSupport: 'none',
