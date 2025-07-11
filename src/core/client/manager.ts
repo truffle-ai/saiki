@@ -45,9 +45,10 @@ export class MCPManager {
     private promptToClientMap: Map<string, IMCPClient> = new Map();
     private resourceToClientMap: Map<string, IMCPClient> = new Map();
     private confirmationProvider: ToolConfirmationProvider;
+    private sanitizedNameToServerMap: Map<string, string> = new Map();
 
     // Use a distinctive delimiter that won't appear in normal server/tool names
-    private static readonly SERVER_DELIMITER = '__';
+    private static readonly SERVER_DELIMITER = '@@';
 
     constructor(confirmationProvider?: ToolConfirmationProvider) {
         // If a confirmation provider is passed, use it, otherwise use auto-approve fallback
@@ -63,9 +64,24 @@ export class MCPManager {
         if (this.clients.has(name)) {
             logger.warn(`Client '${name}' already registered. Overwriting.`);
         }
+
+        // Clear cache first (which removes old mappings)
         this.clearClientCache(name);
 
+        // Validate sanitized name uniqueness to prevent collisions
+        const sanitizedName = this.sanitizeServerName(name);
+        const existingServerWithSameSanitizedName =
+            this.sanitizedNameToServerMap.get(sanitizedName);
+        if (existingServerWithSameSanitizedName && existingServerWithSameSanitizedName !== name) {
+            throw new Error(
+                `Server name conflict: '${name}' and '${existingServerWithSameSanitizedName}' both sanitize to '${sanitizedName}'. ` +
+                    `Please use different server names to avoid ambiguity in qualified tool names.`
+            );
+        }
+
         this.clients.set(name, client);
+        this.sanitizedNameToServerMap.set(sanitizedName, name);
+
         logger.info(`Registered client: ${name}`);
         delete this.connectionErrors[name];
     }
@@ -75,7 +91,14 @@ export class MCPManager {
         if (!client) return;
 
         // Remove from server tools map
+        const hadServerTools = this.serverToolsMap.has(clientName);
         this.serverToolsMap.delete(clientName);
+
+        // Remove from sanitized name mapping
+        const sanitizedName = this.sanitizeServerName(clientName);
+        if (this.sanitizedNameToServerMap.get(sanitizedName) === clientName) {
+            this.sanitizedNameToServerMap.delete(sanitizedName);
+        }
 
         [this.toolToClientMap, this.promptToClientMap, this.resourceToClientMap].forEach(
             (cacheMap) => {
@@ -87,8 +110,10 @@ export class MCPManager {
             }
         );
 
-        // Rebuild conflict detection
-        this.rebuildToolConflicts();
+        // Only rebuild conflicts if this client actually had tools
+        if (hadServerTools) {
+            this.rebuildToolConflicts();
+        }
         logger.debug(`Cleared cache for client: ${clientName}`);
     }
 
@@ -103,12 +128,20 @@ export class MCPManager {
             }
         }
 
-        // Identify conflicts and update main tool map
+        // Remove conflicted tools from main map first
         for (const [toolName, count] of toolCounts.entries()) {
             if (count > 1) {
                 this.toolConflicts.add(toolName);
-                // Remove conflicted tools from main map - they'll be accessed via server prefix
                 this.toolToClientMap.delete(toolName);
+            }
+        }
+
+        // Re-add non-conflicted tools to main map
+        for (const [_, serverTools] of this.serverToolsMap.entries()) {
+            for (const [toolName, client] of serverTools.entries()) {
+                if (!this.toolConflicts.has(toolName)) {
+                    this.toolToClientMap.set(toolName, client);
+                }
             }
         }
     }
@@ -185,10 +218,20 @@ export class MCPManager {
      */
     async getAllTools(): Promise<ToolSet> {
         const allTools: ToolSet = {};
+        const clientToolsCache = new Map<IMCPClient, ToolSet>();
+
+        // Helper function to get tools for a client (with caching)
+        const getClientTools = async (client: IMCPClient): Promise<ToolSet> => {
+            if (!clientToolsCache.has(client)) {
+                const tools = await client.getTools();
+                clientToolsCache.set(client, tools);
+            }
+            return clientToolsCache.get(client)!;
+        };
 
         // Add non-conflicted tools directly
         for (const [toolName, client] of Array.from(this.toolToClientMap.entries())) {
-            const clientTools = await client.getTools();
+            const clientTools = await getClientTools(client);
             const toolDef = clientTools[toolName];
             if (toolDef) {
                 allTools[toolName] = toolDef;
@@ -202,7 +245,7 @@ export class MCPManager {
                     const sanitizedServerName = this.sanitizeServerName(serverName);
                     const qualifiedName = `${sanitizedServerName}${MCPManager.SERVER_DELIMITER}${toolName}`;
 
-                    const clientTools = await client.getTools();
+                    const clientTools = await getClientTools(client);
                     const toolDef = clientTools[toolName];
                     if (toolDef) {
                         allTools[qualifiedName] = {
@@ -222,12 +265,12 @@ export class MCPManager {
 
     /**
      * Parse a qualified tool name to extract server name and actual tool name.
-     * Uses distinctive delimiter to avoid ambiguity.
+     * Uses distinctive delimiter to avoid ambiguity and splits on last occurrence.
      */
     private parseQualifiedToolName(
         toolName: string
     ): { serverName: string; toolName: string } | null {
-        const delimiterIndex = toolName.indexOf(MCPManager.SERVER_DELIMITER);
+        const delimiterIndex = toolName.lastIndexOf(MCPManager.SERVER_DELIMITER);
         if (delimiterIndex === -1) {
             return null; // Not a qualified tool name
         }
@@ -237,12 +280,13 @@ export class MCPManager {
             delimiterIndex + MCPManager.SERVER_DELIMITER.length
         );
 
-        // Find the original server name by matching sanitized names
-        for (const [originalServerName, serverTools] of this.serverToolsMap.entries()) {
-            const sanitizedName = this.sanitizeServerName(originalServerName);
-            if (sanitizedName === serverPrefix && serverTools.has(actualToolName)) {
-                return { serverName: originalServerName, toolName: actualToolName };
-            }
+        // O(1) lookup using pre-computed sanitized name map
+        const originalServerName = this.sanitizedNameToServerMap.get(serverPrefix);
+        if (
+            originalServerName &&
+            this.serverToolsMap.get(originalServerName)?.has(actualToolName)
+        ) {
+            return { serverName: originalServerName, toolName: actualToolName };
         }
 
         return null;
@@ -472,8 +516,9 @@ export class MCPManager {
                     // Continue with removal even if disconnection fails
                 }
             }
-            this.clients.delete(name);
+            // Clear cache BEFORE removing from clients map
             this.clearClientCache(name);
+            this.clients.delete(name);
             logger.info(`Removed client from manager: ${name}`);
         }
         // Also remove from failed connections if it was registered there before successful connection or if it failed.
@@ -509,6 +554,7 @@ export class MCPManager {
         this.toolConflicts.clear();
         this.promptToClientMap.clear();
         this.resourceToClientMap.clear();
+        this.sanitizedNameToServerMap.clear();
         logger.info('Disconnected all clients and cleared caches.');
     }
 }
