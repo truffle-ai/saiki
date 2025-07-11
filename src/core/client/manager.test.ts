@@ -120,9 +120,9 @@ describe('MCPManager Tool Conflict Resolution', () => {
             expect(tools).toHaveProperty('server2@@shared_tool');
             expect(tools).not.toHaveProperty('shared_tool'); // Unqualified should not exist
 
-            // Verify descriptions are augmented
-            expect(tools['server1@@shared_tool'].description).toContain('(via server1)');
-            expect(tools['server2@@shared_tool'].description).toContain('(via server2)');
+            // Verify descriptions are augmented (qualified tools always have descriptions)
+            expect(tools['server1@@shared_tool']!.description!).toContain('(via server1)');
+            expect(tools['server2@@shared_tool']!.description!).toContain('(via server2)');
         });
 
         it('should handle three-way conflicts correctly', async () => {
