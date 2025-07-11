@@ -210,7 +210,7 @@ PERPLEXITY_API_KEY=your_perplexity_key
 
 ### xAI
 - **Grok models**: Access to xAI's Grok language models
-- **Large context**: Up to 131K tokens for Grok-3
+- **State of the art**: Grok 4 is the leader in all benchmarks!
 - **Real-time knowledge**: Trained on real-time data
 - **Reasoning**: Strong performance on complex reasoning tasks
 
