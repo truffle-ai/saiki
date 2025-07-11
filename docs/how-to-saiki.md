@@ -81,7 +81,7 @@ systemPrompt:
       options:
         includeFilenames: true
         separator: "\n\n---\n\n"
-        errorHandling: skip
+        errorHandling: "skip"
         maxFileSize: 50000
         includeMetadata: false
     
@@ -95,9 +95,8 @@ systemPrompt:
 - `files`: Array of file paths to include (.md and .txt files only)
 - `options.includeFilenames`: Whether to include filename headers (default: true)
 - `options.separator`: Text to separate multiple files (default: "\n\n---\n\n")
-- `options.errorHandling`: How to handle missing files - "skip", "placeholder", or "error" (default: "skip")
+- `options.errorHandling`: How to handle missing files - "skip" or "error" (default: "skip")
 - `options.maxFileSize`: Maximum file size in bytes (default: 100000)
-- `options.encoding`: File encoding (default: "utf-8")
 - `options.includeMetadata`: Include file size and modification time (default: false)
 
 **Use Cases for File Contributors:**

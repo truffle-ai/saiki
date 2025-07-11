@@ -71,22 +71,20 @@ describe('FileContributor', () => {
         expect(result).not.toContain('missing.md');
     });
 
-    test('should handle missing files with placeholder mode', async () => {
+    test('should handle missing files with error mode', async () => {
         const contributor = new FileContributor(
             'test',
             0,
             [join(testDir, 'missing.md'), join(testDir, 'test1.md')],
             {
-                errorHandling: 'placeholder',
+                errorHandling: 'error',
             }
         );
-        const result = await contributor.getContent(mockContext);
 
-        expect(result).toContain('# Test Document 1');
-        expect(result).toContain('test-files/missing.md could not be read:');
+        await expect(contributor.getContent(mockContext)).rejects.toThrow('Failed to read file');
     });
 
-    test('should throw error for missing files with error mode', async () => {
+    test('should throw error for missing files with single file error mode', async () => {
         const contributor = new FileContributor('test', 0, [join(testDir, 'missing.md')], {
             errorHandling: 'error',
         });
@@ -110,19 +108,29 @@ describe('FileContributor', () => {
         expect(result).not.toContain('large.md');
     });
 
-    test('should handle invalid file types with placeholder mode', async () => {
+    test('should handle invalid file types with skip mode', async () => {
         const contributor = new FileContributor(
             'test',
             0,
             [join(testDir, 'invalid.json'), join(testDir, 'test1.md')],
             {
-                errorHandling: 'placeholder',
+                errorHandling: 'skip',
             }
         );
         const result = await contributor.getContent(mockContext);
 
         expect(result).toContain('# Test Document 1');
-        expect(result).toContain('test-files/invalid.json skipped: not a .md or .txt file');
+        expect(result).not.toContain('invalid.json');
+    });
+
+    test('should throw error for invalid file types with error mode', async () => {
+        const contributor = new FileContributor('test', 0, [join(testDir, 'invalid.json')], {
+            errorHandling: 'error',
+        });
+
+        await expect(contributor.getContent(mockContext)).rejects.toThrow(
+            'is not a .md or .txt file'
+        );
     });
 
     test('should exclude filenames when configured', async () => {

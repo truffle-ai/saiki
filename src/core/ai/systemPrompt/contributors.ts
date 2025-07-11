@@ -29,9 +29,8 @@ export class DynamicContributor implements SystemPromptContributor {
 export interface FileContributorOptions {
     includeFilenames?: boolean | undefined;
     separator?: string | undefined;
-    errorHandling?: 'skip' | 'placeholder' | 'error' | undefined;
+    errorHandling?: 'skip' | 'error' | undefined;
     maxFileSize?: number | undefined;
-    encoding?: string | undefined;
     includeMetadata?: boolean | undefined;
 }
 
@@ -49,7 +48,6 @@ export class FileContributor implements SystemPromptContributor {
             separator = '\n\n---\n\n',
             errorHandling = 'skip',
             maxFileSize = 100000,
-            encoding = 'utf-8',
             includeMetadata = false,
         } = this.options;
 
@@ -65,8 +63,6 @@ export class FileContributor implements SystemPromptContributor {
                 if (ext !== '.md' && ext !== '.txt') {
                     if (errorHandling === 'error') {
                         throw new Error(`File ${filePath} is not a .md or .txt file`);
-                    } else if (errorHandling === 'placeholder') {
-                        fileParts.push(`[File ${filePath} skipped: not a .md or .txt file]`);
                     }
                     continue;
                 }
@@ -78,16 +74,12 @@ export class FileContributor implements SystemPromptContributor {
                         throw new Error(
                             `File ${filePath} exceeds maximum size of ${maxFileSize} bytes`
                         );
-                    } else if (errorHandling === 'placeholder') {
-                        fileParts.push(
-                            `[File ${filePath} skipped: exceeds maximum size of ${maxFileSize} bytes]`
-                        );
                     }
                     continue;
                 }
 
-                // Read file content
-                const content = await readFile(resolvedPath, { encoding: encoding as any });
+                // Read file content (always utf-8)
+                const content = await readFile(resolvedPath, { encoding: 'utf-8' });
 
                 // Build file part
                 let filePart = '';
@@ -106,10 +98,6 @@ export class FileContributor implements SystemPromptContributor {
             } catch (error: any) {
                 if (errorHandling === 'error') {
                     throw new Error(`Failed to read file ${filePath}: ${error.message || error}`);
-                } else if (errorHandling === 'placeholder') {
-                    fileParts.push(
-                        `[File ${filePath} could not be read: ${error.message || error}]`
-                    );
                 }
                 // 'skip' mode - do nothing, continue to next file
             }

@@ -128,11 +128,11 @@ const FileContributorSchema = BaseContributorSchema.extend({
                 .default('\n\n---\n\n')
                 .describe('Separator to use between multiple files'),
             errorHandling: z
-                .enum(['skip', 'placeholder', 'error'])
+                .enum(['skip', 'error'])
                 .optional()
                 .default('skip')
                 .describe(
-                    'How to handle missing or unreadable files: skip (ignore), placeholder (show error message), or error (throw)'
+                    'How to handle missing or unreadable files: skip (ignore) or error (throw)'
                 ),
             maxFileSize: z
                 .number()
