@@ -116,13 +116,13 @@ describe('MCPManager Tool Conflict Resolution', () => {
             expect(tools).toHaveProperty('unique_tool_2');
 
             // Conflicted tools should be qualified
-            expect(tools).toHaveProperty('server1@@shared_tool');
-            expect(tools).toHaveProperty('server2@@shared_tool');
+            expect(tools).toHaveProperty('server1--shared_tool');
+            expect(tools).toHaveProperty('server2--shared_tool');
             expect(tools).not.toHaveProperty('shared_tool'); // Unqualified should not exist
 
             // Verify descriptions are augmented (qualified tools always have descriptions)
-            expect(tools['server1@@shared_tool']!.description!).toContain('(via server1)');
-            expect(tools['server2@@shared_tool']!.description!).toContain('(via server2)');
+            expect(tools['server1--shared_tool']!.description!).toContain('(via server1)');
+            expect(tools['server2--shared_tool']!.description!).toContain('(via server2)');
         });
 
         it('should handle three-way conflicts correctly', async () => {
@@ -139,8 +139,8 @@ describe('MCPManager Tool Conflict Resolution', () => {
             const tools = await manager.getAllTools();
 
             // Check that 'another_shared' appears as qualified from server2 and server3
-            expect(tools).toHaveProperty('server2@@another_shared');
-            expect(tools).toHaveProperty('server3@@another_shared');
+            expect(tools).toHaveProperty('server2--another_shared');
+            expect(tools).toHaveProperty('server3--another_shared');
             expect(tools).not.toHaveProperty('another_shared');
 
             // Unique tools should still be available
@@ -159,8 +159,8 @@ describe('MCPManager Tool Conflict Resolution', () => {
             await manager['updateClientCache']('server2', client2);
 
             let tools = await manager.getAllTools();
-            expect(tools).toHaveProperty('server1@@shared_tool');
-            expect(tools).toHaveProperty('server2@@shared_tool');
+            expect(tools).toHaveProperty('server1--shared_tool');
+            expect(tools).toHaveProperty('server2--shared_tool');
             expect(tools).not.toHaveProperty('shared_tool');
 
             // Remove one server to resolve conflict
@@ -170,8 +170,8 @@ describe('MCPManager Tool Conflict Resolution', () => {
 
             // Now shared_tool should be available directly (conflict resolved)
             expect(tools).toHaveProperty('shared_tool');
-            expect(tools).not.toHaveProperty('server1@@shared_tool');
-            expect(tools).not.toHaveProperty('server2@@shared_tool');
+            expect(tools).not.toHaveProperty('server1--shared_tool');
+            expect(tools).not.toHaveProperty('server2--shared_tool');
 
             // Verify it can be resolved via getToolClient
             const client = manager.getToolClient('shared_tool');
@@ -197,12 +197,12 @@ describe('MCPManager Tool Conflict Resolution', () => {
 
             // 'shared_tool' should be resolved since only server1 has it now
             expect(tools).toHaveProperty('shared_tool');
-            expect(tools).not.toHaveProperty('server1@@shared_tool');
+            expect(tools).not.toHaveProperty('server1--shared_tool');
 
             // 'another_shared' should still not exist as direct tool since server3 still has it
             // Actually, with only one server having it, it should be restored
             expect(tools).toHaveProperty('another_shared');
-            expect(tools).not.toHaveProperty('server3@@another_shared');
+            expect(tools).not.toHaveProperty('server3--another_shared');
         });
     });
 
@@ -258,14 +258,14 @@ describe('MCPManager Tool Conflict Resolution', () => {
             const parse = manager['parseQualifiedToolName'].bind(manager);
 
             // Normal case
-            const result1 = parse('server__with__underscores@@shared_tool');
+            const result1 = parse('server__with__underscores--shared_tool');
             expect(result1).toEqual({
                 serverName: 'server__with__underscores',
                 toolName: 'shared_tool',
             });
 
             // Tool name with underscores
-            const result2 = parse('server__with__underscores@@tool__with__underscores');
+            const result2 = parse('server__with__underscores--tool__with__underscores');
             expect(result2).toEqual({
                 serverName: 'server__with__underscores',
                 toolName: 'tool__with__underscores',
@@ -273,7 +273,7 @@ describe('MCPManager Tool Conflict Resolution', () => {
 
             // Server name with delimiters gets sanitized, so we need to use the sanitized version
             // 'server@@with@@delimiters' becomes 'server__with__delimiters' when sanitized
-            const result3 = parse('server__with__delimiters@@shared_tool');
+            const result3 = parse('server__with__delimiters--shared_tool');
             expect(result3).toEqual({
                 serverName: 'server@@with@@delimiters',
                 toolName: 'shared_tool',
@@ -292,10 +292,10 @@ describe('MCPManager Tool Conflict Resolution', () => {
             const parse = manager['parseQualifiedToolName'].bind(manager);
 
             // Non-existent server
-            expect(parse('nonexistent@@tool')).toBeNull();
+            expect(parse('nonexistent--tool')).toBeNull();
 
             // Non-existent tool on valid server
-            expect(parse('server__with__underscores@@nonexistent_tool')).toBeNull();
+            expect(parse('server__with__underscores--nonexistent_tool')).toBeNull();
         });
     });
 
@@ -316,17 +316,17 @@ describe('MCPManager Tool Conflict Resolution', () => {
         });
 
         it('should resolve qualified conflicted tools', () => {
-            const client1Instance = manager.getToolClient('server1@@shared_tool');
+            const client1Instance = manager.getToolClient('server1--shared_tool');
             expect(client1Instance).toBe(client1);
 
-            const client2Instance = manager.getToolClient('server2@@shared_tool');
+            const client2Instance = manager.getToolClient('server2--shared_tool');
             expect(client2Instance).toBe(client2);
         });
 
         it('should return undefined for non-existent tools', () => {
             expect(manager.getToolClient('nonexistent_tool')).toBeUndefined();
-            expect(manager.getToolClient('server1@@nonexistent_tool')).toBeUndefined();
-            expect(manager.getToolClient('nonexistent_server@@tool')).toBeUndefined();
+            expect(manager.getToolClient('server1--nonexistent_tool')).toBeUndefined();
+            expect(manager.getToolClient('nonexistent_server--tool')).toBeUndefined();
         });
 
         it('should not resolve conflicted tools without qualification', () => {
@@ -374,7 +374,7 @@ describe('MCPManager Tool Conflict Resolution', () => {
 
             // The parseQualifiedToolName method should use the sanitizedNameToServerMap
             // for O(1) lookup instead of iterating through all servers
-            const result = manager['parseQualifiedToolName']('server1@@shared_tool');
+            const result = manager['parseQualifiedToolName']('server1--shared_tool');
             expect(result).toEqual({
                 serverName: 'server1',
                 toolName: 'shared_tool',
@@ -401,10 +401,10 @@ describe('MCPManager Tool Conflict Resolution', () => {
         });
 
         it('should execute qualified conflicted tools', async () => {
-            const result1 = await manager.executeTool('server1@@shared_tool', { param: 'test' });
+            const result1 = await manager.executeTool('server1--shared_tool', { param: 'test' });
             expect(result1.result).toBe('Called shared_tool with {"param":"test"}');
 
-            const result2 = await manager.executeTool('server2@@shared_tool', { param: 'test' });
+            const result2 = await manager.executeTool('server2--shared_tool', { param: 'test' });
             expect(result2.result).toBe('Called shared_tool with {"param":"test"}');
         });
 
