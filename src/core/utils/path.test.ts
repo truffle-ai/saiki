@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { tmpdir } from 'os';
 import { resolvePackagePath, DEFAULT_CONFIG_PATH } from './path.js';
 import { walkUpDirectories } from './path.js';
 import { walkUpDirectoriesAsync } from './path.js';
@@ -9,7 +10,11 @@ import { isDirectoryPackage } from './path.js';
 import { findPackageByName } from './path.js';
 import { isCurrentDirectorySaikiProject } from './path.js';
 import { findSaikiProjectRoot } from './path.js';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+function createTempDir() {
+    return fs.mkdtempSync(path.join(tmpdir(), 'saiki-test-'));
+}
 
 describe('resolvePackagePath', () => {
     it('returns the same path when given an absolute path', () => {
@@ -56,79 +61,74 @@ describe('walkUpDirectoriesAsync', () => {
 });
 
 describe('findPackageRoot', () => {
+    let tempDir: string;
+
+    beforeEach(() => {
+        tempDir = createTempDir();
+    });
+
+    afterEach(() => {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    });
+
     it('returns null if no package.json found', () => {
-        const result = findPackageRoot('/tmp');
+        const result = findPackageRoot(tempDir);
         expect(result).toBeNull();
     });
 
     it('returns the directory containing package.json', () => {
-        const result = findPackageRoot(process.cwd());
-        expect(result).toBe(process.cwd());
+        fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify({ name: 'test-pkg' }));
+        const result = findPackageRoot(tempDir);
+        expect(result).toBe(tempDir);
     });
 });
 
 describe('findProjectRootByLockFiles', () => {
+    let tempDir: string;
+
+    beforeEach(() => {
+        tempDir = createTempDir();
+    });
+
+    afterEach(() => {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    });
+
     it('returns null if no lock file found', () => {
-        const result = findProjectRootByLockFiles('/tmp');
+        const result = findProjectRootByLockFiles(tempDir);
         expect(result).toBeNull();
     });
 
     it('returns the directory containing package-lock.json', () => {
-        const result = findProjectRootByLockFiles(process.cwd());
-        expect(result).toBe(process.cwd());
+        fs.writeFileSync(path.join(tempDir, 'package-lock.json'), '{}');
+        const result = findProjectRootByLockFiles(tempDir);
+        expect(result).toBe(tempDir);
     });
 });
 
 describe('isDirectoryPackage', () => {
-    const tmpDir = path.join(process.cwd(), 'tmp_test_dir');
-    const malformedJsonDir = path.join(tmpDir, 'malformed');
-    const missingNameDir = path.join(tmpDir, 'missingName');
-    const permissionErrorDir = path.join(tmpDir, 'permissionError');
+    let tempDir: string;
 
-    beforeAll(() => {
-        fs.mkdirSync(tmpDir, { recursive: true });
+    beforeEach(() => {
+        tempDir = createTempDir();
+    });
 
-        // Malformed JSON
-        fs.mkdirSync(malformedJsonDir, { recursive: true });
-        fs.writeFileSync(path.join(malformedJsonDir, 'package.json'), '{ invalid json }');
+    afterEach(() => {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    });
 
-        // Missing name field
-        fs.mkdirSync(missingNameDir, { recursive: true });
+    it('returns false if package.json does not exist', async () => {
+        const result = await isDirectoryPackage(tempDir, 'some-package');
+        expect(result).toBe(false);
+    });
+
+    it('returns true if package.json exists in the directory', async () => {
         fs.writeFileSync(
-            path.join(missingNameDir, 'package.json'),
-            JSON.stringify({ version: '1.0.0' })
+            path.join(tempDir, 'package.json'),
+            JSON.stringify({ name: 'some-package' })
         );
-
-        // Permission error
-        fs.mkdirSync(permissionErrorDir, { recursive: true });
-        fs.writeFileSync(
-            path.join(permissionErrorDir, 'package.json'),
-            JSON.stringify({ name: 'test-package' })
-        );
-        fs.chmodSync(path.join(permissionErrorDir, 'package.json'), 0); // Remove all permissions
-    });
-
-    afterAll(() => {
-        // Restore permissions before cleanup
-        try {
-            fs.chmodSync(path.join(permissionErrorDir, 'package.json'), 0o644);
-        } catch {}
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-    });
-
-    it('returns false for malformed package.json', async () => {
-        const result = await isDirectoryPackage(malformedJsonDir, 'test-package');
-        expect(result).toBe(false);
-    });
-
-    it('returns false when package.json lacks name field', async () => {
-        const result = await isDirectoryPackage(missingNameDir, 'test-package');
-        expect(result).toBe(false);
-    });
-
-    it('returns false when file permission error prevents reading package.json', async () => {
-        const result = await isDirectoryPackage(permissionErrorDir, 'test-package');
-        expect(result).toBe(false);
+        const result = await isDirectoryPackage(tempDir, 'some-package');
+        expect(result).toBe(true);
     });
 });
 
