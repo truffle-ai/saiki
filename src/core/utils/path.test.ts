@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import { resolvePackagePath, DEFAULT_CONFIG_PATH } from './path.js';
 import { walkUpDirectories } from './path.js';
@@ -79,14 +80,55 @@ describe('findProjectRootByLockFiles', () => {
 });
 
 describe('isDirectoryPackage', () => {
-    it('returns false if package.json does not exist', async () => {
-        const result = await isDirectoryPackage('/tmp', 'some-package');
+    const tmpDir = path.join(process.cwd(), 'tmp_test_dir');
+    const malformedJsonDir = path.join(tmpDir, 'malformed');
+    const missingNameDir = path.join(tmpDir, 'missingName');
+    const permissionErrorDir = path.join(tmpDir, 'permissionError');
+
+    beforeAll(() => {
+        fs.mkdirSync(tmpDir, { recursive: true });
+
+        // Malformed JSON
+        fs.mkdirSync(malformedJsonDir, { recursive: true });
+        fs.writeFileSync(path.join(malformedJsonDir, 'package.json'), '{ invalid json }');
+
+        // Missing name field
+        fs.mkdirSync(missingNameDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(missingNameDir, 'package.json'),
+            JSON.stringify({ version: '1.0.0' })
+        );
+
+        // Permission error
+        fs.mkdirSync(permissionErrorDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(permissionErrorDir, 'package.json'),
+            JSON.stringify({ name: 'test-package' })
+        );
+        fs.chmodSync(path.join(permissionErrorDir, 'package.json'), 0); // Remove all permissions
+    });
+
+    afterAll(() => {
+        // Restore permissions before cleanup
+        try {
+            fs.chmodSync(path.join(permissionErrorDir, 'package.json'), 0o644);
+        } catch {}
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('returns false for malformed package.json', async () => {
+        const result = await isDirectoryPackage(malformedJsonDir, 'test-package');
         expect(result).toBe(false);
     });
 
-    it('returns true if package.json exists in the directory', async () => {
-        const result = await isDirectoryPackage(process.cwd(), '@truffle-ai/saiki');
-        expect(result).toBe(true);
+    it('returns false when package.json lacks name field', async () => {
+        const result = await isDirectoryPackage(missingNameDir, 'test-package');
+        expect(result).toBe(false);
+    });
+
+    it('returns false when file permission error prevents reading package.json', async () => {
+        const result = await isDirectoryPackage(permissionErrorDir, 'test-package');
+        expect(result).toBe(false);
     });
 });
 
