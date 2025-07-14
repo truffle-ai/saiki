@@ -48,7 +48,8 @@ export class MCPManager {
     private sanitizedNameToServerMap: Map<string, string> = new Map();
 
     // Use a distinctive delimiter that won't appear in normal server/tool names
-    private static readonly SERVER_DELIMITER = '@@';
+    // Using double hyphen as it's allowed in LLM tool name patterns (^[a-zA-Z0-9_-]+$)
+    private static readonly SERVER_DELIMITER = '--';
 
     constructor(confirmationProvider?: ToolConfirmationProvider) {
         // If a confirmation provider is passed, use it, otherwise use auto-approve fallback
@@ -162,6 +163,10 @@ export class MCPManager {
         // Cache tools
         try {
             const tools = await client.getTools();
+            logger.debug(
+                `🔧 Discovered ${Object.keys(tools).length} tools from server '${clientName}': [${Object.keys(tools).join(', ')}]`
+            );
+
             for (const toolName in tools) {
                 // Store in server-specific map
                 serverTools.set(toolName, client);
@@ -173,16 +178,19 @@ export class MCPManager {
                     this.toolConflicts.add(toolName);
                     this.toolToClientMap.delete(toolName);
                     logger.warn(
-                        `Tool conflict detected for '${toolName}' - will use server prefix`
+                        `⚠️  Tool conflict detected for '${toolName}' - will use server prefix`
                     );
                 } else if (!this.toolConflicts.has(toolName)) {
                     this.toolToClientMap.set(toolName, client);
+                    logger.debug(`✅ Tool '${toolName}' mapped to ${clientName}`);
                 }
             }
-            logger.debug(`Cached tools for client: ${clientName}`);
+            logger.debug(
+                `✅ Successfully cached ${Object.keys(tools).length} tools for client: ${clientName}`
+            );
         } catch (error) {
             logger.error(
-                `Error retrieving tools for client ${clientName}: ${error instanceof Error ? error.message : String(error)}`
+                `❌ Error retrieving tools for client ${clientName}: ${error instanceof Error ? error.message : String(error)}`
             );
             return; // Early return on error, no caching
         }
@@ -259,6 +267,20 @@ export class MCPManager {
             }
         }
 
+        logger.debug(
+            `🔧 Tool discovery summary: ${Object.keys(allTools).length} total tools, ${this.toolConflicts.size} conflicts, connected servers: ${Array.from(this.serverToolsMap.keys()).join(', ')}`
+        );
+
+        if (logger.getLevel() === 'debug') {
+            Object.keys(allTools).forEach((toolName) => {
+                if (toolName.includes(MCPManager.SERVER_DELIMITER)) {
+                    logger.debug(`  - ${toolName} (qualified)`);
+                } else {
+                    logger.debug(`  - ${toolName}`);
+                }
+            });
+        }
+
         logger.silly(`All tools: ${JSON.stringify(allTools, null, 2)}`);
         return allTools;
     }
@@ -318,23 +340,53 @@ export class MCPManager {
      * @returns Promise resolving to the tool execution result
      */
     async executeTool(toolName: string, args: any, sessionId?: string): Promise<any> {
+        logger.debug(`🔧 Tool execution requested: '${toolName}'`);
+        logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
+
         const client = this.getToolClient(toolName);
         if (!client) {
+            logger.error(`❌ No client found for tool: ${toolName}`);
+            logger.debug(`Available tools: ${Array.from(this.toolToClientMap.keys()).join(', ')}`);
+            logger.debug(`Conflicted tools: ${Array.from(this.toolConflicts).join(', ')}`);
+            logger.debug(
+                `Server tools map keys: ${Array.from(this.serverToolsMap.keys()).join(', ')}`
+            );
             throw new Error(`No client found for tool: ${toolName}`);
         }
 
         // Extract actual tool name (remove server prefix if present)
         const parsed = this.parseQualifiedToolName(toolName);
         const actualToolName = parsed ? parsed.toolName : toolName;
+        const serverName = parsed ? parsed.serverName : 'direct';
+
+        logger.debug(
+            `🎯 Tool routing: '${toolName}' -> server: '${serverName}', actual tool: '${actualToolName}'`
+        );
 
         const approved = await this.confirmationProvider.requestConfirmation({
             toolName: actualToolName,
             args,
         });
         if (!approved) {
+            logger.warn(`🚫 Tool execution denied: ${toolName}`);
             throw new ToolExecutionDeniedError(toolName, sessionId);
         }
-        return await client.callTool(actualToolName, args);
+
+        logger.debug(`▶️  Executing tool '${actualToolName}' on server '${serverName}'...`);
+        const startTime = Date.now();
+
+        try {
+            const result = await client.callTool(actualToolName, args);
+            const duration = Date.now() - startTime;
+            logger.debug(`✅ Tool execution completed in ${duration}ms: '${actualToolName}'`);
+            return result;
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            logger.error(
+                `❌ Tool execution failed after ${duration}ms: '${actualToolName}' - ${error instanceof Error ? error.message : String(error)}`
+            );
+            throw error;
+        }
     }
 
     /**
