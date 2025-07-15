@@ -22,6 +22,8 @@ A database agent that can:
 - OpenAI API key (or other LLM provider)
 - Basic understanding of SQL and databases
 
+> **Note**: This tutorial uses the [MCP Database Server](https://github.com/executeautomation/mcp-database-server) for database connectivity. This MCP server provides database access capabilities supporting SQLite, SQL Server, PostgreSQL, and MySQL databases.
+
 ## Step 1: Setup the Database Agent
 
 First, let's set up the database agent with sample data:
@@ -106,7 +108,7 @@ llm:
 export OPENAI_API_KEY="your-openai-api-key"
 
 # Start the database agent
-npm start -- --agent database-agent.yml
+saiki --agent database-agent.yml
 ```
 
 ## Step 4: Basic Database Operations
