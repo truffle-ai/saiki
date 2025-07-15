@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Exit immediately on errors, unset variables, or pipeline failures
+set -euo pipefail
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Setup script for Database Interaction Agent
 # This script creates the data directory and initializes the database with sample data
 
@@ -7,7 +13,7 @@ echo "🚀 Setting up Database Interaction Agent..."
 
 # Create data directory if it doesn't exist
 echo "📁 Creating data directory..."
-mkdir -p data
+mkdir -p "${SCRIPT_DIR}/data"
 
 # Check if SQLite is available
 if ! command -v sqlite3 &> /dev/null; then
@@ -20,18 +26,25 @@ fi
 
 # Initialize database with sample data
 echo "🗄️  Initializing database with sample data..."
-sqlite3 data/example.db < database-agent-example.sql
+
+# Remove existing database if it exists to avoid constraint violations
+if [ -f "${SCRIPT_DIR}/data/example.db" ]; then
+    echo "🗑️  Removing existing database..."
+    rm "${SCRIPT_DIR}/data/example.db"
+fi
+
+sqlite3 "${SCRIPT_DIR}/data/example.db" < "${SCRIPT_DIR}/database-agent-example.sql"
 
 # Verify the database was created successfully
-if [ -f "data/example.db" ]; then
+if [ -f "${SCRIPT_DIR}/data/example.db" ]; then
     echo "✅ Database created successfully!"
     
     # Show some basic stats
     echo "📊 Database statistics:"
-    echo "   Tables: $(sqlite3 data/example.db "SELECT COUNT(*) FROM sqlite_master WHERE type='table';")"
-    echo "   Users: $(sqlite3 data/example.db "SELECT COUNT(*) FROM users;")"
-    echo "   Products: $(sqlite3 data/example.db "SELECT COUNT(*) FROM products;")"
-    echo "   Orders: $(sqlite3 data/example.db "SELECT COUNT(*) FROM orders;")"
+    echo "   Tables: $(sqlite3 "${SCRIPT_DIR}/data/example.db" "SELECT COUNT(*) FROM sqlite_master WHERE type='table';")"
+    echo "   Users: $(sqlite3 "${SCRIPT_DIR}/data/example.db" "SELECT COUNT(*) FROM users;")"
+    echo "   Products: $(sqlite3 "${SCRIPT_DIR}/data/example.db" "SELECT COUNT(*) FROM products;")"
+    echo "   Orders: $(sqlite3 "${SCRIPT_DIR}/data/example.db" "SELECT COUNT(*) FROM orders;")"
     
     echo ""
     echo "🎉 Database setup complete!"
@@ -41,7 +54,7 @@ if [ -f "data/example.db" ]; then
     echo ""
     echo "Example interactions you can try:"
     echo "  - 'Show me all users'"
-    echo "  - 'List products under $100'"
+    echo "  - 'List products under \$100'"
     echo "  - 'Create a new user named Test User with email test@example.com'"
     echo "  - 'Show me total sales by category'"
     echo "  - 'Find users who haven't logged in for more than 5 days'"
