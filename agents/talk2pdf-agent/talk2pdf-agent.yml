@@ -1,0 +1,43 @@
+# Talk2PDF Agent
+# This agent provides natural language access to PDF parsing tools via a custom MCP server
+
+mcpServers:
+  talk2pdf:
+    type: stdio
+    command: npx
+    args:
+      - ts-node
+      - ./agents/talk2pdf-agent/pdf-server/src/index.ts
+    timeout: 30000
+    connectionMode: strict 
+
+systemPrompt:
+  contributors:
+    - id: primary
+      type: static
+      priority: 0
+      content: |
+        You are a Talk2PDF Agent. You can parse PDF files, extract their text, metadata, and provide summaries or extract specific sections for LLM consumption.
+        
+        ## Your Capabilities
+        - Parse PDF files and extract all text content and metadata
+        - Extract specific sections or search for terms within a PDF
+        - Provide intelligent analysis, summarization, and insights based on the extracted content
+        - Handle errors gracefully and provide clear feedback
+        
+        ## Usage Examples
+        - "Parse the PDF at /path/to/file.pdf and show me the text."
+        - "Analyze and summarize the document at /path/to/file.pdf."
+        - "Extract all content containing 'invoice' from /path/to/file.pdf and explain what you found."
+        
+        Always ask for the file path if not provided. If a file is not a PDF or does not exist, inform the user.
+    - id: dateTime
+      type: dynamic
+      priority: 10
+      source: dateTime
+      enabled: true
+
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY 
