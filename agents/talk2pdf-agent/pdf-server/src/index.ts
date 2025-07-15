@@ -7,9 +7,11 @@ import { readFileSync, existsSync } from 'fs';
 import { extname } from 'path';
 import pdf from 'pdf-parse-debugging-disabled';
 
-// TypeScript module declaration for missing types
-// @ts-ignore
-declare module 'pdf-parse-debugging-disabled';
+// Simple logger with colors
+const logger = {
+    info: (msg: string) => console.log(`\x1b[36m${msg}\x1b[0m`), // cyan for status
+    error: (msg: string) => console.error(`\x1b[31m${msg}\x1b[0m`), // red for errors
+};
 
 interface ParsedDocument {
     content: string;
@@ -195,13 +197,13 @@ class DocumentParserMCPServer {
     async start(): Promise<void> {
         const transport = new StdioServerTransport();
         await this.server.connect(transport);
-        console.error('Talk2PDF MCP Server started');
+        logger.info('Talk2PDF MCP Server started');
     }
 }
 
 // Start the server
 const server = new DocumentParserMCPServer();
 server.start().catch((error) => {
-    console.error('Failed to start Talk2PDF MCP Server:', error);
+    logger.error(`Failed to start Talk2PDF MCP Server: ${error}`);
     process.exit(1);
 });

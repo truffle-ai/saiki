@@ -65,6 +65,9 @@ Here's the core structure:
 // pdf-server/src/index.ts
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
+import { readFileSync, existsSync } from 'fs';
+import { extname } from 'path';
 import pdf from 'pdf-parse-debugging-disabled';
 
 class Talk2PDFMCPServer {
@@ -85,8 +88,16 @@ class Talk2PDFMCPServer {
   async start(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
+    logger.info('Talk2PDF MCP Server started');
   }
 }
+
+// Start the server
+const server = new Talk2PDFMCPServer();
+server.start().catch((error) => {
+  logger.error(`Failed to start Talk2PDF MCP Server: ${error}`);
+  process.exit(1);
+});
 ```
 
 **What's happening here?**
@@ -121,7 +132,25 @@ this.server.tool(
     const dataBuffer = readFileSync(filePath);
     const pdfData = await pdf(dataBuffer, { max: maxPages });
     
+    // Extract metadata
+    const metadata = {
+      pageCount: pdfData.numpages,
+      title: pdfData.info?.Title,
+      author: pdfData.info?.Author,
+      fileSize: dataBuffer.length,
+      fileName: filePath.split('/').pop() || filePath,
+    };
+    
     // Return structured result
+    const result = {
+      content: pdfData.text,
+      metadata: includeMetadata ? metadata : {
+        pageCount: metadata.pageCount,
+        fileSize: metadata.fileSize,
+        fileName: metadata.fileName,
+      },
+    };
+    
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
     };
@@ -147,6 +176,16 @@ this.server.tool(
     searchTerm: z.string().optional().describe('Search term to find'),
   },
   async ({ filePath, searchTerm }) => {
+    // Validate file exists and is PDF
+    if (!existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+    
+    const fileExtension = extname(filePath).toLowerCase();
+    if (fileExtension !== '.pdf') {
+      throw new Error(`File is not a PDF: ${filePath}`);
+    }
+    
     // Parse the PDF
     const pdfData = await pdf(readFileSync(filePath));
     
@@ -160,6 +199,14 @@ this.server.tool(
       );
       extractedContent = matchingLines.join('\n');
     }
+    
+    const result = {
+      fileName: filePath.split('/').pop() || filePath,
+      totalPages: pdfData.numpages,
+      extractedContent,
+      searchTerm: searchTerm || null,
+      contentLength: extractedContent.length,
+    };
     
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   }

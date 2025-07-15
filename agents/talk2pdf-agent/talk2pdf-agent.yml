@@ -7,6 +7,7 @@ mcpServers:
     command: npx
     args:
       - ts-node
+      - --esm
       - ./agents/talk2pdf-agent/pdf-server/src/index.ts
     timeout: 30000
     connectionMode: strict 
