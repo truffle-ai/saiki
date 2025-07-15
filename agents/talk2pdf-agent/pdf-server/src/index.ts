@@ -9,7 +9,6 @@ import pdf from 'pdf-parse-debugging-disabled';
 
 // TypeScript module declaration for missing types
 // @ts-ignore
-// eslint-disable-next-line
 declare module 'pdf-parse-debugging-disabled';
 
 interface ParsedDocument {
