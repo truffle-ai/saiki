@@ -75,9 +75,9 @@ systemPrompt:
       type: file
       priority: 10
       files:
-        - ./README.md
-        - ./docs/architecture.md
-        - ./CONTRIBUTING.md
+        - ./README.md              # Relative to config file location
+        - ./docs/architecture.md   # Relative to config file location  
+        - ./CONTRIBUTING.md        # Relative to config file location
       options:
         includeFilenames: true
         separator: "\n\n---\n\n"

@@ -161,6 +161,57 @@ systemPrompt:
 
 **Note:** Files are always read using UTF-8 encoding.
 
+#### File Path Resolution
+
+**Important:** File paths in file contributors are resolved **relative to the config filepath**, not the current working directory.
+
+**Examples:**
+
+If your config file is at `/project/agents/billing-agent.yml`:
+- `docs/policies.md` → `/project/agents/docs/policies.md`
+- `./README.md` → `/project/agents/README.md`
+- `../README.md` → `/project/README.md` (parent directory)
+- `/absolute/path/file.md` → `/absolute/path/file.md` (absolute paths unchanged)
+
+**Best Practices:**
+- Use relative paths for files near your config: `docs/guidelines.md`, `./README.md`
+- Use parent directory paths for project root files: `../README.md`
+- Use absolute paths for system-wide files: `/etc/project/config.md`
+- Organize your documentation files in a predictable structure relative to your config file
+
+**Example Directory Structure:**
+```
+project/
+├── README.md
+├── agents/
+│   ├── support-agent.yml
+│   └── docs/
+│       ├── guidelines.md
+│       └── policies.md
+└── shared/
+    └── common-instructions.md
+```
+
+**Config file paths:**
+```yaml
+# In agents/support-agent.yml
+systemPrompt:
+  contributors:
+    - id: project-readme
+      type: file
+      files:
+        - ../README.md                    # Project root README
+    - id: local-docs
+      type: file
+      files:
+        - docs/guidelines.md              # Local to agent directory
+        - docs/policies.md                # Local to agent directory
+    - id: shared-instructions
+      type: file
+      files:
+        - ../shared/common-instructions.md # Shared across agents
+```
+
 #### File Contributor Use Cases
 - Include project documentation and guidelines
 - Add code style guides and best practices
@@ -286,6 +337,7 @@ systemPrompt:
 7. **File format restrictions:** Remember that File contributors only support `.md` and `.txt` files
 8. **Error handling:** Use `"skip"` error handling for optional files, `"error"` for required files
 9. **File size limits:** Set appropriate `maxFileSize` limits to prevent memory issues with large files
-10. **MCP resources:** Enable the `resources` contributor when you want to include context from MCP servers
-11. **Performance considerations:** Be mindful that the `resources` contributor fetches all MCP resources on each prompt build
+10. **Path organization:** Organize documentation files relative to your config file for cleaner, more maintainable paths
+11. **MCP resources:** Enable the `resources` contributor when you want to include context from MCP servers
+12. **Performance considerations:** Be mindful that the `resources` contributor fetches all MCP resources on each prompt build
 

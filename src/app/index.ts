@@ -301,7 +301,7 @@ program
                 }
             }
 
-            agent = new SaikiAgent(finalConfig);
+            agent = new SaikiAgent(finalConfig, configPath);
 
             // Start the agent (initialize async services)
             await agent.start();
@@ -327,7 +327,8 @@ program
                 }
             }
         } catch (err) {
-            logger.error((err as Error).message);
+            // Ensure config errors are shown to user, not hidden in logs
+            console.error(`❌ Configuration Error: ${(err as Error).message}`);
             process.exit(1);
         }
 

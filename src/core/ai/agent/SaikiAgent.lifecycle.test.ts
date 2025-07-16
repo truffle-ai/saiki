@@ -97,7 +97,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             expect(agent.isStarted()).toBe(true);
             expect(agent.isStopped()).toBe(false);
-            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig);
+            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig, undefined);
         });
 
         test('should start with per-server connection modes in config', async () => {
@@ -118,7 +118,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             await agent.start();
 
-            expect(mockCreateAgentServices).toHaveBeenCalledWith(configWithServerModes);
+            expect(mockCreateAgentServices).toHaveBeenCalledWith(configWithServerModes, undefined);
         });
 
         test('should throw error when starting twice', async () => {

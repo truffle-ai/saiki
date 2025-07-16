@@ -105,7 +105,10 @@ export class SaikiAgent {
     // Store config for async initialization
     private config: AgentConfig;
 
-    constructor(config: AgentConfig) {
+    constructor(
+        config: AgentConfig,
+        private configPath?: string
+    ) {
         this.config = config;
 
         // call start() to initialize services
@@ -128,7 +131,7 @@ export class SaikiAgent {
             logger.info('Starting SaikiAgent...');
 
             // Initialize all services asynchronously
-            const services = await createAgentServices(this.config);
+            const services = await createAgentServices(this.config, this.configPath);
 
             // Validate all required services are provided
             for (const service of requiredServices) {

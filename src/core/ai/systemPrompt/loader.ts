@@ -4,7 +4,8 @@ import { StaticContributor, DynamicContributor, FileContributor } from './contri
 import { getPromptGenerator } from './registry.js';
 
 export function loadContributors(
-    systemPromptConfig: string | SystemPromptConfig
+    systemPromptConfig: string | SystemPromptConfig,
+    configDir: string = process.cwd()
 ): SystemPromptContributor[] {
     const defaultContributors: ContributorConfig[] = [
         { id: 'dateTime', type: 'dynamic', priority: 10, source: 'dateTime', enabled: true },
@@ -45,7 +46,7 @@ export function loadContributors(
         } else if (c.type === 'file') {
             if (!c.files || c.files.length === 0)
                 throw new Error(`File contributor "${c.id}" missing files`);
-            return new FileContributor(c.id, c.priority, c.files, c.options);
+            return new FileContributor(c.id, c.priority, c.files, c.options, configDir);
         }
         throw new Error(`Invalid contributor config: ${JSON.stringify(c)}`);
     });

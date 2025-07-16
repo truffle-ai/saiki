@@ -27,6 +27,7 @@ import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { ConfigManager } from '../config/config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager } from '../ai/session/session-manager.js';
+import { dirname, resolve } from 'path';
 import { createStorageBackends, type StorageBackends, StorageManager } from '../storage/index.js';
 import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/factory.js';
 import { logger } from '../logger/index.js';
@@ -52,7 +53,10 @@ export type AgentServices = {
  * @param agentConfig The agent configuration object
  * @returns All the initialized services required for a Saiki agent
  */
-export async function createAgentServices(agentConfig: AgentConfig): Promise<AgentServices> {
+export async function createAgentServices(
+    agentConfig: AgentConfig,
+    configPath?: string
+): Promise<AgentServices> {
     // 1. Initialize config manager and validate
     const configManager = new ConfigManager(agentConfig);
     const config = configManager.getConfig();
@@ -98,7 +102,11 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
     }
 
     // 5. Initialize prompt manager
-    const promptManager = new PromptManager(config.systemPrompt);
+    const configDir = configPath ? dirname(resolve(configPath)) : process.cwd();
+    logger.debug(
+        `[ServiceInitializer] Creating PromptManager with configPath: ${configPath} → configDir: ${configDir}`
+    );
+    const promptManager = new PromptManager(config.systemPrompt, configDir);
 
     // 6. Initialize state manager for runtime state tracking
     const stateManager = new AgentStateManager(config, agentEventBus);

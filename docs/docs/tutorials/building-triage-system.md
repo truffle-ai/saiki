@@ -226,7 +226,7 @@ systemPrompt:
     
     - id: company-info
       type: file
-      files: [company-info.md]
+      files: [company-info.md]  # Relative to config file location
 ```
 
 ### Production Deployment
