@@ -28,6 +28,7 @@ import {
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 import { ThemeSwitch } from './ThemeSwitch';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 
 export default function ChatApp() {
   const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState, returnToWelcome, websocket } = useChatContext();
@@ -303,56 +304,80 @@ export default function ChatApp() {
             {/* Minimal Action Bar */}
             <div className="flex items-center space-x-1">
               <ThemeSwitch />
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setSearchOpen(true)}
-                className="h-8 px-2 text-xs transition-colors"
-                title="Search conversations (⌘⇧S)"
-              >
-                <Search className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline ml-1.5">Search</span>
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setSessionsPanelOpen(!isSessionsPanelOpen)}
-                className={cn(
-                  "h-8 px-2 text-xs transition-colors",
-                  isSessionsPanelOpen && "bg-muted"
-                )}
-                title="Toggle sessions panel (⌘H)"
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline ml-1.5">Sessions</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setSearchOpen(true)}
+                    className="h-8 px-2 text-xs transition-colors"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline ml-1.5">Search</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Search conversations (⌘⇧S)
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setSessionsPanelOpen(!isSessionsPanelOpen)}
+                    className={cn(
+                      "h-8 px-2 text-xs transition-colors",
+                      isSessionsPanelOpen && "bg-muted"
+                    )}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline ml-1.5">Sessions</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Toggle sessions panel (⌘H)
+                </TooltipContent>
+              </Tooltip>
               
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setServersPanelOpen(!isServersPanelOpen)}
-                className={cn(
-                  "h-8 px-2 text-xs transition-colors",
-                  isServersPanelOpen && "bg-muted"
-                )}
-                title="Toggle tools panel (⌘J)"
-              >
-                <Server className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline ml-1.5">MCP Servers</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setServersPanelOpen(!isServersPanelOpen)}
+                    className={cn(
+                      "h-8 px-2 text-xs transition-colors",
+                      isServersPanelOpen && "bg-muted"
+                    )}
+                  >
+                    <Server className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline ml-1.5">MCP Servers</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Toggle tools panel (⌘J)
+                </TooltipContent>
+              </Tooltip>
             
-              <Button 
-                variant="ghost"
-                size="sm"
-                asChild
-                className="h-8 px-2 text-xs"
-                title="Open playground (⌘L)"
-              >
-                <Link href="/playground" target="_blank">
-                  <Wrench className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline ml-1.5">MCP Playground</span>
-                </Link>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="h-8 px-2 text-xs"
+                  >
+                    <Link href="/playground" target="_blank">
+                      <Wrench className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline ml-1.5">MCP Playground</span>
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Open playground (⌘L)
+                </TooltipContent>
+              </Tooltip>
             
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
