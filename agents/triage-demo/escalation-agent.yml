@@ -44,7 +44,7 @@ systemPrompt:
       type: file
       priority: 10
       files:
-        - agents/triage-demo/docs/company-overview.md
+        - docs/company-overview.md
       options:
         includeFilenames: true
         errorHandling: skip
@@ -53,7 +53,7 @@ systemPrompt:
       type: file
       priority: 20
       files:
-        - agents/triage-demo/docs/escalation-policies.md
+        - docs/escalation-policies.md
       options:
         includeFilenames: true
         errorHandling: skip
