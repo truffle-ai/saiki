@@ -466,8 +466,7 @@ export default function ChatApp() {
                 
                   {/* Quick Tips */}
                   <div className="text-xs text-muted-foreground space-y-1 text-center">
-                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘H</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for new chat, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for tools</p>
-                    <p><kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧S</kbd> for search, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘/</kbd> to see all shortcuts</p>
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for new chat, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘/</kbd> for shortcuts</p>
                   </div>
                 </div>
               </div>
