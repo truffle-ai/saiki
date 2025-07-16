@@ -152,7 +152,13 @@ export class SearchService {
         role?: string
     ): Promise<SearchResult[]> {
         const messagesKey = `messages:${sessionId}`;
-        const messages = await this.database.getRange<InternalMessage>(messagesKey, 0, 1000);
+        // TODO: Consider implementing pagination or using database search capabilities
+        const MAX_MESSAGES_PER_SEARCH = 10000; // Configurable limit
+        const messages = await this.database.getRange<InternalMessage>(
+            messagesKey,
+            0,
+            MAX_MESSAGES_PER_SEARCH
+        );
 
         const results: SearchResult[] = [];
         const lowerQuery = query.toLowerCase();
