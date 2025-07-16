@@ -33,9 +33,13 @@ export interface FileContributorOptions {
     errorHandling?: 'skip' | 'error' | undefined;
     maxFileSize?: number | undefined;
     includeMetadata?: boolean | undefined;
+    cache?: boolean | undefined;
 }
 
 export class FileContributor implements SystemPromptContributor {
+    // Basic in-memory cache to avoid reading files on every prompt build
+    private cache: Map<string, string> = new Map();
+
     constructor(
         public id: string,
         public priority: number,
@@ -55,7 +59,18 @@ export class FileContributor implements SystemPromptContributor {
             errorHandling = 'skip',
             maxFileSize = 100000,
             includeMetadata = false,
+            cache = true,
         } = this.options;
+
+        // If caching is enabled, check if we have cached content
+        if (cache) {
+            const cacheKey = JSON.stringify({ files: this.files, options: this.options });
+            const cached = this.cache.get(cacheKey);
+            if (cached) {
+                logger.debug(`[FileContributor] Using cached content for "${this.id}"`);
+                return cached;
+            }
+        }
 
         const fileParts: string[] = [];
 
@@ -117,6 +132,15 @@ export class FileContributor implements SystemPromptContributor {
         }
 
         const combinedContent = fileParts.join(separator);
-        return `<fileContext>\n${combinedContent}\n</fileContext>`;
+        const result = `<fileContext>\n${combinedContent}\n</fileContext>`;
+
+        // Cache the result if caching is enabled
+        if (cache) {
+            const cacheKey = JSON.stringify({ files: this.files, options: this.options });
+            this.cache.set(cacheKey, result);
+            logger.debug(`[FileContributor] Cached content for "${this.id}"`);
+        }
+
+        return result;
     }
 }
