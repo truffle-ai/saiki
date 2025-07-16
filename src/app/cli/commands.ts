@@ -11,6 +11,7 @@
  * - /exit, /quit, /q - Exit the CLI application
  * - /clear, /reset - Clear conversation history for current session
  * - /history [sessionId], /hist - Show conversation history (current or specified session)
+ * - /search <query> [options], /find - Search conversation history across all sessions
  *
  * SESSION MANAGEMENT:
  * - /session, /s - Manage chat sessions (defaults to help)
@@ -937,6 +938,118 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                         '💡 You can manually visit: https://truffle-ai.github.io/saiki/docs/category/getting-started/'
                     )
                 );
+            }
+            return true;
+        },
+    },
+    {
+        name: 'search',
+        description: 'Search conversation history',
+        usage: '/search <query> [options]',
+        category: 'General',
+        aliases: ['find'],
+        handler: async (args: string[], agent: SaikiAgent) => {
+            if (args.length === 0) {
+                console.log(chalk.red('❌ Search query is required'));
+                console.log(
+                    chalk.dim(
+                        'Usage: /search <query> [--session <sessionId>] [--role <role>] [--limit <number>]'
+                    )
+                );
+                console.log(chalk.dim('Examples:'));
+                console.log(chalk.dim('  /search "hello world"'));
+                console.log(chalk.dim('  /search error --role assistant'));
+                console.log(chalk.dim('  /search deploy --session abc123'));
+                return true;
+            }
+
+            try {
+                // Parse arguments
+                const options: any = { limit: 10 };
+                let query = '';
+                let i = 0;
+
+                while (i < args.length) {
+                    const arg = args[i];
+                    if (arg === '--session' && i + 1 < args.length) {
+                        options.sessionId = args[i + 1];
+                        i += 2;
+                    } else if (arg === '--role' && i + 1 < args.length) {
+                        options.role = args[i + 1];
+                        i += 2;
+                    } else if (arg === '--limit' && i + 1 < args.length) {
+                        options.limit = parseInt(args[i + 1]) || 10;
+                        i += 2;
+                    } else {
+                        // Remove surrounding quotes if present
+                        let cleanArg = arg;
+                        if (
+                            (cleanArg.startsWith('"') && cleanArg.endsWith('"')) ||
+                            (cleanArg.startsWith("'") && cleanArg.endsWith("'"))
+                        ) {
+                            cleanArg = cleanArg.slice(1, -1);
+                        }
+                        query += (query ? ' ' : '') + cleanArg;
+                        i++;
+                    }
+                }
+
+                if (!query.trim()) {
+                    console.log(chalk.red('❌ Search query is required'));
+                    return true;
+                }
+
+                console.log(chalk.blue(`🔍 Searching for: "${query}"`));
+                if (options.sessionId) {
+                    console.log(chalk.dim(`   Session: ${options.sessionId}`));
+                }
+                if (options.role) {
+                    console.log(chalk.dim(`   Role: ${options.role}`));
+                }
+                console.log(chalk.dim(`   Limit: ${options.limit}`));
+                console.log();
+
+                const results = await agent.searchMessages(query, options);
+
+                if (results.results.length === 0) {
+                    console.log(chalk.yellow('📭 No messages found matching your search'));
+                    return true;
+                }
+
+                console.log(
+                    chalk.green(`✅ Found ${results.total} result${results.total === 1 ? '' : 's'}`)
+                );
+                if (results.hasMore) {
+                    console.log(chalk.dim(`   Showing first ${results.results.length} results`));
+                }
+                console.log();
+
+                // Display results
+                results.results.forEach((result, index) => {
+                    const roleColor =
+                        result.message.role === 'user'
+                            ? chalk.blue
+                            : result.message.role === 'assistant'
+                              ? chalk.green
+                              : chalk.yellow;
+
+                    console.log(
+                        `${chalk.dim(`${index + 1}.`)} ${chalk.cyan(result.sessionId)} ${roleColor(`[${result.message.role}]`)}`
+                    );
+                    console.log(
+                        `   ${result.context.replace(new RegExp(`(${query})`, 'gi'), chalk.inverse('$1'))}`
+                    );
+                    console.log();
+                });
+
+                if (results.hasMore) {
+                    console.log(chalk.dim('💡 Use --limit to see more results'));
+                }
+            } catch (error) {
+                logger.error(
+                    `Search failed: ${error instanceof Error ? error.message : String(error)}`
+                );
+                console.log(chalk.red('❌ Search failed. Please try again.'));
             }
             return true;
         },
