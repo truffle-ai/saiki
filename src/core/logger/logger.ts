@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import * as fs from 'fs';
 import * as path from 'path';
+import { resolveSaikiLogPath } from '../utils/path.js';
 
 // Winston logger configuration
 const logLevels = {
@@ -80,6 +81,8 @@ const maskFormat = winston.format((info) => {
 export interface LoggerOptions {
     level?: string;
     silent?: boolean;
+    logToConsole?: boolean;
+    customLogPath?: string;
 }
 
 // Helper to get default log level from environment or fallback to 'info'
@@ -94,9 +97,16 @@ const getDefaultLogLevel = (): string => {
 export class Logger {
     private logger: winston.Logger;
     private isSilent: boolean = false;
+    private logFilePath: string | null = null;
+    private logToConsole: boolean = false;
 
     constructor(options: LoggerOptions = {}) {
-        // Create Winston logger
+        this.isSilent = options.silent || false;
+
+        // Initialize transports synchronously
+        this.initializeTransports(options);
+
+        // Create logger with transports
         this.logger = winston.createLogger({
             levels: logLevels,
             level: options.level || getDefaultLogLevel(),
@@ -108,16 +118,81 @@ export class Logger {
                 winston.format.splat(),
                 winston.format.json()
             ),
-            transports: [
+            transports: this.createTransports(options),
+        });
+    }
+
+    private initializeTransports(options: LoggerOptions) {
+        // Check if console logging should be enabled for Winston logs
+        // Default to false (file-only logging), enable only when explicitly requested
+        const logToConsole = options.logToConsole ?? process.env.SAIKI_LOG_TO_CONSOLE === 'true';
+        this.logToConsole = logToConsole;
+
+        // Set up file logging path synchronously
+        if (options.customLogPath) {
+            this.logFilePath = options.customLogPath;
+        } else {
+            this.logFilePath = resolveSaikiLogPath();
+        }
+    }
+
+    private createTransports(_options: LoggerOptions): winston.transport[] {
+        const transports: winston.transport[] = [];
+
+        // Add console transport if enabled
+        if (this.logToConsole) {
+            transports.push(
                 new winston.transports.Console({
                     format: winston.format.combine(
                         winston.format.timestamp({ format: 'HH:mm:ss' }),
                         maskFormat(),
                         consoleFormat
                     ),
-                }),
-            ],
-        });
+                })
+            );
+        }
+
+        // Add file transport
+        try {
+            if (this.logFilePath) {
+                // Ensure log directory exists
+                const logDir = path.dirname(this.logFilePath);
+                fs.mkdirSync(logDir, { recursive: true });
+
+                transports.push(
+                    new winston.transports.File({
+                        filename: this.logFilePath,
+                        format: winston.format.combine(
+                            winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+                            maskFormat(),
+                            winston.format.errors({ stack: true }),
+                            winston.format.json()
+                        ),
+                        // Add daily rotation
+                        maxsize: 10 * 1024 * 1024, // 10MB
+                        maxFiles: 7, // Keep 7 files
+                        tailable: true,
+                    })
+                );
+            }
+        } catch (error) {
+            // If file logging fails, fall back to console
+            console.error(`Failed to initialize file logging: ${error}. Falling back to console.`);
+            if (!this.logToConsole) {
+                this.logToConsole = true;
+                transports.push(
+                    new winston.transports.Console({
+                        format: winston.format.combine(
+                            winston.format.timestamp({ format: 'HH:mm:ss' }),
+                            maskFormat(),
+                            consoleFormat
+                        ),
+                    })
+                );
+            }
+        }
+
+        return transports;
     }
 
     // General logging methods with optional color parameter
@@ -259,30 +334,9 @@ export class Logger {
         }
     }
 
-    // Redirect logs to file (useful for MCP mode to avoid stdout interference)
-    redirectToFile(filePath: string) {
-        // Ensure directory exists
-        const dir = path.dirname(filePath);
-        fs.mkdirSync(dir, { recursive: true });
-
-        // Remove all previous transports
-        this.logger.clear();
-
-        // Add file transport
-        this.logger.add(
-            new winston.transports.File({
-                filename: filePath,
-                format: winston.format.combine(
-                    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-                    maskFormat(),
-                    winston.format.errors({ stack: true }),
-                    winston.format.json()
-                ),
-            })
-        );
-
-        // Set silent mode for console methods
-        this.isSilent = true;
+    // Get the current log file path
+    getLogFilePath(): string | null {
+        return this.logFilePath;
     }
 
     // Get current log level

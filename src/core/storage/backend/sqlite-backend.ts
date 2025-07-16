@@ -3,7 +3,7 @@ import { mkdirSync } from 'fs';
 import type { DatabaseBackend } from './database-backend.js';
 import { logger } from '../../logger/index.js';
 import type { SqliteBackendConfig } from '../../config/schemas.js';
-import { isSaikiProject } from '../../utils/path.js';
+import { resolveSaikiLogPath } from '../../utils/path.js';
 import * as path from 'path';
 import { homedir } from 'os';
 
@@ -25,9 +25,10 @@ export class SQLiteBackend implements DatabaseBackend {
         this.dbPath = '';
     }
 
-    private async resolveDefaultPath(dbName: string): Promise<string> {
-        // Use the enhanced path utilities for robust detection
-        const isInSaikiProject = await isSaikiProject();
+    private resolveDefaultPath(dbName: string): string {
+        // Use the same logic as log path resolution for consistency
+        const logPath = resolveSaikiLogPath();
+        const isInSaikiProject = logPath.includes(process.cwd());
 
         const storageDir = isInSaikiProject
             ? path.join(process.cwd(), '.saiki', 'database')
@@ -96,7 +97,7 @@ export class SQLiteBackend implements DatabaseBackend {
             this.dbPath = this.config.path;
             logger.info(`SQLite using custom path: ${this.dbPath}`);
         } else {
-            this.dbPath = await this.resolveDefaultPath(this.config.database || 'saiki.db');
+            this.dbPath = this.resolveDefaultPath(this.config.database || 'saiki.db');
         }
 
         // Ensure directory exists

@@ -1,7 +1,7 @@
 import * as path from 'path';
-import { existsSync } from 'fs';
-import { promises as fsPromises } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { createRequire } from 'module';
+import { homedir } from 'os';
 
 // Create require function for ES modules
 const require = createRequire(import.meta.url);
@@ -93,11 +93,11 @@ export function findProjectRootByLockFiles(startPath: string = process.cwd()): s
  * @param packageName Expected package name
  * @returns True if the directory contains the specified package
  */
-export async function isDirectoryPackage(dirPath: string, packageName: string): Promise<boolean> {
+export function isDirectoryPackage(dirPath: string, packageName: string): boolean {
     const packageJsonPath = path.join(dirPath, 'package.json');
 
     try {
-        const packageJson = JSON.parse(await fsPromises.readFile(packageJsonPath, 'utf-8'));
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
         return packageJson.name === packageName;
     } catch {
         return false;
@@ -110,12 +110,12 @@ export async function isDirectoryPackage(dirPath: string, packageName: string): 
  * @param startPath Starting directory path
  * @returns The directory containing the specified package, or null if not found
  */
-export async function findPackageByName(
+export function findPackageByName(
     packageName: string,
     startPath: string = process.cwd()
-): Promise<string | null> {
-    return walkUpDirectoriesAsync(startPath, async (dirPath) => {
-        return await isDirectoryPackage(dirPath, packageName);
+): string | null {
+    return walkUpDirectories(startPath, (dirPath) => {
+        return isDirectoryPackage(dirPath, packageName);
     });
 }
 
@@ -124,10 +124,8 @@ export async function findPackageByName(
  * @param dirPath Directory to check (defaults to current working directory)
  * @returns True if the directory is the Saiki project root
  */
-export async function isCurrentDirectorySaikiProject(
-    dirPath: string = process.cwd()
-): Promise<boolean> {
-    return await isDirectoryPackage(dirPath, '@truffle-ai/saiki');
+export function isCurrentDirectorySaikiProject(dirPath: string = process.cwd()): boolean {
+    return isDirectoryPackage(dirPath, '@truffle-ai/saiki');
 }
 
 /**
@@ -135,18 +133,16 @@ export async function isCurrentDirectorySaikiProject(
  * @param startPath Starting directory path
  * @returns The Saiki project root directory, or null if not found
  */
-export async function findSaikiProjectRoot(
-    startPath: string = process.cwd()
-): Promise<string | null> {
-    return await findPackageByName('@truffle-ai/saiki', startPath);
+export function findSaikiProjectRoot(startPath: string = process.cwd()): string | null {
+    return findPackageByName('@truffle-ai/saiki', startPath);
 }
 
 /**
  * Detect if we're running as a global install (not in the Saiki project directory)
  * @returns True if running globally, false if in Saiki project
  */
-export async function isGlobalInstall(): Promise<boolean> {
-    const isInSaikiProject = await isSaikiProject();
+export function isGlobalInstall(): boolean {
+    const isInSaikiProject = isSaikiProject();
     return !isInSaikiProject;
 }
 
@@ -197,6 +193,22 @@ export function hasSaikiConfig(dirPath: string): boolean {
 }
 
 /**
+ * Resolve the default log file path for Saiki
+ * Uses reliable synchronous detection for immediate use in logger initialization
+ * @param logFileName Optional custom log file name (defaults to 'saiki.log')
+ * @returns Absolute path to the log file
+ */
+export function resolveSaikiLogPath(logFileName: string = 'saiki.log'): string {
+    // Use reliable package detection - check if we're in a Saiki project
+    const isInSaikiProject = isSaikiProject();
+    const logDir = isInSaikiProject
+        ? path.join(process.cwd(), '.saiki', 'logs')
+        : path.join(homedir(), '.saiki', 'logs');
+
+    return path.join(logDir, logFileName);
+}
+
+/**
  * Find Saiki project root by looking for agents/agent.yml
  * @param startPath Starting directory path
  * @returns The directory containing agents/agent.yml, or null if not found
@@ -210,9 +222,9 @@ export function findSaikiProjectByConfig(startPath: string = process.cwd()): str
  * @param dirPath Directory to check (defaults to current working directory)
  * @returns True if the directory is a Saiki project (by package name OR config file)
  */
-export async function isSaikiProject(dirPath: string = process.cwd()): Promise<boolean> {
+export function isSaikiProject(dirPath: string = process.cwd()): boolean {
     // Check for package.json with @truffle-ai/saiki name
-    const isPackage = await isDirectoryPackage(dirPath, '@truffle-ai/saiki');
+    const isPackage = isDirectoryPackage(dirPath, '@truffle-ai/saiki');
     if (isPackage) {
         return true;
     }
@@ -226,11 +238,9 @@ export async function isSaikiProject(dirPath: string = process.cwd()): Promise<b
  * @param startPath Starting directory path
  * @returns The Saiki project root directory, or null if not found
  */
-export async function findSaikiProjectRootEnhanced(
-    startPath: string = process.cwd()
-): Promise<string | null> {
+export function findSaikiProjectRootEnhanced(startPath: string = process.cwd()): string | null {
     // First try finding by package.json
-    const packageRoot = await findPackageByName('@truffle-ai/saiki', startPath);
+    const packageRoot = findPackageByName('@truffle-ai/saiki', startPath);
     if (packageRoot) {
         return packageRoot;
     }

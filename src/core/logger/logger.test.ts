@@ -1,35 +1,56 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Logger, logger } from '../logger/index.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { Logger } from '../logger/index.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import { tmpdir } from 'os';
 
 // Ensure console.log is mocked and environment is reset between tests
 beforeEach(() => {
     delete process.env.SAIKI_LOG_LEVEL;
+    delete process.env.SAIKI_LOG_TO_CONSOLE;
     delete process.env.DEBUG;
+    vi.restoreAllMocks();
+});
+
+afterEach(() => {
+    // Clean up any temporary log files
     vi.restoreAllMocks();
 });
 
 describe('Logger utilities', () => {
     let spyLog: ReturnType<typeof vi.spyOn>;
     let _spyStdErrWrite: ReturnType<typeof vi.spyOn>;
+    let tempDir: string;
 
     beforeEach(() => {
         spyLog = vi.spyOn(console, 'log').mockImplementation(() => {});
         _spyStdErrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true) as any;
+        tempDir = fs.mkdtempSync(path.join(tmpdir(), 'saiki-logger-test-'));
+    });
+
+    afterEach(() => {
+        // Clean up temp directory
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
     });
 
     it('getDefaultLogLevel falls back to "info"', () => {
-        const l = new Logger();
+        const customLogPath = path.join(tempDir, 'test.log');
+        const l = new Logger({ customLogPath });
         expect(l.getLevel()).toBe('info');
     });
 
     it('respects SAIKI_LOG_LEVEL env var', () => {
         process.env.SAIKI_LOG_LEVEL = 'debug';
-        const l = new Logger();
+        const customLogPath = path.join(tempDir, 'test.log');
+        const l = new Logger({ customLogPath });
         expect(l.getLevel()).toBe('debug');
     });
 
     it('setLevel updates level and rejects invalid levels', () => {
-        const l = new Logger({ level: 'info' });
+        const customLogPath = path.join(tempDir, 'test.log');
+        const l = new Logger({ level: 'info', customLogPath });
         l.setLevel('warn');
         expect(l.getLevel()).toBe('warn');
         // Invalid level should not change current level
@@ -37,9 +58,73 @@ describe('Logger utilities', () => {
         expect(l.getLevel()).toBe('warn');
     });
 
-    it('toolCall logs tool name and arguments', () => {
-        logger.toolCall('testTool', { foo: 'bar' });
-        // Expect toolCall output to go to stdout
+    it('uses file logging by default', () => {
+        const customLogPath = path.join(tempDir, 'test.log');
+        const l = new Logger({ customLogPath });
+        expect(l.getLogFilePath()).toBe(customLogPath);
+    });
+
+    it('enables console logging when SAIKI_LOG_TO_CONSOLE=true', () => {
+        process.env.SAIKI_LOG_TO_CONSOLE = 'true';
+        const customLogPath = path.join(tempDir, 'test.log');
+        const l = new Logger({ customLogPath });
+
+        // Logger should still have file path set
+        expect(l.getLogFilePath()).toBe(customLogPath);
+
+        // toolCall should log to console when console logging is enabled
+        l.toolCall('testTool', { foo: 'bar' });
         expect(spyLog).toHaveBeenCalledWith(expect.stringContaining('Tool Call'));
+    });
+
+    it('display methods always use console.log (UI display)', () => {
+        const customLogPath = path.join(tempDir, 'test.log');
+        const l = new Logger({ customLogPath });
+
+        l.toolCall('testTool', { foo: 'bar' });
+        // Display methods (toolCall, displayAIResponse, toolResult) always use console.log for UI
+        expect(spyLog).toHaveBeenCalledWith(expect.stringContaining('Tool Call'));
+    });
+
+    it('creates log file directory if it does not exist', async () => {
+        const logDir = path.join(tempDir, 'nested', 'log', 'dir');
+        const customLogPath = path.join(logDir, 'test.log');
+
+        const l = new Logger({ customLogPath });
+
+        // Give async initialization time to complete
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        expect(fs.existsSync(logDir)).toBe(true);
+        expect(l.getLogFilePath()).toBe(customLogPath);
+    });
+
+    it('actually writes logs to the file', async () => {
+        const customLogPath = path.join(tempDir, 'test.log');
+        const l = new Logger({ customLogPath });
+
+        // Write a test log
+        l.info('Test log message');
+
+        // Give time for file write
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Check that file exists and contains the log
+        expect(fs.existsSync(customLogPath)).toBe(true);
+        const logContent = fs.readFileSync(customLogPath, 'utf8');
+        expect(logContent).toContain('Test log message');
+        expect(logContent).toContain('"level":"info"');
+    });
+
+    it('uses synchronous path resolution for project detection', () => {
+        const customLogPath = path.join(tempDir, 'test.log');
+        const l = new Logger({ customLogPath });
+
+        // Logger should initialize synchronously without errors
+        expect(l.getLogFilePath()).toBe(customLogPath);
+
+        // Should be able to log immediately
+        l.info('Immediate log');
+        expect(l.getLevel()).toBe('info');
     });
 });

@@ -90,7 +90,10 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
     console.log(chalk.bold.cyan('\n🚀 Welcome to Saiki CLI!'));
     console.log(chalk.dim('• Type your message normally to chat with the AI'));
     console.log(chalk.dim('• Use /command for system commands (e.g., /help, /session, /model)'));
-    console.log(chalk.dim('• Type /help to see all available commands\n'));
+    console.log(chalk.dim('• Type /help to see all available commands'));
+    console.log(
+        chalk.dim('• Logs available in .saiki/logs/saiki.log or ~/.saiki/logs/saiki.log\n')
+    );
 }
 
 /**
