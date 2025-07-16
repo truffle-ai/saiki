@@ -3,12 +3,11 @@ import * as path from 'path';
 import { tmpdir } from 'os';
 import { resolvePackagePath, DEFAULT_CONFIG_PATH } from './path.js';
 import { walkUpDirectories } from './path.js';
-import { walkUpDirectoriesAsync } from './path.js';
 import { findPackageRoot } from './path.js';
 import { findProjectRootByLockFiles } from './path.js';
 import { isDirectoryPackage } from './path.js';
 import { findPackageByName } from './path.js';
-import { isCurrentDirectorySaikiProject } from './path.js';
+import { isSaikiProject } from './path.js';
 import { findSaikiProjectRoot } from './path.js';
 import { resolveSaikiLogPath } from './path.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -45,19 +44,6 @@ describe('walkUpDirectories', () => {
     it('returns the first directory that matches the predicate', () => {
         const result = walkUpDirectories('/tmp', (dirPath) => dirPath.includes('tmp'));
         expect(result).toBe('/tmp');
-    });
-});
-
-describe('walkUpDirectoriesAsync', () => {
-    it('returns null if async predicate never matches', async () => {
-        const result = await walkUpDirectoriesAsync(process.cwd(), async () => false);
-        expect(result).toBeNull();
-    });
-
-    it('returns startPath if async predicate matches immediately', async () => {
-        const start = process.cwd();
-        const result = await walkUpDirectoriesAsync(start, async (dir) => dir === start);
-        expect(result).toBe(start);
     });
 });
 
@@ -118,53 +104,53 @@ describe('isDirectoryPackage', () => {
         fs.rmSync(tempDir, { recursive: true, force: true });
     });
 
-    it('returns false if package.json does not exist', async () => {
-        const result = await isDirectoryPackage(tempDir, 'some-package');
+    it('returns false if package.json does not exist', () => {
+        const result = isDirectoryPackage(tempDir, 'some-package');
         expect(result).toBe(false);
     });
 
-    it('returns true if package.json exists in the directory', async () => {
+    it('returns true if package.json exists in the directory', () => {
         fs.writeFileSync(
             path.join(tempDir, 'package.json'),
             JSON.stringify({ name: 'some-package' })
         );
-        const result = await isDirectoryPackage(tempDir, 'some-package');
+        const result = isDirectoryPackage(tempDir, 'some-package');
         expect(result).toBe(true);
     });
 });
 
 describe('findPackageByName', () => {
-    it('returns null if package not found', async () => {
-        const result = await findPackageByName('non-existent-package', '/tmp');
+    it('returns null if package not found', () => {
+        const result = findPackageByName('non-existent-package', '/tmp');
         expect(result).toBeNull();
     });
 
-    it('returns the package path if found', async () => {
-        const result = await findPackageByName('@truffle-ai/saiki', process.cwd());
+    it('returns the package path if found', () => {
+        const result = findPackageByName('@truffle-ai/saiki', process.cwd());
         expect(result).toBe(process.cwd());
     });
 });
 
-describe('isCurrentDirectorySaikiProject', () => {
-    it('returns false if not in a Saiki project', async () => {
-        const result = await isCurrentDirectorySaikiProject('/tmp');
+describe('isSaikiProject', () => {
+    it('returns false if not in a Saiki project', () => {
+        const result = isSaikiProject('/tmp');
         expect(result).toBe(false);
     });
 
-    it('returns true if in a Saiki project', async () => {
-        const result = await isCurrentDirectorySaikiProject(process.cwd());
+    it('returns true if in a Saiki project', () => {
+        const result = isSaikiProject(process.cwd());
         expect(result).toBe(true);
     });
 });
 
 describe('findSaikiProjectRoot', () => {
-    it('returns null if not in a Saiki project', async () => {
-        const result = await findSaikiProjectRoot('/tmp');
+    it('returns null if not in a Saiki project', () => {
+        const result = findSaikiProjectRoot('/tmp');
         expect(result).toBeNull();
     });
 
-    it('returns the Saiki project root if found', async () => {
-        const result = await findSaikiProjectRoot(process.cwd());
+    it('returns the Saiki project root if found', () => {
+        const result = findSaikiProjectRoot(process.cwd());
         expect(result).toBe(process.cwd());
     });
 });
