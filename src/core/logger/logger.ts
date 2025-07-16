@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import * as fs from 'fs';
 import * as path from 'path';
-import { homedir } from 'os';
+import { resolveSaikiLogPath } from '../utils/path.js';
 
 // Winston logger configuration
 const logLevels = {
@@ -132,19 +132,8 @@ export class Logger {
         if (options.customLogPath) {
             this.logFilePath = options.customLogPath;
         } else {
-            // For synchronous initialization, use a fallback approach
-            this.logFilePath = this.resolveSaikiLogPathSync();
+            this.logFilePath = resolveSaikiLogPath();
         }
-    }
-
-    private resolveSaikiLogPathSync(): string {
-        // Synchronous version - check if we're in a Saiki project
-        const hasConfig = fs.existsSync(path.join(process.cwd(), 'agents', 'agent.yml'));
-        const logDir = hasConfig
-            ? path.join(process.cwd(), '.saiki', 'logs')
-            : path.join(homedir(), '.saiki', 'logs');
-
-        return path.join(logDir, 'saiki.log');
     }
 
     private createTransports(_options: LoggerOptions): winston.transport[] {

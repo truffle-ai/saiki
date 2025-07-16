@@ -170,14 +170,14 @@ describe('findSaikiProjectRoot', () => {
 });
 
 describe('resolveSaikiLogPath', () => {
-    it('resolves to local project .saiki/logs when in a Saiki project', async () => {
+    it('resolves to local project .saiki/logs when in a Saiki project', () => {
         // We're in a Saiki project (has agents/agent.yml)
-        const result = await resolveSaikiLogPath();
+        const result = resolveSaikiLogPath();
         expect(result).toBe(path.join(process.cwd(), '.saiki', 'logs', 'saiki.log'));
     });
 
-    it('accepts custom log file name', async () => {
-        const result = await resolveSaikiLogPath('custom.log');
+    it('accepts custom log file name', () => {
+        const result = resolveSaikiLogPath('custom.log');
         expect(result).toBe(path.join(process.cwd(), '.saiki', 'logs', 'custom.log'));
     });
 });

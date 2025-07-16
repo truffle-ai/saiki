@@ -199,15 +199,14 @@ export function hasSaikiConfig(dirPath: string): boolean {
 
 /**
  * Resolve the default log file path for Saiki
- * Uses the same directory detection logic as the SQLite backend
+ * Uses synchronous detection for immediate use in logger initialization
  * @param logFileName Optional custom log file name (defaults to 'saiki.log')
  * @returns Absolute path to the log file
  */
-export async function resolveSaikiLogPath(logFileName: string = 'saiki.log'): Promise<string> {
-    // Use the enhanced path utilities for robust detection
-    const isInSaikiProject = await isSaikiProject();
-
-    const logDir = isInSaikiProject
+export function resolveSaikiLogPath(logFileName: string = 'saiki.log'): string {
+    // Synchronous version - check if we're in a Saiki project
+    const hasConfig = existsSync(path.join(process.cwd(), 'agents', 'agent.yml'));
+    const logDir = hasConfig
         ? path.join(process.cwd(), '.saiki', 'logs')
         : path.join(homedir(), '.saiki', 'logs');
 
