@@ -621,7 +621,12 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 return res.status(400).json({ error: 'Search query is required' });
             }
 
-            const options: any = {
+            const options: {
+                limit: number;
+                offset: number;
+                sessionId?: string;
+                role?: 'user' | 'assistant' | 'system' | 'tool';
+            } = {
                 limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
                 offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
             };

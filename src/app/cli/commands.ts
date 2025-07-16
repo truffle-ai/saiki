@@ -965,27 +965,44 @@ export const CLI_COMMANDS: CommandDefinition[] = [
 
             try {
                 // Parse arguments
-                const options: any = { limit: 10 };
+                const options: {
+                    limit: number;
+                    sessionId?: string;
+                    role?: 'user' | 'assistant' | 'system' | 'tool';
+                } = { limit: 10 };
                 let query = '';
                 let i = 0;
 
                 while (i < args.length) {
                     const arg = args[i];
                     if (arg === '--session' && i + 1 < args.length) {
-                        options.sessionId = args[i + 1];
+                        const sessionValue = args[i + 1];
+                        if (sessionValue) {
+                            options.sessionId = sessionValue;
+                        }
                         i += 2;
                     } else if (arg === '--role' && i + 1 < args.length) {
-                        options.role = args[i + 1];
+                        const roleValue = args[i + 1] as 'user' | 'assistant' | 'system' | 'tool';
+                        if (
+                            roleValue &&
+                            ['user', 'assistant', 'system', 'tool'].includes(roleValue)
+                        ) {
+                            options.role = roleValue;
+                        }
                         i += 2;
                     } else if (arg === '--limit' && i + 1 < args.length) {
-                        options.limit = parseInt(args[i + 1]) || 10;
+                        const limitValue = args[i + 1];
+                        if (limitValue) {
+                            options.limit = parseInt(limitValue) || 10;
+                        }
                         i += 2;
                     } else {
                         // Remove surrounding quotes if present
                         let cleanArg = arg;
                         if (
-                            (cleanArg.startsWith('"') && cleanArg.endsWith('"')) ||
-                            (cleanArg.startsWith("'") && cleanArg.endsWith("'"))
+                            cleanArg &&
+                            ((cleanArg.startsWith('"') && cleanArg.endsWith('"')) ||
+                                (cleanArg.startsWith("'") && cleanArg.endsWith("'")))
                         ) {
                             cleanArg = cleanArg.slice(1, -1);
                         }
