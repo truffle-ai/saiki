@@ -47,6 +47,7 @@ export default function ChatApp() {
   // Enhanced features
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Conversation management states
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -233,7 +234,11 @@ export default function ChatApp() {
         })
         .then(response => response.json())
         .then(data => handleSessionChange(data.session.id))
-        .catch(error => console.error('Error creating new session:', error));
+        .catch(error => {
+          console.error('Error creating new session:', error);
+          setErrorMessage('Failed to create new session. Please try again.');
+          setTimeout(() => setErrorMessage(null), 5000);
+        });
       }
       // Ctrl/Cmd + J to toggle tools/servers panel
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
@@ -244,7 +249,6 @@ export default function ChatApp() {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 's') {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Search shortcut triggered');
         setSearchOpen(true);
       }
       // Ctrl/Cmd + L to open playground
@@ -270,12 +274,13 @@ export default function ChatApp() {
         else if (isExportOpen) setExportOpen(false);
         else if (showShortcuts) setShowShortcuts(false);
         else if (isDeleteDialogOpen) setDeleteDialogOpen(false);
+        else if (errorMessage) setErrorMessage(null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isSessionsPanelOpen, isSearchOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isDeleteDialogOpen, setSearchOpen]);
+  }, [isServersPanelOpen, isSessionsPanelOpen, isSearchOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isDeleteDialogOpen, errorMessage, setSearchOpen]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -423,6 +428,12 @@ export default function ChatApp() {
         
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="absolute top-4 right-4 z-50 bg-destructive text-destructive-foreground px-4 py-2 rounded-md shadow-lg">
+              {errorMessage}
+            </div>
+          )}
           {/* Chat Content */}
           <div className="flex-1 flex flex-col">
             {isWelcomeState || messages.length === 0 ? (

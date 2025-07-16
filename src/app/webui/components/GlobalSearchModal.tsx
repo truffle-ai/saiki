@@ -49,15 +49,18 @@ export default function GlobalSearchModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
       setResults([]);
+      setError(null);
       return;
     }
 
     setIsLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({
         q: query,
@@ -67,7 +70,8 @@ export default function GlobalSearchModal({
 
       const response = await fetch(`/api/search/messages?${params}`);
       if (!response.ok) {
-        throw new Error('Search failed');
+        const errorText = await response.text();
+        throw new Error(`Search failed: ${response.status} ${errorText}`);
       }
       
       const data: SearchResponse = await response.json();
@@ -76,6 +80,7 @@ export default function GlobalSearchModal({
     } catch (err) {
       console.error('Search error:', err);
       setResults([]);
+      setError(err instanceof Error ? err.message : 'Search failed');
     } finally {
       setIsLoading(false);
     }
@@ -95,6 +100,7 @@ export default function GlobalSearchModal({
     if (isOpen) {
       setSearchQuery('');
       setResults([]);
+      setError(null);
       setSelectedIndex(0);
     }
   }, [isOpen]);
@@ -176,7 +182,8 @@ export default function GlobalSearchModal({
   const highlightText = (text: string, query: string) => {
     if (!query) return text;
     
-    const regex = new RegExp(`(${query})`, 'gi');
+    const escapedQuery = query.replace(/[.*+?^${}()|\[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
     const parts = text.split(regex);
     
     return parts.map((part, index) => 
@@ -212,6 +219,15 @@ export default function GlobalSearchModal({
               <div className="flex items-center justify-center py-12">
                 <RefreshCw className="h-6 w-6 animate-spin mr-3" />
                 <span className="text-muted-foreground">Searching...</span>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Search className="w-12 h-12 mx-auto mb-4 text-destructive opacity-50" />
+                  <p className="text-destructive font-medium">Search Error</p>
+                  <p className="text-sm text-muted-foreground mt-2">{error}</p>
+                  <p className="text-xs text-muted-foreground mt-2">Try again or check your connection.</p>
+                </div>
               </div>
             ) : (
               <ScrollArea className="h-full">

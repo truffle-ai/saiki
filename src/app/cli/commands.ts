@@ -992,11 +992,13 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                         i += 2;
                     } else if (arg === '--limit' && i + 1 < args.length) {
                         const limitValue = args[i + 1];
-                        if (limitValue) {
-                            options.limit = parseInt(limitValue) || 10;
-                        }
+                        options.limit = limitValue ? parseInt(limitValue) || 10 : 10;
                         i += 2;
                     } else {
+                        if (!arg) {
+                            i++;
+                            continue;
+                        }
                         // Remove surrounding quotes if present
                         let cleanArg = arg;
                         if (
