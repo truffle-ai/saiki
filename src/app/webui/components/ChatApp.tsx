@@ -9,8 +9,9 @@ import ServerRegistryModal from './ServerRegistryModal';
 import ServersPanel from './ServersPanel';
 import SessionPanel from './SessionPanel';
 import { ToolConfirmationHandler } from './ToolConfirmationHandler';
+import GlobalSearchModal from './GlobalSearchModal';
 import { Button } from "./ui/button";
-import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2 } from "lucide-react";
+import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2, Search } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
@@ -35,6 +36,7 @@ export default function ChatApp() {
   const [isServerRegistryOpen, setServerRegistryOpen] = useState(false);
   const [isServersPanelOpen, setServersPanelOpen] = useState(false);
   const [isSessionsPanelOpen, setSessionsPanelOpen] = useState(false);
+  const [isSearchOpen, setSearchOpen] = useState(false);
   const [isExportOpen, setExportOpen] = useState(false);
   const [exportName, setExportName] = useState('saiki-config');
   const [exportError, setExportError] = useState<string | null>(null);
@@ -223,6 +225,11 @@ export default function ChatApp() {
         e.preventDefault();
         setServersPanelOpen(prev => !prev);
       }
+      // Ctrl/Cmd + Shift + S to open search
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
       // Ctrl/Cmd + L to open playground
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'l') {
         e.preventDefault();
@@ -251,7 +258,7 @@ export default function ChatApp() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isSessionsPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isDeleteDialogOpen]);
+  }, [isServersPanelOpen, isSessionsPanelOpen, isSearchOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isDeleteDialogOpen]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -280,6 +287,16 @@ export default function ChatApp() {
             {/* Minimal Action Bar */}
             <div className="flex items-center space-x-1">
               <ThemeSwitch />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setSearchOpen(true)}
+                className="h-8 px-2 text-xs transition-colors"
+                title="Search conversations (⌘⇧S)"
+              >
+                <Search className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline ml-1.5">Search</span>
+              </Button>
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -589,6 +606,7 @@ export default function ChatApp() {
               {[
                 { key: '⌘J', desc: 'Toggle sessions panel' },
                 { key: '⌘K', desc: 'Toggle tools panel' },
+                { key: '⌘⇧S', desc: 'Search conversations' },
                 { key: '⌘L', desc: 'Open playground' },
                 { key: '⌘⇧E', desc: 'Export config' },
                 { key: '⌘/', desc: 'Show shortcuts' },
@@ -611,6 +629,16 @@ export default function ChatApp() {
           </DialogContent>
         </Dialog>
       </main>
+      
+      {/* Global Search Modal */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigateToSession={(sessionId, messageIndex) => {
+          switchSession(sessionId);
+          setSearchOpen(false);
+        }}
+      />
       
       {/* Tool Confirmation Handler */}
       <ToolConfirmationHandler websocket={websocket} />

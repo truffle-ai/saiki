@@ -613,6 +613,55 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // Search messages across all sessions or within a specific session
+    app.get('/api/search/messages', async (req, res) => {
+        try {
+            const query = req.query.q as string;
+            if (!query) {
+                return res.status(400).json({ error: 'Search query is required' });
+            }
+
+            const options: any = {
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
+                offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
+            };
+
+            const sessionId = req.query.sessionId as string | undefined;
+            const role = req.query.role as 'user' | 'assistant' | 'system' | 'tool' | undefined;
+
+            if (sessionId) {
+                options.sessionId = sessionId;
+            }
+            if (role) {
+                options.role = role;
+            }
+
+            const searchResults = await agent.searchMessages(query, options);
+            return sendJsonResponse(res, searchResults);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error searching messages: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to search messages' });
+        }
+    });
+
+    // Search sessions that contain the query
+    app.get('/api/search/sessions', async (req, res) => {
+        try {
+            const query = req.query.q as string;
+            if (!query) {
+                return res.status(400).json({ error: 'Search query is required' });
+            }
+
+            const searchResults = await agent.searchSessions(query);
+            return sendJsonResponse(res, searchResults);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error searching sessions: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to search sessions' });
+        }
+    });
+
     // Delete a session
     app.delete('/api/sessions/:sessionId', async (req, res) => {
         try {
