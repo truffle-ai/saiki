@@ -14,8 +14,11 @@ import { logger } from '../../logger/index.js';
 export class PromptManager {
     private contributors: SystemPromptContributor[] = [];
     private rawConfig!: string | SystemPromptConfig;
+    private configDir: string;
 
-    constructor(config: string | SystemPromptConfig) {
+    constructor(config: string | SystemPromptConfig, configDir: string = process.cwd()) {
+        this.configDir = configDir;
+        logger.debug(`[PromptManager] Initializing with configDir: ${configDir}`);
         this.load(config);
     }
 
@@ -72,11 +75,15 @@ export class PromptManager {
             } else if (config.type === 'file') {
                 if (!config.files || config.files.length === 0)
                     throw new Error(`File contributor "${config.id}" missing files`);
+                logger.debug(
+                    `[PromptManager] Creating FileContributor "${config.id}" with files: ${JSON.stringify(config.files)} and configDir: ${this.configDir}`
+                );
                 return new FileContributor(
                     config.id,
                     config.priority,
                     config.files,
-                    config.options
+                    config.options,
+                    this.configDir
                 );
             }
             throw new Error(`Invalid contributor config: ${JSON.stringify(config)}`);
