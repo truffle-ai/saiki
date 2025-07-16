@@ -6,14 +6,28 @@ export function useTheme() {
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;
-            const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+            try {
+                const storedValue = localStorage.getItem('theme');
+                const stored =
+                    storedValue === 'light' || storedValue === 'dark' ? storedValue : null;
 
-            const resolvedTheme = stored || (prefersDark ? 'dark' : 'light');
+                const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+                const resolvedTheme = stored || (prefersDark ? 'dark' : 'light');
 
-            setTheme(resolvedTheme);
-            document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
-            setHasMounted(true);
+                setTheme(resolvedTheme);
+
+                document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+            } catch (error) {
+                console.error('Failed to access localStorage for theme:', error);
+
+                const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+                const fallbackTheme = prefersDark ? 'dark' : 'light';
+
+                setTheme(fallbackTheme);
+                document.documentElement.classList.toggle('dark', fallbackTheme === 'dark');
+            } finally {
+                setHasMounted(true);
+            }
         }
     }, []);
 
