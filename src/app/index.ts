@@ -90,7 +90,7 @@ program
             await postCreateSaiki(appPath, userInput.directory);
             process.exit(0);
         } catch (err) {
-            logger.error(`saiki create-app command failed: ${err}`);
+            console.error(`❌ saiki create-app command failed: ${err}`);
             process.exit(1);
         }
     });
@@ -122,10 +122,10 @@ program
         } catch (err) {
             // if the package.json or tsconfig.json is not found, we give instructions to create a new project
             if (err instanceof FileNotFoundError) {
-                logger.error(`${err.message} Run "saiki create-app" to create a new app`);
+                console.error(`❌ ${err.message} Run "saiki create-app" to create a new app`);
                 process.exit(1);
             }
-            logger.error(`Initialization failed: ${err}`);
+            console.error(`❌ Initialization failed: ${err}`);
             process.exit(1);
         }
     });
@@ -150,10 +150,10 @@ program
         try {
             // Validate that --group-servers flag is provided (mandatory for now)
             if (!options.groupServers) {
-                logger.error(
-                    'The --group-servers flag is required. This command currently only supports aggregating and re-exposing tools from configured MCP servers.'
+                console.error(
+                    '❌ The --group-servers flag is required. This command currently only supports aggregating and re-exposing tools from configured MCP servers.'
                 );
-                logger.info('Usage: saiki mcp --group-servers');
+                console.error('Usage: saiki mcp --group-servers');
                 process.exit(1);
             }
 
@@ -165,13 +165,13 @@ program
                 (globalOpts.agent || DEFAULT_CONFIG_PATH) === DEFAULT_CONFIG_PATH
             );
 
-            logger.info(`Loading Saiki config from: ${configPath}`);
+            console.log(`📄 Loading Saiki config from: ${configPath}`);
             const config = await loadAgentConfig(configPath);
 
             // Validate that MCP servers are configured
             if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
-                logger.error(
-                    'No MCP servers configured. Please configure mcpServers in your config file.'
+                console.error(
+                    '❌ No MCP servers configured. Please configure mcpServers in your config file.'
                 );
                 process.exit(1);
             }
@@ -236,8 +236,8 @@ program
             !process.env.GOOGLE_GENERATIVE_AI_API_KEY &&
             !process.env.ANTHROPIC_API_KEY
         ) {
-            logger.error(
-                'ERROR: No API key found. Please set OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or ANTHROPIC_API_KEY.'
+            console.error(
+                '❌ No API key found. Please set OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or ANTHROPIC_API_KEY.'
             );
             process.exit(1);
         }
@@ -251,15 +251,15 @@ program
             try {
                 provider = getProviderFromModel(opts.model);
             } catch (err) {
-                logger.error((err as Error).message);
-                logger.error('Supported models: ' + getAllSupportedModels().join(', '));
+                console.error(`❌ ${(err as Error).message}`);
+                console.error(`Supported models: ${getAllSupportedModels().join(', ')}`);
                 process.exit(1);
             }
 
             const apiKey = resolveApiKeyForProvider(provider);
             if (!apiKey) {
-                logger.error(
-                    `Missing API key for provider '${provider}' - please set the appropriate environment variable`
+                console.error(
+                    `❌ Missing API key for provider '${provider}' - please set the appropriate environment variable`
                 );
                 process.exit(1);
             }
@@ -277,7 +277,7 @@ program
         let agent: SaikiAgent;
         try {
             const configPath = resolvePackagePath(opts.agent, opts.agent === DEFAULT_CONFIG_PATH);
-            logger.info(`Initializing Saiki with config: ${configPath}`);
+            console.log(`🚀 Initializing Saiki with config: ${configPath}`);
             const cfg = await loadAgentConfig(configPath);
 
             // Apply CLI overrides to config before passing to core layer
@@ -320,8 +320,8 @@ program
 
                     logger.info(`Created and loaded new session: ${session.id}`, null, 'green');
                 } catch (err) {
-                    logger.error(
-                        `Failed to create new session: ${err instanceof Error ? err.message : String(err)}`
+                    console.error(
+                        `❌ Failed to create new session: ${err instanceof Error ? err.message : String(err)}`
                     );
                     process.exit(1);
                 }
@@ -382,34 +382,34 @@ program
                 const apiPort = getPort(process.env.API_PORT, 3001, 'API_PORT');
                 const apiUrl = process.env.API_URL ?? `http://localhost:${apiPort}`;
 
-                logger.info('Starting server (REST APIs + WebSockets)...', null, 'cyanBright');
+                console.log('🌐 Starting server (REST APIs + WebSockets)...');
                 await startApiAndLegacyWebUIServer(agent, apiPort, false, agentCard);
-                logger.info(`Server running at ${apiUrl}`, null, 'green');
-                logger.info('Available endpoints:', null, 'cyan');
-                logger.info('  POST /api/message - Send async message', null, 'gray');
-                logger.info('  POST /api/message-sync - Send sync message', null, 'gray');
-                logger.info('  POST /api/reset - Reset conversation', null, 'gray');
-                logger.info('  GET  /api/mcp/servers - List MCP servers', null, 'gray');
-                logger.info('  WebSocket support available for real-time events', null, 'gray');
+                console.log(`✅ Server running at ${apiUrl}`);
+                console.log('Available endpoints:');
+                console.log('  POST /api/message - Send async message');
+                console.log('  POST /api/message-sync - Send sync message');
+                console.log('  POST /api/reset - Reset conversation');
+                console.log('  GET  /api/mcp/servers - List MCP servers');
+                console.log('  WebSocket support available for real-time events');
                 break;
             }
 
             case 'discord':
-                logger.info('Starting Discord bot…', null, `cyanBright`);
+                console.log('🤖 Starting Discord bot…');
                 try {
                     startDiscordBot(agent);
                 } catch (err) {
-                    logger.error('Discord startup failed:', err);
+                    console.error('❌ Discord startup failed:', err);
                     process.exit(1);
                 }
                 break;
 
             case 'telegram':
-                logger.info('Starting Telegram bot…', null, `cyanBright`);
+                console.log('🤖 Starting Telegram bot…');
                 try {
                     startTelegramBot(agent);
                 } catch (err) {
-                    logger.error('Telegram startup failed:', err);
+                    console.error('❌ Telegram startup failed:', err);
                     process.exit(1);
                 }
                 break;
@@ -448,8 +448,8 @@ program
             }
 
             default:
-                logger.error(
-                    `Unknown mode '${opts.mode}'. Use cli, web, server, discord, telegram, or mcp.`
+                console.error(
+                    `❌ Unknown mode '${opts.mode}'. Use cli, web, server, discord, telegram, or mcp.`
                 );
                 process.exit(1);
         }
