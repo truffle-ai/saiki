@@ -185,6 +185,7 @@ export default function ChatApp() {
     }
   }, [currentSessionId, returnToWelcome]);
 
+
   const quickActions = [
     {
       title: "What can you do?",
@@ -215,19 +216,34 @@ export default function ChatApp() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + J to toggle sessions panel
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
+      // Ctrl/Cmd + H to toggle sessions panel
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'h') {
         e.preventDefault();
         setSessionsPanelOpen(prev => !prev);
       }
-      // Ctrl/Cmd + K to toggle tools/servers panel
+      // Ctrl/Cmd + K to create new session
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'k') {
+        e.preventDefault();
+        // Create new session using the same logic as SessionPanel
+        fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        })
+        .then(response => response.json())
+        .then(data => handleSessionChange(data.session.id))
+        .catch(error => console.error('Error creating new session:', error));
+      }
+      // Ctrl/Cmd + J to toggle tools/servers panel
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
         e.preventDefault();
         setServersPanelOpen(prev => !prev);
       }
       // Ctrl/Cmd + Shift + S to open search
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 's') {
         e.preventDefault();
+        e.stopPropagation();
+        console.log('Search shortcut triggered');
         setSearchOpen(true);
       }
       // Ctrl/Cmd + L to open playground
@@ -236,7 +252,7 @@ export default function ChatApp() {
         window.open('/playground', '_blank');
       }
       // Ctrl/Cmd + Shift + E to export config
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'e') {
         e.preventDefault();
         setExportOpen(true);
       }
@@ -258,7 +274,7 @@ export default function ChatApp() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isSessionsPanelOpen, isSearchOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isDeleteDialogOpen]);
+  }, [isServersPanelOpen, isSessionsPanelOpen, isSearchOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isDeleteDialogOpen, setSearchOpen]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -305,6 +321,7 @@ export default function ChatApp() {
                   "h-8 px-2 text-xs transition-colors",
                   isSessionsPanelOpen && "bg-muted"
                 )}
+                title="Toggle sessions panel (⌘H)"
               >
                 <MessageSquare className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline ml-1.5">Sessions</span>
@@ -318,6 +335,7 @@ export default function ChatApp() {
                   "h-8 px-2 text-xs transition-colors",
                   isServersPanelOpen && "bg-muted"
                 )}
+                title="Toggle tools panel (⌘J)"
               >
                 <Server className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline ml-1.5">MCP Servers</span>
@@ -328,6 +346,7 @@ export default function ChatApp() {
                 size="sm"
                 asChild
                 className="h-8 px-2 text-xs"
+                title="Open playground (⌘L)"
               >
                 <Link href="/playground" target="_blank">
                   <Wrench className="h-3.5 w-3.5" />
@@ -422,7 +441,8 @@ export default function ChatApp() {
                 
                   {/* Quick Tips */}
                   <div className="text-xs text-muted-foreground space-y-1 text-center">
-                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools/servers, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground</p>
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘H</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for new chat, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for tools</p>
+                    <p><kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘⇧S</kbd> for search, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘/</kbd> to see all shortcuts</p>
                   </div>
                 </div>
               </div>
@@ -604,8 +624,9 @@ export default function ChatApp() {
             
             <div className="space-y-3">
               {[
-                { key: '⌘J', desc: 'Toggle sessions panel' },
-                { key: '⌘K', desc: 'Toggle tools panel' },
+                { key: '⌘H', desc: 'Toggle sessions panel' },
+                { key: '⌘K', desc: 'Create new session' },
+                { key: '⌘J', desc: 'Toggle tools panel' },
                 { key: '⌘⇧S', desc: 'Search conversations' },
                 { key: '⌘L', desc: 'Open playground' },
                 { key: '⌘⇧E', desc: 'Export config' },

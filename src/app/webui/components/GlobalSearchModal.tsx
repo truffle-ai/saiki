@@ -101,26 +101,38 @@ export default function GlobalSearchModal({
 
   // Keyboard navigation
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle keys when modal is open and focused
       if (!isOpen) return;
+
+      // Don't handle the search shortcut here - let the parent handle it
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+        return;
+      }
 
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
+          e.stopPropagation();
           setSelectedIndex(prev => Math.min(prev + 1, results.length - 1));
           break;
         case 'ArrowUp':
           e.preventDefault();
+          e.stopPropagation();
           setSelectedIndex(prev => Math.max(prev - 1, 0));
           break;
         case 'Enter':
           e.preventDefault();
+          e.stopPropagation();
           if (results[selectedIndex]) {
             handleResultClick(results[selectedIndex]);
           }
           break;
         case 'Escape':
           e.preventDefault();
+          e.stopPropagation();
           onClose();
           break;
       }
