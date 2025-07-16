@@ -10,6 +10,7 @@ import { isDirectoryPackage } from './path.js';
 import { findPackageByName } from './path.js';
 import { isCurrentDirectorySaikiProject } from './path.js';
 import { findSaikiProjectRoot } from './path.js';
+import { resolveSaikiLogPath } from './path.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 function createTempDir() {
@@ -165,5 +166,18 @@ describe('findSaikiProjectRoot', () => {
     it('returns the Saiki project root if found', async () => {
         const result = await findSaikiProjectRoot(process.cwd());
         expect(result).toBe(process.cwd());
+    });
+});
+
+describe('resolveSaikiLogPath', () => {
+    it('resolves to local project .saiki/logs when in a Saiki project', async () => {
+        // We're in a Saiki project (has agents/agent.yml)
+        const result = await resolveSaikiLogPath();
+        expect(result).toBe(path.join(process.cwd(), '.saiki', 'logs', 'saiki.log'));
+    });
+
+    it('accepts custom log file name', async () => {
+        const result = await resolveSaikiLogPath('custom.log');
+        expect(result).toBe(path.join(process.cwd(), '.saiki', 'logs', 'custom.log'));
     });
 });

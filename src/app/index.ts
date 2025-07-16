@@ -8,8 +8,6 @@ import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import pkg from '../../package.json' with { type: 'json' };
-import path from 'path';
-import os from 'os';
 
 import {
     logger,
@@ -178,12 +176,9 @@ program
                 process.exit(1);
             }
 
-            // Redirect logs to file to prevent interference with stdio transport
-
-            const logFile =
-                process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp.log');
-            logger.info(`Redirecting logs to file: ${logFile}`);
-            logger.redirectToFile(logFile);
+            // Logs are already redirected to file by default to prevent interference with stdio transport
+            const currentLogPath = logger.getLogFilePath();
+            logger.info(`MCP mode using log file: ${currentLogPath || 'default .saiki location'}`);
 
             logger.info(
                 `Starting MCP tool aggregation server: ${options.name} v${options.version}`
@@ -430,10 +425,7 @@ program
                 };
 
                 try {
-                    // Redirect logs to file to prevent interference with stdio transport
-                    const logFile =
-                        process.env.SAIKI_MCP_LOG_FILE || path.join(os.tmpdir(), 'saiki-mcp.log');
-                    logger.redirectToFile(logFile);
+                    // Logs are already redirected to file by default to prevent interference with stdio transport
 
                     const agentCardData = createAgentCard(
                         {

@@ -2,6 +2,7 @@ import * as path from 'path';
 import { existsSync } from 'fs';
 import { promises as fsPromises } from 'fs';
 import { createRequire } from 'module';
+import { homedir } from 'os';
 
 // Create require function for ES modules
 const require = createRequire(import.meta.url);
@@ -194,6 +195,23 @@ export function resolvePackagePath(targetPath: string, resolveFromPackageRoot: b
 export function hasSaikiConfig(dirPath: string): boolean {
     const configPath = path.join(dirPath, DEFAULT_CONFIG_PATH);
     return existsSync(configPath);
+}
+
+/**
+ * Resolve the default log file path for Saiki
+ * Uses the same directory detection logic as the SQLite backend
+ * @param logFileName Optional custom log file name (defaults to 'saiki.log')
+ * @returns Absolute path to the log file
+ */
+export async function resolveSaikiLogPath(logFileName: string = 'saiki.log'): Promise<string> {
+    // Use the enhanced path utilities for robust detection
+    const isInSaikiProject = await isSaikiProject();
+
+    const logDir = isInSaikiProject
+        ? path.join(process.cwd(), '.saiki', 'logs')
+        : path.join(homedir(), '.saiki', 'logs');
+
+    return path.join(logDir, logFileName);
 }
 
 /**
