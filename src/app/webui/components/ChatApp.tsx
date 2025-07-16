@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
+import { ThemeSwitch } from './ThemeSwitch';
 
 export default function ChatApp() {
   const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState, returnToWelcome, websocket } = useChatContext();
@@ -278,6 +279,7 @@ export default function ChatApp() {
           
             {/* Minimal Action Bar */}
             <div className="flex items-center space-x-1">
+              <ThemeSwitch />
               <Button 
                 variant="ghost" 
                 size="sm" 
