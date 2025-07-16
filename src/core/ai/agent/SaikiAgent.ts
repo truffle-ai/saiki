@@ -20,6 +20,8 @@ import { AgentEventBus } from '../../events/index.js';
 import { buildLLMConfig } from '../../config/validation-utils.js';
 import type { IMCPClient } from '../../client/types.js';
 import type { ToolSet } from '../types.js';
+import { SearchService } from '../search/index.js';
+import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
@@ -92,6 +94,9 @@ export class SaikiAgent {
     public readonly sessionManager!: SessionManager;
     public readonly services!: AgentServices;
 
+    // Search service for conversation search
+    private searchService!: SearchService;
+
     // Default session for backward compatibility
     private defaultSession: ChatSession | null = null;
 
@@ -149,6 +154,9 @@ export class SaikiAgent {
                 sessionManager: services.sessionManager,
                 services: services,
             });
+
+            // Initialize search service
+            this.searchService = new SearchService(services.storage.database);
 
             this._isStarted = true;
             logger.info('SaikiAgent started successfully.');
@@ -405,6 +413,32 @@ export class SaikiAgent {
             throw new Error(`Session '${sessionId}' not found`);
         }
         return await session.getHistory();
+    }
+
+    /**
+     * Search for messages across all sessions or within a specific session
+     *
+     * @param query The search query string
+     * @param options Search options including session filter, role filter, and pagination
+     * @returns Promise that resolves to search results
+     */
+    public async searchMessages(
+        query: string,
+        options: SearchOptions = {}
+    ): Promise<SearchResponse> {
+        this.ensureStarted();
+        return await this.searchService.searchMessages(query, options);
+    }
+
+    /**
+     * Search for sessions that contain the specified query
+     *
+     * @param query The search query string
+     * @returns Promise that resolves to session search results
+     */
+    public async searchSessions(query: string): Promise<SessionSearchResponse> {
+        this.ensureStarted();
+        return await this.searchService.searchSessions(query);
     }
 
     /**

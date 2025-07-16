@@ -9,8 +9,9 @@ import ServerRegistryModal from './ServerRegistryModal';
 import ServersPanel from './ServersPanel';
 import SessionPanel from './SessionPanel';
 import { ToolConfirmationHandler } from './ToolConfirmationHandler';
+import GlobalSearchModal from './GlobalSearchModal';
 import { Button } from "./ui/button";
-import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2 } from "lucide-react";
+import { Server, Download, Wrench, Keyboard, AlertTriangle, Plus, MoreHorizontal, MessageSquare, Trash2, Search } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
@@ -27,6 +28,7 @@ import {
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 import { ThemeSwitch } from './ThemeSwitch';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 
 export default function ChatApp() {
   const { messages, sendMessage, currentSessionId, switchSession, isWelcomeState, returnToWelcome, websocket } = useChatContext();
@@ -35,6 +37,7 @@ export default function ChatApp() {
   const [isServerRegistryOpen, setServerRegistryOpen] = useState(false);
   const [isServersPanelOpen, setServersPanelOpen] = useState(false);
   const [isSessionsPanelOpen, setSessionsPanelOpen] = useState(false);
+  const [isSearchOpen, setSearchOpen] = useState(false);
   const [isExportOpen, setExportOpen] = useState(false);
   const [exportName, setExportName] = useState('saiki-config');
   const [exportError, setExportError] = useState<string | null>(null);
@@ -44,6 +47,7 @@ export default function ChatApp() {
   // Enhanced features
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Conversation management states
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -183,6 +187,7 @@ export default function ChatApp() {
     }
   }, [currentSessionId, returnToWelcome]);
 
+
   const quickActions = [
     {
       title: "What can you do?",
@@ -213,15 +218,38 @@ export default function ChatApp() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + J to toggle sessions panel
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
+      // Ctrl/Cmd + H to toggle sessions panel
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'h') {
         e.preventDefault();
         setSessionsPanelOpen(prev => !prev);
       }
-      // Ctrl/Cmd + K to toggle tools/servers panel
+      // Ctrl/Cmd + K to create new session
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'k') {
         e.preventDefault();
+        // Create new session using the same logic as SessionPanel
+        fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        })
+        .then(response => response.json())
+        .then(data => handleSessionChange(data.session.id))
+        .catch(error => {
+          console.error('Error creating new session:', error);
+          setErrorMessage('Failed to create new session. Please try again.');
+          setTimeout(() => setErrorMessage(null), 5000);
+        });
+      }
+      // Ctrl/Cmd + J to toggle tools/servers panel
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
+        e.preventDefault();
         setServersPanelOpen(prev => !prev);
+      }
+      // Ctrl/Cmd + Shift + S to open search
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 's') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSearchOpen(true);
       }
       // Ctrl/Cmd + L to open playground
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'l') {
@@ -229,7 +257,7 @@ export default function ChatApp() {
         window.open('/playground', '_blank');
       }
       // Ctrl/Cmd + Shift + E to export config
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'e') {
         e.preventDefault();
         setExportOpen(true);
       }
@@ -246,12 +274,13 @@ export default function ChatApp() {
         else if (isExportOpen) setExportOpen(false);
         else if (showShortcuts) setShowShortcuts(false);
         else if (isDeleteDialogOpen) setDeleteDialogOpen(false);
+        else if (errorMessage) setErrorMessage(null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isServersPanelOpen, isSessionsPanelOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isDeleteDialogOpen]);
+  }, [isServersPanelOpen, isSessionsPanelOpen, isSearchOpen, isServerRegistryOpen, isExportOpen, showShortcuts, isDeleteDialogOpen, errorMessage, setSearchOpen]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -280,43 +309,80 @@ export default function ChatApp() {
             {/* Minimal Action Bar */}
             <div className="flex items-center space-x-1">
               <ThemeSwitch />
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setSessionsPanelOpen(!isSessionsPanelOpen)}
-                className={cn(
-                  "h-8 px-2 text-xs transition-colors",
-                  isSessionsPanelOpen && "bg-muted"
-                )}
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline ml-1.5">Sessions</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setSearchOpen(true)}
+                    className="h-8 px-2 text-xs transition-colors"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline ml-1.5">Search</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Search conversations (⌘⇧S)
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setSessionsPanelOpen(!isSessionsPanelOpen)}
+                    className={cn(
+                      "h-8 px-2 text-xs transition-colors",
+                      isSessionsPanelOpen && "bg-muted"
+                    )}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline ml-1.5">Sessions</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Toggle sessions panel (⌘H)
+                </TooltipContent>
+              </Tooltip>
               
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setServersPanelOpen(!isServersPanelOpen)}
-                className={cn(
-                  "h-8 px-2 text-xs transition-colors",
-                  isServersPanelOpen && "bg-muted"
-                )}
-              >
-                <Server className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline ml-1.5">MCP Servers</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setServersPanelOpen(!isServersPanelOpen)}
+                    className={cn(
+                      "h-8 px-2 text-xs transition-colors",
+                      isServersPanelOpen && "bg-muted"
+                    )}
+                  >
+                    <Server className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline ml-1.5">MCP Servers</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Toggle tools panel (⌘J)
+                </TooltipContent>
+              </Tooltip>
             
-              <Button 
-                variant="ghost"
-                size="sm"
-                asChild
-                className="h-8 px-2 text-xs"
-              >
-                <Link href="/playground" target="_blank">
-                  <Wrench className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline ml-1.5">MCP Playground</span>
-                </Link>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="h-8 px-2 text-xs"
+                  >
+                    <Link href="/playground" target="_blank">
+                      <Wrench className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline ml-1.5">MCP Playground</span>
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Open playground (⌘L)
+                </TooltipContent>
+              </Tooltip>
             
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -362,6 +428,12 @@ export default function ChatApp() {
         
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="absolute top-4 right-4 z-50 bg-destructive text-destructive-foreground px-4 py-2 rounded-md shadow-lg">
+              {errorMessage}
+            </div>
+          )}
           {/* Chat Content */}
           <div className="flex-1 flex flex-col">
             {isWelcomeState || messages.length === 0 ? (
@@ -405,7 +477,7 @@ export default function ChatApp() {
                 
                   {/* Quick Tips */}
                   <div className="text-xs text-muted-foreground space-y-1 text-center">
-                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools/servers, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground</p>
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for new chat, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for tools, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘/</kbd> for shortcuts</p>
                   </div>
                 </div>
               </div>
@@ -587,8 +659,10 @@ export default function ChatApp() {
             
             <div className="space-y-3">
               {[
-                { key: '⌘J', desc: 'Toggle sessions panel' },
-                { key: '⌘K', desc: 'Toggle tools panel' },
+                { key: '⌘H', desc: 'Toggle sessions panel' },
+                { key: '⌘K', desc: 'Create new session' },
+                { key: '⌘J', desc: 'Toggle tools panel' },
+                { key: '⌘⇧S', desc: 'Search conversations' },
                 { key: '⌘L', desc: 'Open playground' },
                 { key: '⌘⇧E', desc: 'Export config' },
                 { key: '⌘/', desc: 'Show shortcuts' },
@@ -611,6 +685,16 @@ export default function ChatApp() {
           </DialogContent>
         </Dialog>
       </main>
+      
+      {/* Global Search Modal */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigateToSession={(sessionId, messageIndex) => {
+          switchSession(sessionId);
+          setSearchOpen(false);
+        }}
+      />
       
       {/* Tool Confirmation Handler */}
       <ToolConfirmationHandler websocket={websocket} />
