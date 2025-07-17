@@ -14,8 +14,8 @@ node test-plugin-system.js
 **Expected output:**
 ```
 🔍 Checking plugin files...
-✅ Found: ./plugins/audit-logger.js
-✅ Found: ./plugins/tool-filter.js
+✅ Found: ./plugins/audit-logger.ts
+✅ Found: ./plugins/tool-filter.ts
 
 🧪 Testing Saiki Plugin System...
 
@@ -104,7 +104,7 @@ ls -la plugins/  # Check files exist
 
 **Permission errors:**
 ```bash
-chmod +r plugins/*.js  # Make files readable
+chmod +r plugins/*.ts  # Make files readable
 ```
 
 **Path issues:**
@@ -115,6 +115,11 @@ pwd  # Make sure you're in the saiki directory
 **Import errors:**
 ```bash
 node --version  # Needs Node.js 18+ for ES modules
+```
+
+**TypeScript compilation errors:**
+```bash
+npm install typescript  # Install TypeScript compiler for .ts plugins
 ```
 
 ## Advanced Testing

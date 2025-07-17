@@ -5,15 +5,14 @@
  * with full type safety and proper interface implementation.
  */
 
-import { BasePlugin } from '../src/core/plugins/base.js';
+import { BasePlugin } from '../dist/src/core/index.js';
 import type {
     IPlugin,
     PluginHooks,
-    PluginContext,
     ToolCallHookContext,
     ToolResultHookContext,
     HookResult,
-} from '../src/core/plugins/types.js';
+} from '../dist/src/core/index.js';
 
 interface ExamplePluginConfig {
     logLevel: 'debug' | 'info' | 'warn' | 'error';

@@ -2,9 +2,9 @@
  * Plugin manager for loading, managing, and executing plugins
  */
 
-import { readFile } from 'fs/promises';
+import { readFile, writeFile, mkdir } from 'fs/promises';
 import { pathToFileURL } from 'url';
-import { resolve } from 'path';
+import { resolve, extname, basename } from 'path';
 import { logger } from '../logger/index.js';
 import { HookExecutor } from './base.js';
 import type {
@@ -108,8 +108,11 @@ export class PluginManager {
                 throw new Error(`Plugin file not found: ${pluginPath}`);
             }
 
+            // Handle TypeScript files by compiling them first
+            const finalPluginPath = await this.preparePluginFile(pluginPath);
+
             // Load plugin module
-            const pluginUrl = pathToFileURL(pluginPath).href;
+            const pluginUrl = pathToFileURL(finalPluginPath).href;
             const pluginModule = await import(pluginUrl);
 
             // Extract plugin class or factory
@@ -416,5 +419,98 @@ export class PluginManager {
     public setConfigBasePath(path: string): void {
         this.configBasePath = path;
         logger.debug(`Plugin config base path updated to: ${path}`);
+    }
+
+    /**
+     * Prepare plugin file for loading - compiles TypeScript if needed
+     */
+    private async preparePluginFile(pluginPath: string): Promise<string> {
+        const ext = extname(pluginPath);
+
+        // If it's already a JavaScript file, return as-is
+        if (ext === '.js' || ext === '.mjs') {
+            return pluginPath;
+        }
+
+        // If it's a TypeScript file, compile it
+        if (ext === '.ts') {
+            return await this.compileTypeScriptPlugin(pluginPath);
+        }
+
+        // Unsupported file type
+        throw new Error(`Unsupported plugin file type: ${ext}. Supported types: .js, .mjs, .ts`);
+    }
+
+    /**
+     * Compile TypeScript plugin to JavaScript
+     */
+    private async compileTypeScriptPlugin(tsPath: string): Promise<string> {
+        try {
+            // Dynamic import TypeScript compiler
+            const ts = await import('typescript').catch(() => {
+                throw new Error(
+                    'TypeScript is required to load .ts plugins. Run: npm install typescript'
+                );
+            });
+
+            // Read TypeScript source
+            const tsSource = await readFile(tsPath, 'utf-8');
+
+            // Create output directory in .saiki/plugins
+            const pluginName = basename(tsPath, '.ts');
+            const outputDir = resolve(this.configBasePath, '.saiki', 'plugins');
+            const outputPath = resolve(outputDir, `${pluginName}.js`);
+
+            // Ensure output directory exists
+            await mkdir(outputDir, { recursive: true });
+
+            // Compile TypeScript to JavaScript
+            const compileOptions: any = {
+                target: ts.ScriptTarget.ES2022,
+                module: ts.ModuleKind.ESNext,
+                moduleResolution: ts.ModuleResolutionKind.NodeNext,
+                allowSyntheticDefaultImports: true,
+                esModuleInterop: true,
+                skipLibCheck: true,
+                strict: true,
+                declaration: false,
+                outDir: outputDir,
+            };
+
+            // Transform imports to use correct relative paths
+            let transformedSource = tsSource;
+
+            // Replace imports from source to dist
+            transformedSource = transformedSource.replace(
+                /from ['"]\.\.\/src\/core\/([^'"]+)['"];?/g,
+                "from '../dist/src/core/$1';"
+            );
+
+            // Replace imports from dist to correct relative path from .saiki/plugins
+            transformedSource = transformedSource.replace(
+                /from ['"]\.\.\/dist\/src\/core\/([^'"]+)['"];?/g,
+                "from '../../dist/src/core/$1';"
+            );
+
+            const result = ts.transpile(transformedSource, compileOptions, tsPath);
+
+            // Check for compilation errors
+            if (!result) {
+                throw new Error('TypeScript compilation failed');
+            }
+
+            // Write compiled JavaScript
+            await writeFile(outputPath, result, 'utf-8');
+
+            logger.debug(`Compiled TypeScript plugin: ${tsPath} → ${outputPath}`);
+            return outputPath;
+        } catch (error) {
+            logger.error(
+                `Failed to compile TypeScript plugin ${tsPath}: ${error instanceof Error ? error.message : String(error)}`
+            );
+            throw new Error(
+                `TypeScript compilation failed: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
     }
 }

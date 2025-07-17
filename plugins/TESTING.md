@@ -2,6 +2,29 @@
 
 This guide shows you how to test that plugins are working correctly in your Saiki agent.
 
+## Important: Plugin Interface Implementation
+
+**All plugins must implement the `IPlugin` interface explicitly.** The plugin system now requires TypeScript plugins that properly implement the interface contracts:
+
+```typescript
+import { BasePlugin } from '../src/core/plugins/base.js';
+import type { IPlugin, PluginHooks } from '../src/core/plugins/types.js';
+
+export default class MyPlugin extends BasePlugin implements IPlugin {
+    public readonly name = 'my-plugin';
+    public readonly version = '1.0.0';
+    public readonly hooks: PluginHooks = {
+        beforeToolCall: this.beforeToolCall.bind(this),
+    };
+    
+    // Implementation required by IPlugin interface
+    protected async onInitialize(): Promise<void> { /* ... */ }
+    protected async onCleanup(): Promise<void> { /* ... */ }
+}
+```
+
+This ensures type safety, proper error handling, and consistent plugin behavior.
+
 ## Quick Test Setup
 
 ### 1. Create a Test Agent Configuration
@@ -30,7 +53,7 @@ mcpServers:
 # Plugin configuration
 plugins:
   - name: "audit-logger"
-    path: "./plugins/audit-logger.js"
+    path: "./plugins/audit-logger.ts"
     enabled: true
     priority: 10
     config:
@@ -38,7 +61,7 @@ plugins:
       outputPath: "./logs/audit.log"
       
   - name: "tool-filter"
-    path: "./plugins/tool-filter.js"
+    path: "./plugins/tool-filter.ts"
     enabled: true
     priority: 20
     config:
@@ -133,7 +156,7 @@ Update your config to test deny mode:
 ```yaml
 plugins:
   - name: "tool-filter"
-    path: "./plugins/tool-filter.js"
+    path: "./plugins/tool-filter.ts"
     enabled: true
     priority: 20
     config:
@@ -188,7 +211,7 @@ If plugins aren't loading, check for these common issues:
 ls -la ./plugins/
 
 # Check file permissions
-chmod +r ./plugins/*.js
+chmod +r ./plugins/*.ts
 
 # Verify paths in config are correct
 cat test-agent-with-plugins.yml | grep -A 10 "plugins:"
@@ -202,7 +225,7 @@ Add debug logging to see more details:
 # In your agent.yml, add debug config
 plugins:
   - name: "audit-logger"
-    path: "./plugins/audit-logger.js"
+    path: "./plugins/audit-logger.ts"
     enabled: true
     priority: 10
     config:
@@ -230,7 +253,7 @@ const pluginManager = new PluginManager(mockContext);
 
 const testConfig = {
   name: 'audit-logger',
-  path: './plugins/audit-logger.js',
+  path: './plugins/audit-logger.ts',
   enabled: true,
   config: { logLevel: 'debug' }
 };
@@ -305,5 +328,99 @@ When everything is working correctly, you should see logs like:
    - Check plugin configuration is valid
    - Verify plugin has access to required context services
    - Look for JavaScript/TypeScript errors in plugin code
+
+## TypeScript Plugin Development
+
+### Why TypeScript Plugins Are Recommended
+
+All plugins should be written in TypeScript and implement the `IPlugin` interface properly:
+
+```typescript
+import { BasePlugin } from '../src/core/plugins/base.js';
+import type { IPlugin, PluginHooks } from '../src/core/plugins/types.js';
+
+export default class MyPlugin extends BasePlugin implements IPlugin {
+    public readonly name = 'my-plugin';
+    public readonly version = '1.0.0';
+    public readonly hooks: PluginHooks = {
+        beforeToolCall: this.beforeToolCall.bind(this),
+    };
+
+    protected async onInitialize(): Promise<void> {
+        // Plugin initialization
+    }
+
+    private async beforeToolCall(context: ToolCallHookContext): Promise<HookResult> {
+        // Hook implementation
+        return this.createHookResult(true, undefined, undefined, 'Success');
+    }
+}
+```
+
+### Benefits of TypeScript Plugins
+
+1. **Type Safety**: Catch errors at compile time, not runtime
+2. **Interface Contracts**: Explicit implementation of `IPlugin` interface
+3. **IDE Support**: Better autocomplete and error detection
+4. **Documentation**: Types serve as documentation
+5. **Refactoring**: Safe refactoring with type checking
+
+### Plugin Compilation
+
+The plugin system automatically compiles TypeScript files:
+
+- `.ts` files are compiled to `.js` in `.saiki/plugins/` directory
+- TypeScript compiler is loaded dynamically when needed
+- Compilation happens on plugin load, not at build time
+- Compiled files are cached for performance
+
+### Setting Up TypeScript for Plugins
+
+1. **Install TypeScript** (if not already installed):
+   ```bash
+   npm install typescript
+   ```
+
+2. **Create your plugin in TypeScript**:
+   ```typescript
+   // plugins/my-plugin.ts
+   import { BasePlugin } from '../src/core/plugins/base.js';
+   import type { IPlugin, PluginHooks } from '../src/core/plugins/types.js';
+
+   export default class MyPlugin extends BasePlugin implements IPlugin {
+       // Implementation
+   }
+   ```
+
+3. **Reference in config**:
+   ```yaml
+   plugins:
+     - name: "my-plugin"
+       path: "./plugins/my-plugin.ts"  # Use .ts extension
+   ```
+
+### Common TypeScript Plugin Patterns
+
+```typescript
+// Type-safe configuration
+interface MyPluginConfig {
+    logLevel: 'debug' | 'info' | 'warn' | 'error';
+    enableMetrics: boolean;
+    customSettings?: Record<string, any>;
+}
+
+export default class MyPlugin extends BasePlugin implements IPlugin {
+    private config!: MyPluginConfig;
+
+    protected async onInitialize(): Promise<void> {
+        const rawConfig = this.getConfig() as MyPluginConfig;
+        this.config = {
+            logLevel: rawConfig?.logLevel ?? 'info',
+            enableMetrics: rawConfig?.enableMetrics ?? true,
+            customSettings: rawConfig?.customSettings ?? {},
+        };
+    }
+}
+```
 
 Use this guide to verify your plugin system is working correctly!
