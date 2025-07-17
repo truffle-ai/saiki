@@ -131,7 +131,10 @@ describe('AgentStateManager Events', () => {
         stateManager.resetToBaseline();
 
         expect(eventSpy).toHaveBeenCalledWith({
-            toConfig: mockConfig,
+            toConfig: expect.objectContaining({
+                ...mockConfig,
+                plugins: [],
+            }),
         });
     });
 

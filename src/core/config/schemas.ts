@@ -587,6 +587,25 @@ export const StorageSchema = z
 
 export type StorageConfig = z.infer<typeof StorageSchema>;
 
+// Plugin configuration schema
+export const PluginConfigSchema = z
+    .object({
+        name: z.string().describe("Plugin name (must match the plugin's name property)"),
+        path: z.string().describe('Relative path to the plugin file'),
+        enabled: z.boolean().default(true).describe('Whether the plugin is enabled'),
+        config: z.record(z.any()).optional().describe('Plugin-specific configuration'),
+        priority: z
+            .number()
+            .int()
+            .default(50)
+            .describe('Plugin load priority (lower numbers load first)'),
+    })
+    .strict()
+    .describe('Configuration for a single plugin');
+
+export type PluginConfig = z.input<typeof PluginConfigSchema>;
+export type ValidatedPluginConfig = z.infer<typeof PluginConfigSchema>;
+
 export const AgentConfigSchema = z
     .object({
         agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
@@ -658,6 +677,11 @@ export const AgentConfigSchema = z
                 allowedToolsStorage: 'storage',
             })
             .describe('Tool confirmation and approval configuration'),
+
+        plugins: z
+            .array(PluginConfigSchema)
+            .default([])
+            .describe('Plugin configurations for extending agent functionality'),
     })
     .strict()
     .describe('Main configuration for an agent, including its LLM and server connections');

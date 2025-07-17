@@ -16,6 +16,7 @@ import { LLMRouter } from '../types.js';
 import { ContextManager } from '../messages/manager.js';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { PluginManager } from '../../../plugins/index.js';
 
 /**
  * Extract and validate API key from config or environment variables
@@ -53,7 +54,8 @@ function _createInBuiltLLMService(
     mcpManager: MCPManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager,
-    sessionId: string
+    sessionId: string,
+    _pluginManager?: PluginManager
 ): ILLMService {
     // Extract and validate API key
     const apiKey = extractApiKey(config);
@@ -154,7 +156,8 @@ function _createVercelLLMService(
     mcpManager: MCPManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager,
-    sessionId: string
+    sessionId: string,
+    pluginManager?: PluginManager
 ): VercelLLMService {
     const model = _createVercelModel(config);
 
@@ -168,7 +171,8 @@ function _createVercelLLMService(
         sessionId,
         config.temperature,
         config.maxOutputTokens,
-        config.baseURL
+        config.baseURL,
+        pluginManager
     );
 }
 
@@ -181,7 +185,8 @@ export function createLLMService(
     mcpManager: MCPManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager,
-    sessionId: string
+    sessionId: string,
+    pluginManager?: PluginManager
 ): ILLMService {
     if (router === 'vercel') {
         return _createVercelLLMService(
@@ -189,7 +194,8 @@ export function createLLMService(
             mcpManager,
             sessionEventBus,
             contextManager,
-            sessionId
+            sessionId,
+            pluginManager
         );
     } else {
         return _createInBuiltLLMService(
@@ -197,7 +203,8 @@ export function createLLMService(
             mcpManager,
             sessionEventBus,
             contextManager,
-            sessionId
+            sessionId,
+            pluginManager
         );
     }
 }
