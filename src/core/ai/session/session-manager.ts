@@ -56,6 +56,7 @@ export class SessionManager {
             mcpManager: MCPManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
+            pluginManager: any;
         },
         config: SessionManagerConfig = {}
     ) {

@@ -1,0 +1,82 @@
+# Example agent configuration with plugins
+# This demonstrates how to configure and use the plugin system
+
+# MCP servers for tool functionality
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+  puppeteer:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@truffle-ai/puppeteer-server"
+
+# System prompt configuration
+systemPrompt:
+  contributors:
+    - id: primary
+      type: static
+      priority: 0
+      content: |
+        You are a helpful AI assistant with access to tools.
+        Use these tools when appropriate to answer user queries.
+        Tool execution is monitored and filtered by plugins.
+    - id: dateTime
+      type: dynamic
+      priority: 10
+      source: dateTime
+      enabled: true
+
+# LLM configuration
+llm:
+  provider: openai
+  model: gpt-4-turbo
+  apiKey: $OPENAI_API_KEY
+
+# Storage configuration
+storage:
+  cache:
+    type: in-memory
+  database:
+    type: sqlite
+    path: ./data/saiki.db
+
+# Plugin configuration
+plugins:
+  - name: "audit-logger"
+    path: "./plugins/audit-logger.js"
+    enabled: true
+    priority: 10
+    config:
+      logLevel: "info"
+      outputPath: "./logs/audit.log"
+      
+  - name: "tool-filter"
+    path: "./plugins/tool-filter.js"
+    enabled: true
+    priority: 20
+    config:
+      mode: "allow"
+      allowedTools:
+        - "filesystem"
+        - "puppeteer_navigate"
+        - "puppeteer_screenshot"
+        - "puppeteer_click"
+      deniedTools: []
+
+# Session configuration
+sessions:
+  maxSessions: 50
+  sessionTTL: 7200000  # 2 hours
+
+# Tool confirmation configuration
+toolConfirmation:
+  mode: "event-based"
+  timeout: 30000
+  allowedToolsStorage: "storage"
