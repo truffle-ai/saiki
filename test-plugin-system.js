@@ -5,10 +5,13 @@
  * Run this to verify plugins are working correctly
  */
 
-import { PluginManager } from './src/core/plugins/manager.js';
-import { logger } from './src/core/logger/index.js';
+/* eslint-disable no-console */
+/* eslint-disable no-undef */
+/* eslint-disable no-unused-vars */
+
+import { PluginManager } from './dist/src/core/index.js';
+import { logger } from './dist/src/core/index.js';
 import { readFile } from 'fs/promises';
-import { join } from 'path';
 
 // Mock context for testing
 const mockContext = {
@@ -44,14 +47,14 @@ async function testPluginSystem() {
     const pluginConfigs = [
       {
         name: 'audit-logger',
-        path: './plugins/audit-logger.js',
+        path: './plugins/audit-logger.ts',
         enabled: true,
         priority: 10,
         config: { logLevel: 'debug' }
       },
       {
         name: 'tool-filter',
-        path: './plugins/tool-filter.js',
+        path: './plugins/tool-filter.ts',
         enabled: true,
         priority: 20,
         config: {
@@ -61,7 +64,20 @@ async function testPluginSystem() {
       }
     ];
 
-    await pluginManager.loadPlugins(pluginConfigs);
+    // Load plugins individually to see any errors
+    for (const config of pluginConfigs) {
+      try {
+        console.log(`Loading plugin: ${config.name} from ${config.path}`);
+        const result = await pluginManager.loadPlugin(config);
+        console.log(`Plugin ${config.name} load result:`, result);
+      } catch (error) {
+        console.error(`❌ Error loading plugin ${config.name}:`, error.message);
+      }
+    }
+    
+    // Check plugin states after loading
+    const pluginStates = pluginManager.getPluginStates();
+    console.log('Plugin states after loading:', Object.fromEntries(pluginStates));
     console.log('✅ Plugins loaded successfully\n');
 
     // 3. Test Plugin Initialization
@@ -173,7 +189,7 @@ async function testPluginSystem() {
 
 // Check if plugin files exist
 async function checkPluginFiles() {
-  const files = ['./plugins/audit-logger.js', './plugins/tool-filter.js'];
+  const files = ['./plugins/audit-logger.ts', './plugins/tool-filter.ts'];
   
   for (const file of files) {
     try {

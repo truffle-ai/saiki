@@ -22,14 +22,14 @@ mcpServers:
 # Plugin configuration for testing
 plugins:
   - name: "audit-logger"
-    path: "./plugins/audit-logger.js"
+    path: "./plugins/audit-logger.ts"
     enabled: true
     priority: 10
     config:
       logLevel: "info"
       
   - name: "tool-filter"
-    path: "./plugins/tool-filter.js"
+    path: "./plugins/tool-filter.ts"
     enabled: true
     priority: 20
     config:
