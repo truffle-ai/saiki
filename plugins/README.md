@@ -27,23 +27,41 @@ The Saiki plugin system allows you to extend and customize the agent's behavior 
 
 ## Creating a Plugin
 
-### Basic Plugin Structure
+### IPlugin Interface
+
+All plugins must implement the `IPlugin` interface, which requires:
+
+- **name**: Unique plugin identifier (must match config)
+- **version**: Plugin version string
+- **hooks**: Object containing hook implementations
+- **initialize(context, config)**: Setup method called when plugin loads
+- **cleanup()**: Teardown method called when plugin unloads
+
+Optional properties:
+- **description**: Human-readable description
+- **configSchema**: JSON schema for configuration validation
+
+### Basic Plugin Structure (JavaScript)
 
 ```javascript
+/**
+ * @implements {IPlugin}
+ */
 export default class MyPlugin {
-    constructor() {
-        this.name = 'my-plugin';
-        this.version = '1.0.0';
-        this.description = 'Description of what the plugin does';
-        
-        this.hooks = {
-            beforeToolCall: this.beforeToolCall.bind(this),
-            afterToolCall: this.afterToolCall.bind(this),
-            onSessionStart: this.onSessionStart.bind(this),
-            onSessionEnd: this.onSessionEnd.bind(this)
-        };
-    }
+    // Required properties
+    name = 'my-plugin';
+    version = '1.0.0';
+    description = 'Description of what the plugin does';
+    
+    // Hook implementations
+    hooks = {
+        beforeToolCall: this.beforeToolCall.bind(this),
+        afterToolCall: this.afterToolCall.bind(this),
+        onSessionStart: this.onSessionStart.bind(this),
+        onSessionEnd: this.onSessionEnd.bind(this)
+    };
 
+    // Required methods
     async initialize(context, config) {
         this.context = context;
         this.config = config || {};
@@ -54,6 +72,7 @@ export default class MyPlugin {
         // Plugin cleanup logic
     }
 
+    // Hook implementations
     async beforeToolCall(context) {
         // Hook implementation
         return {
@@ -61,6 +80,45 @@ export default class MyPlugin {
             modifiedData: context.args, // Optional: modify the arguments
             message: 'Optional message for logging'
         };
+    }
+}
+```
+
+### TypeScript Plugin Structure
+
+```typescript
+import { BasePlugin } from '../src/core/plugins/base.js';
+import type { 
+    IPlugin, 
+    PluginHooks, 
+    ToolCallHookContext,
+    HookResult 
+} from '../src/core/plugins/types.js';
+
+export default class MyPlugin extends BasePlugin implements IPlugin {
+    public readonly name = 'my-plugin';
+    public readonly version = '1.0.0';
+    public readonly description = 'TypeScript plugin example';
+    
+    public readonly hooks: PluginHooks = {
+        beforeToolCall: this.beforeToolCall.bind(this),
+    };
+
+    protected async onInitialize(): Promise<void> {
+        // Plugin initialization logic
+    }
+
+    protected async onCleanup(): Promise<void> {
+        // Plugin cleanup logic
+    }
+
+    private async beforeToolCall(context: ToolCallHookContext): Promise<HookResult> {
+        return this.createHookResult(
+            true, // continue
+            context.args, // data
+            undefined, // error
+            'Tool call processed'
+        );
     }
 }
 ```
