@@ -156,6 +156,17 @@ export class HookExecutor {
     }
 
     /**
+     * Get plugins that implement a specific hook, sorted by priority
+     */
+    private getPluginsWithHook<T extends keyof PluginHooks>(
+        hookName: T
+    ): Array<{ plugin: IPlugin; priority: number }> {
+        return Array.from(this.plugins.values())
+            .filter(({ plugin }) => plugin.hooks[hookName])
+            .sort((a, b) => a.priority - b.priority);
+    }
+
+    /**
      * Execute a hook across all registered plugins
      */
     public async executeHook<T extends keyof PluginHooks>(
@@ -167,9 +178,7 @@ export class HookExecutor {
         logger.debug(`Executing hook '${hookName}' across ${this.plugins.size} plugins`);
 
         // Get plugins that implement this hook, sorted by priority
-        const pluginsWithHook = Array.from(this.plugins.values())
-            .filter(({ plugin }) => plugin.hooks[hookName])
-            .sort((a, b) => a.priority - b.priority);
+        const pluginsWithHook = this.getPluginsWithHook(hookName);
 
         if (pluginsWithHook.length === 0) {
             logger.debug(`No plugins implement hook '${hookName}'`);
@@ -267,9 +276,7 @@ export class HookExecutor {
         logger.debug(`Executing lifecycle hook '${hookName}' across ${this.plugins.size} plugins`);
 
         // Get plugins that implement this hook, sorted by priority
-        const pluginsWithHook = Array.from(this.plugins.values())
-            .filter(({ plugin }) => plugin.hooks[hookName])
-            .sort((a, b) => a.priority - b.priority);
+        const pluginsWithHook = this.getPluginsWithHook(hookName);
 
         if (pluginsWithHook.length === 0) {
             logger.debug(`No plugins implement lifecycle hook '${hookName}'`);
