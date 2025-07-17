@@ -309,7 +309,8 @@ describe('Plugin Integration Tests', () => {
             await pluginManager.initializePlugins();
 
             // Get the plugin instance to access logged results
-            const plugin = pluginManager.getPlugin('result-logger') as any;
+            const plugin = pluginManager.getPlugin('result-logger');
+            expect(plugin).toBeDefined();
 
             // Test hook execution for successful tool call
             const sessionId = 'test-session';
@@ -334,7 +335,7 @@ describe('Plugin Integration Tests', () => {
             expect(successResult.messages).toContain('result-logger: Logged result for: test-tool');
 
             // Check that result was logged
-            const loggedResults = plugin.getLoggedResults();
+            const loggedResults = (plugin as any).getLoggedResults();
             expect(loggedResults).toHaveLength(1);
             expect(loggedResults[0]).toMatchObject({
                 toolName: 'test-tool',
@@ -362,7 +363,7 @@ describe('Plugin Integration Tests', () => {
             );
 
             // Check that failure was also logged
-            const updatedResults = plugin.getLoggedResults();
+            const updatedResults = (plugin as any).getLoggedResults();
             expect(updatedResults).toHaveLength(2);
             expect(updatedResults[1]).toMatchObject({
                 toolName: 'failing-tool',

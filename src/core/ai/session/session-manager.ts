@@ -7,6 +7,7 @@ import { logger } from '../../logger/index.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
 import type { ValidatedLLMConfig } from '../../config/schemas.js';
 import type { StorageBackends } from '../../storage/index.js';
+import type { PluginManager } from '../../plugins/index.js';
 
 export interface SessionMetadata {
     createdAt: number;
@@ -56,7 +57,7 @@ export class SessionManager {
             mcpManager: MCPManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
-            pluginManager: any;
+            pluginManager: PluginManager;
         },
         config: SessionManagerConfig = {}
     ) {
