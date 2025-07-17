@@ -22,6 +22,7 @@ import type { IMCPClient } from '../../client/types.js';
 import type { ToolSet } from '../types.js';
 import { SearchService } from '../search/index.js';
 import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';
+import { PluginManager } from '../../plugins/index.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
@@ -29,6 +30,7 @@ const requiredServices: (keyof AgentServices)[] = [
     'agentEventBus',
     'stateManager',
     'sessionManager',
+    'pluginManager',
 ];
 
 /**
@@ -93,6 +95,7 @@ export class SaikiAgent {
     public readonly stateManager!: AgentStateManager;
     public readonly sessionManager!: SessionManager;
     public readonly services!: AgentServices;
+    public readonly pluginManager!: PluginManager;
 
     // Search service for conversation search
     private searchService!: SearchService;
@@ -153,6 +156,7 @@ export class SaikiAgent {
                 stateManager: services.stateManager,
                 sessionManager: services.sessionManager,
                 services: services,
+                pluginManager: services.pluginManager,
             });
 
             // Initialize search service
@@ -210,7 +214,18 @@ export class SaikiAgent {
                 shutdownErrors.push(new Error(`MCPManager disconnect failed: ${err.message}`));
             }
 
-            // 3. Close storage backends
+            // 3. Cleanup plugins
+            try {
+                if (this.pluginManager) {
+                    await this.pluginManager.cleanup();
+                    logger.debug('Plugin manager cleaned up successfully');
+                }
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                shutdownErrors.push(new Error(`Plugin cleanup failed: ${err.message}`));
+            }
+
+            // 4. Close storage backends
             try {
                 if (this.services?.storageManager) {
                     await this.services.storageManager.disconnect();

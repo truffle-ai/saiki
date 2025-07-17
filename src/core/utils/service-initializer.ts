@@ -33,6 +33,7 @@ import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-
 import { logger } from '../logger/index.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { AgentEventBus } from '../events/index.js';
+import { PluginManager } from '../plugins/index.js';
 
 /**
  * Type for the core agent services returned by createAgentServices
@@ -45,6 +46,7 @@ export type AgentServices = {
     sessionManager: SessionManager;
     storage: StorageBackends;
     storageManager?: StorageManager;
+    pluginManager: PluginManager;
 };
 
 // High-level factory to load, validate, and wire up all agent services in one call
@@ -112,7 +114,36 @@ export async function createAgentServices(
     const stateManager = new AgentStateManager(config, agentEventBus);
     logger.debug('Agent state manager initialized');
 
-    // 7. Initialize session manager
+    // 7. Initialize plugin manager
+    const pluginManager = new PluginManager(
+        {
+            agentEventBus,
+            logger,
+            mcpManager,
+            promptManager,
+            stateManager,
+        },
+        configDir
+    );
+
+    // Load and initialize plugins if configured
+    if (config.plugins && config.plugins.length > 0) {
+        logger.info(`Loading ${config.plugins.length} plugin(s)`);
+        await pluginManager.loadPlugins(
+            config.plugins.map((plugin) => ({
+                ...plugin,
+                config: plugin.config ?? {},
+            }))
+        );
+        await pluginManager.initializePlugins();
+        logger.info(
+            `Plugin manager initialized with ${pluginManager.getActivePluginCount()} active plugin(s)`
+        );
+    } else {
+        logger.debug('No plugins configured');
+    }
+
+    // 8. Initialize session manager
     const sessionManager = new SessionManager(
         {
             stateManager,
@@ -120,6 +151,7 @@ export async function createAgentServices(
             mcpManager,
             agentEventBus,
             storage, // Add storage backends to session services
+            pluginManager,
         },
         {
             maxSessions: config.sessions?.maxSessions,
@@ -132,7 +164,7 @@ export async function createAgentServices(
 
     logger.debug('Session manager initialized with storage support');
 
-    // 8. Return the core services
+    // 9. Return the core services
     return {
         mcpManager,
         promptManager,
@@ -141,5 +173,6 @@ export async function createAgentServices(
         sessionManager,
         storage,
         storageManager,
+        pluginManager,
     };
 }

@@ -1,14 +1,13 @@
-export * from './logger/index.js';
-export * from './utils/index.js';
-export * from './ai/index.js';
-export * from './config/index.js';
-export * from './client/index.js';
-export * from './settings/index.js';
-export * from './events/index.js';
-export * from './storage/index.js';
+/**
+ * Plugin system exports
+ */
 
-// Export plugins with renamed conflicting type
-export {
+export * from './types.js';
+export * from './base.js';
+export * from './manager.js';
+
+// Re-export commonly used types for convenience
+export type {
     IPlugin,
     PluginConfig as PluginSystemConfig,
     PluginHooks,
@@ -21,10 +20,14 @@ export {
     LLMRequestHookContext,
     LLMResponseHookContext,
     SessionHookContext,
+} from './types.js';
+
+export {
     BasePlugin,
     HookExecutor,
     CONTINUE_HOOK_RESULT,
     stopHookExecution,
     modifyHookData,
-    PluginManager,
-} from './plugins/index.js';
+} from './base.js';
+
+export { PluginManager } from './manager.js';

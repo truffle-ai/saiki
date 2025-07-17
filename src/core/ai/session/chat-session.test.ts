@@ -429,7 +429,8 @@ describe('ChatSession', () => {
                 mockServices.mcpManager,
                 chatSession.eventBus, // Session-specific event bus
                 mockContextManager,
-                sessionId
+                sessionId,
+                undefined // pluginManager
             );
 
             // Verify session-specific history provider creation

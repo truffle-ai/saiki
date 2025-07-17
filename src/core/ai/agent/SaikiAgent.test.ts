@@ -128,6 +128,22 @@ describe('SaikiAgent.switchLLM', () => {
             sessionManager: mockSessionManager,
             storage: mockStorageManager,
             storageManager: mockStorageManager,
+            pluginManager: {
+                loadPlugins: vi.fn(),
+                initializePlugins: vi.fn(),
+                cleanup: vi.fn(),
+                executeHook: vi.fn(),
+                executeLifecycleHook: vi.fn(),
+                loadPlugin: vi.fn(),
+                unloadPlugin: vi.fn(),
+                getPlugin: vi.fn(),
+                getPlugins: vi.fn(),
+                getActivePluginCount: vi.fn().mockReturnValue(0),
+                getPluginStates: vi.fn(),
+                isPluginActive: vi.fn(),
+                getConfigBasePath: vi.fn(),
+                setConfigBasePath: vi.fn(),
+            } as any,
         };
 
         // Mock createAgentServices to return our mock services
