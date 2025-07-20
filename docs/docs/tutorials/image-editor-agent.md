@@ -18,7 +18,6 @@ Watch the Image Editor Agent in action:
   frameborder="0"
   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
   allowfullscreen="true"
-  style={{borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'}}
 ></iframe>
 
 ## What You'll Build
