@@ -103,7 +103,6 @@ def _get_audio_info(file_path: str) -> Dict[str, Any]:
 
 def _mix_audio_with_librosa(audio_paths: List[str], volumes: List[float], output_path: str, original_paths: List[str]) -> str:
     """Fallback mixing function using librosa when pydub/ffmpeg is not available."""
-    import soundfile as sf
     
     # Load all audio files with librosa
     mixed_audio = None
@@ -210,7 +209,6 @@ def _convert_midi_to_audio(midi_path: str, output_path: Optional[str] = None) ->
         audio_data = audio_data.astype(np.float32)
         
         # Use soundfile for reliable WAV export (better than pydub for this use case)
-        import soundfile as sf
         sf.write(output_path, audio_data, 44100, subtype='PCM_16')
         
         return output_path

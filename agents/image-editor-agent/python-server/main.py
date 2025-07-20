@@ -5,24 +5,32 @@ Image Editor MCP Server
 A comprehensive image processing server using OpenCV and Pillow
 """
 
-import asyncio
 import base64
 import json
 import os
+import io
+import tempfile
+import atexit
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import cv2
 import numpy as np
 from mcp.server.fastmcp import FastMCP
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+from PIL import Image, ImageDraw, ImageFont
 
 # Create an MCP server
 mcp = FastMCP("image-editor")
 
-# Create temp directory
-temp_dir = Path("temp_images")
-temp_dir.mkdir(exist_ok=True)
+# Create temp directory using tempfile
+_temp_dir = tempfile.mkdtemp(prefix="image_editor_")
+temp_dir = Path(_temp_dir)
+
+def _cleanup_temp_dir():
+    import shutil
+    shutil.rmtree(_temp_dir, ignore_errors=True)
+
+atexit.register(_cleanup_temp_dir)
 
 def _validate_image_file(file_path: str) -> None:
     """Validate that the image file exists and is supported."""
@@ -67,7 +75,6 @@ def _image_to_base64(file_path: str, max_size: Optional[int] = None) -> str:
             img = img.convert('RGB')
         
         # Save to bytes
-        import io
         buffer = io.BytesIO()
         img.save(buffer, format='JPEG', quality=85)
         buffer.seek(0)
@@ -326,6 +333,7 @@ def apply_filter(
         processed = cv2.cvtColor(processed, cv2.COLOR_HSV2BGR)
         # Add warm tone
         processed = processed * [1.1, 0.9, 0.8]  # Increase red, decrease green and blue
+        processed = np.clip(processed, 0, 255).astype(np.uint8)  # Clamp to [0, 255]
     elif filter == "cartoon":
         # Cartoon effect
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -442,8 +450,15 @@ def add_text_to_image(
         
         # Try to use a default font, fallback to default if not available
         try:
-            font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", fontSize)
-        except:
+            import sys
+            if sys.platform == "win32":
+                font_path = "C:/Windows/Fonts/arial.ttf"
+            elif sys.platform == "darwin":
+                font_path = "/System/Library/Fonts/Supplemental/Arial.ttf"
+            else:
+                font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+            font = ImageFont.truetype(font_path, fontSize)
+        except IOError:
             font = ImageFont.load_default()
         
         # Convert hex color to RGB
@@ -1304,13 +1319,13 @@ def batch_process(
             
             # Apply operation based on type
             if operation == "resize":
-                result = resize_image(inputPath=input_path, outputPath=output_path, **kwargs)
+                resize_image(inputPath=input_path, outputPath=output_path, **kwargs)
             elif operation == "filter":
-                result = apply_filter(inputPath=input_path, outputPath=output_path, **kwargs)
+                apply_filter(inputPath=input_path, outputPath=output_path, **kwargs)
             elif operation == "brightness_contrast":
-                result = adjust_brightness_contrast(inputPath=input_path, outputPath=output_path, **kwargs)
+                adjust_brightness_contrast(inputPath=input_path, outputPath=output_path, **kwargs)
             elif operation == "convert":
-                result = convert_format(inputPath=input_path, outputPath=output_path, **kwargs)
+                convert_format(inputPath=input_path, outputPath=output_path, **kwargs)
             else:
                 raise ValueError(f"Unsupported operation: {operation}")
             

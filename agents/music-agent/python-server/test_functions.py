@@ -6,8 +6,6 @@ Test script to verify individual functions work correctly
 
 import json
 import os
-import tempfile
-from pathlib import Path
 
 # Import the functions we want to test
 from main import (
@@ -17,7 +15,6 @@ from main import (
     list_available_effects,
     list_drum_patterns,
     _get_midi_info,
-    play_audio,
     play_midi
 )
 
