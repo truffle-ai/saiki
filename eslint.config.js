@@ -110,7 +110,14 @@ export default [
             'scripts/dev.js',
             'scripts/dev-status.js',
             'src/app/web/client/script.js',
-            'src/app/webui/tailwind.config.js'
+            'src/app/webui/tailwind.config.js',
+            '**/.venv/**',
+            '**/venv/**',
+            '**/env/**',
+            '**/__pycache__/**',
+            '**/*.pyc',
+            '**/*.pyo',
+            '**/*.pyd'
         ],
     },
 
