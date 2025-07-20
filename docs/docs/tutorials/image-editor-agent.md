@@ -2,9 +2,24 @@
 sidebar_position: 7
 ---
 
-# Image Editor Agent Tutorial
+# Image Editor Agent
 
 Learn how to build an AI agent that provides intelligent image processing and editing capabilities. This tutorial shows how to create an agent that can analyze, transform, and enhance images through natural language commands.
+
+## 🎥 Demo Video
+
+Watch the Image Editor Agent in action:
+
+<iframe
+  width="100%"
+  height="400"
+  src="https://www.youtube.com/embed/3X6edzACT3U"
+  title="Image Editor Agent Demo"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+  allowfullscreen="true"
+  style={{borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'}}
+></iframe>
 
 ## What You'll Build
 

@@ -2,7 +2,7 @@
 sidebar_position: 8
 ---
 
-# Music Creator Agent Tutorial (Experimental)
+# Music Creator Agent
 
 Learn how to build an AI agent that provides comprehensive music creation and audio processing capabilities. This tutorial shows how to create an agent that can generate music, analyze audio, and process sound files through natural language commands.
 
