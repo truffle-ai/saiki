@@ -250,46 +250,6 @@ npm start -- --agent database-agent.yml
 
 This agent demonstrates intelligent database interaction through conversation.
 
-### Stripe Payment Agent
-An AI agent that handles payment processing and customer management through natural language. This changes how we think about payment systems - rather than designing complex checkout flows and payment forms, the entire payment experience becomes a natural conversation.
-
-**Quick Start:**
-```bash
-cd stripe-agent
-export STRIPE_SECRET_KEY="your_stripe_secret_key"
-npm start -- --agent stripe-agent.yml
-```
-
-**Example Interactions:**
-- "Create a customer for John Doe with email john@example.com"
-- "Process a $99.99 payment for customer john@example.com"
-- "Create a subscription for john@example.com for $29.99/month"
-
-### Sales & Onboarding Agent
-An AI agent that orchestrates complete customer journeys from initial contact to account setup. This reimagines business processes - instead of building multi-step forms, complex workflows, and rigid user interfaces, entire customer journeys unfold through intelligent conversation.
-
-**Quick Start:**
-```bash
-cd sales-onboarding-agent
-./setup-sales-db.sh
-export STRIPE_SECRET_KEY="your_stripe_secret_key"
-npm start -- --agent sales-onboarding-agent.yml
-```
-
-**Example Interactions:**
-- "I want to sign up for your service"
-- "I need to upgrade my subscription to the Pro plan"
-- "I want to add 5 team members to my account"
-
-This agent demonstrates intelligent business process orchestration through conversation.
-
-### Other Examples
-Check the `examples/` directory for additional agent configurations including:
-- Email and Slack integration
-- Notion workspace management
-- Website design and development
-- Research and analysis
-
 ## Complete Example
 
 Here's a comprehensive configuration example using multiple tool servers:
