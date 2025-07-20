@@ -2,6 +2,20 @@
 
 A comprehensive AI agent for music creation, editing, and audio processing using advanced music libraries and AI-powered analysis.
 
+## 🎥 Demo Video
+
+Watch the Music Creator Agent in action:
+
+<iframe
+  width="100%"
+  height="400"
+  src="https://www.youtube.com/embed/FGg0nIOZUig"
+  title="Music Creator Agent Demo"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+  allowfullscreen="true"
+></iframe>
+
 > **⚠️ Experimental Status**: This agent is currently in experimental development. The tools have not been extensively tested in production environments and may have limitations or bugs. We're actively seeking feedback and improvements from users.
 
 ## 🧪 Experimental Features
