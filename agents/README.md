@@ -1,239 +1,60 @@
-# Configuration Guide
+# Saiki Agents
 
-Saiki uses a YAML configuration file to define tool servers and AI settings. This guide provides detailed information on all available configuration options.
+This directory contains various AI agent configurations and implementations built with Saiki. Each agent demonstrates different capabilities and use cases for declarative AI agent development.
 
-## Configuration File Location
+## Available Agents
 
-By default, Saiki looks for a configuration file at `agents/agent.yml` in the project directory. You can specify a different location using the `--agent` command-line option:
+### 🎨 Image Editor Agent
+An AI agent that provides comprehensive image editing and processing capabilities through natural language. This agent can analyze, transform, and enhance images using computer vision techniques.
 
+**Quick Start:**
 ```bash
-npm start -- --agent path/to/your/agent.yml
+cd image-editor-agent
+./setup-python-server.sh
+npm start -- --agent image-editor-agent-python.yml
 ```
 
-## Configuration Structure
+**Capabilities:**
+- Image analysis and metadata extraction
+- Resize, crop, and format conversion
+- Apply filters and effects (blur, sharpen, vintage, etc.)
+- Adjust brightness, contrast, and color properties
+- Add text overlays and annotations
+- Computer vision features (face detection, edge detection)
+- Batch processing capabilities
 
-The configuration file has two main sections:
+**Example Interactions:**
+- "Resize this image to 800x600 pixels"
+- "Apply a vintage filter to make it look old"
+- "Add text 'Hello World' in red at the top"
+- "Detect faces in this image"
 
-1. `mcpServers`: Defines the tool servers to connect to
-2. `llm`: Configures the AI provider settings
+### 🎵 Music Agent
+An AI agent that creates, analyzes, and manipulates music through natural language. This agent can generate melodies, analyze music theory, and process audio files.
 
-### Basic Example
-
-```yaml
-mcpServers:
-  github:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-github"
-    env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: your-github-token
-  filesystem:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-filesystem"
-      - .
-llm:
-  provider: openai
-  model: gpt-4
-  apiKey: $OPENAI_API_KEY
+**Quick Start:**
+```bash
+cd music-agent
+./setup-python-server.sh
+npm start -- --agent music-agent.yml
 ```
 
-## Tool Server Configuration
+**Capabilities:**
+- Generate melodies and chord progressions
+- Analyze music theory and structure
+- Process and manipulate audio files
+- Create drum patterns and rhythms
+- Transcribe and analyze existing music
+- Export to various audio formats
 
-Each entry under `mcpServers` defines a tool server to connect to. The key (e.g., "github", "filesystem") is used as a friendly name for the server.
+**Example Interactions:**
+- "Create a happy melody in C major"
+- "Generate a drum pattern for a rock song"
+- "Analyze the chord progression in this song"
+- "Create a 4-bar melody with a jazz feel"
 
-Tool servers can either be local servers (stdio) or remote servers (sse)
-
-### Stdio Server Options
-
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `type` | string | Yes | The type of the server, needs to be 'stdio' |
-| `command` | string | Yes | The executable to run |
-| `args` | string[] | No | Array of command-line arguments |
-| `env` | object | No | Environment variables for the server process |
-
-### SSE Server Options
-
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `type` | string | Yes | The type of the server, needs to be 'sse' |
-| `url` | string | Yes | The url of the server |
-| `headers` | map | No | Optional headers for the url |
-
-## LLM Configuration
-
-The `llm` section configures the AI provider settings.
-
-### LLM Options
-
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `provider` | string | Yes | AI provider (e.g., "openai", "anthropic", "google") |
-| `model` | string | Yes | The model to use |
-| `apiKey` | string | Yes | API key or environment variable reference |
-| `temperature` | number | No | Controls randomness (0-1, default varies by provider) |
-| `maxInputTokens` | number | No | Maximum input tokens for context compression |
-| `maxOutputTokens` | number | No | Maximum output tokens for response length |
-| `baseURL` | string | No | Custom API endpoint for OpenAI-compatible providers |
-| `router` | string | No | Router type ("vercel" or "in-built", default: "vercel") |
-
-### API Key Configuration
-
-#### Setting API Keys
-
-API keys can be configured in two ways:
-
-1. **Environment Variables (Recommended)**:
-   - Add keys to your `.env` file (use `.env.example` as a template) or export environment variables
-   - Reference them in config with the `$` prefix
-
-2. **Direct Configuration** (Not recommended for security):
-   - Directly in the YAML file (less secure, avoid in production)
-
-```yaml
-# Recommended: Reference environment variables
-apiKey: $OPENAI_API_KEY
-
-# Not recommended: Direct API key in config
-apiKey: sk-actual-api-key  
-```
-
-#### Security Best Practices
-- Never commit API keys to version control
-- Use environment variables in production environments
-- Create a `.gitignore` entry for your `.env` file
-
-#### API Keys for Different Providers
-Each provider requires its own API key:
-- OpenAI: Set `OPENAI_API_KEY` in `.env` 
-- Anthropic: Set `ANTHROPIC_API_KEY` in `.env`
-- Google Gemini: Set `GOOGLE_GENERATIVE_AI_API_KEY` in `.env`
-
-#### Openai example
-```yaml
-llm:
-  provider: openai
-  model: gpt-4o
-  apiKey: $OPENAI_API_KEY
-```
-
-#### Anthropic example
-```yaml
-llm:
-  provider: anthropic
-  model: claude-3-7-sonnet-20250219
-  apiKey: $ANTHROPIC_API_KEY
-```
-
-#### Google example
-```yaml
-llm:
-  provider: google
-  model: gemini-2.0-flash
-  apiKey: $GOOGLE_GENERATIVE_AI_API_KEY
-```
-
-### Windows Support
-
-On Windows systems, some commands like `npx` may have different paths. The system attempts to automatically detect and uses the correct paths for these commands on Windows. If you run into any issues during server initialization, you may need to adjust the path to your `npx` command.
-
-## Supported Tool Servers
-
-Here are some commonly used MCP-compatible tool servers:
-
-### GitHub
-
-```yaml
-github:
-  type: stdio
-  command: npx
-  args:
-    - -y
-    - "@modelcontextprotocol/server-github"
-  env:
-    GITHUB_PERSONAL_ACCESS_TOKEN: your-github-token
-```
-
-### Filesystem
-
-```yaml
-filesystem:
-  type: stdio
-  command: npx
-  args:
-    - -y
-    - "@modelcontextprotocol/server-filesystem"
-    - .
-```
-
-### Terminal
-
-```yaml
-terminal:
-  type: stdio
-  command: npx
-  args:
-    - -y
-    - "@modelcontextprotocol/server-terminal"
-```
-
-### Desktop Commander
-
-```yaml
-desktop:
-  type: stdio
-  command: npx
-  args:
-    - -y
-    - "@wonderwhy-er/desktop-commander"
-```
-
-### Custom Server
-
-```yaml
-custom:
-  type: stdio
-  command: node
-  args:
-    - --loader
-    - ts-node/esm
-    - src/servers/customServer.ts
-  env:
-    API_KEY: your-api-key
-```
-
-### Remote Server
-
-This example uses a remote github server provided by composio.
-The URL is just a placeholder which won't work out of the box since the URL is customized per user.
-Go to mcp.composio.dev to get your own MCP server URL.
-
-```yaml
-github-remote:
-  type: sse
-  url: https://mcp.composio.dev/github/repulsive-itchy-alarm-ABCDE
-```
-
-## Command-Line Options
-
-Saiki supports several command-line options:
-
-| Option | Description |
-|--------|-------------|
-| `--agent` | Specify a custom agent configuration file |
-| `--strict` | Require all connections to succeed |
-| `--verbose` | Enable verbose logging |
-| `--help` | Show help |
-
-## Available Agent Examples
-
-### Database Agent
-An AI agent that provides natural language access to database operations and analytics. This approach simplifies database interaction - instead of building forms, queries, and reporting dashboards, users can simply ask for what they need in plain language.
+### 🗄️ Database Agent
+An AI agent that provides natural language access to database operations and analytics. This simplifies database interaction - instead of building forms and queries, users can simply ask for what they need in plain language.
 
 **Quick Start:**
 ```bash
@@ -242,98 +63,133 @@ cd database-agent
 npm start -- --agent database-agent.yml
 ```
 
+**Capabilities:**
+- Natural language query generation
+- Data insertion and updates
+- Report generation and analytics
+- Schema exploration and understanding
+- Complex query optimization
+
 **Example Interactions:**
 - "Show me all users"
 - "Create a new user named John Doe with email john@example.com"
 - "Find products under $100"
 - "Generate a sales report by category"
 
-This agent demonstrates intelligent database interaction through conversation.
-
-### Stripe Payment Agent
-An AI agent that handles payment processing and customer management through natural language. This changes how we think about payment systems - rather than designing complex checkout flows and payment forms, the entire payment experience becomes a natural conversation.
+### 📄 Talk2PDF Agent
+An AI agent that can read, analyze, and extract information from PDF documents through natural language interaction.
 
 **Quick Start:**
 ```bash
-cd stripe-agent
-export STRIPE_SECRET_KEY="your_stripe_secret_key"
-npm start -- --agent stripe-agent.yml
+cd talk2pdf-agent
+npm start -- --agent talk2pdf-agent.yml
 ```
 
-**Example Interactions:**
-- "Create a customer for John Doe with email john@example.com"
-- "Process a $99.99 payment for customer john@example.com"
-- "Create a subscription for john@example.com for $29.99/month"
+**Capabilities:**
+- PDF text extraction and analysis
+- Document summarization
+- Information retrieval from PDFs
+- Question answering about document content
+- Multi-page document processing
 
-### Sales & Onboarding Agent
-An AI agent that orchestrates complete customer journeys from initial contact to account setup. This reimagines business processes - instead of building multi-step forms, complex workflows, and rigid user interfaces, entire customer journeys unfold through intelligent conversation.
+**Example Interactions:**
+- "Summarize this PDF document"
+- "What are the main points in section 3?"
+- "Extract all email addresses from this document"
+- "Find information about pricing in this PDF"
+
+### 🎯 Triage Demo Agents
+A collection of specialized agents demonstrating customer support and business process automation. This includes agents for billing, escalation, product information, and technical support.
 
 **Quick Start:**
 ```bash
-cd sales-onboarding-agent
-./setup-sales-db.sh
-export STRIPE_SECRET_KEY="your_stripe_secret_key"
-npm start -- --agent sales-onboarding-agent.yml
+cd triage-demo
+npm start -- --agent triage-agent.yml
 ```
 
+**Available Agents:**
+- **Billing Agent**: Handles payment inquiries and billing issues
+- **Escalation Agent**: Manages customer escalations and complex issues
+- **Product Info Agent**: Provides product information and recommendations
+- **Technical Support Agent**: Assists with technical problems and troubleshooting
+
 **Example Interactions:**
-- "I want to sign up for your service"
-- "I need to upgrade my subscription to the Pro plan"
-- "I want to add 5 team members to my account"
+- "I need help with my billing statement"
+- "I want to escalate this issue to a manager"
+- "What features are included in the Pro plan?"
+- "I'm having trouble logging into my account"
 
-This agent demonstrates intelligent business process orchestration through conversation.
+## Configuration Guide
 
-### Other Examples
+Saiki uses YAML configuration files to define tool servers and AI settings. Each agent has its own configuration file that specifies:
+
+1. **MCP Servers**: Tool servers that provide specific capabilities
+2. **LLM Configuration**: AI model settings and provider configuration
+3. **System Prompts**: Agent behavior and personality definitions
+
+### Basic Configuration Structure
+
+```yaml
+mcpServers:
+  # Tool server definitions
+  example_server:
+    type: stdio
+    command: npx
+    args: ["-y", "@example/mcp-server"]
+    env:
+      API_KEY: $EXAMPLE_API_KEY
+
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  apiKey: $OPENAI_API_KEY
+  temperature: 0.1
+```
+
+### Environment Variables
+
+Set up your environment variables in a `.env` file:
+
+```bash
+# AI Provider Keys
+OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_key
+
+# Tool-specific keys
+STRIPE_SECRET_KEY=your_stripe_key
+GITHUB_PERSONAL_ACCESS_TOKEN=your_github_token
+```
+
+## Getting Started
+
+1. **Choose an agent** from the available options above
+2. **Navigate to the agent directory** and follow the setup instructions
+3. **Configure environment variables** as needed
+4. **Run the agent** using the provided commands
+5. **Interact naturally** with the agent through conversation
+
+## Development
+
+To create your own agent:
+
+1. **Define your tools** using MCP servers
+2. **Configure the LLM** settings
+3. **Write system prompts** that define agent behavior
+4. **Test and iterate** on the agent's capabilities
+
+See the [declarative agent development guide](../docs/docs/concepts/declarative-agent-development.md) for detailed information on building agents with Saiki.
+
+## Examples Directory
+
 Check the `examples/` directory for additional agent configurations including:
 - Email and Slack integration
 - Notion workspace management
 - Website design and development
 - Research and analysis
 
-## Complete Example
+## Support
 
-Here's a comprehensive configuration example using multiple tool servers:
-
-```yaml
-mcpServers:
-  github:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-github"
-    env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: your-github-token
-  filesystem:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-filesystem"
-      - .
-  terminal:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-terminal"
-  desktop:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - "@wonderwhy-er/desktop-commander"
-  custom:
-    type: stdio
-    command: node
-    args:
-      - --loader
-      - ts-node/esm
-      - src/servers/customServer.ts
-    env:
-      API_KEY: your-api-key
-llm:
-  provider: openai
-  model: gpt-4
-  apiKey: $OPENAI_API_KEY
-``` 
+For questions and support:
+- Check the [documentation](../docs/docs/)
+- Review the [tutorials](../docs/docs/tutorials/)
+- Explore the [examples](../examples/) directory 
