@@ -2,19 +2,7 @@
 
 A comprehensive AI agent for image editing and processing using OpenCV and Pillow. This agent provides a complete suite of image manipulation tools through a Python-based MCP server.
 
-## 🎥 Demo Video
 
-Watch the Image Editor Agent in action:
-
-<iframe
-  width="100%"
-  height="400"
-  src="https://www.youtube.com/embed/3X6edzACT3U"
-  title="Image Editor Agent Demo"
-  frameborder="0"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-  allowfullscreen="true"
-></iframe>
 
 ## Features
 
