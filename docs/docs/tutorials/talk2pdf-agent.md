@@ -2,7 +2,7 @@
 sidebar_position: 6
 ---
 
-# Building a Talk2PDF Agent
+# Talk2PDF Agent
 
 In this tutorial, we'll build a custom AI agent that can parse PDF documents and make them consumable by LLMs. We'll walk through the process step by step, explaining what we're doing and why.
 
