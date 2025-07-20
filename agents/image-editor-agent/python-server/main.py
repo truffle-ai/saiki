@@ -786,15 +786,15 @@ def detect_objects(inputPath: str, detectionType: str) -> str:
     
     # Normalize detection type to handle both singular and plural forms
     detectionType = detectionType.lower().strip()
-    if detectionType in ["face", "faces"]:
+    if detectionType in ["face", "faces", "face/faces"]:
         detectionType = "faces"
-    elif detectionType in ["edge", "edges"]:
+    elif detectionType in ["edge", "edges", "edge/edges"]:
         detectionType = "edges"
-    elif detectionType in ["contour", "contours"]:
+    elif detectionType in ["contour", "contours", "contour/contours"]:
         detectionType = "contours"
-    elif detectionType in ["circle", "circles"]:
+    elif detectionType in ["circle", "circles", "circle/circles"]:
         detectionType = "circles"
-    elif detectionType in ["line", "lines"]:
+    elif detectionType in ["line", "lines", "line/lines"]:
         detectionType = "lines"
     
     results = {}

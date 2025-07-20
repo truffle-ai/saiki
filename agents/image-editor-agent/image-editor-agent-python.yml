@@ -32,6 +32,10 @@ mcpServers:
       - agents/image-editor-agent/python-server/main.py
     connectionMode: strict
 
+toolConfirmation:
+  mode: "auto-approve"
+  allowedToolsStorage: "memory"
+
 llm:
   provider: openai
   model: gpt-4o-mini
