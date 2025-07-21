@@ -48,39 +48,28 @@ First, let's understand the project structure:
 
 ```
 agents/image-editor-agent/
-├── python-server/           # Python MCP server implementation
-│   ├── main.py             # Main server with all tools
-│   ├── pyproject.toml      # Python dependencies
-│   └── temp_images/        # Temporary image storage
 ├── image-editor-agent.yml  # Agent configuration
-├── setup-python-server.sh  # Automated setup script
+├── Lenna.webp              # Sample image for testing
 └── README.md               # Documentation
 ```
 
-## Step 2: Installing Dependencies
+## Step 2: Quick Setup
 
-The image editor agent uses Python with OpenCV and Pillow for image processing. Let's set it up:
+The image editor agent uses a published MCP server that's automatically installed:
 
 ```bash
-# Navigate to the image editor agent directory
-cd agents/image-editor-agent
-
-# Run the automated setup script
-./setup-python-server.sh
+# From the saiki project root
+saiki --agent agents/image-editor-agent/image-editor-agent.yml
 ```
 
-This script will:
-- Install the `uv` package manager if needed
-- Install Python dependencies (OpenCV, Pillow, FastMCP)
-- Test the installation
-- Verify the agent configuration
+That's it! The MCP server (`truffle-ai-image-editor-mcp`) will be automatically downloaded and installed via `uvx` on first run.
 
 ### What's Happening Behind the Scenes
 
-The setup script installs these key dependencies:
-- **OpenCV**: Computer vision and image processing
+The published MCP server includes these key dependencies:
+- **OpenCV**: Computer vision and image processing operations
 - **Pillow**: Python Imaging Library for image manipulation
-- **FastMCP**: Model Context Protocol server framework
+- **NumPy**: Numerical computing for image data
 - **NumPy**: Numerical computing for image data
 
 ## Step 3: Understanding the Agent Configuration
@@ -101,13 +90,9 @@ systemPrompt: |
 mcpServers:
   image_editor:
     type: stdio
-    command: uv
+    command: uvx
     args:
-      - run
-      - --project
-      - agents/image-editor-agent/python-server
-      - python
-      - agents/image-editor-agent/python-server/main.py
+      - truffle-ai-image-editor-mcp
     connectionMode: strict
 
 llm:
