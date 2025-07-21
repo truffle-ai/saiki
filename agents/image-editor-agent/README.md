@@ -1,6 +1,8 @@
 # Image Editor Agent
 
-A comprehensive AI agent for image editing and processing using OpenCV and Pillow. This agent provides a complete suite of image manipulation tools through a Python-based MCP server.
+A comprehensive AI agent for image editing and processing using the [Image Editor MCP Server](https://github.com/truffle-ai/mcp-servers/tree/main/src/image-editor).
+
+This agent provides a complete suite of image manipulation tools through a Python-based MCP server built with OpenCV and Pillow.
 
 
 
@@ -44,42 +46,47 @@ A comprehensive AI agent for image editing and processing using OpenCV and Pillo
 - **Filter Discovery**: List all available filters and effects
 - **Template System**: Predefined layouts for professional collages
 
-## Setup
+## Quick Start
 
 ### Prerequisites
-- Python 3.10 or higher
-- `uv` package manager
+- **Node.js 20+**: For the Saiki framework
+- **Python 3.10+**: Automatically managed by the MCP server
 
 ### Installation
 
-1. **Install uv** (if not already installed):
+1. **Run the Agent**:
    ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
+   # From the saiki project root
+   saiki --agent agents/image-editor-agent/image-editor-agent-python.yml
    ```
 
-2. **Install dependencies**:
-   ```bash
-   cd agents/image-editor-agent/python-server
-   uv sync
-   ```
+That's it! The MCP server will be automatically downloaded and installed via `uvx` on first run.
 
-3. **Test the installation**:
-   ```bash
-   uv run python main.py
-   ```
+## Configuration
 
-## Usage
+The agent is configured to use the published MCP server:
 
-### Use with Saiki Agent
-```bash
-saiki --agent agents/image-editor-agent/image-editor-agent-python.yml
+```yaml
+mcpServers:
+  image_editor:
+    type: stdio
+    command: uvx
+    args:
+      - truffle-ai-image-editor-mcp
+    connectionMode: strict
 ```
 
-### Direct MCP Server Usage
-```bash
-cd agents/image-editor-agent/python-server
-uv run python main.py
-```
+## MCP Server
+
+This agent uses the **Image Editor MCP Server**, which is maintained separately at:
+
+**🔗 [https://github.com/truffle-ai/mcp-servers/tree/main/src/image-editor](https://github.com/truffle-ai/mcp-servers/tree/main/src/image-editor)**
+
+The MCP server repository provides:
+- Complete technical documentation
+- Development and contribution guidelines  
+- Server implementation details
+- Advanced configuration options
 
 ## Available Tools
 
@@ -407,19 +414,23 @@ Process multiple images with the same operation.
 
 4. **Path Issues**: Ensure all file paths are absolute or correctly relative to the working directory.
 
-## Development
+## Troubleshooting
 
-### Running Tests
-```bash
-cd python-server
-uv run python main.py
-```
+### Common Issues
 
-### Code Formatting
-```bash
-uv run black main.py
-uv run ruff check main.py
-```
+1. **Server Installation**: The MCP server will be automatically installed via `uvx` on first run. No manual setup required.
+
+2. **OpenCV Installation**: The server includes OpenCV installation - this may take a moment on first run due to the large download (35MB+).
+
+3. **Memory Issues**: For large images, consider resizing before processing to avoid memory constraints.
+
+4. **Path Issues**: Ensure all file paths are absolute or correctly relative to the working directory.
+
+## Getting Help
+
+- **MCP Server Issues**: Report at the [mcp-servers repository](https://github.com/truffle-ai/mcp-servers/issues)
+- **Agent Configuration**: Report at the main Saiki repository
+- **Feature Requests**: Use the mcp-servers repository for tool-related requests
 
 ## License
 
