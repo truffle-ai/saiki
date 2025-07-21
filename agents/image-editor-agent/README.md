@@ -4,8 +4,6 @@ A comprehensive AI agent for image editing and processing using the [Image Edito
 
 This agent provides a complete suite of image manipulation tools through a Python-based MCP server built with OpenCV and Pillow.
 
-
-
 ## Features
 
 ### 🖼️ **Viewing & Preview**
@@ -57,7 +55,7 @@ This agent provides a complete suite of image manipulation tools through a Pytho
 1. **Run the Agent**:
    ```bash
    # From the saiki project root
-   saiki --agent agents/image-editor-agent/image-editor-agent-python.yml
+   saiki --agent agents/image-editor-agent/image-editor-agent.yml
    ```
 
 That's it! The MCP server will be automatically downloaded and installed via `uvx` on first run.

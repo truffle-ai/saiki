@@ -52,7 +52,7 @@ agents/image-editor-agent/
 │   ├── main.py             # Main server with all tools
 │   ├── pyproject.toml      # Python dependencies
 │   └── temp_images/        # Temporary image storage
-├── image-editor-agent-python.yml  # Agent configuration
+├── image-editor-agent.yml  # Agent configuration
 ├── setup-python-server.sh  # Automated setup script
 └── README.md               # Documentation
 ```
@@ -85,7 +85,7 @@ The setup script installs these key dependencies:
 
 ## Step 3: Understanding the Agent Configuration
 
-The agent is configured in `image-editor-agent-python.yml`:
+The agent is configured in `image-editor-agent.yml`:
 
 ```yaml
 systemPrompt: |
@@ -169,7 +169,7 @@ Start the image editor agent:
 
 ```bash
 # From the project root
-saiki --agent agents/image-editor-agent/image-editor-agent-python.yml
+saiki --agent agents/image-editor-agent/image-editor-agent.yml
 ```
 
 ## Step 6: Testing with Example Prompts
