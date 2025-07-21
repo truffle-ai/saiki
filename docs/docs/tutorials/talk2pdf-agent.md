@@ -24,45 +24,38 @@ Our agent will have two main components:
 
 This separation allows the agent to focus on understanding and analysis while the MCP server handles the technical PDF processing.
 
-## Step 2: Setting Up the Project
+## Step 2: Quick Setup
 
-First, we create our directory structure:
-
-```bash
-mkdir -p agents/talk2pdf-agent/pdf-server/src
-cd agents/talk2pdf-agent
-```
-
-The `pdf-server` subdirectory will contain our custom MCP server, keeping the code organized.
-
-## Step 3: Creating the MCP Server
-
-The MCP server is the workhorse that handles PDF parsing. We need to install the right dependencies:
+The talk2pdf agent uses a published MCP server that's automatically installed:
 
 ```bash
-cd pdf-server
-npm init -y
-npm install @modelcontextprotocol/sdk pdf-parse-debugging-disabled zod
-npm install --save-dev typescript ts-node @types/node @types/pdf-parse
+# From the saiki project root
+saiki --agent agents/talk2pdf-agent/talk2pdf-agent.yml
 ```
 
-**Why these packages?**
-- `@modelcontextprotocol/sdk`: The MCP framework
-- `pdf-parse-debugging-disabled`: PDF parsing without debug issues
-- `zod`: Type validation for our tool parameters
-- `ts-node`: Run TypeScript directly without compilation
+That's it! The MCP server (`@truffle-ai/talk2pdf-mcp`) will be automatically downloaded and installed via `npx` on first run.
 
-## Step 4: Building the PDF Parser
+## Step 3: Understanding the MCP Server
 
-Now we create our MCP server. The key insight is that we need two tools:
+### What's Happening Behind the Scenes
+
+The published MCP server includes these key dependencies:
+- **@modelcontextprotocol/sdk**: The MCP framework for server communication
+- **pdf-parse-debugging-disabled**: PDF parsing without debug console output
+- **zod**: Runtime type validation for tool parameters
+- **TypeScript**: Compiled to JavaScript for reliable execution
+
+## Step 4: Available Tools
+
+The talk2pdf MCP server provides two main tools:
 
 1. **`parse_pdf`**: Extract all text and metadata from a PDF
 2. **`extract_section`**: Search for specific content within a PDF
 
-Here's the core structure:
+Here's how the MCP server is structured (you can view the full implementation at [https://github.com/truffle-ai/mcp-servers/tree/main/src/talk2pdf](https://github.com/truffle-ai/mcp-servers/tree/main/src/talk2pdf)):
 
 ```typescript
-// pdf-server/src/index.ts
+// Core server structure
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -82,27 +75,20 @@ class Talk2PDFMCPServer {
   }
 
   private registerTools(): void {
-    // We'll add our tools here
+    // Tools are registered here
   }
 
   async start(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger.info('Talk2PDF MCP Server started');
+    console.log('Talk2PDF MCP Server started');
   }
 }
-
-// Start the server
-const server = new Talk2PDFMCPServer();
-server.start().catch((error) => {
-  logger.error(`Failed to start Talk2PDF MCP Server: ${error}`);
-  process.exit(1);
-});
 ```
 
 **What's happening here?**
 - We create an MCP server with the name 'talk2pdf'
-- We'll register tools that the agent can call
+- The server registers tools that the agent can call
 - The server communicates via stdio (standard input/output)
 
 ## Step 5: Adding the Parse Tool
@@ -218,9 +204,9 @@ this.server.tool(
 - If a search term is provided, filters lines containing that term
 - Returns the filtered content
 
-## Step 7: Configuring the Agent
+## Step 7: Understanding the Agent Configuration
 
-Now we create the agent configuration that ties everything together:
+The agent configuration connects to the published MCP server:
 
 ```yaml
 # agents/talk2pdf-agent/talk2pdf-agent.yml
@@ -229,8 +215,7 @@ mcpServers:
     type: stdio
     command: npx
     args:
-      - ts-node
-      - ./agents/talk2pdf-agent/pdf-server/src/index.ts
+      - "@truffle-ai/talk2pdf-mcp"
     timeout: 30000
     connectionMode: strict
 
@@ -257,8 +242,8 @@ llm:
 ```
 
 **Key configuration points:**
-- The agent connects to our MCP server via stdio
-- We use `npx ts-node` to run TypeScript directly (no build step)
+- The agent connects to the published MCP server via stdio
+- We use `npx @truffle-ai/talk2pdf-mcp` to run the compiled server
 - The system prompt tells the agent what it can do and how to behave
 
 ## Step 8: Testing the Agent
@@ -298,9 +283,9 @@ We've created a complete PDF parsing agent that demonstrates:
 - **Separation of concerns**: Tools handle technical operations, agent handles intelligence
 - **Error handling**: Proper validation and graceful error messages
 - **Flexible architecture**: Easy to extend with more tools
-- **Zero-build development**: TypeScript runs directly with `ts-node`
+- **Distributed architecture**: Published MCP server for easy deployment and updates
 
-The agent can now parse PDFs, extract content, search for terms, and provide intelligent analysis - all through natural language interaction.
+The agent can now parse PDFs, extract content, search for terms, and provide intelligent analysis - all through natural language interaction, using a published MCP server that's automatically installed.
 
 ## Next Steps
 
@@ -310,4 +295,4 @@ This pattern can be extended to:
 - Add OCR for scanned PDFs
 - Create document classification
 
-The key insight is that by separating the technical operations (MCP server) from the intelligence (agent), we create a flexible, maintainable system that's easy to extend and debug. 
+The key insight is that by separating the technical operations (published MCP server) from the intelligence (agent), we create a flexible, maintainable system that's easy to extend and debug. The published server approach means updates and improvements can be distributed automatically without requiring changes to the agent configuration. 

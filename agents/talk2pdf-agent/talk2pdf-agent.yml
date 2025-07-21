@@ -6,9 +6,7 @@ mcpServers:
     type: stdio
     command: npx
     args:
-      - ts-node
-      - --esm
-      - ./agents/talk2pdf-agent/pdf-server/src/index.ts
+      - "@truffle-ai/talk2pdf-mcp"
     timeout: 30000
     connectionMode: strict 
 
