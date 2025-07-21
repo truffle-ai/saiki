@@ -23,13 +23,9 @@ systemPrompt: |
 mcpServers:
   image_editor:
     type: stdio
-    command: uv
+    command: uvx
     args:
-      - run
-      - --project
-      - agents/image-editor-agent/python-server
-      - python
-      - agents/image-editor-agent/python-server/main.py
+      - truffle-ai-image-editor-mcp
     connectionMode: strict
 
 toolConfirmation:
