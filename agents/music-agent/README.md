@@ -2,6 +2,14 @@
 
 A comprehensive AI agent for music creation, editing, and audio processing using the [Music Creator MCP Server](https://github.com/truffle-ai/mcp-servers/tree/main/src/music).
 
+> **⚠️ Experimental Status**: This agent is currently in experimental development. The tools have not been extensively tested in production environments and may have limitations or bugs. We're actively seeking feedback and improvements from users.
+## 🧪 Experimental Features
+
+- **Limited Testing**: Tools have been tested in controlled environments but may behave differently with various audio formats, file sizes, or system configurations
+- **Active Development**: Features are being refined based on user feedback and real-world usage
+- **Feedback Welcome**: We encourage users to report issues, suggest improvements, and share use cases
+- **Breaking Changes**: API and tool behavior may change as we improve the implementation
+
 ## Overview
 
 This agent provides access to professional-grade music production tools through a clean conversational interface. Built with industry-standard libraries like librosa, pydub, and music21, it offers comprehensive audio processing capabilities using the published `truffle-ai-music-creator-mcp` package.
