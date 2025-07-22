@@ -410,13 +410,13 @@ describe('MCPManager Tool Conflict Resolution', () => {
 
         it('should throw error for non-existent tools', async () => {
             await expect(manager.executeTool('nonexistent_tool', {})).rejects.toThrow(
-                'No client found for tool: nonexistent_tool'
+                'No tool found: nonexistent_tool'
             );
         });
 
         it('should throw error for unqualified conflicted tools', async () => {
             await expect(manager.executeTool('shared_tool', {})).rejects.toThrow(
-                'No client found for tool: shared_tool'
+                'No tool found: shared_tool'
             );
         });
     });

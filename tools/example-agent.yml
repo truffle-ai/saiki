@@ -1,0 +1,68 @@
+# Example Saiki agent configuration with custom tools
+
+# # describes the mcp servers to use (existing functionality)
+# mcpServers:
+#   filesystem:
+#     type: stdio
+#     command: npx
+#     args:
+#       - -y
+#       - "@modelcontextprotocol/server-filesystem"
+#       - .
+
+# Custom tools configuration (NEW!)
+customTools:
+  # Directory where custom tools are located
+  toolsDirectory: "./tools"
+  
+  # Whether to automatically discover and load tools
+  autoDiscover: true
+  
+  # Tool-specific configurations
+  toolConfigs:
+    add:
+      description: "Custom calculator for addition"
+    power:
+      requiresConfirmation: true
+  
+  # Global settings for all custom tools
+  globalSettings:
+    # Whether tools require confirmation by default
+    requiresConfirmation: false
+    
+    # Execution timeout in milliseconds
+    timeout: 30000
+    
+    # Whether to enable result caching
+    enableCaching: false
+
+# System prompt configuration
+systemPrompt:
+  contributors:
+    - id: primary
+      type: static
+      priority: 0
+      content: |
+        You are a helpful AI assistant with access to both MCP server tools and custom tools.
+        
+        Available custom tools include:
+        - add: Adds two numbers together
+        - power: Raises a number to a power
+        - random: Generates random numbers
+        
+        Use these tools when appropriate to solve mathematical problems or generate random values.
+        You can combine custom tools with MCP tools for complex tasks.
+
+# LLM configuration
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  apiKey: $OPENAI_API_KEY
+
+# Storage configuration
+storage:
+  cache:
+    type: in-memory
+  database:
+    type: sqlite
+    # path: ./data/saiki.db 

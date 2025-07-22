@@ -1,5 +1,5 @@
 import { MCPClient } from './mcp-client.js';
-import { ServerConfigs, McpServerConfig } from '../config/schemas.js';
+import { ServerConfigs, McpServerConfig, ValidatedCustomToolsConfig } from '../config/schemas.js';
 import { logger } from '../logger/index.js';
 import { IMCPClient } from './types.js';
 import { ToolConfirmationProvider } from './tool-confirmation/types.js';
@@ -7,6 +7,8 @@ import { NoOpConfirmationProvider } from './tool-confirmation/noop-confirmation-
 import { ToolSet } from '../ai/types.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 import { ToolExecutionDeniedError } from './tool-confirmation/errors.js';
+import { CustomToolManager } from '../tools/manager.js';
+import { ToolExecutionContext } from '../tools/types.js';
 
 /**
  * Centralized manager for Multiple Model Context Protocol (MCP) servers.
@@ -46,6 +48,7 @@ export class MCPManager {
     private resourceToClientMap: Map<string, IMCPClient> = new Map();
     private confirmationProvider: ToolConfirmationProvider;
     private sanitizedNameToServerMap: Map<string, string> = new Map();
+    private customToolManager?: CustomToolManager;
 
     // Use a distinctive delimiter that won't appear in normal server/tool names
     // Using double hyphen as it's allowed in LLM tool name patterns (^[a-zA-Z0-9_-]+$)
@@ -54,6 +57,22 @@ export class MCPManager {
     constructor(confirmationProvider?: ToolConfirmationProvider) {
         // If a confirmation provider is passed, use it, otherwise use auto-approve fallback
         this.confirmationProvider = confirmationProvider ?? new NoOpConfirmationProvider();
+    }
+
+    /**
+     * Initialize custom tools manager
+     */
+    async initializeCustomTools(customToolsConfig: ValidatedCustomToolsConfig): Promise<void> {
+        if (!this.customToolManager) {
+            this.customToolManager = new CustomToolManager(
+                customToolsConfig,
+                this.confirmationProvider
+            );
+            await this.customToolManager.initialize();
+            logger.info(
+                `Custom tools initialized: ${this.customToolManager.getToolNames().length} tools available`
+            );
+        }
     }
 
     /**
@@ -237,7 +256,19 @@ export class MCPManager {
             return clientToolsCache.get(client)!;
         };
 
-        // Add non-conflicted tools directly
+        // Add custom tools first
+        if (this.customToolManager) {
+            const customTools = this.customToolManager.getAllTools();
+            for (const [toolName, toolInfo] of Object.entries(customTools)) {
+                allTools[toolName] = {
+                    description: toolInfo.description,
+                    parameters: toolInfo.parameters,
+                };
+            }
+            logger.debug(`Added ${Object.keys(customTools).length} custom tools to aggregated set`);
+        }
+
+        // Add non-conflicted MCP tools directly
         for (const [toolName, client] of Array.from(this.toolToClientMap.entries())) {
             const clientTools = await getClientTools(client);
             const toolDef = clientTools[toolName];
@@ -343,15 +374,31 @@ export class MCPManager {
         logger.debug(`🔧 Tool execution requested: '${toolName}'`);
         logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
 
+        // First check for custom tools
+        if (this.customToolManager && this.customToolManager.hasTool(toolName)) {
+            logger.debug(`🎯 Routing to custom tool: '${toolName}'`);
+            const context: ToolExecutionContext = {
+                sessionId,
+                // eventBus and storage can be added here if needed
+            };
+            return await this.customToolManager.executeTool(toolName, args, context);
+        }
+
+        // Fall back to MCP tools
         const client = this.getToolClient(toolName);
         if (!client) {
-            logger.error(`❌ No client found for tool: ${toolName}`);
-            logger.debug(`Available tools: ${Array.from(this.toolToClientMap.keys()).join(', ')}`);
+            logger.error(`❌ No tool found: ${toolName}`);
+            logger.debug(
+                `Available MCP tools: ${Array.from(this.toolToClientMap.keys()).join(', ')}`
+            );
+            logger.debug(
+                `Available custom tools: ${this.customToolManager?.getToolNames().join(', ') || 'none'}`
+            );
             logger.debug(`Conflicted tools: ${Array.from(this.toolConflicts).join(', ')}`);
             logger.debug(
                 `Server tools map keys: ${Array.from(this.serverToolsMap.keys()).join(', ')}`
             );
-            throw new Error(`No client found for tool: ${toolName}`);
+            throw new Error(`No tool found: ${toolName}`);
         }
 
         // Extract actual tool name (remove server prefix if present)

@@ -94,6 +94,11 @@ export async function createAgentServices(
     const mcpManager = new MCPManager(confirmationProvider);
     await mcpManager.initializeFromConfig(config.mcpServers);
 
+    // Initialize custom tools if configured
+    if (config.customTools) {
+        await mcpManager.initializeCustomTools(config.customTools);
+    }
+
     const mcpServerCount = Object.keys(config.mcpServers).length;
     if (mcpServerCount === 0) {
         logger.info('Agent initialized without MCP servers - only built-in capabilities available');
