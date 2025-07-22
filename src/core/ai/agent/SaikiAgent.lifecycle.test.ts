@@ -45,7 +45,10 @@ describe('SaikiAgent Lifecycle Management', () => {
                 initializeFromConfig: vi.fn().mockResolvedValue(undefined),
             } as any,
             promptManager: {} as any,
-            agentEventBus: {} as any,
+            agentEventBus: {
+                on: vi.fn(),
+                emit: vi.fn(),
+            } as any,
             stateManager: {
                 getRuntimeConfig: vi.fn().mockReturnValue({
                     llm: mockConfig.llm,
@@ -65,6 +68,23 @@ describe('SaikiAgent Lifecycle Management', () => {
                 cleanup: vi.fn(),
                 init: vi.fn().mockResolvedValue(undefined),
                 createSession: vi.fn().mockResolvedValue({ id: 'test-session' }),
+            } as any,
+            scheduler: {
+                start: vi.fn(),
+                stop: vi.fn(),
+                createTask: vi.fn().mockReturnValue('mock-task-id'),
+                getTask: vi.fn(),
+                listTasks: vi.fn().mockReturnValue([]),
+                setTaskEnabled: vi.fn().mockReturnValue(true),
+                deleteTask: vi.fn().mockReturnValue(true),
+                updateTaskSchedule: vi.fn().mockReturnValue(true),
+                getStats: vi.fn().mockReturnValue({
+                    totalTasks: 0,
+                    enabledTasks: 0,
+                    recurringTasks: 0,
+                    pendingExecutions: 0,
+                    isRunning: false,
+                }),
             } as any,
             storage: {} as any,
             storageManager: {
