@@ -262,7 +262,7 @@ export class MCPManager {
             for (const [toolName, toolInfo] of Object.entries(customTools)) {
                 allTools[toolName] = {
                     description: toolInfo.description,
-                    parameters: toolInfo.parameters,
+                    ...(toolInfo.parameters && { parameters: toolInfo.parameters }),
                 };
             }
             logger.debug(`Added ${Object.keys(customTools).length} custom tools to aggregated set`);

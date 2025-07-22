@@ -313,22 +313,14 @@ export class CustomToolManager {
     /**
      * Convert Zod schema to MCP-style parameters
      */
-    private convertSchemaToParameters(schema: any): any {
-        try {
-            // For now, return a simple object structure
-            // This could be enhanced to properly convert Zod schemas
-            return {
-                type: 'object',
-                properties: {},
-                required: [],
-            };
-        } catch {
-            return {
-                type: 'object',
-                properties: {},
-                required: [],
-            };
-        }
+    private convertSchemaToParameters(_schema: any): any {
+        // For now, return a simple object structure
+        // This could be enhanced to properly convert Zod schemas
+        return {
+            type: 'object',
+            properties: {},
+            required: [],
+        };
     }
 
     /**

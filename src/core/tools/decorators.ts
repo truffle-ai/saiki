@@ -90,8 +90,8 @@ export function createTool(options: CreateToolOptions): Tool {
         description: options.description,
         inputSchema: options.inputSchema,
         execute: options.execute,
-        metadata: options.metadata,
-        settings: options.settings,
+        ...(options.metadata && { metadata: options.metadata }),
+        ...(options.settings && { settings: options.settings }),
     };
 
     // Auto-register the tool
@@ -125,8 +125,8 @@ export function tool(
             description,
             inputSchema,
             execute: originalMethod,
-            metadata: options?.metadata,
-            settings: options?.settings,
+            ...(options?.metadata && { metadata: options.metadata }),
+            ...(options?.settings && { settings: options.settings }),
         };
 
         registry.register(toolDef);

@@ -111,7 +111,7 @@ export class ToolExecutionError extends Error {
     constructor(
         public toolId: string,
         message: string,
-        public cause?: Error
+        public override cause?: Error
     ) {
         super(`Tool '${toolId}': ${message}`);
         this.name = 'ToolExecutionError';
