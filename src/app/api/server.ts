@@ -450,7 +450,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 : agent.getCurrentLLMConfig();
 
             // Mask apiKey before returning
-            if (currentConfig && currentConfig.apiKey) {
+            if (currentConfig?.apiKey) {
                 currentConfig.apiKey = '[REDACTED]';
             }
 
@@ -514,7 +514,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
             const result = await agent.switchLLM(llmConfig, sessionId);
             // Mask apiKey in result if present
-            if (result && result.config && result.config.apiKey) {
+            if (result?.config?.apiKey) {
                 result.config.apiKey = '[REDACTED]';
             }
             return res.json(result);
