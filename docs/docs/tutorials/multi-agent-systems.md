@@ -157,6 +157,7 @@ TAVILY_API_KEY=your_tavily_key_here
 # Optional: Add other provider keys if using different models
 ANTHROPIC_API_KEY=your_anthropic_key
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_key
+COHERE_API_KEY=your_cohere_key
 ```
 
 ## Step 5: Run the Multi-Agent System

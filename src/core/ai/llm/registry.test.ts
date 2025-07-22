@@ -11,6 +11,7 @@ import {
     supportsBaseURL,
     requiresBaseURL,
     acceptsAnyModel,
+    getDefaultModelForProvider,
 } from './registry.js';
 import { ModelNotFoundError } from './errors.js';
 import { EffectiveMaxInputTokensError } from './errors.js';
@@ -187,6 +188,53 @@ describe('LLM Registry', () => {
 
         it('returns false for unknown provider', () => {
             expect(acceptsAnyModel('unknown')).toBe(false);
+        });
+    });
+
+    describe('Cohere registry entry', () => {
+        const cohereModels = ['command-r-plus', 'command-r', 'command', 'command-light'];
+
+        it('is registered as a provider', () => {
+            expect(getSupportedProviders()).toContain('cohere');
+        });
+
+        it('returns all supported models for cohere', () => {
+            expect(getSupportedModels('cohere')).toEqual(cohereModels);
+        });
+
+        it('returns a default model', () => {
+            expect(getDefaultModelForProvider('cohere')).toBe('command-r-plus');
+        });
+
+        it('validates model/provider combos correctly', () => {
+            for (const model of cohereModels) {
+                expect(isValidProviderModel('cohere', model)).toBe(true);
+            }
+            expect(isValidProviderModel('cohere', 'non-existent')).toBe(false);
+        });
+
+        it('returns correct maxInputTokens for its models', () => {
+            expect(getMaxInputTokensForModel('cohere', 'command-r-plus')).toBe(128000);
+            expect(getMaxInputTokensForModel('cohere', 'command-r')).toBe(128000);
+            expect(getMaxInputTokensForModel('cohere', 'command')).toBe(4000);
+            expect(getMaxInputTokensForModel('cohere', 'command-light')).toBe(4000);
+        });
+
+        it('returns correct provider for its models', () => {
+            // Note: only tests unique model names
+            expect(getProviderFromModel('command-r-plus')).toBe('cohere');
+            expect(getProviderFromModel('command-r')).toBe('cohere');
+            expect(getProviderFromModel('command')).toBe('cohere');
+            expect(getProviderFromModel('command-light')).toBe('cohere');
+        });
+
+        it('has correct baseURL support flags', () => {
+            expect(supportsBaseURL('cohere')).toBe(false);
+            expect(requiresBaseURL('cohere')).toBe(false);
+        });
+
+        it('does not accept any model', () => {
+            expect(acceptsAnyModel('cohere')).toBe(false);
         });
     });
 });

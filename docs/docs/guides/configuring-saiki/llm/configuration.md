@@ -31,7 +31,7 @@ export type AgentConfig = {
 
 ### Required Fields
 
-- **provider** (string): The LLM provider to use (e.g., `openai`, `anthropic`, `google`, `groq`)
+- **provider** (string): The LLM provider to use (e.g., `openai`, `anthropic`, `google`, `groq`, `cohere`)
 - **model** (string): The model name (see [Providers Guide](./providers) for full list)
 - **apiKey** (string): API key or environment variable (e.g., `$OPENAI_API_KEY`)
 
@@ -105,6 +105,16 @@ llm:
   apiKey: $ANTHROPIC_API_KEY
   temperature: 0.7
   maxOutputTokens: 8000
+```
+
+### Cohere Configuration
+```yaml
+llm:
+  provider: cohere
+  model: command-r-plus
+  apiKey: $COHERE_API_KEY
+  temperature: 0.7
+  maxOutputTokens: 4096
 ```
 
 ### Google Configuration

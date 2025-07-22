@@ -24,7 +24,7 @@ export interface ProviderInfo {
 /** Fallback when we cannot determine the model's input-token limit */
 export const DEFAULT_MAX_INPUT_TOKENS = 128000;
 
-export type LLMProvider = 'openai' | 'openai-compatible' | 'anthropic' | 'google' | 'groq' | 'xai';
+export type LLMProvider = 'openai' | 'openai-compatible' | 'anthropic' | 'google' | 'groq' | 'xai' | 'cohere';
 
 // Central registry of supported LLM providers and their models
 export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
@@ -92,7 +92,17 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
         supportedRouters: ['vercel'],
         baseURLSupport: 'none',
     },
-    // Add other providers like Cohere, etc., as needed
+    // https://docs.cohere.com/reference/models
+    cohere: {
+        models: [
+            { name: 'command-r-plus', maxInputTokens: 128000, default: true },
+            { name: 'command-r', maxInputTokens: 128000 },
+            { name: 'command', maxInputTokens: 4000 },
+            { name: 'command-light', maxInputTokens: 4000 },
+        ],
+        supportedRouters: ['vercel'],
+        baseURLSupport: 'none',
+    },
 };
 
 /**
