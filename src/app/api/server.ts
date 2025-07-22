@@ -449,6 +449,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 ? agent.getEffectiveConfig(sessionId as string).llm
                 : agent.getCurrentLLMConfig();
 
+            // Mask apiKey before returning
+            if (currentConfig?.apiKey) {
+                currentConfig.apiKey = '[REDACTED]';
+            }
+
             res.json({ config: currentConfig });
         } catch (error: any) {
             logger.error(`Error getting current LLM config: ${error.message}`);
@@ -508,6 +513,10 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             Object.assign(llmConfig, otherFields);
 
             const result = await agent.switchLLM(llmConfig, sessionId);
+            // Mask apiKey in result if present
+            if (result?.config?.apiKey) {
+                result.config.apiKey = '[REDACTED]';
+            }
             return res.json(result);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
