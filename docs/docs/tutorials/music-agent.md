@@ -49,37 +49,24 @@ First, let's understand the project structure:
 
 ```
 agents/music-agent/
-├── python-server/           # Python MCP server implementation
-│   ├── main.py             # Main server with all tools
-│   ├── pyproject.toml      # Python dependencies
-│   ├── temp_audio/         # Temporary audio storage
-│   └── uv.lock            # Dependency lock file
 ├── music-agent.yml         # Agent configuration
-├── setup-python-server.sh  # Automated setup script
 └── README.md               # Documentation
 ```
 
-## Step 2: Installing Dependencies
+## Step 2: Quick Setup
 
-The music creator agent uses Python with specialized audio libraries. Let's set it up:
+The music creator agent uses a published MCP server that's automatically installed:
 
 ```bash
-# Navigate to the music agent directory
-cd agents/music-agent
-
-# Run the automated setup script
-./setup-python-server.sh
+# From the saiki project root
+saiki --agent agents/music-agent/music-agent.yml
 ```
 
-This script will:
-- Check for the `uv` package manager
-- Install Python dependencies (librosa, pydub, music21, etc.)
-- Set up the virtual environment
-- Verify the installation
+That's it! The MCP server (`truffle-ai-music-creator-mcp`) will be automatically downloaded and installed via `uvx` on first run.
 
 ### What's Happening Behind the Scenes
 
-The setup script installs these key dependencies:
+The published MCP server includes these key dependencies:
 - **librosa**: Audio analysis and music information retrieval
 - **pydub**: Audio file manipulation and processing
 - **music21**: Music notation and analysis
@@ -106,13 +93,9 @@ systemPrompt: |
 mcpServers:
   music_creator:
     type: stdio
-    command: uv
+    command: uvx
     args:
-      - run
-      - --project
-      - agents/music-agent/python-server
-      - python
-      - agents/music-agent/python-server/main.py
+      - truffle-ai-music-creator-mcp
     connectionMode: strict
 
 llm:
