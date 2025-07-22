@@ -1,0 +1,50 @@
+# Test configuration for plugin system
+# Use this to quickly test plugin functionality
+
+systemPrompt: "You are a helpful AI assistant. Your tool usage is being monitored and filtered by plugins for testing purposes."
+
+llm:
+  provider: openai
+  model: gpt-4o
+  apiKey: $OPENAI_API_KEY
+  router: vercel
+
+# Simple MCP server for testing
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+
+# Plugin configuration for testing
+plugins:
+  - name: "audit-logger"
+    path: "./plugins/audit-logger.ts"
+    enabled: true
+    priority: 10
+    config:
+      logLevel: "info"
+      
+  - name: "tool-filter"
+    path: "./plugins/tool-filter.ts"
+    enabled: true
+    priority: 20
+    config:
+      mode: "allow"
+      allowedTools:
+        - "read_file"
+        - "write_file"
+        - "list_directory"
+
+storage:
+  cache:
+    type: in-memory
+  database:
+    type: in-memory
+
+sessions:
+  maxSessions: 5
+  sessionTTL: 1800000  # 30 minutes

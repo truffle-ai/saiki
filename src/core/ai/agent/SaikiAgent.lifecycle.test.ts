@@ -46,6 +46,11 @@ describe('SaikiAgent Lifecycle Management', () => {
             } as any,
             promptManager: {} as any,
             agentEventBus: {} as any,
+            pluginManager: {
+                loadPlugins: vi.fn(),
+                initializePlugins: vi.fn(),
+                cleanup: vi.fn(),
+            } as any,
             stateManager: {
                 getRuntimeConfig: vi.fn().mockReturnValue({
                     llm: mockConfig.llm,

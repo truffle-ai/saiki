@@ -18,6 +18,7 @@ import {
     SessionEventName,
 } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
+import type { PluginManager } from '../../plugins/index.js';
 
 /**
  * Represents an isolated conversation session within a Saiki agent.
@@ -117,6 +118,7 @@ export class ChatSession {
             mcpManager: MCPManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
+            pluginManager: PluginManager;
         },
         public readonly id: string
     ) {
@@ -202,7 +204,8 @@ export class ChatSession {
             this.services.mcpManager,
             this.eventBus, // Use session event bus
             this.contextManager,
-            this.id
+            this.id,
+            this.services.pluginManager
         );
 
         logger.debug(`ChatSession ${this.id}: Services initialized with storage`);
@@ -376,7 +379,8 @@ export class ChatSession {
                 this.services.mcpManager,
                 this.eventBus, // Use session event bus
                 this.contextManager,
-                this.id
+                this.id,
+                this.services.pluginManager
             );
 
             // Replace the LLM service

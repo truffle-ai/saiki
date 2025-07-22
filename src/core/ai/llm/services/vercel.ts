@@ -10,6 +10,7 @@ import { ImageData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
 import { ToolExecutionDeniedError } from '../../../client/tool-confirmation/errors.js';
+import { PluginManager } from '../../../plugins/index.js';
 
 /**
  * Vercel AI SDK implementation of LLMService
@@ -27,6 +28,8 @@ export class VercelLLMService implements ILLMService {
     private readonly sessionId: string;
     private baseURL: string | undefined;
     private toolSupportCache: Map<string, boolean> = new Map();
+    private pluginManager: PluginManager | undefined;
+    private agentEventBus?: any;
 
     constructor(
         mcpManager: MCPManager,
@@ -38,7 +41,8 @@ export class VercelLLMService implements ILLMService {
         sessionId: string,
         temperature?: number,
         maxOutputTokens?: number,
-        baseURL?: string
+        baseURL?: string,
+        pluginManager?: PluginManager
     ) {
         this.model = model;
         this.provider = provider;
@@ -50,6 +54,7 @@ export class VercelLLMService implements ILLMService {
         this.maxOutputTokens = maxOutputTokens;
         this.sessionId = sessionId;
         this.baseURL = baseURL;
+        this.pluginManager = pluginManager ?? undefined;
 
         logger.debug(
             `[VercelLLMService] Initialized for model: ${this.model.modelId}, provider: ${this.provider}, temperature: ${temperature}, maxOutputTokens: ${maxOutputTokens}`
@@ -69,12 +74,107 @@ export class VercelLLMService implements ILLMService {
                     parameters: jsonSchema(tool.parameters as any),
                     execute: async (args: any) => {
                         try {
-                            return await this.mcpManager.executeTool(
+                            // Execute beforeToolCall hooks
+                            if (this.pluginManager) {
+                                const beforeResult = await this.pluginManager.executeHook(
+                                    'beforeToolCall',
+                                    this.sessionId,
+                                    this.sessionEventBus,
+                                    {
+                                        toolName,
+                                        args,
+                                        sessionId: this.sessionId,
+                                        sessionEventBus: this.sessionEventBus,
+                                        agentEventBus: undefined as any, // Will be set by plugin manager
+                                        logger,
+                                        mcpManager: this.mcpManager,
+                                        promptManager: undefined as any, // Will be set by plugin manager
+                                        stateManager: undefined as any, // Will be set by plugin manager
+                                    },
+                                    args
+                                );
+
+                                if (!beforeResult.success) {
+                                    logger.error(
+                                        `beforeToolCall hook failed: ${beforeResult.error?.message}`
+                                    );
+                                    return {
+                                        error: beforeResult.error?.message || 'Plugin hook failed',
+                                    };
+                                }
+
+                                // Use modified args if provided
+                                if (beforeResult.result !== undefined) {
+                                    args = beforeResult.result;
+                                }
+                            }
+
+                            // Execute the tool
+                            const result = await this.mcpManager.executeTool(
                                 toolName,
                                 args,
                                 this.sessionId
                             );
+
+                            // Execute afterToolCall hooks
+                            if (this.pluginManager) {
+                                const afterResult = await this.pluginManager.executeHook(
+                                    'afterToolCall',
+                                    this.sessionId,
+                                    this.sessionEventBus,
+                                    {
+                                        toolName,
+                                        args,
+                                        result,
+                                        success: true,
+                                        sessionId: this.sessionId,
+                                        sessionEventBus: this.sessionEventBus,
+                                        agentEventBus: undefined as any, // Will be set by plugin manager
+                                        logger,
+                                        mcpManager: this.mcpManager,
+                                        promptManager: undefined as any, // Will be set by plugin manager
+                                        stateManager: undefined as any, // Will be set by plugin manager
+                                    },
+                                    result
+                                );
+
+                                if (!afterResult.success) {
+                                    logger.error(
+                                        `afterToolCall hook failed: ${afterResult.error?.message}`
+                                    );
+                                }
+
+                                // Use modified result if provided
+                                return afterResult.result !== undefined
+                                    ? afterResult.result
+                                    : result;
+                            }
+
+                            return result;
                         } catch (err: any) {
+                            // Execute afterToolCall hooks for error cases
+                            if (this.pluginManager) {
+                                await this.pluginManager.executeHook(
+                                    'afterToolCall',
+                                    this.sessionId,
+                                    this.sessionEventBus,
+                                    {
+                                        toolName,
+                                        args,
+                                        result: err,
+                                        success: false,
+                                        sessionId: this.sessionId,
+                                        sessionEventBus: this.sessionEventBus,
+                                        agentEventBus: undefined as any, // Will be set by plugin manager
+                                        logger,
+                                        mcpManager: this.mcpManager,
+                                        promptManager: undefined as any, // Will be set by plugin manager
+                                        stateManager: undefined as any, // Will be set by plugin manager
+                                    },
+                                    err
+                                );
+                            }
+
                             if (err instanceof ToolExecutionDeniedError) {
                                 return { error: err.message, denied: true };
                             }

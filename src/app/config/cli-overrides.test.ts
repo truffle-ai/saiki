@@ -60,6 +60,7 @@ describe('CLI Overrides', () => {
             timeout: 30000,
             allowedToolsStorage: 'storage' as const,
         },
+        plugins: [],
     };
 
     test('applies CLI overrides correctly', () => {
