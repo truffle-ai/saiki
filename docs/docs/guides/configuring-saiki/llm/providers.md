@@ -59,6 +59,16 @@ llm:
 
 **Supported models**: `gemma-2-9b-it`, `llama-3.3-70b-versatile`
 
+### **Cohere**
+```yaml
+llm:
+  provider: cohere
+  model: command-a-03-2025  # Default
+  apiKey: $COHERE_API_KEY
+```
+
+**Supported models**: `command-a-03-2025, command-r-plus`, `command-r`, `command`, `command-light`
+
 
 ## OpenAI-Compatible Providers
 
@@ -174,6 +184,7 @@ ANTHROPIC_API_KEY=your_anthropic_key
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_key
 GROQ_API_KEY=your_groq_key
 XAI_API_KEY=your_xai_key
+COHERE_API_KEY=your_cohere_key
 
 # Custom providers
 OPENROUTER_API_KEY=your_openrouter_key
@@ -213,6 +224,11 @@ PERPLEXITY_API_KEY=your_perplexity_key
 - **State of the art**: Grok 4 is the leader in all benchmarks!
 - **Real-time knowledge**: Trained on real-time data
 - **Reasoning**: Strong performance on complex reasoning tasks
+
+### Cohere
+- **State-of-the-Art Performance**: Models like `Command A` (`command-a-03-2025`) excel at complex workflows, including Retrieval-Augmented Generation (RAG), tool use, and multilingual tasks. It is Cohere's most performant model with a 256k context window.
+- **Optimized for Conversation**: Strong instruction-following and conversational capabilities suitable for chat applications.
+- **Flexible and Scalable**: Offers a range of models, from the powerful `Command A` and `Command R+` to the fast and efficient `command-light`.
 
 ## Choosing the Right Provider
 

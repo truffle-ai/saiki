@@ -14,6 +14,7 @@ import { LanguageModelV1 } from 'ai';
 import { SessionEventBus } from '../../../events/index.js';
 import { LLMRouter } from '../types.js';
 import { ContextManager } from '../messages/manager.js';
+import { createCohere } from '@ai-sdk/cohere';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -126,6 +127,8 @@ function _createVercelModel(llmConfig: ValidatedLLMConfig): LanguageModelV1 {
             return createGroq({ apiKey })(model);
         case 'xai':
             return createXai({ apiKey })(model);
+        case 'cohere':
+            return createCohere({ apiKey })(model);
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);
     }
