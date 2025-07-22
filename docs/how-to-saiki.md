@@ -26,6 +26,9 @@ export ANTHROPIC_API_KEY="your_key"
 
 # For Google (e.g., gemini-1.5-pro)
 export GOOGLE_GENERATIVE_AI_API_KEY="your_key"
+
+# For Cohere (e.g., command-r-plus)
+export COHERE_API_KEY="your_key"
 ```
 
 ### Agent Configuration (`agent.yml`)

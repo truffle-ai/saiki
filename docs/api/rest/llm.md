@@ -35,6 +35,12 @@ sidebar_position: 4
       "models": ["gpt-4o", "gpt-4-turbo"],
       "supportedRouters": ["litellm", "vercel"],
       "supportsBaseURL": true
+    },
+    "cohere": {
+      "name": "Cohere",
+      "models": ["command-r-plus", "command-r", "command", "command-light"],
+      "supportedRouters": ["vercel"],
+      "supportsBaseURL": false
     }
   }
 }

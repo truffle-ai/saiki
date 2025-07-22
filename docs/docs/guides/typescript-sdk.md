@@ -296,6 +296,14 @@ const anthropicConfig = {
   maxIterations: 5
 };
 
+// Cohere
+const cohereConfig = {
+  provider: 'cohere',
+  model: 'command-a-03-2025',
+  apiKey: process.env.COHERE_API_KEY,
+  temperature: 0.3
+};
+
 // Local/Custom OpenAI-compatible
 const localConfig = {
   provider: 'openai',

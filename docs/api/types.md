@@ -73,7 +73,7 @@ Configuration for Large Language Model providers.
 
 ```typescript
 interface LLMConfig {
-  provider: 'openai' | 'anthropic' | 'groq' | 'google';
+  provider: 'openai' | 'anthropic' | 'groq' | 'google' | 'cohere';
   model: string;
   apiKey?: string;
   baseURL?: string;

@@ -39,7 +39,7 @@ Complete guide to all LLM configuration options including:
 
 ### [Supported Providers](./providers)
 Detailed guide to all supported LLM providers:
-- **Built-in providers**: OpenAI, Anthropic, Google, Groq
+- **Built-in providers**: OpenAI, Anthropic, Google, Groq, Cohere
 - **Custom providers**: Azure OpenAI, OpenRouter, Together.ai, local models
 - **Setup instructions** for each provider
 - **Supported models** and their capabilities
