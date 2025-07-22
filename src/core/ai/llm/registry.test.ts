@@ -192,7 +192,13 @@ describe('LLM Registry', () => {
     });
 
     describe('Cohere registry entry', () => {
-        const cohereModels = ['command-r-plus', 'command-r', 'command', 'command-light'];
+        const cohereModels = [
+            'command-a-03-2025',
+            'command-r-plus',
+            'command-r',
+            'command',
+            'command-light',
+        ];
 
         it('is registered as a provider', () => {
             expect(getSupportedProviders()).toContain('cohere');
@@ -202,8 +208,8 @@ describe('LLM Registry', () => {
             expect(getSupportedModels('cohere')).toEqual(cohereModels);
         });
 
-        it('returns a default model', () => {
-            expect(getDefaultModelForProvider('cohere')).toBe('command-r-plus');
+        it('returns the correct default model', () => {
+            expect(getDefaultModelForProvider('cohere')).toBe('command-a-03-2025');
         });
 
         it('validates model/provider combos correctly', () => {
@@ -214,6 +220,7 @@ describe('LLM Registry', () => {
         });
 
         it('returns correct maxInputTokens for its models', () => {
+            expect(getMaxInputTokensForModel('cohere', 'command-a-03-2025')).toBe(256000);
             expect(getMaxInputTokensForModel('cohere', 'command-r-plus')).toBe(128000);
             expect(getMaxInputTokensForModel('cohere', 'command-r')).toBe(128000);
             expect(getMaxInputTokensForModel('cohere', 'command')).toBe(4000);
@@ -221,7 +228,7 @@ describe('LLM Registry', () => {
         });
 
         it('returns correct provider for its models', () => {
-            // Note: only tests unique model names
+            expect(getProviderFromModel('command-a-03-2025')).toBe('cohere');
             expect(getProviderFromModel('command-r-plus')).toBe('cohere');
             expect(getProviderFromModel('command-r')).toBe('cohere');
             expect(getProviderFromModel('command')).toBe('cohere');

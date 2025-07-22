@@ -63,11 +63,11 @@ llm:
 ```yaml
 llm:
   provider: cohere
-  model: command-r-plus  # Default
+  model: command-a-03-2025  # Default
   apiKey: $COHERE_API_KEY
 ```
 
-**Supported models**: `command-r-plus`, `command-r`, `command`, `command-light`
+**Supported models**: `command-a-03-2025, command-r-plus`, `command-r`, `command`, `command-light`
 
 
 ## OpenAI-Compatible Providers
@@ -226,9 +226,9 @@ PERPLEXITY_API_KEY=your_perplexity_key
 - **Reasoning**: Strong performance on complex reasoning tasks
 
 ### Cohere
-- **State-of-the-Art Performance**: Models like `Command R+` excel at complex workflows, including Retrieval-Augmented Generation (RAG) and multi-step tool use.
+- **State-of-the-Art Performance**: Models like `Command A` (`command-a-03-2025`) excel at complex workflows, including Retrieval-Augmented Generation (RAG), tool use, and multilingual tasks. It is Cohere's most performant model with a 256k context window.
 - **Optimized for Conversation**: Strong instruction-following and conversational capabilities suitable for chat applications.
-- **Flexible and Scalable**: Offers a range of models, from the powerful `Command R+` to the fast and efficient `command-light`.
+- **Flexible and Scalable**: Offers a range of models, from the powerful `Command A` and `Command R+` to the fast and efficient `command-light`.
 
 ## Choosing the Right Provider
 
