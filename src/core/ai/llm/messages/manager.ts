@@ -368,29 +368,50 @@ export class ContextManager {
         imageData?: ImageData,
         fileData?: FileData
     ): Promise<void> {
-        if (typeof textContent !== 'string' || textContent.trim() === '') {
-            throw new Error('addUserMessage: Content must be a non-empty string.');
+        // Allow empty text if we have image or file data
+        if (
+            typeof textContent !== 'string' ||
+            (textContent.trim() === '' && !imageData && !fileData)
+        ) {
+            throw new Error(
+                'addUserMessage: Content must be a non-empty string or have imageData/fileData.'
+            );
         }
-        const messageParts: InternalMessage['content'] = imageData
-            ? [
-                  { type: 'text', text: textContent },
-                  {
-                      type: 'image',
-                      image: imageData.image,
-                      mimeType: imageData.mimeType || 'image/jpeg',
-                  },
-              ]
-            : fileData
-              ? [
-                    { type: 'text', text: textContent },
-                    {
-                        type: 'file',
-                        data: fileData.data,
-                        mimeType: fileData.mimeType,
-                        ...(fileData.filename && { filename: fileData.filename }),
-                    },
-                ]
-              : [{ type: 'text', text: textContent }];
+
+        // If text is empty but we have attachments, use a placeholder
+        const finalTextContent = textContent.trim() || (imageData || fileData ? '' : textContent);
+
+        // Build message parts array to support multiple attachment types
+        const messageParts: InternalMessage['content'] = [];
+
+        // Add text if present
+        if (finalTextContent) {
+            messageParts.push({ type: 'text' as const, text: finalTextContent });
+        }
+
+        // Add image if present
+        if (imageData) {
+            messageParts.push({
+                type: 'image' as const,
+                image: imageData.image,
+                mimeType: imageData.mimeType || 'image/jpeg',
+            });
+        }
+
+        // Add file if present
+        if (fileData) {
+            messageParts.push({
+                type: 'file' as const,
+                data: fileData.data,
+                mimeType: fileData.mimeType,
+                ...(fileData.filename && { filename: fileData.filename }),
+            });
+        }
+
+        // Fallback to text-only if no parts were added
+        if (messageParts.length === 0) {
+            messageParts.push({ type: 'text' as const, text: finalTextContent });
+        }
         logger.debug(
             `ContextManager: Adding user message: ${JSON.stringify(messageParts, null, 2)}`
         );

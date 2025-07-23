@@ -11,14 +11,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Paperclip, SendHorizontal, X, Loader2, Bot, ChevronDown, AlertCircle, Zap } from 'lucide-react';
+import { Paperclip, SendHorizontal, X, Loader2, Bot, ChevronDown, AlertCircle, Zap, Mic, StopCircle, FileAudio, File } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { useChatContext } from './hooks/ChatContext';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 
 interface InputAreaProps {
-  onSend: (content: string, imageData?: { base64: string; mimeType: string }) => void;
+  onSend: (
+    content: string,
+    imageData?: { base64: string; mimeType: string },
+    fileData?: { base64: string; mimeType: string; filename?: string }
+  ) => void;
   isSending?: boolean;
 }
 
@@ -26,7 +30,14 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [imageData, setImageData] = useState<{ base64: string; mimeType: string } | null>(null);
+  const [fileData, setFileData] = useState<{ base64: string; mimeType: string; filename?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+
+  // Audio recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   
   // Get current session context to ensure model switch applies to the correct session
   const { currentSessionId, isStreaming, setStreaming } = useChatContext();
@@ -90,10 +101,12 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
   const handleSend = () => {
     const trimmed = text.trim();
-    if (!trimmed && !imageData) return;
-    onSend(trimmed, imageData ?? undefined);
+    // Allow sending if we have text OR any attachment
+    if (!trimmed && !imageData && !fileData) return;
+    onSend(trimmed, imageData ?? undefined, fileData ?? undefined);
     setText('');
     setImageData(null);
+    setFileData(null);
     if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
         textareaRef.current.style.overflowY = 'hidden';
@@ -105,6 +118,94 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      console.error('Selected file is not a PDF.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      try {
+        const result = reader.result as string;
+        const commaIndex = result.indexOf(',');
+        const base64 = result.substring(commaIndex + 1);
+        setFileData({ base64, mimeType: 'application/pdf', filename: file.name });
+      } catch (error) {
+        console.error('Error processing PDF:', error);
+        setFileData(null);
+      }
+    };
+    reader.onerror = (error) => {
+      console.error('FileReader error:', error);
+      setFileData(null);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // Audio Recording Handlers
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      const chunks: BlobPart[] = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mediaRecorder.mimeType });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          try {
+            const result = reader.result as string;
+            const commaIndex = result.indexOf(',');
+            const base64 = result.substring(commaIndex + 1);
+            // Normalize MIME type to supported format
+            const rawType = mediaRecorder.mimeType || 'audio/webm';
+            const normalizedMime =
+              rawType === 'audio/mp3' || rawType === 'audio/mpeg'
+                ? 'audio/mp3'
+                : rawType === 'audio/wav' || rawType === 'audio/x-wav'
+                ? 'audio/wav'
+                : 'audio/wav'; // default to wav when unsupported (e.g., webm)
+
+            const ext = normalizedMime.split('/')[1];
+
+            setFileData({
+              base64,
+              mimeType: normalizedMime,
+              filename: `recording.${ext}`,
+            });
+          } catch (error) {
+            console.error('Error processing audio recording:', error);
+            setFileData(null);
+          }
+        };
+        reader.readAsDataURL(blob);
+
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting audio recording:', error);
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,6 +249,8 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const removeImage = () => setImageData(null);
 
   const triggerFileInput = () => fileInputRef.current?.click();
+  const triggerPdfInput = () => pdfInputRef.current?.click();
+  const triggerAudioInput = () => audioInputRef.current?.click();
 
   const handleModelSwitch = async (model: { name: string; provider: string; model: string }) => {
     setIsLoadingModel(true);
@@ -217,7 +320,45 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     }
   }, [text, modelSwitchError]);
 
-  const showClearButton = text.length > 0 || !!imageData;
+  const showClearButton = text.length > 0 || !!imageData || !!fileData;
+
+  const normalizeAudioMime = (type: string): string => {
+    if (type === 'audio/mpeg' || type === 'audio/mp3') return 'audio/mp3';
+    if (type === 'audio/wav' || type === 'audio/x-wav' || type === 'audio/wave') return 'audio/wav';
+    // Treat webm or ogg as wav for model compatibility
+    if (type === 'audio/webm' || type === 'audio/ogg') return 'audio/wav';
+    return type;
+  };
+
+  const handleAudioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('audio/')) {
+      console.error('Selected file is not an audio file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      try {
+        const result = reader.result as string;
+        const commaIndex = result.indexOf(',');
+        const base64 = result.substring(commaIndex + 1);
+        const normalizedMime = normalizeAudioMime(file.type);
+        setFileData({ base64, mimeType: normalizedMime, filename: file.name });
+      } catch (error) {
+        console.error('Error processing audio file:', error);
+        setFileData(null);
+      }
+    };
+    reader.onerror = (error) => {
+      console.error('FileReader error:', error);
+      setFileData(null);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   return (
     <div
@@ -243,15 +384,43 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
       )}
 
       <div className="flex items-end gap-2 w-full">
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={triggerFileInput} 
+        {/* File Upload Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-shrink-0 text-muted-foreground hover:text-primary rounded-full p-2"
+              aria-label="Attach File"
+            >
+              <Paperclip className="h-8 w-8" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start">
+            <DropdownMenuItem onClick={triggerFileInput}>
+              <Paperclip className="h-4 w-4 mr-2" /> Image
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={triggerPdfInput}>
+              <File className="h-4 w-4 mr-2" /> PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={triggerAudioInput}>
+              <FileAudio className="h-4 w-4 mr-2" /> Audio file
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Record Audio Button */}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={isRecording ? stopRecording : startRecording}
           className="flex-shrink-0 text-muted-foreground hover:text-primary rounded-full p-2"
-          aria-label="Attach image"
+          aria-label={isRecording ? 'Stop recording' : 'Record audio'}
         >
-          <Paperclip className="h-8 w-8" />
+          {isRecording ? <StopCircle className="h-8 w-8 text-red-500" /> : <Mic className="h-8 w-8" />}
         </Button>
+
+        {/* Hidden Inputs */}
         <input
           ref={fileInputRef}
           type="file"
@@ -260,7 +429,23 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
           className="hidden"
           onChange={handleImageChange}
         />
-
+        <input
+          ref={pdfInputRef}
+          type="file"
+          id="pdf-upload"
+          accept="application/pdf"
+          className="hidden"
+          onChange={handlePdfChange}
+        />
+        <input
+          ref={audioInputRef}
+          type="file"
+          id="audio-upload"
+          accept="audio/*"
+          className="hidden"
+          onChange={handleAudioFileChange}
+        />
+ 
         <div className="flex-1 flex flex-col w-full">
           {imageData && (
             <div className="relative mb-1.5 w-fit border border-border rounded-lg p-1 bg-muted/50 group">
@@ -275,6 +460,31 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
                 onClick={removeImage}
                 className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-md"
                 aria-label="Remove image"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+          {/* PDF / Audio preview */}
+          {fileData && (
+            <div className="relative mb-1.5 w-fit border border-border rounded-lg p-2 bg-muted/50 group flex items-center gap-2">
+              {fileData.mimeType.startsWith('audio') ? (
+                <>
+                  <FileAudio className="h-6 w-6" />
+                  <audio controls src={`data:${fileData.mimeType};base64,${fileData.base64}`} className="h-10" />
+                </>
+              ) : (
+                <>
+                  <File className="h-6 w-6" />
+                  <span className="text-sm font-medium max-w-[120px] truncate">{fileData.filename || 'attachment'}</span>
+                </>
+              )}
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={() => setFileData(null)}
+                className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-md"
+                aria-label="Remove attachment"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -360,7 +570,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
           type="submit" 
           size="icon" 
           onClick={handleSend} 
-          disabled={!text.trim() && !imageData} 
+          disabled={!text.trim() && !imageData && !fileData} 
           className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-2 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-70"
           aria-label="Send message"
         >
@@ -374,6 +584,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
             onClick={() => { 
               setText(''); 
               setImageData(null); 
+              setFileData(null);
               if (textareaRef.current) {
                 textareaRef.current.style.height = 'auto';
                 textareaRef.current.style.overflowY = 'hidden';

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from "@/lib/utils";
 import { Message, TextPart, ImagePart } from './hooks/useChat';
-import { User, Bot, ChevronsRight, ChevronUp, Loader2, CheckCircle, ChevronRight, Wrench, AlertTriangle, Image as ImageIcon, Info } from 'lucide-react';
+import { User, Bot, ChevronsRight, ChevronUp, Loader2, CheckCircle, ChevronRight, Wrench, AlertTriangle, Image as ImageIcon, Info, File, FileAudio } from 'lucide-react';
 
 interface MessageListProps {
   messages: Message[];
@@ -197,6 +197,40 @@ export default function MessageList({ messages }: MessageListProps) {
                             />
                           );
                         }
+                        if ((part as any).type === 'file' && 'data' in part && 'mimeType' in part) {
+                          const filePart = part as any;
+                          if (filePart.mimeType.startsWith('audio/')) {
+                            const src = `data:${filePart.mimeType};base64,${filePart.data}`;
+                            return (
+                              <div key={partKey} className="my-2 flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/50">
+                                <FileAudio className="h-5 w-5 text-muted-foreground" />
+                                <audio 
+                                  controls 
+                                  src={src} 
+                                  className="flex-1 h-8"
+                                />
+                                {filePart.filename && (
+                                  <span className="text-sm text-muted-foreground truncate max-w-[120px]">
+                                    {filePart.filename}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          } else {
+                            // Non-audio files (PDFs, etc.)
+                            return (
+                              <div key={partKey} className="my-2 flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/50">
+                                <File className="h-5 w-5 text-muted-foreground" />
+                                <span className="text-sm font-medium">
+                                  {filePart.filename || `${filePart.mimeType} file`}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {filePart.mimeType}
+                                </span>
+                              </div>
+                            );
+                          }
+                        }
                         return null;
                       })}
                       {isSystem && !msg.content && (
@@ -204,6 +238,7 @@ export default function MessageList({ messages }: MessageListProps) {
                       )}
                     </>
                   )}
+                  {/* Display imageData attachments if not already in content array */}
                   {msg.imageData && !Array.isArray(msg.content) && (
                     (() => {
                       const src = `data:${msg.imageData.mimeType};base64,${msg.imageData.base64}`;
@@ -219,6 +254,36 @@ export default function MessageList({ messages }: MessageListProps) {
                       );
                     })()
                   )}
+                  {/* Display fileData attachments if not already in content array */}
+                  {msg.fileData && !Array.isArray(msg.content) && (
+                    <div className="mt-2">
+                      {msg.fileData.mimeType.startsWith('audio/') ? (
+                         <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/50">
+                           <FileAudio className="h-5 w-5 text-muted-foreground" />
+                           <audio 
+                             controls 
+                             src={`data:${msg.fileData.mimeType};base64,${msg.fileData.base64}`} 
+                             className="flex-1 h-8"
+                           />
+                           {msg.fileData.filename && (
+                             <span className="text-sm text-muted-foreground truncate max-w-[120px]">
+                               {msg.fileData.filename}
+                             </span>
+                           )}
+                         </div>
+                       ) : (
+                         <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/50">
+                           <File className="h-5 w-5 text-muted-foreground" />
+                           <span className="text-sm font-medium">
+                             {msg.fileData.filename || `${msg.fileData.mimeType} file`}
+                           </span>
+                           <span className="text-xs text-muted-foreground">
+                             {msg.fileData.mimeType}
+                           </span>
+                         </div>
+                       )}
+                     </div>
+                   )}
                 </div>
               </div>
               {!isSystem && !isToolRelated && (

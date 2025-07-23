@@ -300,7 +300,10 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     // Route confirmation back via AgentEventBus and do not broadcast an error
                     agent.agentEventBus.emit('saiki:toolConfirmationResponse', data.data);
                     return;
-                } else if (data.type === 'message' && data.content) {
+                } else if (
+                    data.type === 'message' &&
+                    (data.content || data.imageData || data.fileData)
+                ) {
                     logger.info(
                         `Processing message from WebSocket: ${data.content.substring(0, 50)}...`
                     );
