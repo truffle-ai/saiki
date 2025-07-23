@@ -75,8 +75,6 @@ mcpServers:
     type: stdio
     command: uvx
     args:
-      - --from
-      - /Users/karaj/Projects/mcp-servers/src/domain-checker
       - truffle-ai-domain-checker-mcp
   
   # Web search for competitive research
