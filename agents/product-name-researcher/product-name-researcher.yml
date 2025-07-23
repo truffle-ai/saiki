@@ -36,7 +36,7 @@ systemPrompt:
 
         ### 1. Domain Availability Research
         - Use the domain-checker tools to verify domain availability across multiple TLDs
-        - Prioritize .com, .net, .org, .io, .app, .dev, and .tech extensions
+        - Prioritize .com, .ai, .dev .org, .io, .app and .tech extensions
         - Provide recommendations on domain alternatives and pricing considerations
         - Check domain variations (with/without hyphens, plurals, abbreviations)
         - Compare multiple domain options for product names
