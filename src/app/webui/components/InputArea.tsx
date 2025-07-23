@@ -46,6 +46,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const [currentModel, setCurrentModel] = useState('Loading...');
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [modelSwitchError, setModelSwitchError] = useState<string | null>(null);
+  const [fileUploadError, setFileUploadError] = useState<string | null>(null);
   
   // TODO: Populate using LLM_REGISTRY by exposing an API endpoint
   const coreModels = [
@@ -54,6 +55,15 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     { name: 'GPT-4.1 Mini', provider: 'openai', model: 'gpt-4.1-mini' },
     { name: 'Gemini 2.5 Pro', provider: 'google', model: 'gemini-2.5-pro' },
   ];
+
+  // File size limit (50MB)
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
+
+  const showUserError = (message: string) => {
+    setFileUploadError(message);
+    // Auto-clear error after 5 seconds
+    setTimeout(() => setFileUploadError(null), 5000);
+  };
 
   // Fetch current LLM configuration
   useEffect(() => {
@@ -124,8 +134,16 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      showUserError('PDF file too large. Maximum size is 50MB.');
+      e.target.value = '';
+      return;
+    }
+
     if (file.type !== 'application/pdf') {
-      console.error('Selected file is not a PDF.');
+      showUserError('Please select a valid PDF file.');
+      e.target.value = '';
       return;
     }
 
@@ -136,13 +154,14 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         const commaIndex = result.indexOf(',');
         const base64 = result.substring(commaIndex + 1);
         setFileData({ base64, mimeType: 'application/pdf', filename: file.name });
+        setFileUploadError(null); // Clear any previous errors
       } catch (error) {
-        console.error('Error processing PDF:', error);
+        showUserError('Failed to process PDF file. Please try again.');
         setFileData(null);
       }
     };
     reader.onerror = (error) => {
-      console.error('FileReader error:', error);
+      showUserError('Failed to read PDF file. Please try again.');
       setFileData(null);
     };
     reader.readAsDataURL(file);
@@ -193,7 +212,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
               filename: `recording.${ext}`,
             });
           } catch (error) {
-            console.error('Error processing audio recording:', error);
+            showUserError('Failed to process audio recording. Please try again.');
             setFileData(null);
           }
         };
@@ -206,7 +225,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
       mediaRecorder.start();
       setIsRecording(true);
     } catch (error) {
-      console.error('Error starting audio recording:', error);
+      showUserError('Failed to start audio recording. Please check microphone permissions.');
     }
   };
 
@@ -219,8 +238,16 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      showUserError('Image file too large. Maximum size is 50MB.');
+      e.target.value = '';
+      return;
+    }
+
     if (!file.type.startsWith('image/')) {
-      console.error("Selected file is not an image.");
+      showUserError('Please select a valid image file.');
+      e.target.value = '';
       return;
     }
 
@@ -240,13 +267,14 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         if (!mimeType) throw new Error("Could not determine MIME type");
 
         setImageData({ base64, mimeType });
+        setFileUploadError(null); // Clear any previous errors
       } catch (error) {
-          console.error("Error processing image:", error);
+          showUserError('Failed to process image file. Please try again.');
           setImageData(null);
       }
     };
     reader.onerror = (error) => {
-        console.error("FileReader error:", error);
+        showUserError('Failed to read image file. Please try again.');
         setImageData(null);
     };
     reader.readAsDataURL(file);
@@ -325,6 +353,9 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     if (text && modelSwitchError) {
       setModelSwitchError(null);
     }
+    if (text && fileUploadError) {
+      setFileUploadError(null);
+    }
   }, [text, modelSwitchError]);
 
   const showClearButton = text.length > 0 || !!imageData || !!fileData;
@@ -333,8 +364,16 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      showUserError('Audio file too large. Maximum size is 50MB.');
+      e.target.value = '';
+      return;
+    }
+
     if (!file.type.startsWith('audio/')) {
-      console.error('Selected file is not an audio file.');
+      showUserError('Please select a valid audio file.');
+      e.target.value = '';
       return;
     }
 
@@ -346,13 +385,14 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         const base64 = result.substring(commaIndex + 1);
         // Preserve original MIME type from file
         setFileData({ base64, mimeType: file.type, filename: file.name });
+        setFileUploadError(null); // Clear any previous errors
       } catch (error) {
-        console.error('Error processing audio file:', error);
+        showUserError('Failed to process audio file. Please try again.');
         setFileData(null);
       }
     };
     reader.onerror = (error) => {
-      console.error('FileReader error:', error);
+      showUserError('Failed to read audio file. Please try again.');
       setFileData(null);
     };
     reader.readAsDataURL(file);
@@ -374,6 +414,24 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
               variant="ghost"
               size="sm"
               onClick={() => setModelSwitchError(null)}
+              className="h-auto p-1 ml-2"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* File Upload Error Alert */}
+      {fileUploadError && (
+        <Alert variant="destructive" className="mb-2">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{fileUploadError}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFileUploadError(null)}
               className="h-auto p-1 ml-2"
             >
               <X className="h-3 w-3" />
