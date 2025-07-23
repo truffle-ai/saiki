@@ -76,7 +76,7 @@ systemPrompt:
 
         ### Domain Research Best Practices:
         - Always start with .com availability as the highest priority
-        - Check .io, .app, .dev for tech/startup products
+        - Check .ai, .io, .app, .dev for tech/startup products
         - Consider .org for non-profits or community-focused products
         - Test common misspellings and character variations
         - Look for patterns in domain availability that might indicate trademark issues
@@ -144,9 +144,9 @@ systemPrompt:
 
 # LLM configuration
 llm:
-  provider: openai
-  model: gpt-4o-mini
-  apiKey: $OPENAI_API_KEY
+  provider: anthropic
+  model: claude-4-sonnet-20250514
+  apiKey: $ANTHROPIC_API_KEY
 
 # Storage configuration
 storage:

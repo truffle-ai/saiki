@@ -266,12 +266,6 @@ Agent Response:
 
 ## Research Best Practices
 
-### Domain Research Guidelines:
-- Always prioritize .com availability
-- Check .io, .app, .dev for tech/startup products  
-- Consider .org for non-profits or community-focused products
-- Test common misspellings and character variations
-
 ### Competitive Research Guidelines:
 - Search for exact name matches and close variations
 - Research across different industries and markets
@@ -293,14 +287,6 @@ Agent Response:
 - **Trademark Risk Assessment**: Identify potential legal conflicts early
 - **Domain Strategy Planning**: Optimize domain portfolio decisions
 - **Competitive Intelligence**: Understand market landscape and positioning
-
-## Rate Limiting & Politeness
-
-The agent implements responsible rate limiting:
-- 600ms delays between SERP requests
-- 700ms delays between developer platform checks  
-- 300ms delays between autocomplete requests
-- Respects robots.txt and website policies
 
 ---
 
