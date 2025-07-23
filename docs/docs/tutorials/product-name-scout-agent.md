@@ -6,23 +6,36 @@ sidebar_position: 8
 
 Learn how to build an AI agent that provides comprehensive product name research and brand validation capabilities. This tutorial shows how to create an agent that can analyze potential product names through search engine analysis, developer platform collision detection, and automated scoring algorithms.
 
+## 🎥 Demo Video
+
+Watch the Product Name Scout Agent in action:
+
+<iframe
+  width="100%"
+  height="400"
+  src="https://www.youtube.com/embed/oReKtfZuHYY"
+  title="Product Name Scout Agent Demo"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+  allowfullscreen="true"
+></iframe>
+
 ## What You'll Build
 
 A product name research agent that can:
+- Check for domain availability (.com, .ai, .dev, .io, etc.) for your product name
 - Analyze search engine results for brand competition across Google, DuckDuckGo, and Brave
 - Check autocomplete suggestions to identify spelling and recognition issues
 - Detect conflicts on developer platforms (GitHub, npm, PyPI)
-- Provide comprehensive scoring based on multiple brand viability factors
-- Verify domain availability across multiple TLD extensions
 - Conduct competitive research and trademark conflict assessment
+- Provide a final 1-100 scoring based on all of these factors
 
 ## Understanding the Architecture
 
 The product name scout agent follows Saiki's framework design with clear separation of responsibilities:
 
-1. **MCP Servers**: Multiple specialized servers for different aspects of name research
+1. **MCP Servers with tools**: Multiple specialized servers for different aspects of name research. These handle specific research tasks (SERP analysis, domain checking, etc.)
 2. **Agent**: Orchestrates complex research workflows and synthesizes findings
-3. **Tools**: Handle specific research tasks (SERP analysis, domain checking, etc.)
 
 This architecture allows the agent to conduct thorough research while maintaining clear, actionable insights.
 
@@ -92,9 +105,9 @@ mcpServers:
       - "@truffle-ai/product-name-scout-mcp"
 
 llm:
-  provider: openai
-  model: gpt-4o-mini
-  apiKey: $OPENAI_API_KEY
+  provider: anthropic
+  model: claude-4-sonnet-20250514
+  apiKey: $ANTHROPIC_API_KEY
 
 toolConfirmation:
   mode: auto-approve
