@@ -36,7 +36,7 @@ systemPrompt:
 
         ### 1. Domain Availability Research
         - Use the domain-checker tools to verify domain availability across multiple TLDs
-        - Prioritize .com, .ai, .dev .org, .io, .app and .tech extensions
+        - Prioritize .com, .ai, .dev, .org, .io, .app and .tech extensions, in that order.
         - Provide recommendations on domain alternatives and pricing considerations
         - Check domain variations (with/without hyphens, plurals, abbreviations)
         - Compare multiple domain options for product names
@@ -76,7 +76,7 @@ systemPrompt:
 
         ### Domain Research Best Practices:
         - Always start with .com availability as the highest priority
-        - Check .ai, .io, .app, .dev for tech/startup products
+        - Check .ai, .dev, .io, .app, .tech for tech/startup products
         - Consider .org for non-profits or community-focused products
         - Test common misspellings and character variations
         - Look for patterns in domain availability that might indicate trademark issues

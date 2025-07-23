@@ -22,7 +22,7 @@ Ensure you have the domain checker MCP server available:
 
 ```bash
 # Install the domain checker MCP server
-uvx --from git+https://github.com/truffle-ai/mcp-servers --subdirectory src/domain-checker truffle-domain-checker-mcp
+uvx truffle-ai-domain-checker-mcp
 ```
 
 ## Usage
@@ -31,7 +31,7 @@ uvx --from git+https://github.com/truffle-ai/mcp-servers --subdirectory src/doma
 
 ```bash
 # From the saiki root directory
-saiki run agents/product-name-researcher/product-name-researcher.yml
+saiki -a agents/product-name-researcher/product-name-researcher.yml
 ```
 
 ### Example Interactions
@@ -58,8 +58,8 @@ Agent: [Uses domain checker to verify availability across .com, .net, .org, .io,
 
 The agent uses:
 - **Domain Checker MCP Server**: For domain availability checking
-- **Puppeteer MCP Server**: For web scraping trademark databases and social media
-- **Filesystem MCP Server**: For saving research reports
+- **DuckDuckGo MCP Server**: For web search and competitive research
+- **Product Name Scout MCP Server**: For SERP analysis, autocomplete, and developer collision detection
 
 ## Research Report
 
@@ -75,9 +75,10 @@ The agent generates comprehensive reports including:
    - Risk assessment
    - Recommendations for trademark clearance
 
-3. **Social Media Handle Availability**
-   - Major platform availability (Twitter, Instagram, Facebook, LinkedIn)
-   - Username alternatives if primary unavailable
+3. **Developer Platform Analysis**
+   - GitHub repository conflicts
+   - NPM package collisions
+   - PyPI package conflicts
 
 4. **Competitive Landscape**
    - Existing products with similar names
@@ -93,5 +94,5 @@ The agent generates comprehensive reports including:
 
 - **Be specific about your product**: Include the product category and target market
 - **Provide alternatives**: Give multiple name options for comparison
-- **Consider your priorities**: Mention if domain availability, trademark clearance, or social media presence is most important
+- **Consider your priorities**: Mention if domain availability, trademark clearance, or developer platform conflicts are most important
 - **Think internationally**: Consider how the name works in different languages and markets
