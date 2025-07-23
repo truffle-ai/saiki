@@ -169,20 +169,27 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
             const result = reader.result as string;
             const commaIndex = result.indexOf(',');
             const base64 = result.substring(commaIndex + 1);
-            // Normalize MIME type to supported format
-            const rawType = mediaRecorder.mimeType || 'audio/webm';
-            const normalizedMime =
-              rawType === 'audio/mp3' || rawType === 'audio/mpeg'
-                ? 'audio/mp3'
-                : rawType === 'audio/wav' || rawType === 'audio/x-wav'
-                ? 'audio/wav'
-                : 'audio/wav'; // default to wav when unsupported (e.g., webm)
-
-            const ext = normalizedMime.split('/')[1];
+            // Preserve original MIME type and determine appropriate extension
+            const mimeType = mediaRecorder.mimeType || 'audio/webm';
+            const getExtensionFromMime = (mime: string): string => {
+              const mimeToExt: Record<string, string> = {
+                'audio/mp3': 'mp3',
+                'audio/mpeg': 'mp3', 
+                'audio/wav': 'wav',
+                'audio/x-wav': 'wav',
+                'audio/wave': 'wav',
+                'audio/webm': 'webm',
+                'audio/ogg': 'ogg',
+                'audio/m4a': 'm4a',
+                'audio/aac': 'aac'
+              };
+              return mimeToExt[mime] || mime.split('/')[1] || 'webm';
+            };
+            const ext = getExtensionFromMime(mimeType);
 
             setFileData({
               base64,
-              mimeType: normalizedMime,
+              mimeType: mimeType,
               filename: `recording.${ext}`,
             });
           } catch (error) {
@@ -322,14 +329,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
   const showClearButton = text.length > 0 || !!imageData || !!fileData;
 
-  const normalizeAudioMime = (type: string): string => {
-    if (type === 'audio/mpeg' || type === 'audio/mp3') return 'audio/mp3';
-    if (type === 'audio/wav' || type === 'audio/x-wav' || type === 'audio/wave') return 'audio/wav';
-    // Treat webm or ogg as wav for model compatibility
-    if (type === 'audio/webm' || type === 'audio/ogg') return 'audio/wav';
-    return type;
-  };
-
   const handleAudioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -345,8 +344,8 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         const result = reader.result as string;
         const commaIndex = result.indexOf(',');
         const base64 = result.substring(commaIndex + 1);
-        const normalizedMime = normalizeAudioMime(file.type);
-        setFileData({ base64, mimeType: normalizedMime, filename: file.name });
+        // Preserve original MIME type from file
+        setFileData({ base64, mimeType: file.type, filename: file.name });
       } catch (error) {
         console.error('Error processing audio file:', error);
         setFileData(null);

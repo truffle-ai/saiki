@@ -87,13 +87,46 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const imageDataInput = req.body.imageData
                 ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
                 : undefined;
-            const fileDataInput = req.body.fileData
-                ? {
-                      data: req.body.fileData.base64,
-                      mimeType: req.body.fileData.mimeType,
-                      filename: req.body.fileData.filename,
-                  }
-                : undefined;
+
+            // Validate and process file data with security checks
+            let fileDataInput;
+            if (req.body.fileData) {
+                const { base64, mimeType, filename } = req.body.fileData;
+
+                // Security validation: file size check (max 50MB for base64)
+                if (typeof base64 === 'string' && base64.length > 67108864) {
+                    // ~50MB in base64
+                    return res.status(400).send({ error: 'File size too large (max 50MB)' });
+                }
+
+                // Security validation: MIME type allowlist
+                const allowedMimeTypes = [
+                    'application/pdf',
+                    'audio/mp3',
+                    'audio/mpeg',
+                    'audio/wav',
+                    'audio/x-wav',
+                    'audio/wave',
+                    'audio/webm',
+                    'audio/ogg',
+                    'audio/m4a',
+                    'audio/aac',
+                ];
+                if (!allowedMimeTypes.includes(mimeType)) {
+                    return res.status(400).send({ error: 'Unsupported file type' });
+                }
+
+                // Security validation: base64 format check
+                if (typeof base64 === 'string') {
+                    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+                    if (!base64Regex.test(base64)) {
+                        return res.status(400).send({ error: 'Invalid file data format' });
+                    }
+                }
+
+                fileDataInput = { data: base64, mimeType, filename };
+            }
+
             await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);
             return res.status(202).send({ status: 'processing', sessionId });
         } catch (error) {
@@ -113,13 +146,46 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         const imageDataInput = req.body.imageData
             ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
             : undefined;
-        const fileDataInput = req.body.fileData
-            ? {
-                  data: req.body.fileData.base64,
-                  mimeType: req.body.fileData.mimeType,
-                  filename: req.body.fileData.filename,
-              }
-            : undefined;
+
+        // Validate and process file data with security checks
+        let fileDataInput;
+        if (req.body.fileData) {
+            const { base64, mimeType, filename } = req.body.fileData;
+
+            // Security validation: file size check (max 50MB for base64)
+            if (typeof base64 === 'string' && base64.length > 67108864) {
+                // ~50MB in base64
+                return res.status(400).send({ error: 'File size too large (max 50MB)' });
+            }
+
+            // Security validation: MIME type allowlist
+            const allowedMimeTypes = [
+                'application/pdf',
+                'audio/mp3',
+                'audio/mpeg',
+                'audio/wav',
+                'audio/x-wav',
+                'audio/wave',
+                'audio/webm',
+                'audio/ogg',
+                'audio/m4a',
+                'audio/aac',
+            ];
+            if (!allowedMimeTypes.includes(mimeType)) {
+                return res.status(400).send({ error: 'Unsupported file type' });
+            }
+
+            // Security validation: base64 format check
+            if (typeof base64 === 'string') {
+                const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+                if (!base64Regex.test(base64)) {
+                    return res.status(400).send({ error: 'Invalid file data format' });
+                }
+            }
+
+            fileDataInput = { data: base64, mimeType, filename };
+        }
+
         try {
             const sessionId = req.body.sessionId as string | undefined;
             const stream = req.body.stream === true; // Extract stream preference, default to false
@@ -310,13 +376,64 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     const imageDataInput = data.imageData
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
-                    const fileDataInput = data.fileData
-                        ? {
-                              data: data.fileData.base64,
-                              mimeType: data.fileData.mimeType,
-                              filename: data.fileData.filename,
-                          }
-                        : undefined;
+
+                    // Validate and process file data with security checks
+                    let fileDataInput;
+                    if (data.fileData) {
+                        const { base64, mimeType, filename } = data.fileData;
+
+                        // Security validation: file size check (max 50MB for base64)
+                        if (typeof base64 === 'string' && base64.length > 67108864) {
+                            // ~50MB in base64
+                            ws.send(
+                                JSON.stringify({
+                                    event: 'error',
+                                    data: { message: 'File size too large (max 50MB)' },
+                                })
+                            );
+                            return;
+                        }
+
+                        // Security validation: MIME type allowlist
+                        const allowedMimeTypes = [
+                            'application/pdf',
+                            'audio/mp3',
+                            'audio/mpeg',
+                            'audio/wav',
+                            'audio/x-wav',
+                            'audio/wave',
+                            'audio/webm',
+                            'audio/ogg',
+                            'audio/m4a',
+                            'audio/aac',
+                        ];
+                        if (!allowedMimeTypes.includes(mimeType)) {
+                            ws.send(
+                                JSON.stringify({
+                                    event: 'error',
+                                    data: { message: 'Unsupported file type' },
+                                })
+                            );
+                            return;
+                        }
+
+                        // Security validation: base64 format check
+                        if (typeof base64 === 'string') {
+                            const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+                            if (!base64Regex.test(base64)) {
+                                ws.send(
+                                    JSON.stringify({
+                                        event: 'error',
+                                        data: { message: 'Invalid file data format' },
+                                    })
+                                );
+                                return;
+                            }
+                        }
+
+                        fileDataInput = { data: base64, mimeType, filename };
+                    }
+
                     const sessionId = data.sessionId as string | undefined;
                     const stream = data.stream === true; // Extract stream preference, default to false
                     if (imageDataInput) logger.info('Image data included in message.');
@@ -914,42 +1031,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Error testing webhook ${req.params.webhookId}: ${errorMessage}`);
             return res.status(500).json({ error: 'Failed to test webhook' });
-        }
-    });
-
-    // File upload endpoint for handling file data
-    app.post('/api/upload-file', express.json(), async (req, res) => {
-        logger.info('Received file upload via POST /api/upload-file');
-        if (!req.body || !req.body.fileData || !req.body.mimeType) {
-            return res.status(400).send({ error: 'Missing file data or MIME type' });
-        }
-
-        try {
-            const { fileData, mimeType, filename } = req.body;
-
-            // Validate that fileData is a base64 string
-            if (typeof fileData !== 'string') {
-                return res.status(400).send({ error: 'File data must be a base64 string' });
-            }
-
-            // Validate MIME type
-            if (typeof mimeType !== 'string' || mimeType.trim() === '') {
-                return res.status(400).send({ error: 'Valid MIME type is required' });
-            }
-
-            // Return the processed file data
-            return res.status(200).send({
-                success: true,
-                fileData: {
-                    base64: fileData,
-                    mimeType: mimeType,
-                    filename: filename || 'uploaded-file',
-                },
-            });
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error(`Error handling file upload: ${errorMessage}`);
-            return res.status(500).send({ error: 'Internal server error' });
         }
     });
 
