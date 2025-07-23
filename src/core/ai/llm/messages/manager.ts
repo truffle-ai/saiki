@@ -1,5 +1,5 @@
 import { IMessageFormatter } from './formatters/types.js';
-import { InternalMessage, ImageData } from './types.js';
+import { InternalMessage, ImageData, FileData } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
@@ -355,12 +355,19 @@ export class ContextManager {
     }
 
     /**
-     * Convenience method to add a user message to the conversation
+     * Adds a user message to the conversation
+     * Can include image data for multimodal input
      *
-     * @param content The user message content
+     * @param textContent The user message content
+     * @param imageData Optional image data for multimodal input
+     * @param fileData Optional file data for file input
      * @throws Error if content is empty or not a string
      */
-    async addUserMessage(textContent: string, imageData?: ImageData): Promise<void> {
+    async addUserMessage(
+        textContent: string,
+        imageData?: ImageData,
+        fileData?: FileData
+    ): Promise<void> {
         if (typeof textContent !== 'string' || textContent.trim() === '') {
             throw new Error('addUserMessage: Content must be a non-empty string.');
         }
@@ -373,7 +380,17 @@ export class ContextManager {
                       mimeType: imageData.mimeType || 'image/jpeg',
                   },
               ]
-            : [{ type: 'text', text: textContent }];
+            : fileData
+              ? [
+                    { type: 'text', text: textContent },
+                    {
+                        type: 'file',
+                        data: fileData.data,
+                        mimeType: fileData.mimeType,
+                        ...(fileData.filename && { filename: fileData.filename }),
+                    },
+                ]
+              : [{ type: 'text', text: textContent }];
         logger.debug(
             `ContextManager: Adding user message: ${JSON.stringify(messageParts, null, 2)}`
         );

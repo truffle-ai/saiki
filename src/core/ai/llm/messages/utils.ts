@@ -11,7 +11,7 @@ const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
  *
  * NOTE: This function counts tokens on the raw InternalMessage history and has limitations:
  * 1. It does not account for provider-specific formatting (uses raw content).
- * 2. It ignores the token cost of images in multimodal messages (counts text only).
+ * 2. It ignores the token cost of images and files in multimodal messages (counts text only).
  * 3. The overhead is a fixed approximation.
  * For more accurate counting reflecting the final provider payload, use ContextManager.countTotalTokens().
  *
@@ -35,7 +35,7 @@ export function countMessagesTokens(
                     // Count string content directly
                     total += tokenizer.countTokens(message.content);
                 } else if (Array.isArray(message.content)) {
-                    // For multimodal array content, count text and approximate image parts
+                    // For multimodal array content, count text and approximate image/file parts
                     message.content.forEach((part) => {
                         if (part.type === 'text' && typeof part.text === 'string') {
                             total += tokenizer.countTokens(part.text);
@@ -54,6 +54,23 @@ export function countMessagesTokens(
                                     part.image instanceof ArrayBuffer
                                         ? part.image.byteLength
                                         : (part.image as Uint8Array).length;
+                                total += Math.ceil(bytes / 1024);
+                            }
+                        } else if (part.type === 'file') {
+                            // Approximate tokens for files: estimate ~1 token per 1KB or based on Base64 length
+                            if (typeof part.data === 'string') {
+                                // Base64 string length -> bytes -> tokens (~4 bytes per token)
+                                const byteLength = Math.floor((part.data.length * 3) / 4);
+                                total += Math.ceil(byteLength / 1024);
+                            } else if (
+                                part.data instanceof Uint8Array ||
+                                part.data instanceof Buffer ||
+                                part.data instanceof ArrayBuffer
+                            ) {
+                                const bytes =
+                                    part.data instanceof ArrayBuffer
+                                        ? part.data.byteLength
+                                        : (part.data as Uint8Array).length;
                                 total += Math.ceil(bytes / 1024);
                             }
                         }
@@ -106,5 +123,29 @@ export function getImageData(imagePart: {
         return image.toString();
     }
     console.warn('Unexpected image data type in getImageData:', typeof image);
+    return '';
+}
+
+/**
+ * Extracts file data (base64 or URL) from a FilePart or raw buffer.
+ * @param filePart The file part containing file data
+ * @returns Base64-encoded string or URL string
+ */
+export function getFileData(filePart: {
+    data: string | Uint8Array | Buffer | ArrayBuffer | URL;
+}): string {
+    const { data } = filePart;
+    if (typeof data === 'string') {
+        return data;
+    } else if (data instanceof Buffer) {
+        return data.toString('base64');
+    } else if (data instanceof Uint8Array) {
+        return Buffer.from(data).toString('base64');
+    } else if (data instanceof ArrayBuffer) {
+        return Buffer.from(new Uint8Array(data)).toString('base64');
+    } else if (data instanceof URL) {
+        return data.toString();
+    }
+    console.warn('Unexpected file data type in getFileData:', typeof data);
     return '';
 }

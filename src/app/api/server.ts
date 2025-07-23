@@ -84,7 +84,17 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             const sessionId = req.body.sessionId as string | undefined;
             const stream = req.body.stream === true; // Extract stream preference, default to false
-            await agent.run(req.body.message, undefined, sessionId, stream);
+            const imageDataInput = req.body.imageData
+                ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
+                : undefined;
+            const fileDataInput = req.body.fileData
+                ? {
+                      data: req.body.fileData.base64,
+                      mimeType: req.body.fileData.mimeType,
+                      filename: req.body.fileData.filename,
+                  }
+                : undefined;
+            await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);
             return res.status(202).send({ status: 'processing', sessionId });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -99,9 +109,16 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         if (!req.body || !req.body.message) {
             return res.status(400).send({ error: 'Missing message content' });
         }
-        // Extract optional image data
+        // Extract optional image and file data
         const imageDataInput = req.body.imageData
             ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
+            : undefined;
+        const fileDataInput = req.body.fileData
+            ? {
+                  data: req.body.fileData.base64,
+                  mimeType: req.body.fileData.mimeType,
+                  filename: req.body.fileData.filename,
+              }
             : undefined;
         try {
             const sessionId = req.body.sessionId as string | undefined;
@@ -109,6 +126,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const responseText = await agent.run(
                 req.body.message,
                 imageDataInput,
+                fileDataInput,
                 sessionId,
                 stream
             );
@@ -289,11 +307,19 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     const imageDataInput = data.imageData
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
+                    const fileDataInput = data.fileData
+                        ? {
+                              data: data.fileData.base64,
+                              mimeType: data.fileData.mimeType,
+                              filename: data.fileData.filename,
+                          }
+                        : undefined;
                     const sessionId = data.sessionId as string | undefined;
                     const stream = data.stream === true; // Extract stream preference, default to false
                     if (imageDataInput) logger.info('Image data included in message.');
+                    if (fileDataInput) logger.info('File data included in message.');
                     if (sessionId) logger.info(`Message for session: ${sessionId}`);
-                    await agent.run(data.content, imageDataInput, sessionId, stream);
+                    await agent.run(data.content, imageDataInput, fileDataInput, sessionId, stream);
                 } else if (data.type === 'reset') {
                     const sessionId = data.sessionId as string | undefined;
                     logger.info(
@@ -885,6 +911,42 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Error testing webhook ${req.params.webhookId}: ${errorMessage}`);
             return res.status(500).json({ error: 'Failed to test webhook' });
+        }
+    });
+
+    // File upload endpoint for handling file data
+    app.post('/api/upload-file', express.json(), async (req, res) => {
+        logger.info('Received file upload via POST /api/upload-file');
+        if (!req.body || !req.body.fileData || !req.body.mimeType) {
+            return res.status(400).send({ error: 'Missing file data or MIME type' });
+        }
+
+        try {
+            const { fileData, mimeType, filename } = req.body;
+
+            // Validate that fileData is a base64 string
+            if (typeof fileData !== 'string') {
+                return res.status(400).send({ error: 'File data must be a base64 string' });
+            }
+
+            // Validate MIME type
+            if (typeof mimeType !== 'string' || mimeType.trim() === '') {
+                return res.status(400).send({ error: 'Valid MIME type is required' });
+            }
+
+            // Return the processed file data
+            return res.status(200).send({
+                success: true,
+                fileData: {
+                    base64: fileData,
+                    mimeType: mimeType,
+                    filename: filename || 'uploaded-file',
+                },
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error handling file upload: ${errorMessage}`);
+            return res.status(500).send({ error: 'Internal server error' });
         }
     });
 

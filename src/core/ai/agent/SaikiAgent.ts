@@ -274,6 +274,7 @@ export class SaikiAgent {
      *
      * @param userInput - The user's message or query to process
      * @param imageDataInput - Optional image data and MIME type for multimodal input
+     * @param fileDataInput - Optional file data and MIME type for file input
      * @param sessionId - Optional session ID for multi-session scenarios
      * @returns Promise that resolves to the AI's response text, or null if no significant response
      * @throws Error if processing fails
@@ -281,6 +282,7 @@ export class SaikiAgent {
     public async run(
         userInput: string,
         imageDataInput?: { image: string; mimeType: string },
+        fileDataInput?: { data: string; mimeType: string; filename?: string },
         sessionId?: string,
         stream: boolean = false
     ): Promise<string | null> {
@@ -310,9 +312,9 @@ export class SaikiAgent {
             }
 
             logger.debug(
-                `SaikiAgent.run: userInput: ${userInput}, imageDataInput: ${imageDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
+                `SaikiAgent.run: userInput: ${userInput}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
             );
-            const response = await session.run(userInput, imageDataInput, stream);
+            const response = await session.run(userInput, imageDataInput, fileDataInput, stream);
 
             // Increment message count for this session (counts each)
             await this.sessionManager.incrementMessageCount(session.id);

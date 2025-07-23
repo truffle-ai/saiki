@@ -5,7 +5,7 @@ import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
-import { ImageData } from '../messages/types.js';
+import { ImageData, FileData } from '../messages/types.js';
 import type { SessionEventBus } from '../../../events/index.js';
 
 /**
@@ -46,10 +46,11 @@ export class AnthropicService implements ILLMService {
     async completeTask(
         userInput: string,
         imageData?: ImageData,
+        fileData?: FileData,
         _stream?: boolean
     ): Promise<string> {
-        // Add user message with optional image data
-        await this.contextManager.addUserMessage(userInput, imageData);
+        // Add user message with optional image and file data
+        await this.contextManager.addUserMessage(userInput, imageData, fileData);
 
         // Get all tools
         const rawTools = await this.mcpManager.getAllTools();

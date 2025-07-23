@@ -1,7 +1,7 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
 import type { GenerateTextResult, StreamTextResult } from 'ai';
-import { getImageData } from '../utils.js';
+import { getImageData, getFileData } from '../utils.js';
 // import Core SDK types if/when needed
 
 /**
@@ -220,18 +220,44 @@ export class VercelMessageFormatter implements IMessageFormatter {
     // Helper to format Tool result messages
     private formatToolMessage(msg: InternalMessage): { content: any[] } {
         let toolResultPart: any;
-        if (Array.isArray(msg.content) && msg.content[0]?.type === 'image') {
-            const imagePart = msg.content[0];
-            const imageDataBase64 = getImageData(imagePart);
-            toolResultPart = {
-                type: 'tool-result',
-                toolCallId: msg.toolCallId!,
-                toolName: msg.name!,
-                result: null,
-                experimental_content: [
-                    { type: 'image', data: imageDataBase64, mimeType: imagePart.mimeType },
-                ],
-            };
+        if (Array.isArray(msg.content)) {
+            if (msg.content[0]?.type === 'image') {
+                const imagePart = msg.content[0];
+                const imageDataBase64 = getImageData(imagePart);
+                toolResultPart = {
+                    type: 'tool-result',
+                    toolCallId: msg.toolCallId!,
+                    toolName: msg.name!,
+                    result: null,
+                    experimental_content: [
+                        { type: 'image', data: imageDataBase64, mimeType: imagePart.mimeType },
+                    ],
+                };
+            } else if (msg.content[0]?.type === 'file') {
+                const filePart = msg.content[0];
+                const fileDataBase64 = getFileData(filePart);
+                toolResultPart = {
+                    type: 'tool-result',
+                    toolCallId: msg.toolCallId!,
+                    toolName: msg.name!,
+                    result: null,
+                    experimental_content: [
+                        {
+                            type: 'file',
+                            data: fileDataBase64,
+                            mimeType: filePart.mimeType,
+                            filename: filePart.filename,
+                        },
+                    ],
+                };
+            } else {
+                toolResultPart = {
+                    type: 'tool-result',
+                    toolCallId: msg.toolCallId!,
+                    toolName: msg.name!,
+                    result: msg.content,
+                };
+            }
         } else {
             toolResultPart = {
                 type: 'tool-result',

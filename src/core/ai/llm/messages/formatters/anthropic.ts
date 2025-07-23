@@ -1,7 +1,7 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
 import { logger } from '../../../../logger/index.js';
-import { getImageData } from '../utils.js';
+import { getImageData, getFileData } from '../utils.js';
 
 /**
  * Message formatter for Anthropic's Claude API.
@@ -215,7 +215,7 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
         return internal;
     }
 
-    // Helper to format user message parts (text + image) into Anthropic multimodal API format
+    // Helper to format user message parts (text + image + file) into Anthropic multimodal API format
     private formatUserContent(content: InternalMessage['content']): any {
         if (!Array.isArray(content)) {
             return content;
@@ -244,6 +244,26 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
                         source = { type: 'base64', media_type: part.mimeType, data: raw };
                     }
                     return { type: 'image', source };
+                }
+                if (part.type === 'file') {
+                    const raw = getFileData(part);
+                    let source: any;
+                    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+                        source = { type: 'url', url: raw };
+                    } else if (raw.startsWith('data:')) {
+                        // Data URI: split metadata and base64 data
+                        const [meta, b64] = raw.split(',', 2);
+                        const mediaTypeMatch = meta?.match(/data:(.*);base64/);
+                        const media_type =
+                            (mediaTypeMatch && mediaTypeMatch[1]) ||
+                            part.mimeType ||
+                            'application/octet-stream';
+                        source = { type: 'base64', media_type, data: b64 };
+                    } else {
+                        // Plain base64 string
+                        source = { type: 'base64', media_type: part.mimeType, data: raw };
+                    }
+                    return { type: 'file', source };
                 }
                 return null;
             })

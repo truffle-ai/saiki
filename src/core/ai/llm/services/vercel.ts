@@ -6,7 +6,7 @@ import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
-import { ImageData } from '../messages/types.js';
+import { ImageData, FileData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
 import { ToolExecutionDeniedError } from '../../../client/tool-confirmation/errors.js';
@@ -152,13 +152,14 @@ export class VercelLLMService implements ILLMService {
     async completeTask(
         userInput: string,
         imageData?: ImageData,
+        fileData?: FileData,
         stream?: boolean
     ): Promise<string> {
-        // Add user message, with optional image data
+        // Add user message, with optional image and file data
         logger.debug(
-            `VercelLLMService: Adding user message: ${userInput} and imageData: ${imageData}`
+            `VercelLLMService: Adding user message: ${userInput}, imageData: ${imageData}, fileData: ${fileData}`
         );
-        await this.contextManager.addUserMessage(userInput, imageData);
+        await this.contextManager.addUserMessage(userInput, imageData, fileData);
 
         // Get all tools
         const tools = await this.mcpManager.getAllTools();
