@@ -12,12 +12,20 @@ export interface ImagePart {
     base64: string;
     mimeType: string;
 }
+
+export interface FileData {
+    base64: string;
+    mimeType: string;
+    filename?: string;
+}
+
 // Extend core InternalMessage for WebUI
 export interface Message extends Omit<InternalMessage, 'content'> {
     id: string;
     createdAt: number;
     content: string | null | Array<TextPart | ImagePart>;
     imageData?: { base64: string; mimeType: string };
+    fileData?: FileData;
     toolName?: string;
     toolArgs?: any;
     toolResult?: any;
@@ -258,6 +266,7 @@ export function useChat(wsUrl: string) {
         (
             content: string,
             imageData?: { base64: string; mimeType: string },
+            fileData?: FileData,
             sessionId?: string,
             stream = false
         ) => {
@@ -266,6 +275,7 @@ export function useChat(wsUrl: string) {
                     type: 'message',
                     content,
                     imageData,
+                    fileData,
                     sessionId,
                     stream,
                 };
@@ -280,6 +290,8 @@ export function useChat(wsUrl: string) {
                         content,
                         createdAt: Date.now(),
                         sessionId,
+                        imageData,
+                        fileData,
                     },
                 ]);
 
