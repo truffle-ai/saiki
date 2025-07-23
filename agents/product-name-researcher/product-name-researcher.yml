@@ -3,13 +3,11 @@
 # trademark searching, social media handle checking, and competitive analysis
 
 mcpServers:
-  # Domain availability checking (using local fixed version)
+  # Domain availability checking
   domain-checker:
     type: stdio
     command: uvx
     args:
-      - --from
-      - /Users/karaj/Projects/mcp-servers/src/domain-checker
       - truffle-ai-domain-checker-mcp
   
   # Web search for competitive research and trademark checking
@@ -22,9 +20,9 @@ mcpServers:
   # Advanced product name research tools (SERP analysis, autocomplete, dev collisions, scoring)
   product-name-scout:
     type: stdio
-    command: node
+    command: npx
     args:
-      - /Users/karaj/Projects/mcp-servers/src/product-name-scout/dist/index.js
+      - "@truffle-ai/product-name-scout-mcp"
 
 systemPrompt:
   contributors:

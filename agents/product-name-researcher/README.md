@@ -1,14 +1,20 @@
 # Product Name Research Agent
 
-An AI agent specialized in comprehensive product name research, including domain availability checking, trademark searching, social media handle availability, and competitive analysis.
+An AI agent specialized in comprehensive product name research and brand validation. Combines domain availability checking, search engine analysis, developer platform collision detection, and competitive intelligence to provide thorough name validation.
+
+## 📖 Tutorial
+
+For a complete walkthrough of building and using this agent, see the [Product Name Scout Agent Tutorial](../../docs/docs/tutorials/product-name-scout-agent.md).
 
 ## Features
 
-- **Domain Availability**: Check multiple TLD extensions for product names
-- **Trademark Research**: Search for potential trademark conflicts
-- **Social Media Handle Availability**: Verify availability across major platforms
-- **Competitive Analysis**: Research existing products with similar names
-- **Brand Validation**: Comprehensive scoring and recommendations
+- **Domain Availability**: Check multiple TLD extensions (.com, .io, .app, .dev, etc.)
+- **SERP Competition Analysis**: Analyze search engine results for brand competition
+- **Autocomplete Intelligence**: Assess name recognition and spelling patterns
+- **Developer Platform Collision Detection**: Check GitHub, npm, and PyPI for conflicts
+- **Competitive Research**: DuckDuckGo-powered market intelligence
+- **Comprehensive Scoring**: Weighted algorithms for brand viability assessment
+- **Batch Comparison**: Compare multiple names with detailed scoring breakdown
 
 ## Prerequisites
 
