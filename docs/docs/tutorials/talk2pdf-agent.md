@@ -37,6 +37,10 @@ That's it! The MCP server (`@truffle-ai/talk2pdf-mcp`) will be automatically dow
 
 ## Step 3: Understanding the MCP Server
 
+The core functionality is provided by the **Talk2PDF MCP Server**, a TypeScript-based server built with the Model Context Protocol SDK. To understand the complete MCP server implementation, refer to the [mcp-servers repository](https://github.com/truffle-ai/mcp-servers/tree/main):
+
+- **Talk2PDF Server**: [src/talk2pdf](https://github.com/truffle-ai/mcp-servers/tree/main/src/talk2pdf) - PDF parsing, text extraction, and content analysis tools
+
 ### What's Happening Behind the Scenes
 
 The published MCP server includes these key dependencies:
