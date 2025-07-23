@@ -26,6 +26,14 @@ The product name scout agent follows Saiki's framework design with clear separat
 
 This architecture allows the agent to conduct thorough research while maintaining clear, actionable insights.
 
+## MCP Server Code
+
+The core functionality is provided by three MCP servers. To understand the complete MCP server implementations, refer to the [mcp-servers repository](https://github.com/truffle-ai/mcp-servers/tree/main):
+
+- **Product Name Scout Server**: [src/product-name-scout](https://github.com/truffle-ai/mcp-servers/tree/main/src/product-name-scout) - SERP analysis, autocomplete, dev collisions, and scoring
+- **Domain Checker Server**: [src/domain-checker](https://github.com/truffle-ai/mcp-servers/tree/main/src/domain-checker) - Domain availability checking via WHOIS and DNS
+- **DuckDuckGo Server**: External third-party server for web search capabilities
+
 ## Step 1: Setting Up the Project
 
 The product name research agent uses multiple MCP servers for comprehensive analysis:
