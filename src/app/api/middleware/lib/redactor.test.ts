@@ -1,4 +1,4 @@
-import { redactSensitiveData as redact } from './redactor';
+import { redactSensitiveData as redact } from './redactor.js';
 
 describe('redact', () => {
     // Basic field redaction
