@@ -3,7 +3,7 @@ import { mkdirSync } from 'fs';
 import type { DatabaseBackend } from './database-backend.js';
 import { logger } from '../../logger/index.js';
 import type { SqliteBackendConfig } from '../../config/schemas.js';
-import { resolveSaikiLogPath } from '../../utils/path.js';
+import { resolveDextoLogPath } from '../../utils/path.js';
 import * as path from 'path';
 import { homedir } from 'os';
 
@@ -27,16 +27,16 @@ export class SQLiteBackend implements DatabaseBackend {
 
     private resolveDefaultPath(dbName: string): string {
         // Use the same logic as log path resolution for consistency
-        const logPath = resolveSaikiLogPath();
-        const isInSaikiProject = logPath.includes(process.cwd());
+        const logPath = resolveDextoLogPath();
+        const isInDextoProject = logPath.includes(process.cwd());
 
-        const storageDir = isInSaikiProject
-            ? path.join(process.cwd(), '.saiki', 'database')
-            : path.join(homedir(), '.saiki', 'database');
+        const storageDir = isInDextoProject
+            ? path.join(process.cwd(), '.dexto', 'database')
+            : path.join(homedir(), '.dexto', 'database');
 
         const finalPath = path.join(storageDir, dbName);
 
-        logger.info(`SQLite auto-detected ${isInSaikiProject ? 'local' : 'global'} storage`);
+        logger.info(`SQLite auto-detected ${isInDextoProject ? 'local' : 'global'} storage`);
         logger.info(`SQLite storage directory: ${storageDir}`);
         logger.debug(`SQLite database file: ${finalPath}`);
 
@@ -97,7 +97,7 @@ export class SQLiteBackend implements DatabaseBackend {
             this.dbPath = this.config.path;
             logger.info(`SQLite using custom path: ${this.dbPath}`);
         } else {
-            this.dbPath = this.resolveDefaultPath(this.config.database || 'saiki.db');
+            this.dbPath = this.resolveDefaultPath(this.config.database || 'dexto.db');
         }
 
         // Ensure directory exists

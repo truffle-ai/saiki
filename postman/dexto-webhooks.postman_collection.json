@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Saiki Webhook API",
-    "description": "Complete API collection for testing Saiki webhook functionality",
+    "name": "Dexto Webhook API",
+    "description": "Complete API collection for testing Dexto webhook functionality",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

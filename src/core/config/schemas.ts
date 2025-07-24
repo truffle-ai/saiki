@@ -17,7 +17,7 @@ export const AgentCardSchema = z
         description: z
             .string()
             .default(
-                'Saiki is an AI assistant capable of chat and task delegation, accessible via multiple protocols.'
+                'Dexto is an AI assistant capable of chat and task delegation, accessible via multiple protocols.'
             ),
         url: z.string().url(), // No default, must be provided by context
         provider: z
@@ -512,7 +512,7 @@ const SqliteBackendSchema = BaseBackendSchema.extend({
         .describe(
             'SQLite database file path (optional, will auto-detect using path resolver if not provided)'
         ),
-    database: z.string().optional().describe('Database filename (default: saiki.db)'),
+    database: z.string().optional().describe('Database filename (default: dexto.db)'),
 }).strict();
 
 export type SqliteBackendConfig = z.infer<typeof SqliteBackendSchema>;

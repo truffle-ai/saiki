@@ -1,8 +1,8 @@
 /*
- * Service Initializer: Centralized Wiring for Saiki Core Services
+ * Service Initializer: Centralized Wiring for Dexto Core Services
  *
  * This module is responsible for initializing and wiring together all core agent services (LLM, client manager, message manager, event bus, etc.)
- * for the Saiki application. It provides a single entry point for constructing the service graph, ensuring consistent dependency injection
+ * for the Dexto application. It provides a single entry point for constructing the service graph, ensuring consistent dependency injection
  * and configuration across CLI, web, and test environments.
  *
  * **Configuration Pattern:**
@@ -51,7 +51,7 @@ export type AgentServices = {
 /**
  * Loads and validates configuration and initializes all agent services as a single unit.
  * @param agentConfig The agent configuration object
- * @returns All the initialized services required for a Saiki agent
+ * @returns All the initialized services required for a Dexto agent
  */
 export async function createAgentServices(
     agentConfig: AgentConfig,

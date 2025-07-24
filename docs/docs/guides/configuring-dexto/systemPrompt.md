@@ -5,7 +5,7 @@ sidebar_label: "System Prompt"
 
 # System Prompt Configuration
 
-Configure how your Saiki agent behaves and responds to users through system prompts.
+Configure how your Dexto agent behaves and responds to users through system prompts.
 
 ## Overview
 

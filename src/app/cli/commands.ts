@@ -1,7 +1,7 @@
 /**
  * CLI Commands Module
  *
- * This module defines all available slash commands for the Saiki CLI interface.
+ * This module defines all available slash commands for the Dexto CLI interface.
  * Commands provide system control and agent management functionality.
  *
  * Available Commands:
@@ -52,7 +52,7 @@
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import { SaikiAgent } from '@core/index.js';
+import { DextoAgent } from '@core/index.js';
 import { CommandDefinition, formatCommandHelp, displayAllCommands } from './command-parser.js';
 import type { SessionMetadata } from '@core/index.js';
 
@@ -89,7 +89,7 @@ function formatSessionInfo(
  * Helper to get current session info
  */
 async function getCurrentSessionInfo(
-    agent: SaikiAgent
+    agent: DextoAgent
 ): Promise<{ id: string; metadata: SessionMetadata | undefined }> {
     const currentId = agent.getCurrentSessionId();
     const metadata = await agent.getSessionMetadata(currentId);
@@ -99,7 +99,7 @@ async function getCurrentSessionInfo(
 /**
  * Helper to display session history with consistent formatting
  */
-async function displaySessionHistory(sessionId: string, agent: SaikiAgent): Promise<void> {
+async function displaySessionHistory(sessionId: string, agent: DextoAgent): Promise<void> {
     console.log(chalk.blue(`\n💬 Conversation History for: ${chalk.bold(sessionId)}\n`));
 
     const history = await agent.getSessionHistory(sessionId);
@@ -198,7 +198,7 @@ const sessionCommands: CommandDefinition = {
             name: 'list',
             description: 'List all sessions',
             usage: '/session list',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     console.log(chalk.bold.blue('\n📋 Sessions:\n'));
 
@@ -232,7 +232,7 @@ const sessionCommands: CommandDefinition = {
             name: 'new',
             description: 'Create a new session',
             usage: '/session new [id]',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     const sessionId = args[0]; // Optional custom ID
                     const session = await agent.createSession(sessionId);
@@ -254,7 +254,7 @@ const sessionCommands: CommandDefinition = {
             name: 'switch',
             description: 'Switch to a different session',
             usage: '/session switch <id>',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 if (args.length === 0) {
                     console.log(chalk.red('❌ Session ID required. Usage: /session switch <id>'));
                     return true;
@@ -285,7 +285,7 @@ const sessionCommands: CommandDefinition = {
             name: 'current',
             description: 'Show current session',
             usage: '/session current',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     const current = await getCurrentSessionInfo(agent);
                     console.log(chalk.blue('\n📍 Current Session:\n'));
@@ -304,7 +304,7 @@ const sessionCommands: CommandDefinition = {
             description: 'Show conversation history for current session',
             usage: '/session history [sessionId]',
             aliases: ['h'],
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     // Use provided session ID or current session
                     const sessionId =
@@ -328,7 +328,7 @@ const sessionCommands: CommandDefinition = {
             name: 'delete',
             description: 'Delete a session',
             usage: '/session delete <id>',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 if (args.length === 0) {
                     console.log(chalk.red('❌ Session ID required. Usage: /session delete <id>'));
                     return true;
@@ -364,7 +364,7 @@ const sessionCommands: CommandDefinition = {
             name: 'help',
             description: 'Show detailed help for session commands',
             usage: '/session help',
-            handler: async (_args: string[], _agent: SaikiAgent) => {
+            handler: async (_args: string[], _agent: DextoAgent) => {
                 console.log(chalk.bold.blue('\n📋 Session Management Commands:\n'));
 
                 console.log(chalk.cyan('Available subcommands:'));
@@ -398,7 +398,7 @@ const sessionCommands: CommandDefinition = {
             },
         },
     ],
-    handler: async (args: string[], agent: SaikiAgent) => {
+    handler: async (args: string[], agent: DextoAgent) => {
         // Default to help if no subcommand
         if (args.length === 0) {
             const helpSubcommand = sessionCommands.subcommands?.find((s) => s.name === 'help');
@@ -440,7 +440,7 @@ const modelCommands: CommandDefinition = {
             name: 'list',
             description: 'List all supported providers and models',
             usage: '/model list',
-            handler: async (_args: string[], agent: SaikiAgent) => {
+            handler: async (_args: string[], agent: DextoAgent) => {
                 try {
                     console.log(chalk.bold.blue('\n🤖 Supported Models and Providers:\n'));
 
@@ -479,7 +479,7 @@ const modelCommands: CommandDefinition = {
             name: 'current',
             description: 'Show current model configuration',
             usage: '/model current',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     const config = agent.getEffectiveConfig();
                     console.log(chalk.blue('\n🤖 Current Model Configuration:\n'));
@@ -510,7 +510,7 @@ const modelCommands: CommandDefinition = {
             name: 'switch',
             description: 'Switch to a different model',
             usage: '/model switch <model>',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 if (args.length === 0) {
                     console.log(chalk.red('❌ Model required. Usage: /model switch <model>'));
                     return true;
@@ -562,7 +562,7 @@ const modelCommands: CommandDefinition = {
             name: 'help',
             description: 'Show detailed help for model commands',
             usage: '/model help',
-            handler: async (_args: string[], _agent: SaikiAgent) => {
+            handler: async (_args: string[], _agent: DextoAgent) => {
                 console.log(chalk.bold.blue('\n🤖 Model Management Commands:\n'));
 
                 console.log(chalk.cyan('Available subcommands:'));
@@ -592,7 +592,7 @@ const modelCommands: CommandDefinition = {
             },
         },
     ],
-    handler: async (args: string[], agent: SaikiAgent) => {
+    handler: async (args: string[], agent: DextoAgent) => {
         // Default to help if no subcommand
         if (args.length === 0) {
             const helpSubcommand = modelCommands.subcommands?.find((s) => s.name === 'help');
@@ -628,7 +628,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         usage: '/help [command]',
         category: 'General',
         aliases: ['h', '?'],
-        handler: async (args: string[], _agent: SaikiAgent) => {
+        handler: async (args: string[], _agent: DextoAgent) => {
             if (args.length === 0) {
                 displayAllCommands(CLI_COMMANDS);
                 return true;
@@ -678,7 +678,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         usage: '/exit',
         category: 'General',
         aliases: ['quit', 'q'],
-        handler: async (_args: string[], _agent: SaikiAgent) => {
+        handler: async (_args: string[], _agent: DextoAgent) => {
             logger.warn('Exiting AI CLI. Goodbye!');
             process.exit(0);
         },
@@ -689,7 +689,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         usage: '/clear',
         category: 'General',
         aliases: ['reset'],
-        handler: async (_args: string[], agent: SaikiAgent) => {
+        handler: async (_args: string[], agent: DextoAgent) => {
             try {
                 await agent.resetConversation();
                 logger.info('🔄 Conversation history cleared.', null, 'green');
@@ -707,7 +707,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         usage: '/history [sessionId]',
         category: 'General',
         aliases: ['hist'],
-        handler: async (args: string[], agent: SaikiAgent) => {
+        handler: async (args: string[], agent: DextoAgent) => {
             try {
                 // Use provided session ID or current session
                 const sessionId =
@@ -735,7 +735,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         usage: '/log [level]',
         category: 'System',
         aliases: [],
-        handler: async (args: string[], _agent: SaikiAgent) => {
+        handler: async (args: string[], _agent: DextoAgent) => {
             const validLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
             const level = args[0];
 
@@ -764,7 +764,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         description: 'Show current configuration',
         usage: '/config',
         category: 'System',
-        handler: async (_args: string[], agent: SaikiAgent) => {
+        handler: async (_args: string[], agent: DextoAgent) => {
             try {
                 const config = agent.getEffectiveConfig();
                 console.log(chalk.blue('\n⚙️  Current Configuration:\n'));
@@ -809,7 +809,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         description: 'Show system statistics',
         usage: '/stats',
         category: 'System',
-        handler: async (_args: string[], agent: SaikiAgent) => {
+        handler: async (_args: string[], agent: DextoAgent) => {
             try {
                 console.log(chalk.blue('\n📊 System Statistics:\n'));
 
@@ -857,7 +857,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         description: 'List all available MCP tools',
         usage: '/tools',
         category: 'Tool Management',
-        handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
+        handler: async (args: string[], agent: DextoAgent): Promise<boolean> => {
             try {
                 const tools = await agent.getAllMcpTools();
                 const toolEntries = Object.entries(tools);
@@ -889,7 +889,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         description: 'Display the current system prompt',
         usage: '/prompt',
         category: 'Prompt Management',
-        handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
+        handler: async (args: string[], agent: DextoAgent): Promise<boolean> => {
             try {
                 const systemPrompt = await agent.getSystemPrompt();
 
@@ -908,16 +908,16 @@ export const CLI_COMMANDS: CommandDefinition[] = [
     },
     {
         name: 'docs',
-        description: 'Open Saiki documentation in browser',
+        description: 'Open Dexto documentation in browser',
         usage: '/docs',
         category: 'Documentation',
         aliases: ['doc'],
-        handler: async (_args: string[], _agent: SaikiAgent): Promise<boolean> => {
+        handler: async (_args: string[], _agent: DextoAgent): Promise<boolean> => {
             try {
                 const { spawn } = await import('child_process');
-                const url = 'https://truffle-ai.github.io/saiki/docs/category/getting-started/';
+                const url = 'https://truffle-ai.github.io/dexto/docs/category/getting-started/';
 
-                console.log(chalk.blue(`🌐 Opening Saiki documentation: ${url}`));
+                console.log(chalk.blue(`🌐 Opening Dexto documentation: ${url}`));
 
                 // Cross-platform browser opening
                 const command =
@@ -935,7 +935,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                 );
                 console.log(
                     chalk.yellow(
-                        '💡 You can manually visit: https://truffle-ai.github.io/saiki/docs/category/getting-started/'
+                        '💡 You can manually visit: https://truffle-ai.github.io/dexto/docs/category/getting-started/'
                     )
                 );
             }
@@ -948,7 +948,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         usage: '/search <query> [options]',
         category: 'General',
         aliases: ['find'],
-        handler: async (args: string[], agent: SaikiAgent) => {
+        handler: async (args: string[], agent: DextoAgent) => {
             if (args.length === 0) {
                 console.log(chalk.red('❌ Search query is required'));
                 console.log(
@@ -1081,7 +1081,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
 export async function executeCommand(
     command: string,
     args: string[],
-    agent: SaikiAgent
+    agent: DextoAgent
 ): Promise<boolean> {
     // Find the command (including aliases)
     const cmd = CLI_COMMANDS.find(

@@ -19,7 +19,7 @@ storage:
 
 ## Supported Backends
 
-Saiki supports the following storage backends, which can be used for either `cache` or `database`:
+Dexto supports the following storage backends, which can be used for either `cache` or `database`:
 
 | Backend    | Type         | Use Case                                                    |
 |------------|--------------|-------------------------------------------------------------|
@@ -53,7 +53,7 @@ export interface BaseBackendConfig {
 
 ### In-Memory (`in-memory`)
 
-The simplest backend, storing all data in memory. Data is lost when the Saiki process terminates. It's the default for both `cache` and `database` if not otherwise specified.
+The simplest backend, storing all data in memory. Data is lost when the Dexto process terminates. It's the default for both `cache` and `database` if not otherwise specified.
 
 **TypeScript Interface:**
 ```typescript
@@ -116,15 +116,15 @@ A serverless, file-based SQL database engine, great for simple, persistent stora
 export interface SqliteBackendConfig {
     type: 'sqlite';
     path?: string;     // Directory to store the DB file
-    database?: string; // Filename for the database (e.g., "saiki.db")
+    database?: string; // Filename for the database (e.g., "dexto.db")
     // Inherits common backend options
 }
 ```
 
 **Field Explanations:**
 - `type`: Must be `'sqlite'`.
-- `path`: The directory where the database file will be stored. If omitted, Saiki will use a default location.
-- `database`: The name of the database file. Defaults to `saiki.db`.
+- `path`: The directory where the database file will be stored. If omitted, Dexto will use a default location.
+- `database`: The name of the database file. Defaults to `dexto.db`.
 
 **Example:**
 ```yaml
@@ -132,7 +132,7 @@ storage:
   database:
     type: sqlite
     database: my-agent.db
-    path: /var/data/saiki
+    path: /var/data/dexto
 ```
 
 ---
@@ -166,8 +166,8 @@ storage:
     type: postgres
     host: db.example.com
     port: 5432
-    database: saiki_prod
-    user: saiki_user
+    database: dexto_prod
+    user: dexto_user
     password: $DB_PASSWORD
     maxConnections: 20
     idleTimeoutMillis: 30000
@@ -176,7 +176,7 @@ storage:
 ## Configuration Examples
 
 ### Default: In-Memory Only
-If you provide no storage configuration, Saiki defaults to using the `in-memory` backend for both cache and database.
+If you provide no storage configuration, Dexto defaults to using the `in-memory` backend for both cache and database.
 
 ```yaml
 # No storage section needed for this default behavior
@@ -216,7 +216,7 @@ storage:
     type: in-memory # Keep cache in-memory for speed
   database:
     type: sqlite
-    database: my-saiki-agent.sqlite
+    database: my-dexto-agent.sqlite
 ```
 
 ### Hybrid: Redis Cache with SQLite DB
@@ -230,7 +230,7 @@ storage:
     port: 6379
   database:
     type: sqlite
-    path: ./data/saiki.db
+    path: ./data/dexto.db
 ```
 
 ### Advanced Configuration
@@ -256,7 +256,7 @@ storage:
     connectionString: $POSTGRES_CONNECTION_STRING
     options:
       ssl: true
-      application_name: saiki-agent
+      application_name: dexto-agent
       statement_timeout: 30000
 ```
 
@@ -265,4 +265,4 @@ storage:
 - **Match Backend to Use Case:** Use `redis` or `in-memory` for caching and `postgres` or `sqlite` for persistent data.
 - **Tune Connection Pools:** Adjust `maxConnections` and timeouts based on your expected load and database capacity.
 
-For more information on how these storage layers are used within Saiki, see the [Storage Pattern Examples](https://github.com/truffle-ai/saiki/blob/main/feature-plans/settings-storage/storage-examples.md). 
+For more information on how these storage layers are used within Dexto, see the [Storage Pattern Examples](https://github.com/truffle-ai/dexto/blob/main/feature-plans/settings-storage/storage-examples.md). 

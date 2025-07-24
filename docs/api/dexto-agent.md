@@ -2,15 +2,15 @@
 sidebar_position: 1
 ---
 
-# SaikiAgent API
+# DextoAgent API
 
-Complete API reference for the main `SaikiAgent` class.
+Complete API reference for the main `DextoAgent` class.
 
 ## Constructor and Lifecycle
 
 ### `constructor`
 
-Creates a new Saiki agent instance with the provided configuration.
+Creates a new Dexto agent instance with the provided configuration.
 
 ```typescript
 constructor(config: AgentConfig)
@@ -32,7 +32,7 @@ async start(): Promise<void>
 
 **Example:**
 ```typescript
-const agent = new SaikiAgent(config);
+const agent = new DextoAgent(config);
 await agent.start();
 ```
 
@@ -77,7 +77,7 @@ async run(
 
 **Example:**
 ```typescript
-const agent = new SaikiAgent(config);
+const agent = new DextoAgent(config);
 await agent.start();
 const response = await agent.run("Explain quantum computing");
 // ... use agent ...

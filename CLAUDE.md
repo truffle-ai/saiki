@@ -1,4 +1,4 @@
-# Saiki Development Guidelines for AI Assistants
+# Dexto Development Guidelines for AI Assistants
 
 ## Code Quality Requirements
 
@@ -11,8 +11,8 @@
 ## Architecture & Design Patterns
 
 ### API Layer Design
-- **APIs are thin wrappers around SaikiAgent class** - Keep business logic in core layer
-- **No direct service communication** - API layer communicates only with SaikiAgent
+- **APIs are thin wrappers around DextoAgent class** - Keep business logic in core layer
+- **No direct service communication** - API layer communicates only with DextoAgent
 - APIs should resemble code that users could write with public libraries
 
 ### Service Initialization
@@ -83,7 +83,7 @@
 
 ### Layer Interaction Flow
 ```
-User Input → WebUI → WebSocket/REST → API → SaikiAgent → Core Services
+User Input → WebUI → WebSocket/REST → API → DextoAgent → Core Services
                 ← WebSocket Events ← Agent Event Bus ← Core Services
 ```
 

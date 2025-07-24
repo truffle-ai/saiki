@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { SaikiAgent } from './SaikiAgent.js';
+import { DextoAgent } from './DextoAgent.js';
 import type { LLMConfig, AgentConfig } from '../../config/schemas.js';
 import * as validationUtils from '../../config/validation-utils.js';
 
@@ -14,8 +14,8 @@ const mockCreateAgentServices = vi.mocked(createAgentServices);
 const mockValidationUtils = vi.mocked(validationUtils);
 
 //TODO: potentially reducing mocking and have real tests
-describe('SaikiAgent.switchLLM', () => {
-    let agent: SaikiAgent;
+describe('DextoAgent.switchLLM', () => {
+    let agent: DextoAgent;
     let mockStateManager: any;
     let mockSessionManager: any;
     let mockEventBus: any;
@@ -147,8 +147,8 @@ describe('SaikiAgent.switchLLM', () => {
             },
         };
 
-        // Create SaikiAgent with config and start it
-        agent = new SaikiAgent(mockConfig);
+        // Create DextoAgent with config and start it
+        agent = new DextoAgent(mockConfig);
         await agent.start();
 
         // Mock the validation function - return ValidatedLLMConfig with all required fields

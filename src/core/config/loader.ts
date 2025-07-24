@@ -43,7 +43,7 @@ export async function loadAgentConfig(configPath: string): Promise<AgentConfig> 
         const resolveFromPackageRoot = configPath === DEFAULT_CONFIG_PATH;
         const absolutePath = resolvePackagePath(configPath, resolveFromPackageRoot);
 
-        logger.debug(`Loading saiki config from: ${absolutePath}`);
+        logger.debug(`Loading dexto config from: ${absolutePath}`);
 
         // Read and parse the config file
         const fileContent = await fs.readFile(absolutePath, 'utf-8');
@@ -73,7 +73,7 @@ export async function writeConfigFile(configPath: string, config: AgentConfig) {
     try {
         const yamlContent = stringifyYaml(config);
         await fs.writeFile(absolutePath, yamlContent, 'utf-8');
-        logger.debug(`Wrote saiki config to: ${absolutePath}`);
+        logger.debug(`Wrote dexto config to: ${absolutePath}`);
     } catch (error: any) {
         throw new Error(
             `Failed to write config file at ${error.path || configPath}: ${error.message}`

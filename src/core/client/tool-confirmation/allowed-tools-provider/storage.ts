@@ -3,7 +3,7 @@ import type { IAllowedToolsProvider } from './types.js';
 import { logger } from '@core/logger/index.js';
 
 /**
- * Storage-backed implementation that persists allowed tools in the Saiki
+ * Storage-backed implementation that persists allowed tools in the Dexto
  * storage backends. The key scheme is:
  *   allowedTools:<sessionId>          – approvals scoped to a session
  *   allowedTools:global               – global approvals (sessionId undefined)

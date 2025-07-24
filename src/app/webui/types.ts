@@ -1,5 +1,5 @@
 /**
- * Shared type definitions for Saiki - MCP tool testing playground
+ * Shared type definitions for Dexto - MCP tool testing playground
  */
 
 //TODO: Replace with MCP types from core

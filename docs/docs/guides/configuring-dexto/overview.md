@@ -3,9 +3,9 @@ sidebar_position: 1
 sidebar_label: "Overview"
 ---
 
-# Configuring Saiki
+# Configuring Dexto
 
-Saiki's power comes from its customizability. You can customize every part of your Saiki agent with one `yml` config file. 
+Dexto's power comes from its customizability. You can customize every part of your Dexto agent with one `yml` config file. 
 
 This guide walks through all the different features you can customize, and the expected format.
 
@@ -13,10 +13,10 @@ We chose `yml` instead of the more popular `json` because of its support for com
 
 ## Where to Place Your Config
 
-By default, Saiki uses a configuration file named `agents/agent.yml`. You can also specify a custom config path using the CLI:
+By default, Dexto uses a configuration file named `agents/agent.yml`. You can also specify a custom config path using the CLI:
 
 ```bash
-saiki --agent path/to/your-config.yml
+dexto --agent path/to/your-config.yml
 ```
 
 ## Example Configuration File
@@ -65,6 +65,6 @@ mcpServers:
 - **Use environment variables** for secrets and API keys. Reference them in YML as `$VARNAME`.
 - **Keep your config in version control** (but never commit secrets!). Use `.env` files or CI secrets for sensitive values.
 - **Document your config** for your team. Add comments to your YML files. We chose YML for this reason.
-- **Validate your config** before running Saiki in production.
+- **Validate your config** before running Dexto in production.
 - **See the `agents/examples/` folder for more templates and advanced use cases.**
  

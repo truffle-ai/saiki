@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import type { SaikiAgent } from '@core/index.js';
+import type { DextoAgent } from '@core/index.js';
 
 export interface CommandResult {
     type: 'command' | 'prompt';
@@ -15,7 +15,7 @@ export interface CommandDefinition {
     category?: string;
     aliases?: string[];
     subcommands?: CommandDefinition[];
-    handler: (args: string[], agent: SaikiAgent) => Promise<boolean>;
+    handler: (args: string[], agent: DextoAgent) => Promise<boolean>;
 }
 
 /**

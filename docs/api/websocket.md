@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # WebSocket API
 
-The WebSocket API offers real-time, bidirectional communication with Saiki. Use this for building highly interactive applications.
+The WebSocket API offers real-time, bidirectional communication with Dexto. Use this for building highly interactive applications.
 
 ### Connection URL
 <p class="api-endpoint-header"><code>ws://localhost:3000/</code></p>

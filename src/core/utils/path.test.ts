@@ -7,13 +7,13 @@ import { findPackageRoot } from './path.js';
 import { findProjectRootByLockFiles } from './path.js';
 import { isDirectoryPackage } from './path.js';
 import { findPackageByName } from './path.js';
-import { isSaikiProject } from './path.js';
-import { findSaikiProjectRoot } from './path.js';
-import { resolveSaikiLogPath } from './path.js';
+import { isDextoProject } from './path.js';
+import { findDextoProjectRoot } from './path.js';
+import { resolveDextoLogPath } from './path.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 function createTempDir() {
-    return fs.mkdtempSync(path.join(tmpdir(), 'saiki-test-'));
+    return fs.mkdtempSync(path.join(tmpdir(), 'dexto-test-'));
 }
 
 describe('resolvePackagePath', () => {
@@ -131,39 +131,39 @@ describe('findPackageByName', () => {
     });
 });
 
-describe('isSaikiProject', () => {
-    it('returns false if not in a Saiki project', () => {
-        const result = isSaikiProject('/tmp');
+describe('isDextoProject', () => {
+    it('returns false if not in a Dexto project', () => {
+        const result = isDextoProject('/tmp');
         expect(result).toBe(false);
     });
 
-    it('returns true if in a Saiki project', () => {
-        const result = isSaikiProject(process.cwd());
+    it('returns true if in a Dexto project', () => {
+        const result = isDextoProject(process.cwd());
         expect(result).toBe(true);
     });
 });
 
-describe('findSaikiProjectRoot', () => {
-    it('returns null if not in a Saiki project', () => {
-        const result = findSaikiProjectRoot('/tmp');
+describe('findDextoProjectRoot', () => {
+    it('returns null if not in a Dexto project', () => {
+        const result = findDextoProjectRoot('/tmp');
         expect(result).toBeNull();
     });
 
-    it('returns the Saiki project root if found', () => {
-        const result = findSaikiProjectRoot(process.cwd());
+    it('returns the Dexto project root if found', () => {
+        const result = findDextoProjectRoot(process.cwd());
         expect(result).toBe(process.cwd());
     });
 });
 
-describe('resolveSaikiLogPath', () => {
-    it('resolves to local project .saiki/logs when in a Saiki project', () => {
-        // We're in a Saiki project (has agents/agent.yml)
-        const result = resolveSaikiLogPath();
-        expect(result).toBe(path.join(process.cwd(), '.saiki', 'logs', 'saiki.log'));
+describe('resolveDextoLogPath', () => {
+    it('resolves to local project .dexto/logs when in a Dexto project', () => {
+        // We're in a Dexto project (has agents/agent.yml)
+        const result = resolveDextoLogPath();
+        expect(result).toBe(path.join(process.cwd(), '.dexto', 'logs', 'dexto.log'));
     });
 
     it('accepts custom log file name', () => {
-        const result = resolveSaikiLogPath('custom.log');
-        expect(result).toBe(path.join(process.cwd(), '.saiki', 'logs', 'custom.log'));
+        const result = resolveDextoLogPath('custom.log');
+        expect(result).toBe(path.join(process.cwd(), '.dexto', 'logs', 'custom.log'));
     });
 });
