@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { redactSensitiveData as redact } from './redactor.js';
 
 describe('redact', () => {
