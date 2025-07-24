@@ -52,7 +52,7 @@ export function redactSensitiveData(input: unknown, seen = new WeakSet()): unkno
     if (input && typeof input === 'object') {
         if (seen.has(input)) return REDACTED_CIRCULAR;
         seen.add(input);
-        const result: any = Array.isArray(input) ? [] : {};
+        const result: any = {};
         for (const [key, value] of Object.entries(input)) {
             if (SENSITIVE_FIELDS.includes(key.toLowerCase())) {
                 result[key] = REDACTED;
