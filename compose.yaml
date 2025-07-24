@@ -7,20 +7,17 @@
 # You can add other services your application may depend on here, such as a
 # database or a cache. For examples, see the Awesome Compose repository:
 # https://github.com/docker/awesome-compose
-version: '3.8'
 services:
-  saiki:
-    build: .
-    ports:
-      - "3001:3001"
+  server:
+    build:
+      context: .
+
     env_file:
       - .env
-    volumes:
-      - saiki_data:/app/.saiki
-    restart: unless-stopped
-
-volumes:
-  saiki_data:
+    environment:
+      NODE_ENV: production
+    ports:
+      - 3001:3001
 
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
