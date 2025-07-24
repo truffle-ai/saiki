@@ -91,4 +91,73 @@ describe('redact', () => {
             { nested: { apiKey: '[REDACTED]' } },
         ]);
     });
+
+    // Primitive Types
+    test('should return primitives unchanged', () => {
+        expect(redact(null)).toBeNull();
+        expect(redact(undefined)).toBeUndefined();
+        expect(redact(42)).toBe(42);
+        expect(redact(true)).toBe(true);
+        const s = Symbol('foo');
+        expect(redact(s)).toBe(s);
+    });
+
+    // Sensitive Patterns
+    describe('Sensitive Patterns in Strings', () => {
+        test('should redact OpenAI API keys', () => {
+            const text = 'My API key is sk-thisisafakekeyofsufficientlength';
+            expect(redact(text)).toBe('My API key is [REDACTED]');
+        });
+
+        test('should redact Bearer tokens', () => {
+            const text = 'Authorization: Bearer my-secret-token-123';
+            expect(redact(text)).toBe('Authorization: [REDACTED]');
+        });
+
+        test('should redact emails', () => {
+            const text = 'Contact me at test@example.com';
+            expect(redact(text)).toBe('Contact me at [REDACTED]');
+        });
+
+        test('should not redact normal strings', () => {
+            const text = 'This is a normal sentence.';
+            expect(redact(text)).toBe(text);
+        });
+    });
+
+    // Circular References
+    describe('Circular References', () => {
+        test('should handle circular references in objects', () => {
+            const obj: any = { a: 1 };
+            obj.b = obj; // Circular reference
+            const redacted = redact(obj);
+            expect(redacted).toEqual({ a: 1, b: '[REDACTED_CIRCULAR]' });
+        });
+
+        test('should handle circular references in arrays', () => {
+            const arr: any[] = [1];
+            arr.push(arr); // Circular reference
+            const redacted = redact(arr);
+            expect(redacted).toEqual([1, '[REDACTED_CIRCULAR]']);
+        });
+
+        test('should handle complex circular references', () => {
+            const obj1: any = { name: 'obj1' };
+            const obj2: any = { name: 'obj2' };
+            obj1.child = obj2;
+            obj2.parent = obj1; // Circular reference
+            const redacted = redact(obj1);
+            expect(redacted).toEqual({
+                name: 'obj1',
+                child: { name: 'obj2', parent: '[REDACTED_CIRCULAR]' },
+            });
+        });
+
+        test('should handle circular references in nested arrays', () => {
+            const arr: any[] = [1, [2]];
+            (arr[1] as any[]).push(arr);
+            const redacted = redact(arr);
+            expect(redacted).toEqual([1, [2, '[REDACTED_CIRCULAR]']]);
+        });
+    });
 });
