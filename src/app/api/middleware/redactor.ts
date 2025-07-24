@@ -20,9 +20,10 @@ const SENSITIVE_FIELDS = [
 
 // List of regex patterns to redact sensitive values
 const SENSITIVE_PATTERNS: RegExp[] = [
-    /\bsk-[A-Za-z0-9]{20,}\b/g, // OpenAI API keys
+    /\bsk-[A-Za-z0-9]{48}\b/g, // OpenAI API keys (exactly 48 chars after sk-)
     /\bBearer\s+[A-Za-z0-9\-_.=]+\b/gi, // Bearer tokens
     /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, // Emails
+    /\beyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*/g, // JWT tokens
 ];
 
 const REDACTED = '[REDACTED]';
