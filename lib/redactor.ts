@@ -21,7 +21,7 @@ const SENSITIVE_FIELDS = [
 // List of regex patterns to redact sensitive values
 const SENSITIVE_PATTERNS: RegExp[] = [
     /\bsk-[A-Za-z0-9]{20,}\b/g, // OpenAI API keys
-    /\bBearer\s+[A-Za-z0-9\-_\.\=]+\b/gi, // Bearer tokens
+    /\bBearer\s+[A-Za-z0-9\-_.=]+\b/gi, // Bearer tokens
     /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, // Emails
 ];
 
