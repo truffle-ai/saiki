@@ -39,7 +39,7 @@ export default function ChatApp() {
   const [isSessionsPanelOpen, setSessionsPanelOpen] = useState(false);
   const [isSearchOpen, setSearchOpen] = useState(false);
   const [isExportOpen, setExportOpen] = useState(false);
-  const [exportName, setExportName] = useState('saiki-config');
+  const [exportName, setExportName] = useState('dexto-config');
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportContent, setExportContent] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState(false);
@@ -291,9 +291,9 @@ export default function ChatApp() {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="flex items-center justify-center w-7 h-7 rounded-lg border border-border/50 text-primary-foreground">
-                  <img src="/logo.png" alt="Saiki" className="w-4 h-4" />
+                  <img src="/logo.png" alt="Dexto" className="w-4 h-4" />
                 </div>
-                <h1 className="text-base font-semibold tracking-tight">Saiki</h1>
+                <h1 className="text-base font-semibold tracking-tight">Dexto</h1>
               </div>
               
               {/* Current Session Indicator - Only show when there's an active session */}
@@ -442,10 +442,10 @@ export default function ChatApp() {
                 <div className="w-full max-w-md space-y-8">
                   <div className="space-y-4">
                     <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-2xl bg-primary/10 text-primary">
-                      <img src="/logo.png" alt="Saiki" className="w-8 h-8" />
+                      <img src="/logo.png" alt="Dexto" className="w-8 h-8" />
                     </div>
                     <div className="space-y-2">
-                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent text-center">Hello, Welcome to Saiki!</h2>
+                      <h2 className="text-2xl font-semibold tracking-tight font-mono bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent text-center">Hello, Welcome to Dexto!</h2>
                       <p className="text-muted-foreground text-base text-center">
                         Ask anything or connect new tools to expand what you can do.
                       </p>
@@ -574,7 +574,7 @@ export default function ChatApp() {
                   id="filename"
                   value={exportName}
                   onChange={(e) => setExportName(e.target.value)}
-                  placeholder="saiki-config"
+                  placeholder="dexto-config"
                   className="font-mono"
                 />
               </div>

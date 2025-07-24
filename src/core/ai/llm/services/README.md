@@ -1,10 +1,10 @@
 # Adding a New LLM Service
 
-This guide explains how to add support for a new Large Language Model (LLM) provider to Saiki. The LLM service architecture is designed to be extensible, allowing you to integrate with different AI providers while maintaining consistent behavior.
+This guide explains how to add support for a new Large Language Model (LLM) provider to Dexto. The LLM service architecture is designed to be extensible, allowing you to integrate with different AI providers while maintaining consistent behavior.
 
 ## LLM Architecture Overview
 
-Saiki uses an abstraction layer to interact with different LLM providers:
+Dexto uses an abstraction layer to interact with different LLM providers:
 
 ```
 +-----------------+      +---------------------+      +---------------------+
@@ -45,7 +45,7 @@ Adding a new LLM provider involves these main steps:
 4.  **Choose/Implement Compression Strategy(ies):** Decide which context compression strategies (`ICompressionStrategy`) the `ContextManager` should use if the token limit is exceeded.
 5.  **Create `ILLMService` Implementation:** Build the core service class, integrating the SDK, `ContextManager`, `McpManager`, and handling the API interaction logic.
 6.  **Update Factory:** Modify the `factory.ts` to recognize and instantiate your new service.
-7.  **Test:** Configure and run Saiki to test your new provider integration.
+7.  **Test:** Configure and run Dexto to test your new provider integration.
 
 Let's look at each step in more detail.
 
@@ -59,7 +59,7 @@ Let's look at each step in more detail.
 
 ## Step 2: Implement/Select Message Formatter (`IMessageFormatter`)
 
-*   **Role:** Translates Saiki's internal message history (`InternalMessage[]`) into the specific array format required by your chosen LLM provider's API.
+*   **Role:** Translates Dexto's internal message history (`InternalMessage[]`) into the specific array format required by your chosen LLM provider's API.
 *   **Location:** `src/ai/llm/messages/formatters/`
 *   **Action:**
     *   Check if a suitable formatter already exists (e.g., `OpenAIMessageFormatter`, `AnthropicMessageFormatter`).
@@ -276,7 +276,7 @@ export class YourProviderService implements ILLMService {
 
     // --- Private Helper Methods (Still Provider-Specific) --- 
 
-    // Translates Saiki's internal ToolSet into the provider's specific format
+    // Translates Dexto's internal ToolSet into the provider's specific format
     private formatToolsForProvider(tools: ToolSet): any[] { // Return type depends on provider SDK
         logger.debug(`Formatting ${Object.keys(tools).length} tools for provider.`);
         // *** Provider-Specific Transformation Logic Here ***
@@ -379,7 +379,7 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
      apiKey: $YOUR_PROVIDER_API_KEY
    ```
 2.  **Set API Key:** Ensure the API key is available either directly in the config (not recommended for production) or in your environment variables (e.g., in a `.env` file loaded by your application).
-3.  **Run Saiki:** Start the application (`npm start` or similar).
+3.  **Run Dexto:** Start the application (`npm start` or similar).
 4.  **Test Thoroughly:**
     *   Send simple prompts.
     *   Send prompts designed to trigger tool usage.
@@ -387,4 +387,4 @@ The factory (`src/ai/llm/services/factory.ts`) creates the correct LLM service b
     *   Monitor the logs (set log level to `debug` or `silly` for detailed info during development).
     *   Check for expected events from the `EventEmitter` if applicable.
 
-By following these steps, you should be able to successfully integrate a new LLM provider into Saiki's extensible architecture. Remember to adapt the provider-specific logic (`formatToolsForProvider`, `parseProviderResponse`, API calls) based on the chosen provider's SDK and API documentation. 
+By following these steps, you should be able to successfully integrate a new LLM provider into Dexto's extensible architecture. Remember to adapt the provider-specific logic (`formatToolsForProvider`, `parseProviderResponse`, API calls) based on the chosen provider's SDK and API documentation. 

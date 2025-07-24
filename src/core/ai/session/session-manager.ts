@@ -30,7 +30,7 @@ export interface SessionData {
 }
 
 /**
- * Manages multiple chat sessions within a Saiki agent.
+ * Manages multiple chat sessions within a Dexto agent.
  *
  * The SessionManager is responsible for:
  * - Creating and managing multiple isolated chat sessions
@@ -520,7 +520,7 @@ export class SessionManager {
             }
         }
 
-        this.services.agentEventBus.emit('saiki:llmSwitched', {
+        this.services.agentEventBus.emit('dexto:llmSwitched', {
             newConfig: newLLMConfig,
             router: newLLMConfig.router,
             historyRetained: true,
@@ -557,7 +557,7 @@ export class SessionManager {
 
         await session.switchLLM(newLLMConfig);
 
-        this.services.agentEventBus.emit('saiki:llmSwitched', {
+        this.services.agentEventBus.emit('dexto:llmSwitched', {
             newConfig: newLLMConfig,
             router: newLLMConfig.router,
             historyRetained: true,
@@ -581,7 +581,7 @@ export class SessionManager {
 
         await defaultSession.switchLLM(newLLMConfig);
 
-        this.services.agentEventBus.emit('saiki:llmSwitched', {
+        this.services.agentEventBus.emit('dexto:llmSwitched', {
             newConfig: newLLMConfig,
             router: newLLMConfig.router,
             historyRetained: true,

@@ -5,7 +5,7 @@ title: "TypeScript SDK Guide"
 
 # TypeScript SDK Guide
 
-Welcome to the Saiki TypeScript/JavaScript SDK guide! This guide provides everything you need to start building powerful AI applications with Saiki.
+Welcome to the Dexto TypeScript/JavaScript SDK guide! This guide provides everything you need to start building powerful AI applications with Dexto.
 
 Whether you're creating standalone agents, integrating with existing applications, or building custom AI workflows, the SDK offers a flexible and robust set of tools.
 
@@ -17,7 +17,7 @@ Whether you're creating standalone agents, integrating with existing application
 
 The SDK is built around a few core concepts:
 
-- **SaikiAgent**: The main class for creating and managing agents.
+- **DextoAgent**: The main class for creating and managing agents.
 - **MCPManager**: A utility for managing MCP server connections.
 - **LLMService**: A service for interacting with large language models.
 - **StorageBackends**: A set of backends for persisting agent data.
@@ -27,9 +27,9 @@ The SDK is built around a few core concepts:
 Here's a quick example of how to create a simple agent that uses the OpenAI API:
 
 ```typescript
-import { SaikiAgent } from '@truffle-ai/saiki';
+import { DextoAgent } from '@truffle-ai/dexto';
 
-const agent = new SaikiAgent({
+const agent = new DextoAgent({
   llm: {
     provider: 'openai',
     model: 'gpt-4',
@@ -49,7 +49,7 @@ For more detailed examples, see the [Examples & Demos](/docs/category/examples--
 
 ## Overview
 
-The Saiki TypeScript SDK provides a complete library for building AI agents with MCP (Model Context Protocol) integration. It offers both high-level agent abstractions and low-level utilities for maximum flexibility.
+The Dexto TypeScript SDK provides a complete library for building AI agents with MCP (Model Context Protocol) integration. It offers both high-level agent abstractions and low-level utilities for maximum flexibility.
 
 ### When to Use the SDK vs REST API
 
@@ -69,7 +69,7 @@ The Saiki TypeScript SDK provides a complete library for building AI agents with
 ## Installation
 
 ```bash
-npm install @truffle-ai/saiki
+npm install @truffle-ai/dexto
 ```
 
 ## Quick Start
@@ -77,10 +77,10 @@ npm install @truffle-ai/saiki
 ### Basic Agent Setup
 
 ```typescript
-import { SaikiAgent } from '@truffle-ai/saiki';
+import { DextoAgent } from '@truffle-ai/dexto';
 
 // Create agent with minimal configuration
-const agent = new SaikiAgent({
+const agent = new DextoAgent({
   llm: {
     provider: 'openai',
     model: 'gpt-4o',
@@ -97,7 +97,7 @@ console.log(response);
 ### Adding MCP Tools
 
 ```typescript
-const agent = new SaikiAgent({
+const agent = new DextoAgent({
   llm: {
     provider: 'openai',
     model: 'gpt-4o',
@@ -131,7 +131,7 @@ const response = await agent.run('List the files in this directory and search fo
 
 ```typescript
 // Create an agent (one per application typically)
-const agent = new SaikiAgent(config);
+const agent = new DextoAgent(config);
 await agent.start();
 
 // Create multiple sessions for different conversations
@@ -149,7 +149,7 @@ The SDK provides real-time events for monitoring and integration:
 
 ```typescript
 // Listen to agent-wide events
-agent.agentEventBus.on('saiki:mcpServerConnected', (data) => {
+agent.agentEventBus.on('dexto:mcpServerConnected', (data) => {
   console.log(`✅ Connected to ${data.name}`);
 });
 
@@ -168,14 +168,14 @@ agent.agentEventBus.on('llmservice:toolCall', (data) => {
 ### Multi-User Chat Application
 
 ```typescript
-import { SaikiAgent } from '@truffle-ai/saiki';
+import { DextoAgent } from '@truffle-ai/dexto';
 
 class ChatApplication {
-  private agent: SaikiAgent;
+  private agent: DextoAgent;
   private userSessions = new Map<string, string>();
 
   async initialize() {
-    this.agent = new SaikiAgent({
+    this.agent = new DextoAgent({
       llm: { provider: 'openai', model: 'gpt-4o', apiKey: process.env.OPENAI_API_KEY },
       mcpServers: { /* your tools */ }
     });
@@ -210,10 +210,10 @@ class ChatApplication {
 
 ```typescript
 class AdaptiveAgent {
-  private agent: SaikiAgent;
+  private agent: DextoAgent;
 
   async initialize() {
-    this.agent = new SaikiAgent(baseConfig);
+    this.agent = new DextoAgent(baseConfig);
     await this.agent.start();
   }
 
@@ -242,10 +242,10 @@ class AdaptiveAgent {
 
 ```typescript
 class PersistentChatBot {
-  private agent: SaikiAgent;
+  private agent: DextoAgent;
 
   async initialize() {
-    this.agent = new SaikiAgent({
+    this.agent = new DextoAgent({
       llm: { /* config */ },
       storage: {
         cache: { type: 'redis', url: 'redis://localhost:6379' },
@@ -340,11 +340,11 @@ const productionStorage = {
 ### Graceful Degradation
 
 ```typescript
-const agent = new SaikiAgent(config);
+const agent = new DextoAgent(config);
 await agent.start();
 
 // Handle MCP connection failures
-agent.agentEventBus.on('saiki:mcpServerConnected', (data) => {
+agent.agentEventBus.on('dexto:mcpServerConnected', (data) => {
   if (!data.success) {
     console.warn(`⚠️ ${data.name} unavailable: ${data.error}`);
     // Continue without this capability
@@ -366,7 +366,7 @@ agent.agentEventBus.on('llmservice:error', (data) => {
 
 ```typescript
 try {
-  const agent = new SaikiAgent({
+  const agent = new DextoAgent({
     llm: primaryLLMConfig,
     mcpServers: allServers
   });
@@ -375,7 +375,7 @@ try {
   console.warn('⚠️ Full setup failed, using minimal config');
   
   // Fallback to basic configuration
-  const agent = new SaikiAgent({
+  const agent = new DextoAgent({
     llm: fallbackLLMConfig,
     mcpServers: {} // No external tools
   });
@@ -389,7 +389,7 @@ try {
 
 ```typescript
 // Proper cleanup
-const agent = new SaikiAgent(config);
+const agent = new DextoAgent(config);
 await agent.start();
 
 process.on('SIGTERM', async () => {
@@ -402,7 +402,7 @@ process.on('SIGTERM', async () => {
 
 ```typescript
 // Set session TTL to manage memory usage (chat history preserved in storage)
-const agent = new SaikiAgent({
+const agent = new DextoAgent({
   // ... other config
   sessions: {
     maxSessions: 1000,
@@ -431,7 +431,7 @@ agent.agentEventBus.on('llmservice:toolResult', (data) => {
 
 ## Next Steps
 
-- **[SaikiAgent API](/api/saiki-agent)** - Detailed method documentation
+- **[DextoAgent API](/api/dexto-agent)** - Detailed method documentation
 - **[MCP Guide](/docs/guides/mcp-manager)** - Learn about Model Context Protocol
 - **[Deployment Guide](/docs/guides/deployment)** - Production deployment strategies
 - **[Examples](/docs/category/examples--demos)** - Complete example applications

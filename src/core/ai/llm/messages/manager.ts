@@ -182,7 +182,7 @@ export class ContextManager {
 
     /**
      * Updates the ContextManager configuration when LLM config changes.
-     * This is called when SaikiAgent.switchLLM() updates the LLM configuration.
+     * This is called when DextoAgent.switchLLM() updates the LLM configuration.
      *
      * @param newMaxInputTokens New maximum token limit
      * @param newTokenizer Optional new tokenizer if provider changed

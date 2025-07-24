@@ -4,14 +4,14 @@ sidebar_position: 4
 
 # TypeScript Types
 
-Type definitions and interfaces for the Saiki TypeScript/JavaScript SDK.
+Type definitions and interfaces for the Dexto TypeScript/JavaScript SDK.
 
 ## Core Imports
 
 ```typescript
 import {
   // Main classes
-  SaikiAgent,
+  DextoAgent,
   
   // Standalone utilities
   MCPManager,
@@ -46,7 +46,7 @@ import {
   
   // Service types
   AgentServices,
-} from '@truffle-ai/saiki';
+} from '@truffle-ai/dexto';
 ```
 
 ---
@@ -55,7 +55,7 @@ import {
 
 ### `AgentConfig`
 
-Main configuration object for creating Saiki agents.
+Main configuration object for creating Dexto agents.
 
 ```typescript
 interface AgentConfig {
@@ -216,66 +216,66 @@ Type map for agent-level events.
 ```typescript
 interface AgentEventMap {
   // Conversation events
-  'saiki:conversationReset': {
+  'dexto:conversationReset': {
     sessionId: string;
   };
   
   // MCP server events
-  'saiki:mcpServerConnected': {
+  'dexto:mcpServerConnected': {
     name: string;
     success: boolean;
     error?: string;
   };
   
-  'saiki:mcpServerAdded': {
+  'dexto:mcpServerAdded': {
     serverName: string;
     config: McpServerConfig;
   };
   
-  'saiki:mcpServerRemoved': {
+  'dexto:mcpServerRemoved': {
     serverName: string;
   };
   
-  'saiki:mcpServerUpdated': {
+  'dexto:mcpServerUpdated': {
     serverName: string;
     config: McpServerConfig;
   };
   
-  'saiki:availableToolsUpdated': {
+  'dexto:availableToolsUpdated': {
     tools: string[];
     source: 'mcp' | 'builtin';
   };
   
   // Configuration events
-  'saiki:llmSwitched': {
+  'dexto:llmSwitched': {
     newConfig: LLMConfig;
     router?: string;
     historyRetained?: boolean;
     sessionIds: string[];
   };
   
-  'saiki:stateChanged': {
+  'dexto:stateChanged': {
     field: string;
     oldValue: any;
     newValue: any;
     sessionId?: string;
   };
   
-  'saiki:stateExported': {
+  'dexto:stateExported': {
     config: AgentConfig;
   };
   
-  'saiki:stateReset': {
+  'dexto:stateReset': {
     toConfig: AgentConfig;
   };
   
   // Session override events
-  'saiki:sessionOverrideSet': {
+  'dexto:sessionOverrideSet': {
     sessionId: string;
     override: SessionOverride;
   };
   
-  'saiki:sessionOverrideCleared': {
+  'dexto:sessionOverrideCleared': {
     sessionId: string;
   };
   

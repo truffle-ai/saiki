@@ -5,9 +5,9 @@ sidebar_label: "MCP Configuration"
 
 # mcpServers Configuration
 
-The `mcpServers` section defines the Model Context Protocol (MCP) servers that your Saiki Agent can use for tool execution.
+The `mcpServers` section defines the Model Context Protocol (MCP) servers that your Dexto Agent can use for tool execution.
 
-Saiki supports three types of MCP server connections:
+Dexto supports three types of MCP server connections:
 - **Local servers** (`stdio`) - Launch processes on your machine
 - **Remote servers** (`sse`) - Connect via Server-Sent Events over HTTP
 - **HTTP servers** (`http`) - Connect via streamable HTTP transport
@@ -90,7 +90,7 @@ mcpServers:
     url: https://api.example.com/mcp-server
     headers:
       Authorization: Bearer $REMOTE_LLM_TOKEN
-      User-Agent: Saiki/1.0
+      User-Agent: Dexto/1.0
     timeout: 60000
 ```
 
@@ -195,10 +195,10 @@ mcpServers:
 
 ## Connection Modes
 
-Each MCP server can be configured with a `connectionMode` that determines how Saiki handles connection failures:
+Each MCP server can be configured with a `connectionMode` that determines how Dexto handles connection failures:
 
-- **`strict`**: The server must connect successfully or Saiki will fail to start
-- **`lenient`** (default): The server can fail to connect and Saiki will continue running
+- **`strict`**: The server must connect successfully or Dexto will fail to start
+- **`lenient`** (default): The server can fail to connect and Dexto will continue running
 
 ### Per-Server Configuration
 
@@ -221,7 +221,7 @@ mcpServers:
 You can override all server connection modes using the `--strict` CLI flag:
 
 ```bash
-saiki --strict  # Makes ALL servers strict, regardless of config
+dexto --strict  # Makes ALL servers strict, regardless of config
 ```
 
 This is useful for production environments where you want to ensure all configured servers are available.
@@ -256,7 +256,7 @@ This is useful for production environments where you want to ensure all configur
 
 ## Additional Resources
 
-- [Saiki GitHub repository examples](https://github.com/truffle-ai/saiki/tree/main/agents/examples) - More configuration examples
+- [Dexto GitHub repository examples](https://github.com/truffle-ai/dexto/tree/main/agents/examples) - More configuration examples
 - [Model Context Protocol specification](https://spec.modelcontextprotocol.io/) - Official MCP documentation
 - [Available MCP servers](https://github.com/modelcontextprotocol/servers) - Community-maintained server list
 

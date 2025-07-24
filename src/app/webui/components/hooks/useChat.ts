@@ -57,7 +57,7 @@ export function useChat(wsUrl: string) {
                         {
                             id: generateUniqueId(),
                             role: 'system',
-                            content: 'Saiki is thinking...',
+                            content: 'Dexto is thinking...',
                             createdAt: Date.now(),
                         },
                     ]);
@@ -67,7 +67,7 @@ export function useChat(wsUrl: string) {
                     setMessages((ms) => {
                         // Remove any existing 'thinking' system messages
                         const cleaned = ms.filter(
-                            (m) => !(m.role === 'system' && m.content === 'Saiki is thinking...')
+                            (m) => !(m.role === 'system' && m.content === 'Dexto is thinking...')
                         );
                         const last = cleaned[cleaned.length - 1];
                         if (last && last.role === 'assistant') {
@@ -104,7 +104,7 @@ export function useChat(wsUrl: string) {
                     setMessages((ms) => {
                         // Remove 'thinking' placeholders
                         const cleaned = ms.filter(
-                            (m) => !(m.role === 'system' && m.content === 'Saiki is thinking...')
+                            (m) => !(m.role === 'system' && m.content === 'Dexto is thinking...')
                         );
                         // Embed image part in content if available
                         let content: string | Array<TextPart | ImagePart> = text;
@@ -139,7 +139,7 @@ export function useChat(wsUrl: string) {
                     // Emit DOM event for other components to listen to
                     if (typeof window !== 'undefined') {
                         window.dispatchEvent(
-                            new CustomEvent('saiki:response', {
+                            new CustomEvent('dexto:response', {
                                 detail: {
                                     text,
                                     sessionId,
@@ -286,7 +286,7 @@ export function useChat(wsUrl: string) {
                 // Emit DOM event for other components to listen to
                 if (typeof window !== 'undefined') {
                     window.dispatchEvent(
-                        new CustomEvent('saiki:message', {
+                        new CustomEvent('dexto:message', {
                             detail: { content, sessionId, timestamp: Date.now() },
                         })
                     );

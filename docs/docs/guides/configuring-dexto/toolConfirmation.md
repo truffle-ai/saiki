@@ -5,7 +5,7 @@ sidebar_label: "Tool Confirmation"
 
 # Tool Confirmation Configuration
 
-Saiki's tool confirmation system controls how and when users are prompted to approve tool execution. This security feature ensures you maintain control over which tools your agent can execute and when.
+Dexto's tool confirmation system controls how and when users are prompted to approve tool execution. This security feature ensures you maintain control over which tools your agent can execute and when.
 
 ## Overview
 
@@ -44,7 +44,7 @@ toolConfirmation:
 
 #### Event Flow for Tool Confirmation
 
-In event-based mode, Saiki uses an event-driven architecture where your UI layer must listen for confirmation requests and send back approval responses.
+In event-based mode, Dexto uses an event-driven architecture where your UI layer must listen for confirmation requests and send back approval responses.
 
 ```mermaid
 sequenceDiagram
@@ -57,12 +57,12 @@ sequenceDiagram
 
     User->>LLM: "Run git status command"
     LLM->>Provider: requestConfirmation({toolName: "git_status", sessionId: "123"})
-    Provider->>Bus: emit('saiki:toolConfirmationRequest', {executionId, toolName, args, sessionId})
+    Provider->>Bus: emit('dexto:toolConfirmationRequest', {executionId, toolName, args, sessionId})
     Bus->>UI: forward confirmation request
     
     UI->>User: Show confirmation dialog/prompt
     User->>UI: Approve/Deny + Remember choice
-    UI->>Bus: emit('saiki:toolConfirmationResponse', {executionId, approved, rememberChoice, sessionId})
+    UI->>Bus: emit('dexto:toolConfirmationResponse', {executionId, approved, rememberChoice, sessionId})
     Bus->>Provider: forward response
     
     alt Tool Approved
@@ -82,7 +82,7 @@ When implementing a custom UI layer, your code needs to:
 
 1. **Listen for confirmation requests:**
 ```typescript
-agentEventBus.on('saiki:toolConfirmationRequest', (event: ToolConfirmationEvent) => {
+agentEventBus.on('dexto:toolConfirmationRequest', (event: ToolConfirmationEvent) => {
   // event contains: toolName, args, executionId, sessionId, timestamp
   // Show UI confirmation to user
 });
@@ -91,7 +91,7 @@ agentEventBus.on('saiki:toolConfirmationRequest', (event: ToolConfirmationEvent)
 2. **Send confirmation responses:**
 ```typescript
 // User approved - remember globally
-agentEventBus.emit('saiki:toolConfirmationResponse', {
+agentEventBus.emit('dexto:toolConfirmationResponse', {
   executionId: event.executionId,
   approved: true,
   rememberChoice: true,    // Store approval for future use
@@ -99,7 +99,7 @@ agentEventBus.emit('saiki:toolConfirmationResponse', {
 });
 
 // User denied - don't remember
-agentEventBus.emit('saiki:toolConfirmationResponse', {
+agentEventBus.emit('dexto:toolConfirmationResponse', {
   executionId: event.executionId,
   approved: false,
   rememberChoice: false
@@ -216,7 +216,7 @@ When implementing tool confirmation in your UI, you can control the scope:
 
 ```typescript
 // Store approval for current session only
-agentEventBus.emit('saiki:toolConfirmationResponse', {
+agentEventBus.emit('dexto:toolConfirmationResponse', {
   executionId: event.executionId,
   approved: true,
   rememberChoice: true,
@@ -224,7 +224,7 @@ agentEventBus.emit('saiki:toolConfirmationResponse', {
 });
 
 // Store approval globally (all sessions)
-agentEventBus.emit('saiki:toolConfirmationResponse', {
+agentEventBus.emit('dexto:toolConfirmationResponse', {
   executionId: event.executionId,
   approved: true,
   rememberChoice: true
@@ -281,7 +281,7 @@ toolConfirmation:
 
 ## Default Behavior
 
-If you don't specify a `toolConfirmation` section, Saiki uses these defaults:
+If you don't specify a `toolConfirmation` section, Dexto uses these defaults:
 
 ```yaml
 toolConfirmation:
@@ -294,7 +294,7 @@ This provides a good balance of security and usability for most use cases.
 
 ## Integration for Custom UIs
 
-When building custom applications with Saiki, you'll need to implement tool confirmation handling in your own UI layer. The core system provides the event infrastructure - you provide the user interface.
+When building custom applications with Dexto, you'll need to implement tool confirmation handling in your own UI layer. The core system provides the event infrastructure - you provide the user interface.
 
 ## Security Considerations
 
@@ -324,14 +324,14 @@ When building custom applications with Saiki, you'll need to implement tool conf
 ## Custom UI Integration Examples
 
 ### Direct AgentEventBus Integration
-For custom applications using Saiki:
+For custom applications using Dexto:
 
 ```typescript
-import { SaikiAgent, AgentEventBus } from '@truffle-ai/saiki';
+import { DextoAgent, AgentEventBus } from '@truffle-ai/dexto';
 
 class CustomToolConfirmationHandler {
   constructor(private agentEventBus: AgentEventBus) {
-    this.agentEventBus.on('saiki:toolConfirmationRequest', this.handleRequest.bind(this));
+    this.agentEventBus.on('dexto:toolConfirmationRequest', this.handleRequest.bind(this));
   }
 
   private async handleRequest(event: ToolConfirmationEvent) {
@@ -339,7 +339,7 @@ class CustomToolConfirmationHandler {
     const approved = await this.showYourCustomConfirmationUI(event);
     
     // Send response back to the framework
-    this.agentEventBus.emit('saiki:toolConfirmationResponse', {
+    this.agentEventBus.emit('dexto:toolConfirmationResponse', {
       executionId: event.executionId,
       approved,
       rememberChoice: approved, // Your logic for remembering choices
@@ -359,7 +359,7 @@ class CustomToolConfirmationHandler {
 }
 
 // In your application setup:
-const agent = new SaikiAgent(config);
+const agent = new DextoAgent(config);
 await agent.start();
 
 const confirmationHandler = new CustomToolConfirmationHandler(agent.agentEventBus);
@@ -374,7 +374,7 @@ import { WebSocketServer } from 'ws';
 class ToolConfirmationWebSocketBridge {
   constructor(private agentEventBus: AgentEventBus, private wss: WebSocketServer) {
     // Forward framework events to WebSocket clients
-    this.agentEventBus.on('saiki:toolConfirmationRequest', (event) => {
+    this.agentEventBus.on('dexto:toolConfirmationRequest', (event) => {
       this.broadcastToClients({
         type: 'toolConfirmationRequest',
         data: event
@@ -386,7 +386,7 @@ class ToolConfirmationWebSocketBridge {
       ws.on('message', (data) => {
         const message = JSON.parse(data.toString());
         if (message.type === 'toolConfirmationResponse') {
-          this.agentEventBus.emit('saiki:toolConfirmationResponse', message.data);
+          this.agentEventBus.emit('dexto:toolConfirmationResponse', message.data);
         }
       });
     });
@@ -404,7 +404,7 @@ class ToolConfirmationAPIHandler {
   private pendingConfirmations = new Map<string, {resolve: Function, reject: Function}>();
 
   constructor(private agentEventBus: AgentEventBus, private app: express.Application) {
-    this.agentEventBus.on('saiki:toolConfirmationRequest', this.handleRequest.bind(this));
+    this.agentEventBus.on('dexto:toolConfirmationRequest', this.handleRequest.bind(this));
     this.setupRoutes();
   }
 
@@ -424,14 +424,14 @@ class ToolConfirmationAPIHandler {
 
     try {
       const approved = await promise;
-      this.agentEventBus.emit('saiki:toolConfirmationResponse', {
+      this.agentEventBus.emit('dexto:toolConfirmationResponse', {
         executionId: event.executionId,
         approved,
         sessionId: event.sessionId
       });
     } catch (error) {
       // Handle timeout or rejection
-      this.agentEventBus.emit('saiki:toolConfirmationResponse', {
+      this.agentEventBus.emit('dexto:toolConfirmationResponse', {
         executionId: event.executionId,
         approved: false,
         sessionId: event.sessionId
@@ -458,18 +458,18 @@ class ToolConfirmationAPIHandler {
 }
 ```
 
-## Built-in Saiki UI Implementations
+## Built-in Dexto UI Implementations
 
-Saiki includes two built-in UI implementations for reference and immediate use:
+Dexto includes two built-in UI implementations for reference and immediate use:
 
-### Tool Confirmation in Saiki CLI
+### Tool Confirmation in Dexto CLI
 The built-in CLI mode provides:
 - Interactive arrow-key navigation (←/→ to select, Enter to confirm)
 - Visual confirmation with colored output
 - Auto-timeout with denial for security
 - Boxed confirmation dialogs with clear tool information
 
-### Tool Confirmation in Saiki WebUI  
+### Tool Confirmation in Dexto WebUI  
 The built-in WebUI mode provides:
 - Modal dialogs with approve/deny buttons
 - "Remember my choice" checkbox with scope selection (session/global)

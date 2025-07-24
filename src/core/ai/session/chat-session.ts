@@ -20,15 +20,15 @@ import {
 import { logger } from '../../logger/index.js';
 
 /**
- * Represents an isolated conversation session within a Saiki agent.
+ * Represents an isolated conversation session within a Dexto agent.
  *
  * ChatSession provides session-level isolation for conversations, allowing multiple
- * independent chat contexts to exist within a single SaikiAgent instance. Each session
+ * independent chat contexts to exist within a single DextoAgent instance. Each session
  * maintains its own conversation history, message management, and event handling.
  *
  * ## Architecture
  *
- * The ChatSession acts as a lightweight wrapper around core Saiki services, providing
+ * The ChatSession acts as a lightweight wrapper around core Dexto services, providing
  * session-specific instances of:
  * - **ContextManager**: Handles conversation history and message formatting
  * - **LLMService**: Manages AI model interactions and tool execution
@@ -36,7 +36,7 @@ import { logger } from '../../logger/index.js';
  *
  * ## Event Handling
  *
- * Each session has its own event bus that emits standard Saiki events:
+ * Each session has its own event bus that emits standard Dexto events:
  * - `llmservice:*` events (thinking, toolCall, response, etc.)
  *
  * Session events are forwarded to the global agent event bus with session prefixes.
@@ -276,7 +276,7 @@ export class ChatSession {
      * This method:
      * 1. Clears all messages from the session's conversation history
      * 2. Removes persisted history from the storage provider
-     * 3. Emits a `saiki:conversationReset` event with session context
+     * 3. Emits a `dexto:conversationReset` event with session context
      *
      * The system prompt and session configuration remain unchanged.
      * Only the conversation messages are cleared.
@@ -296,7 +296,7 @@ export class ChatSession {
         await this.contextManager.resetConversation();
 
         // Emit agent-level event with session context
-        this.services.agentEventBus.emit('saiki:conversationReset', {
+        this.services.agentEventBus.emit('dexto:conversationReset', {
             sessionId: this.id,
         });
     }

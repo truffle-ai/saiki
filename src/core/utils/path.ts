@@ -120,30 +120,30 @@ export function findPackageByName(
 }
 
 /**
- * Check if current directory is the Saiki project
+ * Check if current directory is the Dexto project
  * @param dirPath Directory to check (defaults to current working directory)
- * @returns True if the directory is the Saiki project root
+ * @returns True if the directory is the Dexto project root
  */
-export function isCurrentDirectorySaikiProject(dirPath: string = process.cwd()): boolean {
+export function isCurrentDirectoryDextoProject(dirPath: string = process.cwd()): boolean {
     return isDirectoryPackage(dirPath, '@truffle-ai/saiki');
 }
 
 /**
- * Find the Saiki project root by walking up directories
+ * Find the Dexto project root by walking up directories
  * @param startPath Starting directory path
- * @returns The Saiki project root directory, or null if not found
+ * @returns The Dexto project root directory, or null if not found
  */
-export function findSaikiProjectRoot(startPath: string = process.cwd()): string | null {
+export function findDextoProjectRoot(startPath: string = process.cwd()): string | null {
     return findPackageByName('@truffle-ai/saiki', startPath);
 }
 
 /**
- * Detect if we're running as a global install (not in the Saiki project directory)
- * @returns True if running globally, false if in Saiki project
+ * Detect if we're running as a global install (not in the Dexto project directory)
+ * @returns True if running globally, false if in Dexto project
  */
 export function isGlobalInstall(): boolean {
-    const isInSaikiProject = isSaikiProject();
-    return !isInSaikiProject;
+    const isInDextoProject = isDextoProject();
+    return !isInDextoProject;
 }
 
 /**
@@ -157,7 +157,7 @@ export function resolvePackagePath(targetPath: string, resolveFromPackageRoot: b
         return targetPath;
     }
     if (resolveFromPackageRoot) {
-        // For default config, we need to find the actual Saiki package installation root
+        // For default config, we need to find the actual Dexto package installation root
         try {
             // First try to find the installed package using require.resolve
             // This works for both global installs and local development
@@ -183,46 +183,46 @@ export function resolvePackagePath(targetPath: string, resolveFromPackageRoot: b
 }
 
 /**
- * Check if a directory contains a Saiki configuration file
+ * Check if a directory contains a Dexto configuration file
  * @param dirPath Directory to check
  * @returns True if the directory contains agents/agent.yml
  */
-export function hasSaikiConfig(dirPath: string): boolean {
+export function hasDextoConfig(dirPath: string): boolean {
     const configPath = path.join(dirPath, DEFAULT_CONFIG_PATH);
     return existsSync(configPath);
 }
 
 /**
- * Resolve the default log file path for Saiki
+ * Resolve the default log file path for Dexto
  * Uses reliable synchronous detection for immediate use in logger initialization
- * @param logFileName Optional custom log file name (defaults to 'saiki.log')
+ * @param logFileName Optional custom log file name (defaults to 'dexto.log')
  * @returns Absolute path to the log file
  */
-export function resolveSaikiLogPath(logFileName: string = 'saiki.log'): string {
-    // Use reliable package detection - check if we're in a Saiki project
-    const isInSaikiProject = isSaikiProject();
-    const logDir = isInSaikiProject
-        ? path.join(process.cwd(), '.saiki', 'logs')
-        : path.join(homedir(), '.saiki', 'logs');
+export function resolveDextoLogPath(logFileName: string = 'dexto.log'): string {
+    // Use reliable package detection - check if we're in a Dexto project
+    const isInDextoProject = isDextoProject();
+    const logDir = isInDextoProject
+        ? path.join(process.cwd(), '.dexto', 'logs')
+        : path.join(homedir(), '.dexto', 'logs');
 
     return path.join(logDir, logFileName);
 }
 
 /**
- * Find Saiki project root by looking for agents/agent.yml
+ * Find Dexto project root by looking for agents/agent.yml
  * @param startPath Starting directory path
  * @returns The directory containing agents/agent.yml, or null if not found
  */
-export function findSaikiProjectByConfig(startPath: string = process.cwd()): string | null {
-    return walkUpDirectories(startPath, hasSaikiConfig);
+export function findDextoProjectByConfig(startPath: string = process.cwd()): string | null {
+    return walkUpDirectories(startPath, hasDextoConfig);
 }
 
 /**
- * Enhanced Saiki project detection that checks both package.json and config file
+ * Enhanced Dexto project detection that checks both package.json and config file
  * @param dirPath Directory to check (defaults to current working directory)
- * @returns True if the directory is a Saiki project (by package name OR config file)
+ * @returns True if the directory is a Dexto project (by package name OR config file)
  */
-export function isSaikiProject(dirPath: string = process.cwd()): boolean {
+export function isDextoProject(dirPath: string = process.cwd()): boolean {
     // Check for package.json with @truffle-ai/saiki name
     const isPackage = isDirectoryPackage(dirPath, '@truffle-ai/saiki');
     if (isPackage) {
@@ -230,15 +230,15 @@ export function isSaikiProject(dirPath: string = process.cwd()): boolean {
     }
 
     // Check for agents/agent.yml
-    return hasSaikiConfig(dirPath);
+    return hasDextoConfig(dirPath);
 }
 
 /**
- * Enhanced Saiki project root finder that checks both package.json and config file
+ * Enhanced Dexto project root finder that checks both package.json and config file
  * @param startPath Starting directory path
- * @returns The Saiki project root directory, or null if not found
+ * @returns The Dexto project root directory, or null if not found
  */
-export function findSaikiProjectRootEnhanced(startPath: string = process.cwd()): string | null {
+export function findDextoProjectRootEnhanced(startPath: string = process.cwd()): string | null {
     // First try finding by package.json
     const packageRoot = findPackageByName('@truffle-ai/saiki', startPath);
     if (packageRoot) {
@@ -246,5 +246,5 @@ export function findSaikiProjectRootEnhanced(startPath: string = process.cwd()):
     }
 
     // Then try finding by configuration file
-    return findSaikiProjectByConfig(startPath);
+    return findDextoProjectByConfig(startPath);
 }

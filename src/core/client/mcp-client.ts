@@ -128,7 +128,7 @@ export class MCPClient implements IMCPClient {
 
         this.client = new Client(
             {
-                name: 'Saiki-stdio-mcp-client',
+                name: 'Dexto-stdio-mcp-client',
                 version: '1.0.0',
             },
             {
@@ -173,7 +173,7 @@ export class MCPClient implements IMCPClient {
         logger.debug(`[connectViaSSE] SSE transport: ${JSON.stringify(this.transport, null, 2)}`);
         this.client = new Client(
             {
-                name: 'Saiki-sse-mcp-client',
+                name: 'Dexto-sse-mcp-client',
                 version: '1.0.0',
             },
             {
@@ -212,7 +212,7 @@ export class MCPClient implements IMCPClient {
             requestInit: { headers: headers || {} },
         });
         this.client = new Client(
-            { name: 'Saiki-http-mcp-client', version: '1.0.0' },
+            { name: 'Dexto-http-mcp-client', version: '1.0.0' },
             { capabilities: { tools: {} } }
         );
         try {

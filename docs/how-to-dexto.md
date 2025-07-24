@@ -1,22 +1,22 @@
-# Saiki Usage Guide for LLM Agents
+# Dexto Usage Guide for LLM Agents
 
-This document provides a concise guide for using the Saiki agent runtime, optimized for RAG and consumption by other LLMs.
+This document provides a concise guide for using the Dexto agent runtime, optimized for RAG and consumption by other LLMs.
 
 ---
 
 ## 1. Core Concepts
 
-### What is Saiki?
-Saiki is a lightweight runtime for creating and running AI agents. It translates natural language prompts into actions using configured tools and LLMs. It can be controlled via CLI, a programmatic SDK, or a REST API.
+### What is Dexto?
+Dexto is a lightweight runtime for creating and running AI agents. It translates natural language prompts into actions using configured tools and LLMs. It can be controlled via CLI, a programmatic SDK, or a REST API.
 
 ### Installation
-Install the Saiki CLI globally via npm:
+Install the Dexto CLI globally via npm:
 ```bash
-npm install -g @truffle-ai/saiki
+npm install -g @truffle-ai/dexto
 ```
 
 ### LLM API Keys
-Saiki requires API keys for the desired LLM provider. Set them as environment variables.
+Dexto requires API keys for the desired LLM provider. Set them as environment variables.
 ```bash
 # For OpenAI (e.g., gpt-4o)
 export OPENAI_API_KEY="your_key"
@@ -55,7 +55,7 @@ llm:
 
 # Define the agent's persona and instructions
 systemPrompt: |
-  You are Saiki, an expert coding assistant.
+  You are Dexto, an expert coding assistant.
   You have access to a filesystem and a browser.
   Think step-by-step to solve the user's request.
 ```
@@ -71,7 +71,7 @@ systemPrompt:
       type: static
       priority: 0
       content: |
-        You are Saiki, an expert coding assistant.
+        You are Dexto, an expert coding assistant.
         You have access to a filesystem and a browser.
     
     - id: project-context
@@ -131,22 +131,22 @@ systemPrompt:
 
 ## 2. Usage Methods
 
-Saiki can be used via its CLI, a TypeScript SDK, or as a server with a REST API.
+Dexto can be used via its CLI, a TypeScript SDK, or as a server with a REST API.
 
 ### Method 1: CLI Usage
 
-The `saiki` command can run one-shot prompts or start in different modes.
+The `dexto` command can run one-shot prompts or start in different modes.
 
 **One-shot prompt:**
 Execute a task directly from the command line.
 ```bash
-saiki "create a new file named 'test.txt' with the content 'hello world'"
+dexto "create a new file named 'test.txt' with the content 'hello world'"
 ```
 
 **Interactive CLI:**
 Start a chat session in the terminal.
 ```bash
-saiki
+dexto
 ```
 
 **Key CLI Flags:**
@@ -159,36 +159,36 @@ saiki
 
 | Mode       | Command                       | Description                               |
 |------------|-------------------------------|-------------------------------------------|
-| `cli`      | `saiki`                       | Interactive or one-shot terminal commands.|
-| `web`      | `saiki --mode web`            | Starts a web UI (default port: 3000).     |
-| `server`   | `saiki --mode server`         | Starts a REST/WebSocket server (port: 3001).|
-| `mcp`      | `saiki --mode mcp`            | Exposes the agent as a tool via MCP/stdio.|
-| `discord`  | `saiki --mode discord`        | Runs the agent as a Discord bot.          |
-| `telegram` | `saiki --mode telegram`       | Runs the agent as a Telegram bot.         |
+| `cli`      | `dexto`                       | Interactive or one-shot terminal commands.|
+| `web`      | `dexto --mode web`            | Starts a web UI (default port: 3000).     |
+| `server`   | `dexto --mode server`         | Starts a REST/WebSocket server (port: 3001).|
+| `mcp`      | `dexto --mode mcp`            | Exposes the agent as a tool via MCP/stdio.|
+| `discord`  | `dexto --mode discord`        | Runs the agent as a Discord bot.          |
+| `telegram` | `dexto --mode telegram`       | Runs the agent as a Telegram bot.         |
 
 **Project Scaffolding:**
-- `saiki create-app`: Create a new Saiki project structure.
-- `saiki init-app`: Initialize Saiki in an existing TypeScript project.
+- `dexto create-app`: Create a new Dexto project structure.
+- `dexto init-app`: Initialize Dexto in an existing TypeScript project.
 
-### Method 2: Programmatic SDK (`SaikiAgent`)
+### Method 2: Programmatic SDK (`DextoAgent`)
 
-Use the `SaikiAgent` class in your TypeScript/JavaScript projects for full programmatic control.
+Use the `DextoAgent` class in your TypeScript/JavaScript projects for full programmatic control.
 
 **Installation for a project:**
 ```bash
-npm install @truffle-ai/saiki
+npm install @truffle-ai/dexto
 ```
 
 **Example SDK Usage:**
 ```ts
 import 'dotenv/config';
-import { SaikiAgent, loadAgentConfig } from '@truffle-ai/saiki';
+import { DextoAgent, loadAgentConfig } from '@truffle-ai/dexto';
 
 // Load configuration from a file
 const config = await loadAgentConfig('./agents/agent.yml');
 
 // Create and start the agent
-const agent = new SaikiAgent(config);
+const agent = new DextoAgent(config);
 await agent.start(); // Initializes services like MCP servers
 
 // Run a single task
@@ -208,12 +208,12 @@ await agent.stop();
 
 ### Method 3: REST API (Server Mode)
 
-Run Saiki as a headless server to interact with it via HTTP requests.
+Run Dexto as a headless server to interact with it via HTTP requests.
 
 **Start the server:**
 ```bash
 # The server will run on http://localhost:3001 by default
-saiki --mode server
+dexto --mode server
 ```
 
 **Key API Endpoints:**
@@ -228,7 +228,7 @@ saiki --mode server
 
 ## 3. Tools and the Model Context Protocol (MCP)
 
-Saiki uses the **Model Context Protocol (MCP)** to communicate with tools. Tools run as separate server processes. You connect Saiki to them by listing them under `mcpServers` in your `agent.yml`.
+Dexto uses the **Model Context Protocol (MCP)** to communicate with tools. Tools run as separate server processes. You connect Dexto to them by listing them under `mcpServers` in your `agent.yml`.
 
 **Common Tool Servers:**
 - **`@modelcontextprotocol/server-filesystem`**: Provides tools for reading, writing, and listing files.
@@ -236,4 +236,4 @@ Saiki uses the **Model Context Protocol (MCP)** to communicate with tools. Tools
 - **`@truffle-ai/web-search`**: Provides tools for performing web searches.
 
 **Executing Tools:**
-When an LLM agent uses Saiki, it should issue natural language commands. Saiki's LLM will determine which tool to call. The agent's `systemPrompt` should inform the LLM about the available tools (e.g., "You have access to a filesystem and a browser"). The LLM then generates tool calls that Saiki executes. 
+When an LLM agent uses Dexto, it should issue natural language commands. Dexto's LLM will determine which tool to call. The agent's `systemPrompt` should inform the LLM about the available tools (e.g., "You have access to a filesystem and a browser"). The LLM then generates tool calls that Dexto executes. 
