@@ -26,7 +26,7 @@ import {
     supportsBaseURL,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
-import { expressRedactionMiddleware } from '../../../lib/expressRedactionMiddleware';
+import { expressRedactionMiddleware } from '../../../lib/expressRedactionMiddleware.js';
 
 /**
  * Helper function to send JSON response with optional pretty printing
