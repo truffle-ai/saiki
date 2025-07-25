@@ -353,8 +353,41 @@ export function isValidProvider(provider: string): boolean {
  * @returns Array of supported file types for the provider, or empty array if provider not found.
  */
 export function getSupportedFileTypes(provider: string): SupportedFileType[] {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
+    const normalizedProvider = normalizeProviderName(provider);
+    const providerInfo = LLM_REGISTRY[normalizedProvider as LLMProvider];
     return providerInfo ? providerInfo.supportedFileTypes : [];
+}
+
+/**
+ * Normalizes provider names from various sources (e.g., Vercel AI SDK) to our registry keys.
+ * @param provider The provider name to normalize.
+ * @returns The normalized provider name that matches our registry.
+ */
+export function normalizeProviderName(provider: string): string {
+    const normalized = provider.toLowerCase();
+
+    // Handle Vercel AI SDK provider names
+    if (normalized.includes('google') || normalized.includes('gemini')) {
+        return 'google';
+    }
+    if (normalized.includes('openai')) {
+        return 'openai';
+    }
+    if (normalized.includes('anthropic') || normalized.includes('claude')) {
+        return 'anthropic';
+    }
+    if (normalized.includes('groq')) {
+        return 'groq';
+    }
+    if (normalized.includes('xai') || normalized.includes('grok')) {
+        return 'xai';
+    }
+    if (normalized.includes('cohere')) {
+        return 'cohere';
+    }
+
+    // Return as-is if no mapping found
+    return normalized;
 }
 
 /**
@@ -368,7 +401,8 @@ export function getSupportedFileTypesForModel(
     provider: string,
     model: string
 ): SupportedFileType[] {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
+    const normalizedProvider = normalizeProviderName(provider);
+    const providerInfo = LLM_REGISTRY[normalizedProvider as LLMProvider];
     if (!providerInfo) {
         return [];
     }

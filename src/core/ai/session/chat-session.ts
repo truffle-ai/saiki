@@ -247,7 +247,7 @@ export class ChatSession {
                 const { validateModelFileSupport, validateFileSupport } = await import(
                     '../../ai/llm/registry.js'
                 );
-                const currentConfig = this.llmService.getConfig();
+                const currentConfig = this.services.stateManager.getLLMConfig(this.id);
 
                 // Try model-specific validation first, fall back to provider-level
                 let validation;

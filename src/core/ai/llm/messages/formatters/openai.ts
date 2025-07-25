@@ -1,6 +1,6 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
-import { getImageData, getFileData, filterMessagesByCapabilities } from '../utils.js';
+import { getImageData, getFileData } from '../utils.js';
 
 /**
  * Message formatter for OpenAI's Chat Completion API.
@@ -30,13 +30,15 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
         try {
             // Try model-aware filtering first if context is available
             if (context?.llmProvider && context?.llmModel) {
-                filteredHistory = filterMessagesByCapabilities(
+                const { filterMessagesByModelCapabilities } = require('../utils.js');
+                filteredHistory = filterMessagesByModelCapabilities(
                     [...history],
                     context.llmProvider,
                     context.llmModel
                 );
             } else {
                 // Fall back to provider-level filtering
+                const { filterMessagesByCapabilities } = require('../utils.js');
                 filteredHistory = filterMessagesByCapabilities([...history], 'openai');
             }
         } catch (error) {

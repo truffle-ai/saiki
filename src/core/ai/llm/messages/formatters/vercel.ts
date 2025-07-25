@@ -1,7 +1,7 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
 import type { GenerateTextResult, StreamTextResult } from 'ai';
-import { getImageData, getFileData, filterMessagesByCapabilities } from '../utils.js';
+import { getImageData, getFileData } from '../utils.js';
 import { logger } from '../../../../logger/index.js';
 // import Core SDK types if/when needed
 
@@ -36,7 +36,8 @@ export class VercelMessageFormatter implements IMessageFormatter {
         try {
             // For Vercel, we can now use the actual provider and model from context
             if (context?.llmProvider && context?.llmModel) {
-                filteredHistory = filterMessagesByCapabilities(
+                const { filterMessagesByModelCapabilities } = require('../utils.js');
+                filteredHistory = filterMessagesByModelCapabilities(
                     [...history],
                     context.llmProvider,
                     context.llmModel
@@ -49,6 +50,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
                 logger.warn(
                     'No model context available for Vercel formatter, applying conservative file filtering'
                 );
+                const { filterMessagesByCapabilities } = require('../utils.js');
                 filteredHistory = filterMessagesByCapabilities([...history], 'groq');
             }
         } catch (error) {
