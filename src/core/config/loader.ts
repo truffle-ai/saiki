@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { AgentConfig } from './schemas.js';
 import { logger } from '../logger/index.js';
-import { resolveConfigPath, DEFAULT_CONFIG_PATH } from '../utils/path.js';
+import { resolveConfigPath } from '../utils/path.js';
 /**
  * Load the complete agent configuration
  * @param configPath Path to the configuration file

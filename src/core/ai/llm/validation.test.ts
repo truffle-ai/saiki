@@ -1,6 +1,5 @@
 import { describe, test, expect } from 'vitest';
 import { validateInputForLLM, createInputValidationError } from './validation.js';
-import { getAllowedMimeTypes } from './registry.js';
 
 describe('validateInputForLLM', () => {
     describe('text validation', () => {
