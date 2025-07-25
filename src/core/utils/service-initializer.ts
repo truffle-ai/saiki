@@ -33,6 +33,7 @@ import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-
 import { logger } from '../logger/index.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { AgentEventBus } from '../events/index.js';
+import { SchedulerService } from './scheduler.js';
 
 /**
  * Type for the core agent services returned by createAgentServices
@@ -43,6 +44,7 @@ export type AgentServices = {
     agentEventBus: AgentEventBus;
     stateManager: AgentStateManager;
     sessionManager: SessionManager;
+    scheduler: SchedulerService;
     storage: StorageBackends;
     storageManager?: StorageManager;
 };
@@ -132,13 +134,18 @@ export async function createAgentServices(
 
     logger.debug('Session manager initialized with storage support');
 
-    // 8. Return the core services
+    // 8. Initialize scheduler service
+    const scheduler = new SchedulerService(agentEventBus);
+    logger.debug('Scheduler service initialized');
+
+    // 9. Return the core services
     return {
         mcpManager,
         promptManager,
         agentEventBus,
         stateManager,
         sessionManager,
+        scheduler,
         storage,
         storageManager,
     };

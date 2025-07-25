@@ -1,6 +1,17 @@
 import { EventEmitter } from 'events';
 
 /**
+ * Input event names - events that can trigger agent processing
+ */
+export const INPUT_EVENT_NAMES = [
+    'saiki:triggerConversation',
+    'saiki:scheduleMessage',
+    'saiki:cronTrigger',
+    'saiki:webhookReceived',
+    'saiki:externalTrigger',
+] as const;
+
+/**
  * Agent-level event names - events that occur at the agent/global level
  */
 export const AGENT_EVENT_NAMES = [
@@ -38,13 +49,71 @@ export const SESSION_EVENT_NAMES = [
 /**
  * All event names combined for backward compatibility
  */
-export const EVENT_NAMES = [...AGENT_EVENT_NAMES, ...SESSION_EVENT_NAMES] as const;
+export const EVENT_NAMES = [
+    ...AGENT_EVENT_NAMES,
+    ...SESSION_EVENT_NAMES,
+    ...INPUT_EVENT_NAMES,
+] as const;
 
 /**
  * Combined event map for the agent bus - includes agent events and session events with sessionId
  * This is what the global agent event bus uses to aggregate all events
  */
 export interface AgentEventMap {
+    // Input events that can trigger agent processing
+    /** Triggered to start a conversation with specific message and optional context */
+    'saiki:triggerConversation': {
+        message: string;
+        sessionId?: string;
+        metadata?: Record<string, any>;
+        imageData?: { image: string; mimeType: string };
+        source?: string; // Source identifier (e.g., 'scheduler', 'webhook', 'cron')
+    };
+
+    /** Triggered to schedule a message for future processing */
+    'saiki:scheduleMessage': {
+        message: string;
+        scheduledFor: Date;
+        sessionId?: string;
+        metadata?: Record<string, any>;
+        scheduleId: string;
+        recurring?: {
+            pattern: 'daily' | 'weekly' | 'monthly' | 'custom';
+            interval?: number; // For custom patterns
+            cron?: string; // For cron expressions
+        };
+    };
+
+    /** Triggered by cron-style scheduler */
+    'saiki:cronTrigger': {
+        cronExpression: string;
+        triggerId: string;
+        message: string;
+        sessionId?: string;
+        metadata?: Record<string, any>;
+        nextExecution?: Date;
+    };
+
+    /** Triggered when external webhook is received */
+    'saiki:webhookReceived': {
+        webhookId: string;
+        payload: Record<string, any>;
+        headers: Record<string, string>;
+        source: string;
+        transformedMessage?: string; // Optional pre-processed message
+        sessionId?: string;
+    };
+
+    /** Generic external trigger event */
+    'saiki:externalTrigger': {
+        triggerId: string;
+        source: string;
+        data: Record<string, any>;
+        message?: string;
+        sessionId?: string;
+        metadata?: Record<string, any>;
+    };
+
     // Agent-level events
     /** Fired when Saiki conversation is reset */
     'saiki:conversationReset': {
@@ -247,10 +316,14 @@ export interface SessionEventMap {
 export type AgentEventName = keyof AgentEventMap;
 export type SessionEventName = keyof SessionEventMap;
 export type EventName = keyof AgentEventMap;
+export type InputEventName = (typeof INPUT_EVENT_NAMES)[number];
 
 /**
  * Compile-time checks to ensure event name arrays and maps stay synchronized
  */
+type _InputEventNamesInMap = (typeof INPUT_EVENT_NAMES)[number] extends keyof AgentEventMap
+    ? true
+    : never;
 type _AgentEventNamesInMap = (typeof AGENT_EVENT_NAMES)[number] extends keyof AgentEventMap
     ? true
     : never;
@@ -259,11 +332,13 @@ type _SessionEventNamesInMap = (typeof SESSION_EVENT_NAMES)[number] extends Sess
     : never;
 type _EventNamesInMap = (typeof EVENT_NAMES)[number] extends EventName ? true : never;
 
+const _checkInputEventNames: _InputEventNamesInMap = true;
 const _checkAgentEventNames: _AgentEventNamesInMap = true;
 const _checkSessionEventNames: _SessionEventNamesInMap = true;
 const _checkEventNames: _EventNamesInMap = true;
 
 // Explicitly mark compile-time checks as used to avoid linter warnings
+void _checkInputEventNames;
 void _checkAgentEventNames;
 void _checkSessionEventNames;
 void _checkEventNames;
@@ -271,6 +346,7 @@ void _checkEventNames;
 /**
  * Runtime arrays of event names for iteration, validation, etc.
  */
+export const InputEventNames: readonly InputEventName[] = Object.freeze([...INPUT_EVENT_NAMES]);
 export const AgentEventNames: readonly AgentEventName[] = Object.freeze([...AGENT_EVENT_NAMES]);
 export const SessionEventNames: readonly SessionEventName[] = Object.freeze([
     ...SESSION_EVENT_NAMES,

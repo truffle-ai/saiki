@@ -102,8 +102,9 @@ describe('SaikiAgent.switchLLM', () => {
         };
 
         mockEventBus = {
+            on: vi.fn(),
             emit: vi.fn(),
-        };
+        } as any;
 
         mockMcpManager = {
             connectServer: vi.fn(),
@@ -126,6 +127,23 @@ describe('SaikiAgent.switchLLM', () => {
             agentEventBus: mockEventBus,
             stateManager: mockStateManager,
             sessionManager: mockSessionManager,
+            scheduler: {
+                start: vi.fn(),
+                stop: vi.fn(),
+                createTask: vi.fn().mockReturnValue('mock-task-id'),
+                getTask: vi.fn(),
+                listTasks: vi.fn().mockReturnValue([]),
+                setTaskEnabled: vi.fn().mockReturnValue(true),
+                deleteTask: vi.fn().mockReturnValue(true),
+                updateTaskSchedule: vi.fn().mockReturnValue(true),
+                getStats: vi.fn().mockReturnValue({
+                    totalTasks: 0,
+                    enabledTasks: 0,
+                    recurringTasks: 0,
+                    pendingExecutions: 0,
+                    isRunning: false,
+                }),
+            } as any,
             storage: mockStorageManager,
             storageManager: mockStorageManager,
         };
