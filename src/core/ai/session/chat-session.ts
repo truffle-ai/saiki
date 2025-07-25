@@ -242,7 +242,7 @@ export class ChatSession {
             `Running session ${this.id} with input: ${input}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}`
         );
 
-        // Validate input for SDK users (API layer also validates, but SDK users bypass API)
+        // Validate input at session level
         const currentConfig = this.services.stateManager.getLLMConfig(this.id);
         const validation = validateInputForLLM(
             {
