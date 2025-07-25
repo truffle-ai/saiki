@@ -354,6 +354,8 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
         '} catch (error) {',
         "  console.error('❌ Error:', error);",
         '}',
+        '',
+        "console.log('\\n📖 Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki');",
     ];
     const indexTsContent = indexTsLines.join('\n');
     const outputPath = path.join(directory, 'saiki-example.ts');
