@@ -3,7 +3,7 @@ import { MCPManager } from '../../client/manager.js';
 // Context passed to dynamic contributors
 export interface DynamicContributorContext {
     mcpManager: MCPManager;
-    // Optional model information for formatters
+    // Model information for formatters - used for model-aware file filtering
     llmProvider?: string;
     llmModel?: string;
 }

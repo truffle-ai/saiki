@@ -150,21 +150,26 @@ export function getFileData(filePart: {
     return '';
 }
 
+import { validateFileForLLM } from '../validation.js';
+
+export interface FilteringConfig {
+    provider: string;
+    model?: string;
+}
+
 /**
- * Filters message content based on LLM provider capabilities.
+ * Filters message content based on LLM capabilities.
  * Removes unsupported file attachments while preserving supported content.
+ * Uses model-specific validation when available, falls back to provider-level.
  * @param messages Array of internal messages to filter
- * @param provider The target LLM provider name
+ * @param config The LLM configuration (provider and optional model)
  * @returns Filtered messages with unsupported content removed
  */
-export function filterMessagesByCapabilities(
+export function filterMessagesByLLMCapabilities(
     messages: InternalMessage[],
-    provider: string
+    config: FilteringConfig
 ): InternalMessage[] {
     try {
-        // Dynamic import to avoid circular dependencies
-        const { validateFileSupport } = require('../../llm/registry.js');
-
         return messages.map((message) => {
             // Only filter user messages with array content (multimodal)
             if (message.role !== 'user' || !Array.isArray(message.content)) {
@@ -177,9 +182,9 @@ export function filterMessagesByCapabilities(
                     return true;
                 }
 
-                // Filter file parts based on provider capabilities
+                // Filter file parts based on LLM capabilities
                 if (part.type === 'file' && part.mimeType) {
-                    const validation = validateFileSupport(provider, part.mimeType);
+                    const validation = validateFileForLLM(config, part.mimeType);
                     return validation.isSupported;
                 }
 
@@ -188,9 +193,10 @@ export function filterMessagesByCapabilities(
 
             // If all content was filtered out, add a placeholder text
             if (filteredContent.length === 0) {
+                const modelContext = config.model ? ` by ${config.model}` : ' by current LLM';
                 filteredContent.push({
                     type: 'text',
-                    text: '[File attachment removed - not supported by current LLM]',
+                    text: `[File attachment removed - not supported${modelContext}]`,
                 });
             }
 
@@ -201,65 +207,30 @@ export function filterMessagesByCapabilities(
         });
     } catch (error) {
         // If filtering fails, return original messages to avoid breaking the flow
-        console.warn('Failed to filter messages by capabilities:', error);
+        console.warn('Failed to filter messages by LLM capabilities:', error);
         return messages;
     }
 }
 
 /**
+ * @deprecated Use filterMessagesByLLMCapabilities instead
+ * Filters message content based on LLM provider capabilities.
+ */
+export function filterMessagesByCapabilities(
+    messages: InternalMessage[],
+    provider: string
+): InternalMessage[] {
+    return filterMessagesByLLMCapabilities(messages, { provider });
+}
+
+/**
+ * @deprecated Use filterMessagesByLLMCapabilities instead
  * Filters message content based on specific model capabilities.
- * Removes unsupported file attachments while preserving supported content.
- * @param messages Array of internal messages to filter
- * @param provider The target LLM provider name
- * @param model The target model name
- * @returns Filtered messages with unsupported content removed
  */
 export function filterMessagesByModelCapabilities(
     messages: InternalMessage[],
     provider: string,
     model: string
 ): InternalMessage[] {
-    try {
-        // Dynamic import to avoid circular dependencies
-        const { validateModelFileSupport } = require('../../llm/registry.js');
-
-        return messages.map((message) => {
-            // Only filter user messages with array content (multimodal)
-            if (message.role !== 'user' || !Array.isArray(message.content)) {
-                return message;
-            }
-
-            const filteredContent = message.content.filter((part) => {
-                // Keep text and image parts
-                if (part.type === 'text' || part.type === 'image') {
-                    return true;
-                }
-
-                // Filter file parts based on model capabilities
-                if (part.type === 'file' && part.mimeType) {
-                    const validation = validateModelFileSupport(provider, model, part.mimeType);
-                    return validation.isSupported;
-                }
-
-                return true; // Keep unknown part types
-            });
-
-            // If all content was filtered out, add a placeholder text
-            if (filteredContent.length === 0) {
-                filteredContent.push({
-                    type: 'text',
-                    text: `[File attachment removed - not supported by ${model}]`,
-                });
-            }
-
-            return {
-                ...message,
-                content: filteredContent,
-            };
-        });
-    } catch (error) {
-        // If filtering fails, return original messages to avoid breaking the flow
-        console.warn('Failed to filter messages by model capabilities:', error);
-        return messages;
-    }
+    return filterMessagesByLLMCapabilities(messages, { provider, model });
 }

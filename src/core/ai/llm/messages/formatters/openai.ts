@@ -1,6 +1,11 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
-import { getImageData, getFileData } from '../utils.js';
+import {
+    getImageData,
+    getFileData,
+    filterMessagesByLLMCapabilities,
+    FilteringConfig,
+} from '../utils.js';
 
 /**
  * Message formatter for OpenAI's Chat Completion API.
@@ -28,19 +33,11 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
         // Apply model-aware capability filtering
         let filteredHistory: InternalMessage[];
         try {
-            // Try model-aware filtering first if context is available
-            if (context?.llmProvider && context?.llmModel) {
-                const { filterMessagesByModelCapabilities } = require('../utils.js');
-                filteredHistory = filterMessagesByModelCapabilities(
-                    [...history],
-                    context.llmProvider,
-                    context.llmModel
-                );
-            } else {
-                // Fall back to provider-level filtering
-                const { filterMessagesByCapabilities } = require('../utils.js');
-                filteredHistory = filterMessagesByCapabilities([...history], 'openai');
-            }
+            const config: FilteringConfig = {
+                provider: context?.llmProvider || 'openai',
+                model: context?.llmModel,
+            };
+            filteredHistory = filterMessagesByLLMCapabilities([...history], config);
         } catch (error) {
             console.warn('Failed to apply capability filtering, using original history:', error);
             filteredHistory = [...history];

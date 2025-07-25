@@ -243,63 +243,37 @@ export class ChatSession {
 
         // Validate file format support if file data is provided
         if (fileDataInput) {
-            try {
-                const { validateModelFileSupport, validateFileSupport } = await import(
-                    '../../ai/llm/registry.js'
+            const currentConfig = this.services.stateManager.getLLMConfig(this.id);
+            const { validateFileForLLM } = await import('../../ai/llm/validation.js');
+
+            const config = {
+                provider: currentConfig.provider,
+                ...(typeof currentConfig.model === 'string' && { model: currentConfig.model }),
+            };
+            const validation = validateFileForLLM(config, fileDataInput.mimeType);
+
+            if (!validation.isSupported) {
+                const error = new Error(
+                    validation.error || 'File type not supported by current LLM'
                 );
-                const currentConfig = this.services.stateManager.getLLMConfig(this.id);
+                logger.error(`File validation failed in session ${this.id}: ${error.message}`);
 
-                // Try model-specific validation first, fall back to provider-level
-                let validation;
-                if (typeof currentConfig.model === 'string') {
-                    validation = validateModelFileSupport(
-                        currentConfig.provider,
-                        currentConfig.model,
-                        fileDataInput.mimeType
-                    );
-                } else {
-                    validation = validateFileSupport(
-                        currentConfig.provider,
-                        fileDataInput.mimeType
-                    );
-                }
+                // Emit event for external handlers
+                this.eventBus.emit('saiki:fileValidationError', {
+                    sessionId: this.id,
+                    mimeType: fileDataInput.mimeType,
+                    fileType: validation.fileType,
+                    provider: currentConfig.provider,
+                    model: currentConfig.model,
+                    error: error.message,
+                });
 
-                if (!validation.isSupported) {
-                    const error = new Error(
-                        validation.error || 'File type not supported by current LLM'
-                    );
-                    logger.error(`File validation failed in session ${this.id}: ${error.message}`);
-
-                    // Emit event for external handlers
-                    this.eventBus.emit('saiki:fileValidationError', {
-                        sessionId: this.id,
-                        mimeType: fileDataInput.mimeType,
-                        fileType: validation.fileType,
-                        provider: currentConfig.provider,
-                        model: currentConfig.model,
-                        error: error.message,
-                    });
-
-                    throw error;
-                }
-
-                logger.debug(
-                    `File validation passed for ${validation.fileType} file in session ${this.id}`
-                );
-            } catch (validationError) {
-                // Re-throw validation errors
-                if (
-                    validationError instanceof Error &&
-                    validationError.message.includes('not supported')
-                ) {
-                    throw validationError;
-                }
-                // Log and throw unexpected validation errors
-                logger.error(
-                    `Unexpected error during file validation in session ${this.id}: ${validationError}`
-                );
-                throw new Error('Failed to validate file support');
+                throw error;
             }
+
+            logger.debug(
+                `File validation passed for ${validation.fileType} file in session ${this.id}`
+            );
         }
 
         const response = await this.llmService.completeTask(

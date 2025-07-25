@@ -1,7 +1,12 @@
 import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
 import { logger } from '../../../../logger/index.js';
-import { getImageData, getFileData } from '../utils.js';
+import {
+    getImageData,
+    getFileData,
+    filterMessagesByLLMCapabilities,
+    FilteringConfig,
+} from '../utils.js';
 
 /**
  * Message formatter for Anthropic's Claude API.
@@ -34,19 +39,11 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
         // Apply model-aware capability filtering
         let filteredHistory: InternalMessage[];
         try {
-            // Try model-aware filtering first if context is available
-            if (context?.llmProvider && context?.llmModel) {
-                const { filterMessagesByModelCapabilities } = require('../utils.js');
-                filteredHistory = filterMessagesByModelCapabilities(
-                    [...history],
-                    context.llmProvider,
-                    context.llmModel
-                );
-            } else {
-                // Fall back to provider-level filtering
-                const { filterMessagesByCapabilities } = require('../utils.js');
-                filteredHistory = filterMessagesByCapabilities([...history], 'anthropic');
-            }
+            const config: FilteringConfig = {
+                provider: context?.llmProvider || 'anthropic',
+                model: context?.llmModel,
+            };
+            filteredHistory = filterMessagesByLLMCapabilities([...history], config);
         } catch (error) {
             logger.warn('Failed to apply capability filtering, using original history:', error);
             filteredHistory = [...history];
