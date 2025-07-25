@@ -272,7 +272,7 @@ export class SaikiAgent {
      * Main method for processing user input.
      * Processes user input through the agent's LLM service and returns the response.
      *
-     * @param userInput - The user's message or query to process
+     * @param textInput - The user's text message or query to process
      * @param imageDataInput - Optional image data and MIME type for multimodal input
      * @param fileDataInput - Optional file data and MIME type for file input
      * @param sessionId - Optional session ID for multi-session scenarios
@@ -280,7 +280,7 @@ export class SaikiAgent {
      * @throws Error if processing fails
      */
     public async run(
-        userInput: string,
+        textInput: string,
         imageDataInput?: { image: string; mimeType: string },
         fileDataInput?: { data: string; mimeType: string; filename?: string },
         sessionId?: string,
@@ -312,9 +312,9 @@ export class SaikiAgent {
             }
 
             logger.debug(
-                `SaikiAgent.run: userInput: ${userInput}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
+                `SaikiAgent.run: textInput: ${textInput}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
             );
-            const response = await session.run(userInput, imageDataInput, fileDataInput, stream);
+            const response = await session.run(textInput, imageDataInput, fileDataInput, stream);
 
             // Increment message count for this session (counts each)
             await this.sessionManager.incrementMessageCount(session.id);

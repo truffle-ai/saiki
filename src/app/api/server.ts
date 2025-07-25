@@ -124,6 +124,37 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     }
                 }
 
+                // Model-specific file format validation
+                try {
+                    const currentConfig = agent.getEffectiveConfig(sessionId);
+                    const { validateModelFileSupport, validateFileSupport } = await import(
+                        '@core/ai/llm/registry.js'
+                    );
+
+                    // Try model-specific validation first, fall back to provider-level
+                    let validation;
+                    if (currentConfig.llm.model) {
+                        validation = validateModelFileSupport(
+                            currentConfig.llm.provider,
+                            currentConfig.llm.model,
+                            mimeType
+                        );
+                    } else {
+                        validation = validateFileSupport(currentConfig.llm.provider, mimeType);
+                    }
+
+                    if (!validation.isSupported) {
+                        return res.status(400).send({
+                            error: validation.error || 'File type not supported by current LLM',
+                            provider: currentConfig.llm.provider,
+                            model: currentConfig.llm.model,
+                        });
+                    }
+                } catch (validationError) {
+                    logger.error(`Error validating file support: ${validationError}`);
+                    return res.status(500).send({ error: 'Failed to validate file support' });
+                }
+
                 fileDataInput = { data: base64, mimeType, filename };
             }
 
@@ -181,6 +212,38 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 if (!base64Regex.test(base64)) {
                     return res.status(400).send({ error: 'Invalid file data format' });
                 }
+            }
+
+            // Model-specific file format validation
+            try {
+                const sessionId = req.body.sessionId as string | undefined;
+                const currentConfig = agent.getEffectiveConfig(sessionId);
+                const { validateModelFileSupport, validateFileSupport } = await import(
+                    '@core/ai/llm/registry.js'
+                );
+
+                // Try model-specific validation first, fall back to provider-level
+                let validation;
+                if (currentConfig.llm.model) {
+                    validation = validateModelFileSupport(
+                        currentConfig.llm.provider,
+                        currentConfig.llm.model,
+                        mimeType
+                    );
+                } else {
+                    validation = validateFileSupport(currentConfig.llm.provider, mimeType);
+                }
+
+                if (!validation.isSupported) {
+                    return res.status(400).send({
+                        error: validation.error || 'File type not supported by current LLM',
+                        provider: currentConfig.llm.provider,
+                        model: currentConfig.llm.model,
+                    });
+                }
+            } catch (validationError) {
+                logger.error(`Error validating file support: ${validationError}`);
+                return res.status(500).send({ error: 'Failed to validate file support' });
             }
 
             fileDataInput = { data: base64, mimeType, filename };
@@ -429,6 +492,55 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                                 );
                                 return;
                             }
+                        }
+
+                        // Model-specific file format validation
+                        try {
+                            const sessionId = data.sessionId as string | undefined;
+                            const currentConfig = agent.getEffectiveConfig(sessionId);
+                            const { validateModelFileSupport, validateFileSupport } = await import(
+                                '@core/ai/llm/registry.js'
+                            );
+
+                            // Try model-specific validation first, fall back to provider-level
+                            let validation;
+                            if (currentConfig.llm.model) {
+                                validation = validateModelFileSupport(
+                                    currentConfig.llm.provider,
+                                    currentConfig.llm.model,
+                                    mimeType
+                                );
+                            } else {
+                                validation = validateFileSupport(
+                                    currentConfig.llm.provider,
+                                    mimeType
+                                );
+                            }
+
+                            if (!validation.isSupported) {
+                                ws.send(
+                                    JSON.stringify({
+                                        event: 'error',
+                                        data: {
+                                            message:
+                                                validation.error ||
+                                                'File type not supported by current LLM',
+                                            provider: currentConfig.llm.provider,
+                                            model: currentConfig.llm.model,
+                                        },
+                                    })
+                                );
+                                return;
+                            }
+                        } catch (validationError) {
+                            logger.error(`Error validating file support: ${validationError}`);
+                            ws.send(
+                                JSON.stringify({
+                                    event: 'error',
+                                    data: { message: 'Failed to validate file support' },
+                                })
+                            );
+                            return;
                         }
 
                         fileDataInput = { data: base64, mimeType, filename };

@@ -45,13 +45,13 @@ export class OpenAIService implements ILLMService {
     }
 
     async completeTask(
-        userInput: string,
+        textInput: string,
         imageData?: ImageData,
         fileData?: FileData,
         _stream?: boolean
     ): Promise<string> {
         // Add user message with optional image and file data
-        await this.contextManager.addUserMessage(userInput, imageData, fileData);
+        await this.contextManager.addUserMessage(textInput, imageData, fileData);
 
         // Get all tools
         const rawTools = await this.mcpManager.getAllTools();
@@ -256,7 +256,11 @@ export class OpenAIService implements ILLMService {
 
             try {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = { mcpManager: this.mcpManager };
+                const context = {
+                    mcpManager: this.mcpManager,
+                    llmProvider: 'openai',
+                    llmModel: this.model,
+                };
                 const {
                     formattedMessages,
                     systemPrompt: _systemPrompt,

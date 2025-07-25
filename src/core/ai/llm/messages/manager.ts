@@ -525,7 +525,7 @@ export class ContextManager {
         try {
             // Use pre-computed system prompt if provided
             const prompt = systemPrompt ?? (await this.getSystemPrompt(context));
-            return this.formatter.format([...messageHistory], prompt);
+            return this.formatter.format([...messageHistory], prompt, context);
         } catch (error) {
             logger.error(
                 `Error formatting messages: ${error instanceof Error ? error.message : String(error)}`

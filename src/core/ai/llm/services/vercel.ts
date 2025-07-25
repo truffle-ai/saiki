@@ -150,16 +150,16 @@ export class VercelLLMService implements ILLMService {
     }
 
     async completeTask(
-        userInput: string,
+        textInput: string,
         imageData?: ImageData,
         fileData?: FileData,
         stream?: boolean
     ): Promise<string> {
         // Add user message, with optional image and file data
         logger.debug(
-            `VercelLLMService: Adding user message: ${userInput}, imageData: ${imageData}, fileData: ${fileData}`
+            `VercelLLMService: Adding user message: ${textInput}, imageData: ${imageData}, fileData: ${fileData}`
         );
-        await this.contextManager.addUserMessage(userInput, imageData, fileData);
+        await this.contextManager.addUserMessage(textInput, imageData, fileData);
 
         // Get all tools
         const tools = await this.mcpManager.getAllTools();
@@ -183,7 +183,11 @@ export class VercelLLMService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = { mcpManager: this.mcpManager };
+                const context = {
+                    mcpManager: this.mcpManager,
+                    llmProvider: this.model.provider || this.provider,
+                    llmModel: this.model.modelId,
+                };
                 const {
                     formattedMessages,
                     systemPrompt: _systemPrompt,

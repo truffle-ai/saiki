@@ -24,8 +24,33 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
      * @param history Array of internal messages to format
      * @returns Array of messages formatted for Anthropic's API
      */
-    format(history: Readonly<InternalMessage[]>): any[] {
+    format(
+        history: Readonly<InternalMessage[]>,
+        systemPrompt?: string | null,
+        context?: any
+    ): any[] {
         const formatted = [];
+
+        // Apply model-aware capability filtering
+        let filteredHistory: InternalMessage[];
+        try {
+            // Try model-aware filtering first if context is available
+            if (context?.llmProvider && context?.llmModel) {
+                const { filterMessagesByModelCapabilities } = require('../utils.js');
+                filteredHistory = filterMessagesByModelCapabilities(
+                    [...history],
+                    context.llmProvider,
+                    context.llmModel
+                );
+            } else {
+                // Fall back to provider-level filtering
+                const { filterMessagesByCapabilities } = require('../utils.js');
+                filteredHistory = filterMessagesByCapabilities([...history], 'anthropic');
+            }
+        } catch (error) {
+            logger.warn('Failed to apply capability filtering, using original history:', error);
+            filteredHistory = [...history];
+        }
 
         // We need to track tool calls and their associated results
         const pendingToolCalls = new Map<
@@ -37,8 +62,8 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
         >();
 
         // Process messages in chronological order
-        for (let i = 0; i < history.length; i++) {
-            const msg = history[i];
+        for (let i = 0; i < filteredHistory.length; i++) {
+            const msg = filteredHistory[i];
 
             // Skip null/undefined messages
             if (!msg) {

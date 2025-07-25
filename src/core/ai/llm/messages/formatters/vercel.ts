@@ -2,6 +2,7 @@ import { IMessageFormatter } from './types.js';
 import { InternalMessage } from '../types.js';
 import type { GenerateTextResult, StreamTextResult } from 'ai';
 import { getImageData, getFileData } from '../utils.js';
+import { logger } from '../../../../logger/index.js';
 // import Core SDK types if/when needed
 
 /**
@@ -23,8 +24,39 @@ export class VercelMessageFormatter implements IMessageFormatter {
      * @param systemPrompt System prompt to include at the beginning of messages
      * @returns Array of messages formatted for Vercel's API
      */
-    format(history: Readonly<InternalMessage[]>, systemPrompt: string | null): any[] {
+    format(
+        history: Readonly<InternalMessage[]>,
+        systemPrompt: string | null,
+        context?: any
+    ): any[] {
         const formatted = [];
+
+        // Apply model-aware capability filtering for Vercel
+        let filteredHistory: InternalMessage[];
+        try {
+            // For Vercel, we can now use the actual provider and model from context
+            if (context?.llmProvider && context?.llmModel) {
+                const { filterMessagesByModelCapabilities } = require('../utils.js');
+                filteredHistory = filterMessagesByModelCapabilities(
+                    [...history],
+                    context.llmProvider,
+                    context.llmModel
+                );
+                logger.debug(
+                    `Applied Vercel filtering for ${context.llmProvider}/${context.llmModel}`
+                );
+            } else {
+                // No context available - apply conservative filtering (remove all file parts)
+                logger.warn(
+                    'No model context available for Vercel formatter, applying conservative file filtering'
+                );
+                const { filterMessagesByCapabilities } = require('../utils.js');
+                filteredHistory = filterMessagesByCapabilities([...history], 'groq');
+            }
+        } catch (error) {
+            console.warn('Failed to apply capability filtering, using original history:', error);
+            filteredHistory = [...history];
+        }
 
         // Add system message if present
         if (systemPrompt) {
@@ -34,7 +66,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
             });
         }
 
-        for (const msg of history) {
+        for (const msg of filteredHistory) {
             switch (msg.role) {
                 case 'user':
                 case 'system':

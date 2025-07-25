@@ -11,13 +11,13 @@ export interface ILLMService {
      * and return the final AI response.
      * Handles potential tool calls and conversation management internally.
      *
-     * @param userInput The primary text input from the user.
+     * @param textInput The primary text input from the user.
      * @param imageData Optional image data associated with the user input.
      * @param fileData Optional file data associated with the user input.
      * @returns A promise that resolves with the final text response from the AI.
      */
     completeTask(
-        userInput: string,
+        textInput: string,
         imageData?: ImageData,
         fileData?: FileData,
         stream?: boolean

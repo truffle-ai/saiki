@@ -12,6 +12,12 @@ import {
     requiresBaseURL,
     acceptsAnyModel,
     getDefaultModelForProvider,
+    getSupportedFileTypes,
+    getSupportedFileTypesForModel,
+    supportsFileType,
+    modelSupportsFileType,
+    validateFileSupport,
+    validateModelFileSupport,
 } from './registry.js';
 import { ModelNotFoundError } from './errors.js';
 import { EffectiveMaxInputTokensError } from './errors.js';
@@ -242,6 +248,184 @@ describe('LLM Registry', () => {
 
         it('does not accept any model', () => {
             expect(acceptsAnyModel('cohere')).toBe(false);
+        });
+    });
+});
+
+describe('File support functionality', () => {
+    describe('getSupportedFileTypes', () => {
+        it('should return provider-level default file types for OpenAI', () => {
+            expect(getSupportedFileTypes('openai')).toEqual(['pdf']);
+        });
+
+        it('should return correct file types for Anthropic', () => {
+            expect(getSupportedFileTypes('anthropic')).toEqual(['pdf']);
+        });
+
+        it('should return correct file types for Google', () => {
+            expect(getSupportedFileTypes('google')).toEqual(['pdf', 'audio']);
+        });
+
+        it('should return empty array for providers without file support', () => {
+            expect(getSupportedFileTypes('groq')).toEqual([]);
+            expect(getSupportedFileTypes('xai')).toEqual([]);
+            expect(getSupportedFileTypes('cohere')).toEqual([]);
+        });
+
+        it('should return empty array for unknown provider', () => {
+            expect(getSupportedFileTypes('unknown-provider')).toEqual([]);
+        });
+
+        it('should be case-insensitive', () => {
+            expect(getSupportedFileTypes('OpenAI')).toEqual(['pdf']);
+        });
+    });
+
+    describe('supportsFileType', () => {
+        it('should return true for provider-level supported file types', () => {
+            expect(supportsFileType('openai', 'pdf')).toBe(true);
+            expect(supportsFileType('google', 'audio')).toBe(true);
+            expect(supportsFileType('anthropic', 'pdf')).toBe(true);
+        });
+
+        it('should return false for unsupported file types', () => {
+            expect(supportsFileType('openai', 'audio')).toBe(false); // OpenAI provider default doesn't include audio
+            expect(supportsFileType('anthropic', 'audio')).toBe(false);
+            expect(supportsFileType('groq', 'pdf')).toBe(false);
+            expect(supportsFileType('groq', 'audio')).toBe(false);
+        });
+
+        it('should return false for unknown provider', () => {
+            expect(supportsFileType('unknown-provider', 'pdf')).toBe(false);
+        });
+    });
+
+    describe('validateFileSupport', () => {
+        it('should validate supported PDF files', () => {
+            const result = validateFileSupport('openai', 'application/pdf');
+            expect(result.isSupported).toBe(true);
+            expect(result.fileType).toBe('pdf');
+            expect(result.error).toBeUndefined();
+        });
+
+        it('should validate supported audio files', () => {
+            const result = validateFileSupport('google', 'audio/mp3');
+            expect(result.isSupported).toBe(true);
+            expect(result.fileType).toBe('audio');
+            expect(result.error).toBeUndefined();
+        });
+
+        it('should reject unsupported file types by provider', () => {
+            const result = validateFileSupport('anthropic', 'audio/mp3');
+            expect(result.isSupported).toBe(false);
+            expect(result.fileType).toBe('audio');
+            expect(result.error).toBe("Provider 'anthropic' does not support audio files");
+        });
+
+        it('should reject unknown MIME types', () => {
+            const result = validateFileSupport('openai', 'application/unknown');
+            expect(result.isSupported).toBe(false);
+            expect(result.fileType).toBeUndefined();
+            expect(result.error).toBe('Unsupported file type: application/unknown');
+        });
+
+        it('should handle various audio MIME types for Google provider', () => {
+            const audioMimes = ['audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/ogg'];
+            audioMimes.forEach((mimeType) => {
+                const result = validateFileSupport('google', mimeType);
+                expect(result.isSupported).toBe(true);
+                expect(result.fileType).toBe('audio');
+            });
+        });
+
+        it('should be case-insensitive for MIME types', () => {
+            const result = validateFileSupport('openai', 'APPLICATION/PDF');
+            expect(result.isSupported).toBe(true);
+            expect(result.fileType).toBe('pdf');
+        });
+    });
+
+    describe('Model-aware file support', () => {
+        describe('getSupportedFileTypesForModel', () => {
+            it('should return model-specific file types when available', () => {
+                expect(getSupportedFileTypesForModel('openai', 'gpt-4o-audio-preview')).toEqual([
+                    'pdf',
+                    'audio',
+                ]);
+                expect(getSupportedFileTypesForModel('openai', 'gpt-4o')).toEqual(['pdf']);
+            });
+
+            it("should fall back to provider defaults when model doesn't specify", () => {
+                expect(getSupportedFileTypesForModel('openai', 'unknown-model')).toEqual(['pdf']);
+            });
+
+            it('should return empty array for unknown provider', () => {
+                expect(getSupportedFileTypesForModel('unknown-provider', 'any-model')).toEqual([]);
+            });
+
+            it('should be case-insensitive', () => {
+                expect(getSupportedFileTypesForModel('OpenAI', 'GPT-4O-AUDIO-PREVIEW')).toEqual([
+                    'pdf',
+                    'audio',
+                ]);
+            });
+        });
+
+        describe('modelSupportsFileType', () => {
+            it('should return true for supported model file types', () => {
+                expect(modelSupportsFileType('openai', 'gpt-4o-audio-preview', 'audio')).toBe(true);
+                expect(modelSupportsFileType('openai', 'gpt-4o-audio-preview', 'pdf')).toBe(true);
+                expect(modelSupportsFileType('openai', 'gpt-4o', 'pdf')).toBe(true);
+            });
+
+            it('should return false for unsupported model file types', () => {
+                expect(modelSupportsFileType('openai', 'gpt-4o', 'audio')).toBe(false);
+                expect(
+                    modelSupportsFileType('anthropic', 'claude-4-sonnet-20250514', 'audio')
+                ).toBe(false);
+            });
+
+            it('should return false for unknown model or provider', () => {
+                expect(modelSupportsFileType('unknown-provider', 'any-model', 'pdf')).toBe(false);
+                expect(modelSupportsFileType('openai', 'unknown-model', 'pdf')).toBe(true); // Falls back to provider default
+            });
+        });
+
+        describe('validateModelFileSupport', () => {
+            it('should validate supported files for specific models', () => {
+                const result = validateModelFileSupport(
+                    'openai',
+                    'gpt-4o-audio-preview',
+                    'audio/mp3'
+                );
+                expect(result.isSupported).toBe(true);
+                expect(result.fileType).toBe('audio');
+                expect(result.error).toBeUndefined();
+            });
+
+            it('should reject unsupported files for specific models', () => {
+                const result = validateModelFileSupport('openai', 'gpt-4o', 'audio/mp3');
+                expect(result.isSupported).toBe(false);
+                expect(result.fileType).toBe('audio');
+                expect(result.error).toBe("Model 'gpt-4o' (openai) does not support audio files");
+            });
+
+            it('should handle unknown MIME types', () => {
+                const result = validateModelFileSupport('openai', 'gpt-4o', 'application/unknown');
+                expect(result.isSupported).toBe(false);
+                expect(result.fileType).toBeUndefined();
+                expect(result.error).toBe('Unsupported file type: application/unknown');
+            });
+
+            it('should be case-insensitive for model names', () => {
+                const result = validateModelFileSupport(
+                    'openai',
+                    'GPT-4O-AUDIO-PREVIEW',
+                    'audio/mp3'
+                );
+                expect(result.isSupported).toBe(true);
+                expect(result.fileType).toBe('audio');
+            });
         });
     });
 });

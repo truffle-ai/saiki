@@ -18,8 +18,33 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
      * @param systemPrompt System prompt to include at the beginning of messages
      * @returns Array of messages formatted for OpenAI's API
      */
-    format(history: Readonly<InternalMessage[]>, systemPrompt: string | null): any[] {
+    format(
+        history: Readonly<InternalMessage[]>,
+        systemPrompt: string | null,
+        context?: any
+    ): any[] {
         const formatted = [];
+
+        // Apply model-aware capability filtering
+        let filteredHistory: InternalMessage[];
+        try {
+            // Try model-aware filtering first if context is available
+            if (context?.llmProvider && context?.llmModel) {
+                const { filterMessagesByModelCapabilities } = require('../utils.js');
+                filteredHistory = filterMessagesByModelCapabilities(
+                    [...history],
+                    context.llmProvider,
+                    context.llmModel
+                );
+            } else {
+                // Fall back to provider-level filtering
+                const { filterMessagesByCapabilities } = require('../utils.js');
+                filteredHistory = filterMessagesByCapabilities([...history], 'openai');
+            }
+        } catch (error) {
+            console.warn('Failed to apply capability filtering, using original history:', error);
+            filteredHistory = [...history];
+        }
 
         // Add system message if provided
         if (systemPrompt) {
@@ -29,7 +54,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
             });
         }
 
-        for (const msg of history) {
+        for (const msg of filteredHistory) {
             switch (msg.role) {
                 case 'system':
                     // We already handled the systemPrompt, but if there are additional
