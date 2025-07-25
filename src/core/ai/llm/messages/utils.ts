@@ -1,6 +1,7 @@
 import { InternalMessage } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { logger } from '../../../logger/index.js';
+import { validateFileForLLM } from '../validation.js';
 
 // Approximation for message format overhead
 const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
@@ -149,8 +150,6 @@ export function getFileData(filePart: {
     console.warn('Unexpected file data type in getFileData:', typeof data);
     return '';
 }
-
-import { validateFileForLLM } from '../validation.js';
 
 export interface FilteringConfig {
     provider: string;

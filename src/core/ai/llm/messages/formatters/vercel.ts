@@ -59,7 +59,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
                 filteredHistory = filterMessagesByCapabilities([...history], 'groq');
             }
         } catch (error) {
-            console.warn('Failed to apply capability filtering, using original history:', error);
+            logger.warn(`Failed to apply capability filtering, using original history: ${error}`);
             filteredHistory = [...history];
         }
 

@@ -24,8 +24,10 @@ import {
     LLM_REGISTRY,
     getSupportedRoutersForProvider,
     supportsBaseURL,
+    getAllowedMimeTypes,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
+import { validateFileForLLM, createFileValidationError } from '@core/ai/llm/validation.js';
 
 /**
  * Helper function to send JSON response with optional pretty printing
@@ -100,18 +102,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 }
 
                 // Security validation: MIME type allowlist
-                const allowedMimeTypes = [
-                    'application/pdf',
-                    'audio/mp3',
-                    'audio/mpeg',
-                    'audio/wav',
-                    'audio/x-wav',
-                    'audio/wave',
-                    'audio/webm',
-                    'audio/ogg',
-                    'audio/m4a',
-                    'audio/aac',
-                ];
+                const allowedMimeTypes = getAllowedMimeTypes();
                 if (!allowedMimeTypes.includes(mimeType)) {
                     return res.status(400).send({ error: 'Unsupported file type' });
                 }
@@ -126,9 +117,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
                 // Model-specific file format validation
                 const currentConfig = agent.getEffectiveConfig(sessionId);
-                const { validateFileForLLM, createFileValidationError } = await import(
-                    '@core/ai/llm/validation.js'
-                );
 
                 const validation = validateFileForLLM(
                     {
@@ -182,18 +170,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             }
 
             // Security validation: MIME type allowlist
-            const allowedMimeTypes = [
-                'application/pdf',
-                'audio/mp3',
-                'audio/mpeg',
-                'audio/wav',
-                'audio/x-wav',
-                'audio/wave',
-                'audio/webm',
-                'audio/ogg',
-                'audio/m4a',
-                'audio/aac',
-            ];
+            const allowedMimeTypes = getAllowedMimeTypes();
             if (!allowedMimeTypes.includes(mimeType)) {
                 return res.status(400).send({ error: 'Unsupported file type' });
             }
@@ -209,9 +186,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             // Model-specific file format validation
             const sessionId = req.body.sessionId as string | undefined;
             const currentConfig = agent.getEffectiveConfig(sessionId);
-            const { validateFileForLLM, createFileValidationError } = await import(
-                '@core/ai/llm/validation.js'
-            );
 
             const validation = validateFileForLLM(
                 {
@@ -442,18 +416,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                         }
 
                         // Security validation: MIME type allowlist
-                        const allowedMimeTypes = [
-                            'application/pdf',
-                            'audio/mp3',
-                            'audio/mpeg',
-                            'audio/wav',
-                            'audio/x-wav',
-                            'audio/wave',
-                            'audio/webm',
-                            'audio/ogg',
-                            'audio/m4a',
-                            'audio/aac',
-                        ];
+                        const allowedMimeTypes = getAllowedMimeTypes();
                         if (!allowedMimeTypes.includes(mimeType)) {
                             ws.send(
                                 JSON.stringify({
@@ -481,9 +444,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                         // Model-specific file format validation
                         const sessionId = data.sessionId as string | undefined;
                         const currentConfig = agent.getEffectiveConfig(sessionId);
-                        const { validateFileForLLM, createFileValidationError } = await import(
-                            '@core/ai/llm/validation.js'
-                        );
 
                         const validation = validateFileForLLM(
                             {

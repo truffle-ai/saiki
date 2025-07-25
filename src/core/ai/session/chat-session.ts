@@ -18,6 +18,7 @@ import {
     SessionEventName,
 } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
+import { validateFileForLLM } from '../../ai/llm/validation.js';
 
 /**
  * Represents an isolated conversation session within a Saiki agent.
@@ -244,7 +245,6 @@ export class ChatSession {
         // Validate file format support if file data is provided
         if (fileDataInput) {
             const currentConfig = this.services.stateManager.getLLMConfig(this.id);
-            const { validateFileForLLM } = await import('../../ai/llm/validation.js');
 
             const config = {
                 provider: currentConfig.provider,
