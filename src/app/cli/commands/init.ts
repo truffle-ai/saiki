@@ -6,7 +6,7 @@ import path from 'node:path';
 import { getPackageManager, getPackageManagerInstallCommand } from '../utils/package-mgmt.js';
 import { executeWithTimeout } from '../utils/execute.js';
 import { createRequire } from 'module';
-import { findProjectRoot } from '../utils/path.js';
+import { findPackageRoot } from '../../../core/utils/path.js';
 import { getDefaultModelForProvider, LLMProvider, logger } from '@core/index.js';
 import { parseDocument } from 'yaml';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
@@ -335,7 +335,7 @@ export async function updateEnvFile(
     ];
 
     // Find project root and build .env file path
-    const projectRoot = findProjectRoot(directory);
+    const projectRoot = findPackageRoot(directory);
     if (!projectRoot) {
         throw new Error('Could not find project root (no lock file found)');
     }

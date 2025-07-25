@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { AgentConfig } from './schemas.js';
 import { logger } from '../logger/index.js';
-import { resolvePackagePath, DEFAULT_CONFIG_PATH } from '../utils/path.js';
+import { resolveConfigPath, DEFAULT_CONFIG_PATH } from '../utils/path.js';
 /**
  * Load the complete agent configuration
  * @param configPath Path to the configuration file
@@ -39,9 +39,11 @@ function expandEnvVars(config: any): any {
 
 export async function loadAgentConfig(configPath: string): Promise<AgentConfig> {
     try {
-        // Determine where to load from: absolute, default, or user-relative
-        const resolveFromPackageRoot = configPath === DEFAULT_CONFIG_PATH;
-        const absolutePath = resolvePackagePath(configPath, resolveFromPackageRoot);
+        // Resolve config path using new logic
+        const absolutePath =
+            configPath === DEFAULT_CONFIG_PATH
+                ? resolveConfigPath()
+                : resolveConfigPath(configPath);
 
         logger.debug(`Loading saiki config from: ${absolutePath}`);
 
@@ -68,8 +70,8 @@ export async function loadAgentConfig(configPath: string): Promise<AgentConfig> 
 }
 
 export async function writeConfigFile(configPath: string, config: AgentConfig) {
-    const resolveFromPackageRoot = configPath === DEFAULT_CONFIG_PATH;
-    const absolutePath = resolvePackagePath(configPath, resolveFromPackageRoot);
+    const absolutePath =
+        configPath === DEFAULT_CONFIG_PATH ? resolveConfigPath() : resolveConfigPath(configPath);
     try {
         const yamlContent = stringifyYaml(config);
         await fs.writeFile(absolutePath, yamlContent, 'utf-8');
