@@ -394,6 +394,11 @@ export function getSupportedFileTypesForModel(
         );
     }
 
+    // Special case: providers that accept any model name (e.g., openai-compatible)
+    if (acceptsAnyModel(provider)) {
+        return []; // Unknown capabilities for custom models - assume no file support for security
+    }
+
     // Find the specific model
     const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === model.toLowerCase());
     if (!modelInfo) {

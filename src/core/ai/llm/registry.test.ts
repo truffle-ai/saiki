@@ -310,6 +310,18 @@ describe('File support functionality', () => {
                 ).toThrow("Provider 'unknown-provider' not found in LLM registry");
             });
 
+            it('should return empty array for openai-compatible provider with any model (custom endpoints)', () => {
+                expect(getSupportedFileTypesForModel('openai-compatible', 'custom-model')).toEqual(
+                    []
+                );
+                expect(getSupportedFileTypesForModel('openai-compatible', 'gpt-4-custom')).toEqual(
+                    []
+                );
+                expect(
+                    getSupportedFileTypesForModel('openai-compatible', 'any-random-name')
+                ).toEqual([]);
+            });
+
             it('should be case-sensitive for provider names but case-insensitive for model names', () => {
                 expect(() =>
                     getSupportedFileTypesForModel('OpenAI', 'gpt-4o-audio-preview')
@@ -333,6 +345,16 @@ describe('File support functionality', () => {
                 expect(
                     modelSupportsFileType('anthropic', 'claude-4-sonnet-20250514', 'audio')
                 ).toBe(false);
+            });
+
+            it('should return false for openai-compatible provider with any model (no file support assumed)', () => {
+                expect(modelSupportsFileType('openai-compatible', 'custom-model', 'pdf')).toBe(
+                    false
+                );
+                expect(modelSupportsFileType('openai-compatible', 'gpt-4-custom', 'audio')).toBe(
+                    false
+                );
+                expect(modelSupportsFileType('openai-compatible', 'any-model', 'pdf')).toBe(false);
             });
 
             it('should throw error for unknown model or provider', () => {
@@ -369,6 +391,19 @@ describe('File support functionality', () => {
                 expect(result.isSupported).toBe(false);
                 expect(result.fileType).toBeUndefined();
                 expect(result.error).toBe('Unsupported file type: application/unknown');
+            });
+
+            it('should reject files for openai-compatible provider (unknown capabilities)', () => {
+                const result = validateModelFileSupport(
+                    'openai-compatible',
+                    'custom-model',
+                    'application/pdf'
+                );
+                expect(result.isSupported).toBe(false);
+                expect(result.fileType).toBe('pdf');
+                expect(result.error).toBe(
+                    "Model 'custom-model' (openai-compatible) does not support pdf files"
+                );
             });
 
             it('should be case-insensitive for model names', () => {
