@@ -12,7 +12,7 @@ import pkg from '../../package.json' with { type: 'json' };
 import {
     logger,
     DEFAULT_CONFIG_PATH,
-    resolvePackagePath,
+    resolveConfigPath,
     getProviderFromModel,
     getAllSupportedModels,
     SaikiAgent,
@@ -160,13 +160,11 @@ program
             // Load and resolve config
             // Get the global agent option from the main program
             const globalOpts = program.opts();
-            const configPath = resolvePackagePath(
-                globalOpts.agent || DEFAULT_CONFIG_PATH,
-                (globalOpts.agent || DEFAULT_CONFIG_PATH) === DEFAULT_CONFIG_PATH
-            );
+            const configPath =
+                globalOpts.agent === DEFAULT_CONFIG_PATH ? undefined : globalOpts.agent;
 
-            console.log(`📄 Loading Saiki config from: ${configPath}`);
             const config = await loadAgentConfig(configPath);
+            console.log(`📄 Loading Saiki config from: ${resolveConfigPath(configPath)}`);
 
             // Validate that MCP servers are configured
             if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
@@ -276,8 +274,8 @@ program
         // ——— Load config & create agent ———
         let agent: SaikiAgent;
         try {
-            const configPath = resolvePackagePath(opts.agent, opts.agent === DEFAULT_CONFIG_PATH);
-            console.log(`🚀 Initializing Saiki with config: ${configPath}`);
+            const configPath = opts.agent === DEFAULT_CONFIG_PATH ? undefined : opts.agent;
+            console.log(`🚀 Initializing Saiki with config: ${resolveConfigPath(configPath)}`);
             const cfg = await loadAgentConfig(configPath);
 
             // Apply CLI overrides to config before passing to core layer

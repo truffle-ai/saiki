@@ -1,26 +1,7 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { validateInputForLLM, createInputValidationError } from './validation.js';
-import * as registry from './registry.js';
-
-// Mock the registry module
-vi.mock('./registry.js', () => ({
-    validateModelFileSupport: vi.fn(),
-    getAllowedMimeTypes: vi.fn(),
-}));
 
 describe('validateInputForLLM', () => {
-    const mockValidateModelFileSupport = vi.mocked(registry.validateModelFileSupport);
-    const mockGetAllowedMimeTypes = vi.mocked(registry.getAllowedMimeTypes);
-
-    beforeEach(() => {
-        vi.clearAllMocks();
-        // Default mock implementations
-        mockGetAllowedMimeTypes.mockReturnValue(['application/pdf', 'audio/mp3', 'audio/wav']);
-        mockValidateModelFileSupport.mockReturnValue({
-            isSupported: true,
-        });
-    });
-
     describe('text validation', () => {
         test('should pass validation for valid text input', () => {
             const result = validateInputForLLM(
@@ -51,7 +32,7 @@ describe('validateInputForLLM', () => {
     });
 
     describe('file validation', () => {
-        test('should pass validation for supported file type', () => {
+        test('should pass validation for supported file type with model that supports PDF', () => {
             const result = validateInputForLLM(
                 {
                     text: 'Analyze this file',
@@ -66,34 +47,42 @@ describe('validateInputForLLM', () => {
 
             expect(result.isValid).toBe(true);
             expect(result.errors).toHaveLength(0);
-            expect(mockValidateModelFileSupport).toHaveBeenCalledWith(
-                'openai',
-                'gpt-4o',
-                'application/pdf'
-            );
+            expect(result.fileValidation?.isSupported).toBe(true);
         });
 
-        test('should fail validation for unsupported file type', () => {
-            mockValidateModelFileSupport.mockReturnValue({
-                isSupported: false,
-                error: 'PDF not supported by this model',
-            });
-
+        test('should pass validation for supported audio file with model that supports audio', () => {
             const result = validateInputForLLM(
                 {
-                    text: 'Analyze this file',
+                    text: 'Analyze this audio',
                     fileData: {
                         data: 'SGVsbG8gV29ybGQ=', // Valid base64 for "Hello World"
-                        mimeType: 'application/pdf',
-                        filename: 'document.pdf',
+                        mimeType: 'audio/mp3',
+                        filename: 'audio.mp3',
                     },
                 },
-                { provider: 'openai', model: 'gpt-3.5-turbo' }
+                { provider: 'openai', model: 'gpt-4o-audio-preview' }
+            );
+
+            expect(result.isValid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+            expect(result.fileValidation?.isSupported).toBe(true);
+        });
+
+        test('should fail validation for unsupported file type (model without audio support)', () => {
+            const result = validateInputForLLM(
+                {
+                    text: 'Analyze this audio',
+                    fileData: {
+                        data: 'SGVsbG8gV29ybGQ=', // Valid base64 for "Hello World"
+                        mimeType: 'audio/mp3',
+                        filename: 'audio.mp3',
+                    },
+                },
+                { provider: 'openai', model: 'gpt-4o' } // This model doesn't support audio
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('PDF not supported by this model');
-            expect(result.fileValidation).toBeDefined();
+            expect(result.errors.length).toBeGreaterThan(0);
             expect(result.fileValidation?.isSupported).toBe(false);
         });
 
@@ -107,7 +96,7 @@ describe('validateInputForLLM', () => {
                         filename: 'malware.exe',
                     },
                 },
-                { provider: 'openai', model: 'gpt-4' }
+                { provider: 'openai', model: 'gpt-4o' }
             );
 
             expect(result.isValid).toBe(false);
@@ -170,20 +159,22 @@ describe('validateInputForLLM', () => {
             );
         });
 
-        test('should handle files without mimeType gracefully', () => {
+        test('should fail validation for file without mimeType', () => {
             const result = validateInputForLLM(
                 {
                     text: 'Analyze this file',
                     fileData: {
                         data: 'SGVsbG8gV29ybGQ=', // Valid base64 for "Hello World"
-                        mimeType: 'application/pdf',
+                        mimeType: '', // Empty MIME type should fail
                         filename: 'document.pdf',
                     },
                 },
-                { provider: 'openai', model: 'gpt-4' }
+                { provider: 'openai', model: 'gpt-4o' }
             );
 
-            expect(result.isValid).toBe(true);
+            expect(result.isValid).toBe(false);
+            expect(result.fileValidation?.isSupported).toBe(false);
+            expect(result.errors).toContain('Unsupported file type');
         });
     });
 
@@ -244,12 +235,7 @@ describe('validateInputForLLM', () => {
             expect(result.errors).toHaveLength(0);
         });
 
-        test('should fail validation when any input is invalid', () => {
-            mockValidateModelFileSupport.mockReturnValue({
-                isSupported: false,
-                error: 'PDF not supported',
-            });
-
+        test('should fail validation when file input is invalid for model', () => {
             const result = validateInputForLLM(
                 {
                     text: 'Analyze this content',
@@ -259,24 +245,21 @@ describe('validateInputForLLM', () => {
                     },
                     fileData: {
                         data: 'SGVsbG8gV29ybGQ=', // Valid base64 for "Hello World"
-                        mimeType: 'application/pdf',
-                        filename: 'document.pdf',
+                        mimeType: 'audio/mp3',
+                        filename: 'audio.mp3',
                     },
                 },
-                { provider: 'openai', model: 'gpt-3.5-turbo' }
+                { provider: 'openai', model: 'gpt-4o' } // This model doesn't support audio
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('PDF not supported');
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.fileValidation?.isSupported).toBe(false);
         });
     });
 
     describe('error handling', () => {
-        test('should handle validation service errors gracefully', () => {
-            mockValidateModelFileSupport.mockImplementation(() => {
-                throw new Error('Validation service unavailable');
-            });
-
+        test('should handle unknown provider gracefully', () => {
             const result = validateInputForLLM(
                 {
                     text: 'Analyze this file',
@@ -286,37 +269,35 @@ describe('validateInputForLLM', () => {
                         filename: 'document.pdf',
                     },
                 },
-                { provider: 'openai', model: 'gpt-4' }
+                { provider: 'unknown-provider', model: 'unknown-model' }
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Failed to validate input');
+            expect(result.errors.length).toBeGreaterThan(0);
         });
 
-        test('should handle registry errors gracefully', () => {
-            mockGetAllowedMimeTypes.mockImplementation(() => {
-                throw new Error('Registry service unavailable');
-            });
-
+        test('should fail validation for unknown model', () => {
             const result = validateInputForLLM(
                 {
                     text: 'Analyze this file',
                     fileData: {
-                        data: 'base64data',
+                        data: 'SGVsbG8gV29ybGQ=', // Valid base64 for "Hello World"
                         mimeType: 'application/pdf',
                         filename: 'document.pdf',
                     },
                 },
-                { provider: 'openai', model: 'gpt-4' }
+                { provider: 'openai', model: 'unknown-model' }
             );
 
+            // Fixed behavior: unknown models should fail validation
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Failed to validate input');
+            expect(result.fileValidation?.isSupported).toBe(false);
+            expect(result.errors.length).toBeGreaterThan(0);
         });
     });
 
     describe('different providers and models', () => {
-        test('should work with Anthropic provider', () => {
+        test('should work with Anthropic provider and PDF files', () => {
             const result = validateInputForLLM(
                 {
                     text: 'Hello Claude',
@@ -326,18 +307,33 @@ describe('validateInputForLLM', () => {
                         filename: 'document.pdf',
                     },
                 },
-                { provider: 'anthropic', model: 'claude-3-sonnet' }
+                { provider: 'anthropic', model: 'claude-4-sonnet-20250514' }
             );
 
             expect(result.isValid).toBe(true);
-            expect(mockValidateModelFileSupport).toHaveBeenCalledWith(
-                'anthropic',
-                'claude-3-sonnet',
-                'application/pdf'
-            );
+            expect(result.errors).toHaveLength(0);
+            expect(result.fileValidation?.isSupported).toBe(true);
         });
 
-        test('should work with Google provider', () => {
+        test('should work with Google provider and PDF files', () => {
+            const result = validateInputForLLM(
+                {
+                    text: 'Hello Gemini',
+                    fileData: {
+                        data: 'SGVsbG8gV29ybGQ=', // Valid base64 for "Hello World"
+                        mimeType: 'application/pdf',
+                        filename: 'document.pdf',
+                    },
+                },
+                { provider: 'google', model: 'gemini-2.0-flash' }
+            );
+
+            expect(result.isValid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+            expect(result.fileValidation?.isSupported).toBe(true);
+        });
+
+        test('should work with image validation (always supported currently)', () => {
             const result = validateInputForLLM(
                 {
                     text: 'Hello Gemini',
@@ -346,10 +342,12 @@ describe('validateInputForLLM', () => {
                         mimeType: 'image/jpeg',
                     },
                 },
-                { provider: 'google.generative-ai', model: 'gemini-2.0-flash' }
+                { provider: 'google', model: 'gemini-2.0-flash' }
             );
 
             expect(result.isValid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+            expect(result.imageValidation?.isSupported).toBe(true);
         });
     });
 });

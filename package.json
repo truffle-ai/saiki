@@ -63,6 +63,7 @@
     "files": [
         "dist/",
         "agents/agent.yml",
+        "agents/agent-template.yml",
         "public/"
     ],
     "dependencies": {

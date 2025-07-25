@@ -43,6 +43,7 @@ The webhook system supports all agent events:
 - `llmservice:toolResult` - Tool execution completed
 - `llmservice:response` - Final AI response received
 - `llmservice:error` - Error during AI processing
+- `llmservice:unsupportedInput` - Input type not supported by selected model
 - `saiki:conversationReset` - Conversation history cleared
 - `saiki:mcpServerConnected` - MCP server connection established
 - `saiki:availableToolsUpdated` - Available tools changed

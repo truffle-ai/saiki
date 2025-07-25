@@ -19,7 +19,7 @@ import { createAgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
-import { resolvePackagePath } from '@core/index.js';
+import { resolveBundledScript } from '@core/index.js';
 import {
     LLM_REGISTRY,
     getSupportedRoutersForProvider,
@@ -1013,7 +1013,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
 /** Serves the legacy web UI on the express app. will be deprecated soon */
 export function startLegacyWebUI(app: Express) {
-    const publicPath = resolvePackagePath('public', true);
+    const publicPath = resolveBundledScript('public');
     logger.info(`Serving static files from: ${publicPath}`);
     app.use(express.static(publicPath));
 }

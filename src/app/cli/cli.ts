@@ -5,6 +5,7 @@ import { CLISubscriber } from './cli-subscriber.js';
 import { SaikiAgent } from '@core/index.js';
 import { parseInput } from './command-parser.js';
 import { executeCommand } from './commands.js';
+import { getSaikiPath } from '@core/utils/path.js';
 
 /**
  * Find and load the most recent session based on lastActivity.
@@ -91,9 +92,8 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
     console.log(chalk.dim('• Type your message normally to chat with the AI'));
     console.log(chalk.dim('• Use /command for system commands (e.g., /help, /session, /model)'));
     console.log(chalk.dim('• Type /help to see all available commands'));
-    console.log(
-        chalk.dim('• Logs available in .saiki/logs/saiki.log or ~/.saiki/logs/saiki.log\n')
-    );
+    const logPath = getSaikiPath('logs', 'saiki.log');
+    console.log(chalk.dim(`• Logs available in ${logPath}\n`));
 }
 
 /**
