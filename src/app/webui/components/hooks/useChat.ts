@@ -1,7 +1,7 @@
 // Add the client directive
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { TextPart as CoreTextPart, InternalMessage } from '@core/ai/llm/messages/types';
+import { TextPart as CoreTextPart, InternalMessage, FilePart } from '@core/ai/llm/messages/types';
 
 // Reuse the identical TextPart from core
 export type TextPart = CoreTextPart;
@@ -19,6 +19,44 @@ export interface FileData {
     filename?: string;
 }
 
+// Tool result types
+export interface ToolResultError {
+    error: string | Record<string, unknown>;
+}
+
+export interface ToolResultContent {
+    content: Array<TextPart | ImagePart | FilePart>;
+}
+
+export type ToolResult = ToolResultError | ToolResultContent | string | Record<string, unknown>;
+
+// Type guards for tool results
+export function isToolResultError(result: unknown): result is ToolResultError {
+    return typeof result === 'object' && result !== null && 'error' in result;
+}
+
+export function isToolResultContent(result: unknown): result is ToolResultContent {
+    return (
+        typeof result === 'object' &&
+        result !== null &&
+        'content' in result &&
+        Array.isArray((result as ToolResultContent).content)
+    );
+}
+
+// Type guards for content parts
+export function isTextPart(part: unknown): part is TextPart {
+    return typeof part === 'object' && part !== null && (part as any).type === 'text';
+}
+
+export function isImagePart(part: unknown): part is ImagePart {
+    return typeof part === 'object' && part !== null && (part as any).type === 'image';
+}
+
+export function isFilePart(part: unknown): part is FilePart {
+    return typeof part === 'object' && part !== null && (part as any).type === 'file';
+}
+
 // Extend core InternalMessage for WebUI
 export interface Message extends Omit<InternalMessage, 'content'> {
     id: string;
@@ -27,8 +65,8 @@ export interface Message extends Omit<InternalMessage, 'content'> {
     imageData?: { base64: string; mimeType: string };
     fileData?: FileData;
     toolName?: string;
-    toolArgs?: any;
-    toolResult?: any;
+    toolArgs?: Record<string, unknown>;
+    toolResult?: ToolResult;
     tokenCount?: number;
     model?: string;
     sessionId?: string;

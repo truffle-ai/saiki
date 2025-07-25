@@ -5,7 +5,7 @@ import { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
  */
 export interface ToolConfirmationEvent {
     toolName: string;
-    args: any;
+    args: Record<string, unknown>;
     description?: string | undefined;
     executionId: string;
     timestamp: Date;
@@ -43,7 +43,7 @@ export interface ToolConfirmationProvider {
  */
 export interface ToolExecutionDetails {
     toolName: string;
-    args: any;
+    args: Record<string, unknown>;
     description?: string;
     sessionId?: string;
 }

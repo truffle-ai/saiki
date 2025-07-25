@@ -6,11 +6,11 @@ export interface Tool {
 
 export interface ToolParameters {
     type?: 'object' | 'string' | 'number' | 'integer' | 'boolean' | 'array';
-    properties?: Record<string, any>;
+    properties?: Record<string, unknown>;
     required?: string[];
     description?: string;
-    default?: any;
-    [key: string]: any; // Allow additional JSON Schema properties
+    default?: unknown;
+    [key: string]: unknown; // Allow additional JSON Schema properties
 }
 
 export interface ToolSet {
