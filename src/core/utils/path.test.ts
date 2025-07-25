@@ -9,7 +9,6 @@ import {
     resolveConfigPath,
     findPackageRoot,
     resolveBundledScript,
-    DEFAULT_CONFIG_PATH,
 } from './path.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 

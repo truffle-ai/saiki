@@ -22,6 +22,7 @@ import type { IMCPClient } from '../../client/types.js';
 import type { ToolSet } from '../types.js';
 import { SearchService } from '../search/index.js';
 import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';
+import { getSaikiPath } from '../../utils/path.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
@@ -160,6 +161,10 @@ export class SaikiAgent {
 
             this._isStarted = true;
             logger.info('SaikiAgent started successfully.');
+
+            // Show log location for SDK users
+            const logPath = getSaikiPath('logs', 'saiki.log');
+            console.log(`📋 Logs available at: ${logPath}`);
         } catch (error) {
             logger.error('Failed to start SaikiAgent', error);
             throw error;
