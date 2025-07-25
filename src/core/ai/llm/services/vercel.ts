@@ -66,15 +66,15 @@ export class VercelLLMService implements ILLMService {
             const tool = tools[toolName];
             if (tool) {
                 acc[toolName] = {
-                    parameters: jsonSchema(tool.parameters as any),
-                    execute: async (args: any) => {
+                    parameters: jsonSchema(tool.parameters as any), // JSONSchema7 type assertion needed
+                    execute: async (args: unknown) => {
                         try {
                             return await this.mcpManager.executeTool(
                                 toolName,
                                 args,
                                 this.sessionId
                             );
-                        } catch (err: any) {
+                        } catch (err: unknown) {
                             if (err instanceof ToolExecutionDeniedError) {
                                 return { error: err.message, denied: true };
                             }
@@ -134,15 +134,16 @@ export class VercelLLMService implements ILLMService {
             this.toolSupportCache.set(modelKey, true);
             logger.debug(`Model ${modelKey} supports tools`);
             return true;
-        } catch (error: any) {
-            if (error.message.includes('does not support tools')) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('does not support tools')) {
                 this.toolSupportCache.set(modelKey, false);
                 logger.debug(`Model ${modelKey} does not support tools`);
                 return false;
             }
             // Other errors - assume tools are supported and let the actual call handle it
             logger.debug(
-                `Tool validation error for ${modelKey}, assuming supported: ${error.message}`
+                `Tool validation error for ${modelKey}, assuming supported: ${errorMessage}`
             );
             this.toolSupportCache.set(modelKey, true);
             return true;
@@ -234,7 +235,7 @@ export class VercelLLMService implements ILLMService {
     }
 
     async generateText(
-        messages: any[],
+        messages: unknown[],
         tools: VercelToolSet,
         maxSteps: number = 50
     ): Promise<string> {
@@ -261,7 +262,7 @@ export class VercelLLMService implements ILLMService {
 
         const response = await generateText({
             model: this.model,
-            messages: messages,
+            messages: messages as any, // Type assertion for complex message structure compatibility
             tools: effectiveTools,
             onStepFinish: (step) => {
                 logger.debug(`Step iteration: ${stepIteration}`);
@@ -328,7 +329,7 @@ export class VercelLLMService implements ILLMService {
 
     // Updated streamText to behave like generateText - returns string and handles message processing internally
     async streamText(
-        messages: any[],
+        messages: unknown[],
         tools: VercelToolSet,
         maxSteps: number = 10
     ): Promise<string> {
@@ -351,7 +352,7 @@ export class VercelLLMService implements ILLMService {
         // use vercel's streamText
         const response = streamText({
             model: this.model,
-            messages: messages,
+            messages: messages as any, // Type assertion for complex message structure compatibility
             tools: effectiveTools,
             onChunk: (chunk) => {
                 logger.debug(`Chunk type: ${chunk.chunk.type}`);

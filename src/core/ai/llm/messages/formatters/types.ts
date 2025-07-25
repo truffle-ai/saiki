@@ -36,12 +36,12 @@ export interface IMessageFormatter {
         history: Readonly<InternalMessage[]>,
         systemPrompt?: string | null,
         context?: FormatterContext
-    ): any[];
+    ): unknown[];
 
     /**
      * Parses raw LLM response into an array of InternalMessage objects.
      */
-    parseResponse(response: any): InternalMessage[];
+    parseResponse(response: unknown): InternalMessage[];
 
     /**
      * Optional method for handling system prompt separately.
@@ -59,5 +59,5 @@ export interface IMessageFormatter {
      * @param response The streaming response from the LLM provider
      * @returns Promise that resolves to an array of InternalMessage objects
      */
-    parseStreamResponse?(response: any): Promise<InternalMessage[]>;
+    parseStreamResponse?(response: unknown): Promise<InternalMessage[]>;
 }

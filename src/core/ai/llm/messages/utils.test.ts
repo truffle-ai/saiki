@@ -247,7 +247,7 @@ describe('filterMessagesByLLMCapabilities', () => {
                 role: 'user',
                 content: [
                     { type: 'text', text: 'Hello' },
-                    { type: 'custom', data: 'some data' } as any, // Unknown type
+                    { type: 'custom', data: 'some data' } as any, // Test case: unknown message part type
                 ],
             },
         ];
@@ -265,7 +265,7 @@ describe('filterMessagesByLLMCapabilities', () => {
                 role: 'user',
                 content: [
                     { type: 'text', text: 'Hello' },
-                    { type: 'file', data: 'data' } as any, // File without mimeType
+                    { type: 'file', data: 'data' } as any, // Test case: file without mimeType property
                 ],
             },
         ];

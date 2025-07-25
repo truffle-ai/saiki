@@ -1,4 +1,4 @@
-import { IMessageFormatter } from './types.js';
+import { IMessageFormatter, FormatterContext } from './types.js';
 import { InternalMessage } from '../types.js';
 import {
     getImageData,
@@ -27,8 +27,8 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
     format(
         history: Readonly<InternalMessage[]>,
         systemPrompt: string | null,
-        context?: any
-    ): any[] {
+        context?: FormatterContext
+    ): unknown[] {
         const formatted = [];
 
         // Apply model-aware capability filtering
@@ -36,7 +36,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
         try {
             const config: FilteringConfig = {
                 provider: context?.provider || 'openai',
-                model: context?.model,
+                ...(context?.model && { model: context.model }),
             };
             filteredHistory = filterMessagesByLLMCapabilities([...history], config);
         } catch (error) {
@@ -115,10 +115,11 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
     /**
      * Parses OpenAI API response into internal message objects.
      */
-    parseResponse(response: any): InternalMessage[] {
+    parseResponse(response: unknown): InternalMessage[] {
         const internal: InternalMessage[] = [];
-        if (!response.choices || !Array.isArray(response.choices)) return internal;
-        for (const choice of response.choices) {
+        const typedResponse = response as { choices?: unknown[] };
+        if (!typedResponse.choices || !Array.isArray(typedResponse.choices)) return internal;
+        for (const choice of typedResponse.choices) {
             const msg = (choice as any).message;
             if (!msg || !msg.role) continue;
             const role = msg.role as InternalMessage['role'];
@@ -127,14 +128,17 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
                 const content = msg.content ?? null;
                 // Handle tool calls if present
                 if (msg.tool_calls && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
-                    const calls = msg.tool_calls.map((call: any) => ({
-                        id: call.id,
-                        type: 'function' as const,
-                        function: {
-                            name: call.function.name,
-                            arguments: call.function.arguments,
-                        },
-                    }));
+                    const calls = msg.tool_calls.map((call: unknown) => {
+                        const typedCall = call as any; // Type assertion for complex API response structure
+                        return {
+                            id: typedCall.id,
+                            type: 'function' as const,
+                            function: {
+                                name: typedCall.function.name,
+                                arguments: typedCall.function.arguments,
+                            },
+                        };
+                    });
                     internal.push({ role: 'assistant', content, toolCalls: calls });
                 } else {
                     internal.push({ role: 'assistant', content });
@@ -160,7 +164,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
     }
 
     // Helper to format user message parts (text + image + file) into chat API shape
-    private formatUserContent(content: InternalMessage['content']): any {
+    private formatUserContent(content: InternalMessage['content']): unknown {
         if (!Array.isArray(content)) {
             return content;
         }
