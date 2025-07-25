@@ -10,8 +10,8 @@ describe('updateEnvFile', () => {
     beforeEach(async () => {
         // Create a temporary directory for testing
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'saiki-test-'));
-        // Create a dummy lock file so findProjectRoot locates the tempDir
-        await fs.writeFile(path.join(tempDir, 'package-lock.json'), '');
+        // Create a dummy package.json file so findPackageRoot locates the tempDir
+        await fs.writeFile(path.join(tempDir, 'package.json'), '{}');
     });
 
     afterEach(async () => {
