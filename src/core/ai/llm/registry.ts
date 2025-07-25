@@ -367,18 +367,6 @@ export function isValidProvider(provider: string): boolean {
 }
 
 /**
- * Gets the supported file types for a given provider.
- * @param provider The name of the provider.
- * @returns Array of supported file types for the provider, or empty array if provider not found.
- */
-export function getSupportedFileTypes(provider: string): SupportedFileType[] {
-    const providerInfo = LLM_REGISTRY[provider as LLMProvider];
-    return providerInfo ? providerInfo.supportedFileTypes : [];
-}
-
-// Removed normalizeProviderName function - provider names come from validated configuration
-
-/**
  * Gets the supported file types for a specific model.
  * Falls back to provider defaults if model doesn't specify file types.
  * @param provider The name of the provider.

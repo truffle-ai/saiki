@@ -12,7 +12,6 @@ import {
     requiresBaseURL,
     acceptsAnyModel,
     getDefaultModelForProvider,
-    getSupportedFileTypes,
     getSupportedFileTypesForModel,
     modelSupportsFileType,
     validateModelFileSupport,
@@ -251,36 +250,39 @@ describe('LLM Registry', () => {
 });
 
 describe('File support functionality', () => {
-    describe('getSupportedFileTypes', () => {
-        it('should return provider-level default file types for OpenAI', () => {
-            expect(getSupportedFileTypes('openai')).toEqual(['pdf']);
+    describe('getSupportedFileTypesForModel with default models', () => {
+        it('should return provider-level default file types for OpenAI default model', () => {
+            expect(getSupportedFileTypesForModel('openai', 'gpt-4.1-mini')).toEqual(['pdf']);
         });
 
-        it('should return correct file types for Anthropic', () => {
-            expect(getSupportedFileTypes('anthropic')).toEqual(['pdf']);
+        it('should return correct file types for Anthropic default model', () => {
+            expect(getSupportedFileTypesForModel('anthropic', 'claude-4-sonnet-20250514')).toEqual([
+                'pdf',
+            ]);
         });
 
-        it('should return correct file types for Google', () => {
-            expect(getSupportedFileTypes('google')).toEqual(['pdf', 'audio']);
+        it('should return correct file types for Google default model', () => {
+            expect(getSupportedFileTypesForModel('google', 'gemini-2.5-pro')).toEqual([
+                'pdf',
+                'audio',
+            ]);
         });
 
         it('should return empty array for providers without file support', () => {
-            expect(getSupportedFileTypes('groq')).toEqual([]);
-            expect(getSupportedFileTypes('xai')).toEqual([]);
-            expect(getSupportedFileTypes('cohere')).toEqual([]);
+            expect(getSupportedFileTypesForModel('groq', 'llama-3.1-8b-instant')).toEqual([]);
+            expect(getSupportedFileTypesForModel('xai', 'x-1')).toEqual([]);
+            expect(getSupportedFileTypesForModel('cohere', 'command-r')).toEqual([]);
         });
 
         it('should return empty array for unknown provider', () => {
-            expect(getSupportedFileTypes('unknown-provider')).toEqual([]);
+            expect(getSupportedFileTypesForModel('unknown-provider', 'any-model')).toEqual([]);
         });
 
-        it('should be case-sensitive (provider names come from validated config)', () => {
-            expect(getSupportedFileTypes('OpenAI')).toEqual([]);
-            expect(getSupportedFileTypes('openai')).toEqual(['pdf']);
+        it('should be case-sensitive for provider names but case-insensitive for model names', () => {
+            expect(getSupportedFileTypesForModel('OpenAI', 'gpt-4.1-mini')).toEqual([]);
+            expect(getSupportedFileTypesForModel('openai', 'GPT-4.1-MINI')).toEqual(['pdf']);
         });
     });
-
-    // Removed provider-level validation tests since we now use model-specific validation only
 
     describe('Model-aware file support', () => {
         describe('getSupportedFileTypesForModel', () => {
