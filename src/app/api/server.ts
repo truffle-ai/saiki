@@ -27,6 +27,7 @@ import {
     getAllowedMimeTypes,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
+import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
 import { validateFileForLLM, createFileValidationError } from '@core/ai/llm/validation.js';
 
 /**
@@ -47,6 +48,11 @@ function sendJsonResponse(res: any, data: any, statusCode = 200) {
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
     const app = express();
+
+    // this will apply middleware to all /api/llm/* routes
+    app.use('/api/llm', expressRedactionMiddleware);
+    app.use('/api/config.yaml', expressRedactionMiddleware);
+
     const server = http.createServer(app);
     const wss = new WebSocketServer({ server });
 
@@ -632,11 +638,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 ? agent.getEffectiveConfig(sessionId as string).llm
                 : agent.getCurrentLLMConfig();
 
-            // Mask apiKey before returning
-            if (currentConfig?.apiKey) {
-                currentConfig.apiKey = '[REDACTED]';
-            }
-
             res.json({ config: currentConfig });
         } catch (error: any) {
             logger.error(`Error getting current LLM config: ${error.message}`);
@@ -696,10 +697,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             Object.assign(llmConfig, otherFields);
 
             const result = await agent.switchLLM(llmConfig, sessionId);
-            // Mask apiKey in result if present
-            if (result?.config?.apiKey) {
-                result.config.apiKey = '[REDACTED]';
-            }
             return res.json(result);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';

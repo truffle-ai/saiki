@@ -42,6 +42,12 @@ The image editor agent follows Saiki's framework design with clear separation of
 
 This architecture allows the agent to focus on understanding user intent while the tools handle the technical image processing.
 
+## MCP Server Code
+
+The core functionality is provided by the **Image Editor MCP Server**, a Python-based server built with FastMCP. To understand the complete MCP server implementation, refer to the [mcp-servers repository](https://github.com/truffle-ai/mcp-servers/tree/main):
+
+- **Image Editor Server**: [src/image-editor](https://github.com/truffle-ai/mcp-servers/tree/main/src/image-editor) - Image processing, filters, computer vision, and analysis tools
+
 ## Step 1: Setting Up the Project
 
 First, let's understand the project structure:
