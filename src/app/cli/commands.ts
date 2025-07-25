@@ -784,8 +784,7 @@ const mcpCommands: CommandDefinition = {
 };
 
 /**
-            /**
-* All available CLI commands
+ * All available CLI commands
  */
 export const CLI_COMMANDS: CommandDefinition[] = [
     {
