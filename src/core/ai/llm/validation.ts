@@ -1,4 +1,4 @@
-import { validateModelFileSupport } from './registry.js';
+import { validateModelFileSupport, getAllowedMimeTypes } from './registry.js';
 import { logger } from '../../logger/index.js';
 import type { ImageData, FileData } from './messages/types.js';
 
@@ -111,8 +111,9 @@ function validateFileInput(
 
     // Security validation: base64 format check
     if (typeof fileData.data === 'string') {
-        const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-        if (!base64Regex.test(fileData.data)) {
+        // Enhanced base64 validation: ensures proper length and padding
+        const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
+        if (!base64Regex.test(fileData.data) || fileData.data.length % 4 !== 0) {
             return {
                 isSupported: false,
                 error: 'Invalid file data format',
@@ -147,22 +148,6 @@ function validateImageInput(
     return {
         isSupported: true,
     };
-}
-
-/**
- * Helper to get allowed MIME types
- */
-function getAllowedMimeTypes(): string[] {
-    // This should match the MIME types from registry.ts
-    return [
-        'application/pdf',
-        'audio/mpeg',
-        'audio/wav',
-        'audio/m4a',
-        'audio/mp4',
-        'audio/ogg',
-        'audio/webm',
-    ];
 }
 
 /**
