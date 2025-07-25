@@ -2,9 +2,9 @@ import { redactSensitiveData } from './redactor.js';
 import type { Request, Response, NextFunction } from 'express';
 
 /**
- * Express middleware to globally redact sensitive data from all outgoing responses.
+ * Express middleware to redact sensitive data from all outgoing responses.
  * Patches res.json and res.send to apply redaction before sending data.
- * Usage: app.use(expressRedactionMiddleware);
+ * Usage: app.use('/api/llm', expressRedactionMiddleware);
  */
 export function expressRedactionMiddleware(req: Request, res: Response, next: NextFunction) {
     // Patch res.json
