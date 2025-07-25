@@ -258,8 +258,8 @@ export class OpenAIService implements ILLMService {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = {
                     mcpManager: this.mcpManager,
-                    llmProvider: 'openai',
-                    llmModel: this.model,
+                    provider: 'openai',
+                    model: this.model,
                 };
                 const {
                     formattedMessages,

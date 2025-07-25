@@ -40,8 +40,8 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
         let filteredHistory: InternalMessage[];
         try {
             const config: FilteringConfig = {
-                provider: context?.llmProvider || 'anthropic',
-                model: context?.llmModel,
+                provider: context?.provider || 'anthropic',
+                model: context?.model,
             };
             filteredHistory = filterMessagesByLLMCapabilities([...history], config);
         } catch (error) {

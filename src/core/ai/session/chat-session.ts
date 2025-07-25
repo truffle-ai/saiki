@@ -18,7 +18,7 @@ import {
     SessionEventName,
 } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
-import { validateFileForLLM } from '../../ai/llm/validation.js';
+// Removed validateFileForLLM import - validation now handled at API layer
 
 /**
  * Represents an isolated conversation session within a Saiki agent.
@@ -242,39 +242,7 @@ export class ChatSession {
             `Running session ${this.id} with input: ${input}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}`
         );
 
-        // Validate file format support if file data is provided
-        if (fileDataInput) {
-            const currentConfig = this.services.stateManager.getLLMConfig(this.id);
-
-            const config = {
-                provider: currentConfig.provider,
-                ...(typeof currentConfig.model === 'string' && { model: currentConfig.model }),
-            };
-            const validation = validateFileForLLM(config, fileDataInput.mimeType);
-
-            if (!validation.isSupported) {
-                const error = new Error(
-                    validation.error || 'File type not supported by current LLM'
-                );
-                logger.error(`File validation failed in session ${this.id}: ${error.message}`);
-
-                // Emit event for external handlers
-                this.eventBus.emit('saiki:fileValidationError', {
-                    sessionId: this.id,
-                    mimeType: fileDataInput.mimeType,
-                    fileType: validation.fileType,
-                    provider: currentConfig.provider,
-                    model: currentConfig.model,
-                    error: error.message,
-                });
-
-                throw error;
-            }
-
-            logger.debug(
-                `File validation passed for ${validation.fileType} file in session ${this.id}`
-            );
-        }
+        // Note: Input validation is now handled at the API layer before reaching this method
 
         const response = await this.llmService.completeTask(
             input,

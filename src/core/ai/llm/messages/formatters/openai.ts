@@ -35,8 +35,8 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
         let filteredHistory: InternalMessage[];
         try {
             const config: FilteringConfig = {
-                provider: context?.llmProvider || 'openai',
-                model: context?.llmModel,
+                provider: context?.provider || 'openai',
+                model: context?.model,
             };
             filteredHistory = filterMessagesByLLMCapabilities([...history], config);
         } catch (error) {

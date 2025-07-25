@@ -185,8 +185,8 @@ export class VercelLLMService implements ILLMService {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = {
                     mcpManager: this.mcpManager,
-                    llmProvider: this.model.provider || this.provider,
-                    llmModel: this.model.modelId,
+                    provider: this.provider, // Use our internal provider name, not SDK's provider name
+                    model: this.model.modelId,
                 };
                 const {
                     formattedMessages,
@@ -496,7 +496,7 @@ export class VercelLLMService implements ILLMService {
         // Max tokens may not be found if the model is supplied by user
         try {
             modelMaxInputTokens = getMaxInputTokensForModel(
-                this.model.provider,
+                this.provider, // Use our internal provider name
                 this.model.modelId
             );
         } catch (error) {
@@ -513,7 +513,7 @@ export class VercelLLMService implements ILLMService {
         }
         return {
             router: 'vercel',
-            provider: `${this.model.provider}`,
+            provider: this.provider, // Use our internal provider name
             model: this.model,
             configuredMaxInputTokens: configuredMaxTokens,
             modelMaxInputTokens: modelMaxInputTokens,

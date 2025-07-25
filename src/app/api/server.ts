@@ -24,11 +24,10 @@ import {
     LLM_REGISTRY,
     getSupportedRoutersForProvider,
     supportsBaseURL,
-    getAllowedMimeTypes,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
-import { validateFileForLLM, createFileValidationError } from '@core/ai/llm/validation.js';
+import { validateInputForLLM, createInputValidationError } from '@core/ai/llm/validation.js';
 
 /**
  * Helper function to send JSON response with optional pretty printing
@@ -96,52 +95,36 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
                 : undefined;
 
-            // Validate and process file data with security checks
-            let fileDataInput;
-            if (req.body.fileData) {
-                const { base64, mimeType, filename } = req.body.fileData;
+            // Process file data
+            const fileDataInput = req.body.fileData
+                ? {
+                      data: req.body.fileData.base64,
+                      mimeType: req.body.fileData.mimeType,
+                      filename: req.body.fileData.filename,
+                  }
+                : undefined;
 
-                // Security validation: file size check (max 50MB for base64)
-                if (typeof base64 === 'string' && base64.length > 67108864) {
-                    // ~50MB in base64
-                    return res.status(400).send({ error: 'File size too large (max 50MB)' });
+            // Comprehensive input validation
+            const currentConfig = agent.getEffectiveConfig(sessionId);
+            const validation = validateInputForLLM(
+                {
+                    text: req.body.message,
+                    ...(imageDataInput && { imageData: imageDataInput }),
+                    ...(fileDataInput && { fileData: fileDataInput }),
+                },
+                {
+                    provider: currentConfig.llm.provider,
+                    model: currentConfig.llm.model,
                 }
+            );
 
-                // Security validation: MIME type allowlist
-                const allowedMimeTypes = getAllowedMimeTypes();
-                if (!allowedMimeTypes.includes(mimeType)) {
-                    return res.status(400).send({ error: 'Unsupported file type' });
-                }
-
-                // Security validation: base64 format check
-                if (typeof base64 === 'string') {
-                    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-                    if (!base64Regex.test(base64)) {
-                        return res.status(400).send({ error: 'Invalid file data format' });
-                    }
-                }
-
-                // Model-specific file format validation
-                const currentConfig = agent.getEffectiveConfig(sessionId);
-
-                const validation = validateFileForLLM(
-                    {
+            if (!validation.isValid) {
+                return res.status(400).send(
+                    createInputValidationError(validation, {
                         provider: currentConfig.llm.provider,
                         model: currentConfig.llm.model,
-                    },
-                    mimeType
+                    })
                 );
-
-                if (!validation.isSupported) {
-                    return res.status(400).send(
-                        createFileValidationError(validation, {
-                            provider: currentConfig.llm.provider,
-                            model: currentConfig.llm.model,
-                        })
-                    );
-                }
-
-                fileDataInput = { data: base64, mimeType, filename };
             }
 
             await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);
@@ -164,53 +147,37 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
             : undefined;
 
-        // Validate and process file data with security checks
-        let fileDataInput;
-        if (req.body.fileData) {
-            const { base64, mimeType, filename } = req.body.fileData;
+        // Process file data
+        const fileDataInput = req.body.fileData
+            ? {
+                  data: req.body.fileData.base64,
+                  mimeType: req.body.fileData.mimeType,
+                  filename: req.body.fileData.filename,
+              }
+            : undefined;
 
-            // Security validation: file size check (max 50MB for base64)
-            if (typeof base64 === 'string' && base64.length > 67108864) {
-                // ~50MB in base64
-                return res.status(400).send({ error: 'File size too large (max 50MB)' });
+        // Comprehensive input validation
+        const sessionId = req.body.sessionId as string | undefined;
+        const currentConfig = agent.getEffectiveConfig(sessionId);
+        const validation = validateInputForLLM(
+            {
+                text: req.body.message,
+                ...(imageDataInput && { imageData: imageDataInput }),
+                ...(fileDataInput && { fileData: fileDataInput }),
+            },
+            {
+                provider: currentConfig.llm.provider,
+                model: currentConfig.llm.model,
             }
+        );
 
-            // Security validation: MIME type allowlist
-            const allowedMimeTypes = getAllowedMimeTypes();
-            if (!allowedMimeTypes.includes(mimeType)) {
-                return res.status(400).send({ error: 'Unsupported file type' });
-            }
-
-            // Security validation: base64 format check
-            if (typeof base64 === 'string') {
-                const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-                if (!base64Regex.test(base64)) {
-                    return res.status(400).send({ error: 'Invalid file data format' });
-                }
-            }
-
-            // Model-specific file format validation
-            const sessionId = req.body.sessionId as string | undefined;
-            const currentConfig = agent.getEffectiveConfig(sessionId);
-
-            const validation = validateFileForLLM(
-                {
+        if (!validation.isValid) {
+            return res.status(400).send(
+                createInputValidationError(validation, {
                     provider: currentConfig.llm.provider,
                     model: currentConfig.llm.model,
-                },
-                mimeType
+                })
             );
-
-            if (!validation.isSupported) {
-                return res.status(400).send(
-                    createFileValidationError(validation, {
-                        provider: currentConfig.llm.provider,
-                        model: currentConfig.llm.model,
-                    })
-                );
-            }
-
-            fileDataInput = { data: base64, mimeType, filename };
         }
 
         try {
@@ -404,80 +371,45 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
 
-                    // Validate and process file data with security checks
-                    let fileDataInput;
-                    if (data.fileData) {
-                        const { base64, mimeType, filename } = data.fileData;
+                    // Process file data
+                    const fileDataInput = data.fileData
+                        ? {
+                              data: data.fileData.base64,
+                              mimeType: data.fileData.mimeType,
+                              filename: data.fileData.filename,
+                          }
+                        : undefined;
 
-                        // Security validation: file size check (max 50MB for base64)
-                        if (typeof base64 === 'string' && base64.length > 67108864) {
-                            // ~50MB in base64
-                            ws.send(
-                                JSON.stringify({
-                                    event: 'error',
-                                    data: { message: 'File size too large (max 50MB)' },
-                                })
-                            );
-                            return;
+                    // Comprehensive input validation
+                    const sessionId = data.sessionId as string | undefined;
+                    const currentConfig = agent.getEffectiveConfig(sessionId);
+                    const validation = validateInputForLLM(
+                        {
+                            text: data.content,
+                            ...(imageDataInput && { imageData: imageDataInput }),
+                            ...(fileDataInput && { fileData: fileDataInput }),
+                        },
+                        {
+                            provider: currentConfig.llm.provider,
+                            model: currentConfig.llm.model,
                         }
+                    );
 
-                        // Security validation: MIME type allowlist
-                        const allowedMimeTypes = getAllowedMimeTypes();
-                        if (!allowedMimeTypes.includes(mimeType)) {
-                            ws.send(
-                                JSON.stringify({
-                                    event: 'error',
-                                    data: { message: 'Unsupported file type' },
-                                })
-                            );
-                            return;
-                        }
+                    if (!validation.isValid) {
+                        const errorDetails = createInputValidationError(validation, {
+                            provider: currentConfig.llm.provider,
+                            model: currentConfig.llm.model,
+                        });
 
-                        // Security validation: base64 format check
-                        if (typeof base64 === 'string') {
-                            const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-                            if (!base64Regex.test(base64)) {
-                                ws.send(
-                                    JSON.stringify({
-                                        event: 'error',
-                                        data: { message: 'Invalid file data format' },
-                                    })
-                                );
-                                return;
-                            }
-                        }
-
-                        // Model-specific file format validation
-                        const sessionId = data.sessionId as string | undefined;
-                        const currentConfig = agent.getEffectiveConfig(sessionId);
-
-                        const validation = validateFileForLLM(
-                            {
-                                provider: currentConfig.llm.provider,
-                                model: currentConfig.llm.model,
-                            },
-                            mimeType
+                        ws.send(
+                            JSON.stringify({
+                                event: 'error',
+                                data: errorDetails,
+                            })
                         );
-
-                        if (!validation.isSupported) {
-                            const errorDetails = createFileValidationError(validation, {
-                                provider: currentConfig.llm.provider,
-                                model: currentConfig.llm.model,
-                            });
-
-                            ws.send(
-                                JSON.stringify({
-                                    event: 'error',
-                                    data: errorDetails,
-                                })
-                            );
-                            return;
-                        }
-
-                        fileDataInput = { data: base64, mimeType, filename };
+                        return;
                     }
 
-                    const sessionId = data.sessionId as string | undefined;
                     const stream = data.stream === true; // Extract stream preference, default to false
                     if (imageDataInput) logger.info('Image data included in message.');
                     if (fileDataInput) logger.info('File data included in message.');

@@ -5,7 +5,6 @@ import {
     getImageData,
     getFileData,
     filterMessagesByLLMCapabilities,
-    filterMessagesByCapabilities,
     FilteringConfig,
 } from '../utils.js';
 import { logger } from '../../../../logger/index.js';
@@ -40,10 +39,10 @@ export class VercelMessageFormatter implements IMessageFormatter {
         // Apply model-aware capability filtering for Vercel
         let filteredHistory: InternalMessage[];
         try {
-            if (context?.llmProvider) {
+            if (context?.provider) {
                 const config: FilteringConfig = {
-                    provider: context.llmProvider,
-                    model: context.llmModel,
+                    provider: context.provider,
+                    model: context.model,
                 };
                 filteredHistory = filterMessagesByLLMCapabilities([...history], config);
 
@@ -56,7 +55,9 @@ export class VercelMessageFormatter implements IMessageFormatter {
                 logger.warn(
                     'No model context available for Vercel formatter, applying conservative file filtering'
                 );
-                filteredHistory = filterMessagesByCapabilities([...history], 'groq');
+                filteredHistory = filterMessagesByLLMCapabilities([...history], {
+                    provider: 'groq',
+                });
             }
         } catch (error) {
             logger.warn(`Failed to apply capability filtering, using original history: ${error}`);

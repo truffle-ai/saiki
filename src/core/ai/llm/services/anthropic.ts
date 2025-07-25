@@ -73,8 +73,8 @@ export class AnthropicService implements ILLMService {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 const context = {
                     mcpManager: this.mcpManager,
-                    llmProvider: 'anthropic',
-                    llmModel: this.model,
+                    provider: 'anthropic',
+                    model: this.model,
                 };
                 const {
                     formattedMessages,

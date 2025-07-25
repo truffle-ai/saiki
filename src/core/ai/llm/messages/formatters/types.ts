@@ -1,3 +1,4 @@
+import { MCPManager } from '@core/client/manager.js';
 import { InternalMessage } from '../types.js';
 
 /**
@@ -6,13 +7,13 @@ import { InternalMessage } from '../types.js';
  */
 export interface FormatterContext {
     /** MCP manager for tool handling */
-    mcpManager?: any; // TODO: Replace with proper MCPManager type when available
+    mcpManager?: MCPManager;
 
     /** LLM provider name (e.g., 'google.generative-ai', 'openai') */
-    llmProvider?: string;
+    provider?: string;
 
     /** Specific LLM model name (e.g., 'gemini-2.5-flash', 'gpt-4') */
-    llmModel?: string;
+    model?: string;
 }
 
 /**

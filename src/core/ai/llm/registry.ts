@@ -372,42 +372,11 @@ export function isValidProvider(provider: string): boolean {
  * @returns Array of supported file types for the provider, or empty array if provider not found.
  */
 export function getSupportedFileTypes(provider: string): SupportedFileType[] {
-    const normalizedProvider = normalizeProviderName(provider);
-    const providerInfo = LLM_REGISTRY[normalizedProvider as LLMProvider];
+    const providerInfo = LLM_REGISTRY[provider as LLMProvider];
     return providerInfo ? providerInfo.supportedFileTypes : [];
 }
 
-/**
- * Normalizes provider names from various sources (e.g., Vercel AI SDK) to our registry keys.
- * @param provider The provider name to normalize.
- * @returns The normalized provider name that matches our registry.
- */
-export function normalizeProviderName(provider: string): string {
-    const normalized = provider.toLowerCase();
-
-    // Handle Vercel AI SDK provider names
-    if (normalized.includes('google') || normalized.includes('gemini')) {
-        return 'google';
-    }
-    if (normalized.includes('openai')) {
-        return 'openai';
-    }
-    if (normalized.includes('anthropic') || normalized.includes('claude')) {
-        return 'anthropic';
-    }
-    if (normalized.includes('groq')) {
-        return 'groq';
-    }
-    if (normalized.includes('xai') || normalized.includes('grok')) {
-        return 'xai';
-    }
-    if (normalized.includes('cohere')) {
-        return 'cohere';
-    }
-
-    // Return as-is if no mapping found
-    return normalized;
-}
+// Removed normalizeProviderName function - provider names come from validated configuration
 
 /**
  * Gets the supported file types for a specific model.
@@ -420,8 +389,7 @@ export function getSupportedFileTypesForModel(
     provider: string,
     model: string
 ): SupportedFileType[] {
-    const normalizedProvider = normalizeProviderName(provider);
-    const providerInfo = LLM_REGISTRY[normalizedProvider as LLMProvider];
+    const providerInfo = LLM_REGISTRY[provider as LLMProvider];
     if (!providerInfo) {
         return [];
     }
@@ -431,17 +399,6 @@ export function getSupportedFileTypesForModel(
 
     // Return model-specific file types if available, otherwise provider defaults
     return modelInfo?.supportedFileTypes ?? providerInfo.supportedFileTypes;
-}
-
-/**
- * Checks if a provider supports a specific file type.
- * @param provider The name of the provider.
- * @param fileType The file type to check support for.
- * @returns True if the provider supports the file type, false otherwise.
- */
-export function supportsFileType(provider: string, fileType: SupportedFileType): boolean {
-    const supportedTypes = getSupportedFileTypes(provider);
-    return supportedTypes.includes(fileType);
 }
 
 /**
@@ -458,42 +415,6 @@ export function modelSupportsFileType(
 ): boolean {
     const supportedTypes = getSupportedFileTypesForModel(provider, model);
     return supportedTypes.includes(fileType);
-}
-
-/**
- * Validates if file data is supported by the current LLM provider.
- * @param provider The LLM provider name.
- * @param mimeType The MIME type of the file to validate.
- * @returns Object containing validation result and details.
- */
-export function validateFileSupport(
-    provider: string,
-    mimeType: string
-): {
-    isSupported: boolean;
-    fileType?: SupportedFileType;
-    error?: string;
-} {
-    const fileType = MIME_TYPE_TO_FILE_TYPE[mimeType.toLowerCase()];
-    if (!fileType) {
-        return {
-            isSupported: false,
-            error: `Unsupported file type: ${mimeType}`,
-        };
-    }
-
-    if (!supportsFileType(provider, fileType)) {
-        return {
-            isSupported: false,
-            fileType,
-            error: `Provider '${provider}' does not support ${fileType} files`,
-        };
-    }
-
-    return {
-        isSupported: true,
-        fileType,
-    };
 }
 
 /**

@@ -1,7 +1,7 @@
 import { InternalMessage } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { logger } from '../../../logger/index.js';
-import { validateFileForLLM } from '../validation.js';
+import { validateModelFileSupport } from '../registry.js';
 
 // Approximation for message format overhead
 const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
@@ -183,7 +183,15 @@ export function filterMessagesByLLMCapabilities(
 
                 // Filter file parts based on LLM capabilities
                 if (part.type === 'file' && part.mimeType) {
-                    const validation = validateFileForLLM(config, part.mimeType);
+                    // If no model is specified, reject all files
+                    if (!config.model) {
+                        return false;
+                    }
+                    const validation = validateModelFileSupport(
+                        config.provider,
+                        config.model,
+                        part.mimeType
+                    );
                     return validation.isSupported;
                 }
 
@@ -211,25 +219,4 @@ export function filterMessagesByLLMCapabilities(
     }
 }
 
-/**
- * @deprecated Use filterMessagesByLLMCapabilities instead
- * Filters message content based on LLM provider capabilities.
- */
-export function filterMessagesByCapabilities(
-    messages: InternalMessage[],
-    provider: string
-): InternalMessage[] {
-    return filterMessagesByLLMCapabilities(messages, { provider });
-}
-
-/**
- * @deprecated Use filterMessagesByLLMCapabilities instead
- * Filters message content based on specific model capabilities.
- */
-export function filterMessagesByModelCapabilities(
-    messages: InternalMessage[],
-    provider: string,
-    model: string
-): InternalMessage[] {
-    return filterMessagesByLLMCapabilities(messages, { provider, model });
-}
+// Removed deprecated filter functions - no backward compatibility needed
