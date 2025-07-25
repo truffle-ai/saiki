@@ -30,6 +30,13 @@
  *   - /model current - Show current model configuration
  *   - /model switch <model> - Switch to a different model (provider auto-detected)
  *
+ * MCP MANAGEMENT:
+ * - /mcp, /mc - Manage MCP servers (defaults to help)
+ *   - /mcp help - Show detailed help for MCP commands
+ *   - /mcp list - List all available MCP servers
+ *   - /mcp add <name> <type> <config> - Add a new MCP server
+ *   - /mcp remove <name> - Remove an MCP server
+ *
  * SYSTEM CONFIGURATION:
  * - /log [level] - Set or view current log level
  *   Available levels: error, warn, info, http, verbose, debug, silly
@@ -619,6 +626,164 @@ const modelCommands: CommandDefinition = {
 };
 
 /**
+ * MCP management commands
+ */
+const mcpCommands: CommandDefinition = {
+    name: 'mcp',
+    description: 'Manage MCP servers',
+    usage: '/mcp <subcommand> [args]',
+    category: 'MCP Management',
+    aliases: ['mc'],
+    subcommands: [
+        {
+            name: 'list',
+            description: 'List all available MCP servers',
+            usage: '/mcp list',
+            handler: async (_args: string[], agent: SaikiAgent) => {
+                try {
+                    const clients = agent.mcpManager.getClients();
+                    const failedConnections = agent.mcpManager.getFailedConnections();
+
+                    if (clients.size === 0 && Object.keys(failedConnections).length === 0) {
+                        console.log(chalk.yellow('📋 No MCP servers configured or connected.'));
+                        return true;
+                    }
+
+                    console.log(chalk.bold.blue('\n🔌 MCP Servers:\n'));
+                    for (const [name] of clients) {
+                        console.log(chalk.green(`✅ ${name}:`));
+                        console.log(chalk.dim(`  Connected: Yes`));
+                        console.log();
+                    }
+
+                    if (Object.keys(failedConnections).length > 0) {
+                        console.log(chalk.bold.red('\n❌ Failed Connections:\n'));
+                        for (const [name, error] of Object.entries(failedConnections)) {
+                            console.log(chalk.red(`❌ ${name}:`));
+                            console.log(chalk.dim(`  Error: ${error}`));
+                        }
+                    }
+
+                    console.log(
+                        chalk.dim(
+                            '💡 Use /mcp add <name> <config_json_string> to connect a new MCP server.'
+                        )
+                    );
+                    console.log(
+                        chalk.dim('💡 Use /mcp remove <name> to disconnect an MCP server.')
+                    );
+                    console.log(chalk.dim('💡 Use /mcp help for detailed command descriptions.'));
+                    return true;
+                } catch (error) {
+                    logger.error(
+                        `Failed to list MCP servers: ${error instanceof Error ? error.message : String(error)}`
+                    );
+                }
+                return true;
+            },
+        },
+        {
+            name: 'add',
+            description: 'Add a new MCP server',
+            usage: '/mcp add <name> <config_json_string>',
+            handler: async (args: string[], agent: SaikiAgent) => {
+                if (args.length < 2) {
+                    console.log(chalk.red('❌ Usage: /mcp add <name> <config_json_string>'));
+                    console.log(
+                        chalk.dim(
+                            'Example: /mcp add my-server \'{"type":"http","command":"http://localhost:8080"}\''
+                        )
+                    );
+                    return true;
+                }
+
+                const [name, configString] = args;
+                try {
+                    const config = JSON.parse(configString!);
+                    await agent.mcpManager.connectServer(name!, config);
+                    console.log(chalk.green(`✅ MCP server '${name}' added successfully`));
+                } catch (error) {
+                    logger.error(
+                        `Failed to add MCP server '${name}': ${error instanceof Error ? error.message : String(error)}`
+                    );
+                }
+                return true;
+            },
+        },
+        {
+            name: 'remove',
+            description: 'Remove an MCP server',
+            usage: '/mcp remove <name>',
+            handler: async (args: string[], agent: SaikiAgent) => {
+                if (args.length === 0) {
+                    console.log(chalk.red('❌ Usage: /mcp remove <name>'));
+                    return true;
+                }
+
+                const name = args[0]!;
+                try {
+                    await agent.mcpManager.removeClient(name);
+                    console.log(chalk.green(`✅ MCP server '${name}' removed successfully`));
+                } catch (error) {
+                    logger.error(
+                        `Failed to remove MCP server '${name}': ${error instanceof Error ? error.message : String(error)}`
+                    );
+                }
+                return true;
+            },
+        },
+        {
+            name: 'help',
+            description: 'Show detailed help for MCP commands',
+            usage: '/mcp help',
+            handler: async (_args: string[], _agent: SaikiAgent) => {
+                console.log(chalk.bold.blue('\n🔌 MCP Management Commands:\n'));
+                console.log(chalk.cyan('Available subcommands:'));
+                console.log(`  ${chalk.yellow('/mcp list')} - List all configured MCP servers`);
+                console.log(
+                    `  ${chalk.yellow('/mcp add')} ${chalk.blue('<name> <config_json>')} - Add a new MCP server`
+                );
+                console.log(
+                    `  ${chalk.yellow('/mcp remove')} ${chalk.blue('<name>')} - Remove an MCP server`
+                );
+                console.log(`\n        Examples:`);
+                console.log(
+                    `          ${chalk.dim('/mcp add my-mcp-server \'{"command":"mcp-filesystem"}\'')}`
+                );
+                console.log(`          ${chalk.dim('/mcp remove my-mcp-server')}`);
+                console.log(
+                    chalk.dim('💡 MCP servers are used to access external tools and services.')
+                );
+                console.log(chalk.dim('💡 Use /mcp help for detailed command descriptions.\n'));
+                return true;
+            },
+        },
+    ],
+    handler: async (args: string[], agent: SaikiAgent) => {
+        if (args.length === 0) {
+            const helpSubcommand = mcpCommands.subcommands?.find((s) => s.name === 'help');
+            if (helpSubcommand) {
+                return helpSubcommand.handler([], agent);
+            }
+            return true;
+        }
+
+        const subcommand = args[0];
+        const subArgs = args.slice(1);
+        const subcmd = mcpCommands.subcommands?.find((s) => s.name === subcommand);
+
+        if (subcmd) {
+            return subcmd.handler(subArgs, agent);
+        }
+
+        console.log(chalk.red(`❌ Unknown MCP subcommand: ${subcommand}`));
+        console.log(chalk.dim('Available subcommands: list, add, remove, help'));
+        console.log(chalk.dim('💡 Use /mcp help for detailed command descriptions.\n'));
+        return true;
+    },
+};
+
+/**
  * All available CLI commands
  */
 export const CLI_COMMANDS: CommandDefinition[] = [
@@ -655,6 +820,15 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                 console.log(`   ${chalk.cyan('/model help')}`);
                 console.log(
                     chalk.dim('\n   This shows all model subcommands with examples and usage.')
+                );
+                return true;
+            }
+
+            if (commandName === 'mcp' || commandName === 'mc') {
+                console.log(chalk.blue('💡 For detailed MCP help, use:'));
+                console.log(`   ${chalk.cyan('/mcp help')}`);
+                console.log(
+                    chalk.dim('\n   This shows all MCP subcommands with examples and usage.')
                 );
                 return true;
             }
@@ -729,6 +903,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
     },
     sessionCommands,
     modelCommands,
+    mcpCommands,
     {
         name: 'log',
         description: `Set or view log level. Available levels: ${chalk.cyan('error')}, ${chalk.cyan('warn')}, ${chalk.cyan('info')}, ${chalk.cyan('http')}, ${chalk.cyan('verbose')}, ${chalk.cyan('debug')}, ${chalk.cyan('silly')}.`,
