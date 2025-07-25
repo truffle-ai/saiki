@@ -269,18 +269,22 @@ describe('File support functionality', () => {
         });
 
         it('should return empty array for providers without file support', () => {
-            expect(getSupportedFileTypesForModel('groq', 'llama-3.1-8b-instant')).toEqual([]);
-            expect(getSupportedFileTypesForModel('xai', 'x-1')).toEqual([]);
+            expect(getSupportedFileTypesForModel('groq', 'gemma-2-9b-it')).toEqual([]);
+            expect(getSupportedFileTypesForModel('xai', 'grok-3')).toEqual([]);
             expect(getSupportedFileTypesForModel('cohere', 'command-r')).toEqual([]);
         });
 
-        it('should return empty array for unknown provider', () => {
-            expect(getSupportedFileTypesForModel('unknown-provider', 'any-model')).toEqual([]);
+        it('should throw error for unknown provider', () => {
+            expect(() => getSupportedFileTypesForModel('unknown-provider', 'any-model')).toThrow(
+                "Provider 'unknown-provider' not found in LLM registry"
+            );
         });
 
         it('should be case-sensitive for provider names but case-insensitive for model names', () => {
-            expect(getSupportedFileTypesForModel('OpenAI', 'gpt-4.1-mini')).toEqual([]);
-            expect(getSupportedFileTypesForModel('openai', 'GPT-4.1-MINI')).toEqual(['pdf']);
+            expect(() => getSupportedFileTypesForModel('OpenAI', 'gpt-4o')).toThrow(
+                "Provider 'OpenAI' not found in LLM registry"
+            );
+            expect(getSupportedFileTypesForModel('openai', 'GPT-4O')).toEqual(['pdf']);
         });
     });
 
@@ -294,16 +298,22 @@ describe('File support functionality', () => {
                 expect(getSupportedFileTypesForModel('openai', 'gpt-4o')).toEqual(['pdf']);
             });
 
-            it("should fall back to provider defaults when model doesn't specify", () => {
-                expect(getSupportedFileTypesForModel('openai', 'unknown-model')).toEqual(['pdf']);
+            it('should throw error for unknown models', () => {
+                expect(() => getSupportedFileTypesForModel('openai', 'unknown-model')).toThrow(
+                    "Model 'unknown-model' not found in provider 'openai'"
+                );
             });
 
-            it('should return empty array for unknown provider', () => {
-                expect(getSupportedFileTypesForModel('unknown-provider', 'any-model')).toEqual([]);
+            it('should throw error for unknown provider', () => {
+                expect(() =>
+                    getSupportedFileTypesForModel('unknown-provider', 'any-model')
+                ).toThrow("Provider 'unknown-provider' not found in LLM registry");
             });
 
             it('should be case-sensitive for provider names but case-insensitive for model names', () => {
-                expect(getSupportedFileTypesForModel('OpenAI', 'GPT-4O-AUDIO-PREVIEW')).toEqual([]);
+                expect(() =>
+                    getSupportedFileTypesForModel('OpenAI', 'gpt-4o-audio-preview')
+                ).toThrow("Provider 'OpenAI' not found in LLM registry");
                 expect(getSupportedFileTypesForModel('openai', 'GPT-4O-AUDIO-PREVIEW')).toEqual([
                     'pdf',
                     'audio',
@@ -325,9 +335,13 @@ describe('File support functionality', () => {
                 ).toBe(false);
             });
 
-            it('should return false for unknown model or provider', () => {
-                expect(modelSupportsFileType('unknown-provider', 'any-model', 'pdf')).toBe(false);
-                expect(modelSupportsFileType('openai', 'unknown-model', 'pdf')).toBe(true); // Falls back to provider default
+            it('should throw error for unknown model or provider', () => {
+                expect(() => modelSupportsFileType('unknown-provider', 'any-model', 'pdf')).toThrow(
+                    "Provider 'unknown-provider' not found in LLM registry"
+                );
+                expect(() => modelSupportsFileType('openai', 'unknown-model', 'pdf')).toThrow(
+                    "Model 'unknown-model' not found in provider 'openai'"
+                );
             });
         });
 
