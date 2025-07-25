@@ -17,6 +17,25 @@ export interface ModelInfo {
 
 export type SupportedFileType = 'audio' | 'pdf';
 
+// Central MIME type to file type mapping
+export const MIME_TYPE_TO_FILE_TYPE: Record<string, SupportedFileType> = {
+    'application/pdf': 'pdf',
+    'audio/mp3': 'audio',
+    'audio/mpeg': 'audio',
+    'audio/wav': 'audio',
+    'audio/x-wav': 'audio',
+    'audio/wave': 'audio',
+    'audio/webm': 'audio',
+    'audio/ogg': 'audio',
+    'audio/m4a': 'audio',
+    'audio/aac': 'audio',
+};
+
+// Helper function to get array of allowed MIME types
+export function getAllowedMimeTypes(): string[] {
+    return Object.keys(MIME_TYPE_TO_FILE_TYPE);
+}
+
 export interface ProviderInfo {
     models: ModelInfo[];
     supportedRouters: string[];
@@ -455,21 +474,7 @@ export function validateFileSupport(
     fileType?: SupportedFileType;
     error?: string;
 } {
-    // Map MIME types to our file type categories
-    const mimeTypeToFileType: Record<string, SupportedFileType> = {
-        'application/pdf': 'pdf',
-        'audio/mp3': 'audio',
-        'audio/mpeg': 'audio',
-        'audio/wav': 'audio',
-        'audio/x-wav': 'audio',
-        'audio/wave': 'audio',
-        'audio/webm': 'audio',
-        'audio/ogg': 'audio',
-        'audio/m4a': 'audio',
-        'audio/aac': 'audio',
-    };
-
-    const fileType = mimeTypeToFileType[mimeType.toLowerCase()];
+    const fileType = MIME_TYPE_TO_FILE_TYPE[mimeType.toLowerCase()];
     if (!fileType) {
         return {
             isSupported: false,
@@ -507,21 +512,7 @@ export function validateModelFileSupport(
     fileType?: SupportedFileType;
     error?: string;
 } {
-    // Map MIME types to our file type categories
-    const mimeTypeToFileType: Record<string, SupportedFileType> = {
-        'application/pdf': 'pdf',
-        'audio/mp3': 'audio',
-        'audio/mpeg': 'audio',
-        'audio/wav': 'audio',
-        'audio/x-wav': 'audio',
-        'audio/wave': 'audio',
-        'audio/webm': 'audio',
-        'audio/ogg': 'audio',
-        'audio/m4a': 'audio',
-        'audio/aac': 'audio',
-    };
-
-    const fileType = mimeTypeToFileType[mimeType.toLowerCase()];
+    const fileType = MIME_TYPE_TO_FILE_TYPE[mimeType.toLowerCase()];
     if (!fileType) {
         return {
             isSupported: false,
