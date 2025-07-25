@@ -104,6 +104,10 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                   }
                 : undefined;
 
+            if (imageDataInput) logger.info('Image data included in message.');
+            if (fileDataInput) logger.info('File data included in message.');
+            if (sessionId) logger.info(`Message for session: ${sessionId}`);
+
             // Comprehensive input validation
             const currentConfig = agent.getEffectiveConfig(sessionId);
             const validation = validateInputForLLM(
@@ -156,8 +160,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
               }
             : undefined;
 
-        // Comprehensive input validation
         const sessionId = req.body.sessionId as string | undefined;
+        const stream = req.body.stream === true; // Extract stream preference, default to false
+        if (imageDataInput) logger.info('Image data included in message.');
+        if (fileDataInput) logger.info('File data included in message.');
+        if (sessionId) logger.info(`Message for session: ${sessionId}`);
+
+        // Comprehensive input validation
         const currentConfig = agent.getEffectiveConfig(sessionId);
         const validation = validateInputForLLM(
             {
@@ -181,8 +190,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
 
         try {
-            const sessionId = req.body.sessionId as string | undefined;
-            const stream = req.body.stream === true; // Extract stream preference, default to false
             const responseText = await agent.run(
                 req.body.message,
                 imageDataInput,
@@ -380,8 +387,13 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                           }
                         : undefined;
 
-                    // Comprehensive input validation
                     const sessionId = data.sessionId as string | undefined;
+                    const stream = data.stream === true; // Extract stream preference, default to false
+                    if (imageDataInput) logger.info('Image data included in message.');
+                    if (fileDataInput) logger.info('File data included in message.');
+                    if (sessionId) logger.info(`Message for session: ${sessionId}`);
+
+                    // Comprehensive input validation
                     const currentConfig = agent.getEffectiveConfig(sessionId);
                     const validation = validateInputForLLM(
                         {
@@ -410,10 +422,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                         return;
                     }
 
-                    const stream = data.stream === true; // Extract stream preference, default to false
-                    if (imageDataInput) logger.info('Image data included in message.');
-                    if (fileDataInput) logger.info('File data included in message.');
-                    if (sessionId) logger.info(`Message for session: ${sessionId}`);
                     await agent.run(data.content, imageDataInput, fileDataInput, sessionId, stream);
                 } else if (data.type === 'reset') {
                     const sessionId = data.sessionId as string | undefined;

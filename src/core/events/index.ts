@@ -33,6 +33,7 @@ export const SESSION_EVENT_NAMES = [
     'llmservice:toolResult',
     'llmservice:error',
     'llmservice:switched',
+    'llmservice:unsupportedInput',
 ] as const;
 
 /**
@@ -123,6 +124,16 @@ export interface AgentEventMap {
         newConfig: any; // LLMConfig type
         router?: string;
         historyRetained?: boolean;
+        sessionId: string;
+    };
+
+    /** LLM service unsupported input */
+    'llmservice:unsupportedInput': {
+        errors: string[];
+        provider: string;
+        model?: string;
+        fileType?: string;
+        details?: any;
         sessionId: string;
     };
 
@@ -241,6 +252,15 @@ export interface SessionEventMap {
         newConfig: any; // LLMConfig type
         router?: string;
         historyRetained?: boolean;
+    };
+
+    /** LLM service unsupported input */
+    'llmservice:unsupportedInput': {
+        errors: string[];
+        provider: string;
+        model?: string;
+        fileType?: string;
+        details?: any;
     };
 }
 

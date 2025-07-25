@@ -39,26 +39,18 @@ export class VercelMessageFormatter implements IMessageFormatter {
         // Apply model-aware capability filtering for Vercel
         let filteredHistory: InternalMessage[];
         try {
-            if (context?.provider) {
-                const config: FilteringConfig = {
-                    provider: context.provider,
-                    ...(context.model && { model: context.model }),
-                };
-                filteredHistory = filterMessagesByLLMCapabilities([...history], config);
-
-                const modelInfo = config.model
-                    ? `${config.provider}/${config.model}`
-                    : config.provider;
-                logger.debug(`Applied Vercel filtering for ${modelInfo}`);
-            } else {
-                // No context available - apply conservative filtering (remove all file parts)
-                logger.warn(
-                    'No model context available for Vercel formatter, applying conservative file filtering'
-                );
-                filteredHistory = filterMessagesByLLMCapabilities([...history], {
-                    provider: 'groq',
-                });
+            if (!context?.provider) {
+                throw new Error('Provider is required for Vercel formatter context');
             }
+
+            const config: FilteringConfig = {
+                provider: context.provider,
+                model: context.model,
+            };
+            filteredHistory = filterMessagesByLLMCapabilities([...history], config);
+
+            const modelInfo = `${config.provider}/${config.model}`;
+            logger.debug(`Applied Vercel filtering for ${modelInfo}`);
         } catch (error) {
             logger.warn(`Failed to apply capability filtering, using original history: ${error}`);
             filteredHistory = [...history];
@@ -190,11 +182,14 @@ export class VercelMessageFormatter implements IMessageFormatter {
                             if (part.type === 'tool-result') {
                                 let content: InternalMessage['content'];
                                 if (Array.isArray(part.experimental_content)) {
-                                    content = part.experimental_content.map((img: unknown) => ({
-                                        type: 'image',
-                                        image: (img as any).data,
-                                        mimeType: (img as any).mimeType,
-                                    }));
+                                    content = part.experimental_content.map((img: unknown) => {
+                                        const imgData = img as { data?: string; mimeType?: string };
+                                        return {
+                                            type: 'image',
+                                            image: imgData.data || '',
+                                            mimeType: imgData.mimeType || 'image/jpeg',
+                                        };
+                                    });
                                 } else {
                                     // Ensure result is a string for InternalMessage.content
                                     const raw = part.result;

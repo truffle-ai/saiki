@@ -153,7 +153,7 @@ export function getFileData(filePart: {
 
 export interface FilteringConfig {
     provider: string;
-    model?: string;
+    model: string;
 }
 
 /**
@@ -168,6 +168,11 @@ export function filterMessagesByLLMCapabilities(
     messages: InternalMessage[],
     config: FilteringConfig
 ): InternalMessage[] {
+    // Validate that both provider and model are provided
+    if (!config.provider || !config.model) {
+        throw new Error('Both provider and model are required for message filtering');
+    }
+
     try {
         return messages.map((message) => {
             // Only filter user messages with array content (multimodal)
@@ -183,10 +188,6 @@ export function filterMessagesByLLMCapabilities(
 
                 // Filter file parts based on LLM capabilities
                 if (part.type === 'file' && part.mimeType) {
-                    // If no model is specified, reject all files
-                    if (!config.model) {
-                        return false;
-                    }
                     const validation = validateModelFileSupport(
                         config.provider,
                         config.model,
@@ -200,10 +201,9 @@ export function filterMessagesByLLMCapabilities(
 
             // If all content was filtered out, add a placeholder text
             if (filteredContent.length === 0) {
-                const modelContext = config.model ? ` by ${config.model}` : ' by current LLM';
                 filteredContent.push({
                     type: 'text',
-                    text: `[File attachment removed - not supported${modelContext}]`,
+                    text: `[File attachment removed - not supported by ${config.model}]`,
                 });
             }
 
@@ -218,5 +218,3 @@ export function filterMessagesByLLMCapabilities(
         return messages;
     }
 }
-
-// Removed deprecated filter functions - no backward compatibility needed

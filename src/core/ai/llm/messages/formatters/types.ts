@@ -10,10 +10,10 @@ export interface FormatterContext {
     mcpManager?: MCPManager;
 
     /** LLM provider name (e.g., 'google.generative-ai', 'openai') */
-    provider?: string;
+    provider: string;
 
     /** Specific LLM model name (e.g., 'gemini-2.5-flash', 'gpt-4') */
-    model?: string;
+    model: string;
 }
 
 /**

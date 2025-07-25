@@ -34,9 +34,13 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
         // Apply model-aware capability filtering
         let filteredHistory: InternalMessage[];
         try {
+            if (!context?.provider) {
+                throw new Error('Provider is required for OpenAI formatter context');
+            }
+
             const config: FilteringConfig = {
-                provider: context?.provider || 'openai',
-                ...(context?.model && { model: context.model }),
+                provider: context.provider,
+                model: context.model,
             };
             filteredHistory = filterMessagesByLLMCapabilities([...history], config);
         } catch (error) {

@@ -169,13 +169,7 @@ describe('filterMessagesByLLMCapabilities', () => {
         ]);
     });
 
-    test('should add placeholder text without model name when no model specified', () => {
-        // Mock validation to reject all files
-        mockValidateModelFileSupport.mockReturnValue({
-            isSupported: false,
-            error: 'File type not supported by current LLM',
-        });
-
+    test('should throw error when no model specified', () => {
         const messages: InternalMessage[] = [
             {
                 role: 'user',
@@ -190,13 +184,10 @@ describe('filterMessagesByLLMCapabilities', () => {
             },
         ];
 
-        const config: FilteringConfig = { provider: 'anthropic' }; // No model specified
+        // Create an invalid config at runtime to test the error
+        const config = { provider: 'anthropic' } as any; // No model specified
 
-        const result = filterMessagesByLLMCapabilities(messages, config);
-
-        expect(result[0]!.content).toEqual([
-            { type: 'text', text: '[File attachment removed - not supported by current LLM]' },
-        ]);
+        expect(() => filterMessagesByLLMCapabilities(messages, config)).toThrow();
     });
 
     test('should only filter user messages with array content', () => {

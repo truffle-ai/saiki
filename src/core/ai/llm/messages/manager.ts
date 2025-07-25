@@ -1,4 +1,4 @@
-import { IMessageFormatter } from './formatters/types.js';
+import { IMessageFormatter, FormatterContext } from './formatters/types.js';
 import { InternalMessage, ImageData, FileData } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { ICompressionStrategy } from './compression/types.js';
@@ -525,7 +525,17 @@ export class ContextManager {
         try {
             // Use pre-computed system prompt if provided
             const prompt = systemPrompt ?? (await this.getSystemPrompt(context));
-            return this.formatter.format([...messageHistory], prompt, context);
+
+            // Map DynamicContributorContext to FormatterContext
+            const formatterContext: FormatterContext | undefined = context.llmProvider
+                ? {
+                      mcpManager: context.mcpManager,
+                      provider: context.llmProvider,
+                      model: context.llmModel || '',
+                  }
+                : undefined;
+
+            return this.formatter.format([...messageHistory], prompt, formatterContext);
         } catch (error) {
             logger.error(
                 `Error formatting messages: ${error instanceof Error ? error.message : String(error)}`
