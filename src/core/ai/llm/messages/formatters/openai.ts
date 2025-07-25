@@ -6,6 +6,7 @@ import {
     filterMessagesByLLMCapabilities,
     FilteringConfig,
 } from '../utils.js';
+import { logger } from '../../../../logger/index.js';
 
 /**
  * Message formatter for OpenAI's Chat Completion API.
@@ -39,7 +40,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
             };
             filteredHistory = filterMessagesByLLMCapabilities([...history], config);
         } catch (error) {
-            console.warn('Failed to apply capability filtering, using original history:', error);
+            logger.warn(`Failed to apply capability filtering, using original history: ${error}`);
             filteredHistory = [...history];
         }
 

@@ -46,15 +46,30 @@ export function isToolResultContent(result: unknown): result is ToolResultConten
 
 // Type guards for content parts
 export function isTextPart(part: unknown): part is TextPart {
-    return typeof part === 'object' && part !== null && (part as any).type === 'text';
+    return (
+        typeof part === 'object' &&
+        part !== null &&
+        'type' in part &&
+        (part as { type: unknown }).type === 'text'
+    );
 }
 
 export function isImagePart(part: unknown): part is ImagePart {
-    return typeof part === 'object' && part !== null && (part as any).type === 'image';
+    return (
+        typeof part === 'object' &&
+        part !== null &&
+        'type' in part &&
+        (part as { type: unknown }).type === 'image'
+    );
 }
 
 export function isFilePart(part: unknown): part is FilePart {
-    return typeof part === 'object' && part !== null && (part as any).type === 'file';
+    return (
+        typeof part === 'object' &&
+        part !== null &&
+        'type' in part &&
+        (part as { type: unknown }).type === 'file'
+    );
 }
 
 // Extend core InternalMessage for WebUI
