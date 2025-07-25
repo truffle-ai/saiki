@@ -27,6 +27,7 @@ import {
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
+import { validateInputForLLM, createInputValidationError } from '@core/ai/llm/validation.js';
 
 /**
  * Helper function to send JSON response with optional pretty printing
@@ -90,7 +91,47 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             const sessionId = req.body.sessionId as string | undefined;
             const stream = req.body.stream === true; // Extract stream preference, default to false
-            await agent.run(req.body.message, undefined, sessionId, stream);
+            const imageDataInput = req.body.imageData
+                ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
+                : undefined;
+
+            // Process file data
+            const fileDataInput = req.body.fileData
+                ? {
+                      data: req.body.fileData.base64,
+                      mimeType: req.body.fileData.mimeType,
+                      filename: req.body.fileData.filename,
+                  }
+                : undefined;
+
+            if (imageDataInput) logger.info('Image data included in message.');
+            if (fileDataInput) logger.info('File data included in message.');
+            if (sessionId) logger.info(`Message for session: ${sessionId}`);
+
+            // Comprehensive input validation
+            const currentConfig = agent.getEffectiveConfig(sessionId);
+            const validation = validateInputForLLM(
+                {
+                    text: req.body.message,
+                    ...(imageDataInput && { imageData: imageDataInput }),
+                    ...(fileDataInput && { fileData: fileDataInput }),
+                },
+                {
+                    provider: currentConfig.llm.provider,
+                    model: currentConfig.llm.model,
+                }
+            );
+
+            if (!validation.isValid) {
+                return res.status(400).send(
+                    createInputValidationError(validation, {
+                        provider: currentConfig.llm.provider,
+                        model: currentConfig.llm.model,
+                    })
+                );
+            }
+
+            await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);
             return res.status(202).send({ status: 'processing', sessionId });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -105,16 +146,54 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         if (!req.body || !req.body.message) {
             return res.status(400).send({ error: 'Missing message content' });
         }
-        // Extract optional image data
+        // Extract optional image and file data
         const imageDataInput = req.body.imageData
             ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
             : undefined;
+
+        // Process file data
+        const fileDataInput = req.body.fileData
+            ? {
+                  data: req.body.fileData.base64,
+                  mimeType: req.body.fileData.mimeType,
+                  filename: req.body.fileData.filename,
+              }
+            : undefined;
+
+        const sessionId = req.body.sessionId as string | undefined;
+        const stream = req.body.stream === true; // Extract stream preference, default to false
+        if (imageDataInput) logger.info('Image data included in message.');
+        if (fileDataInput) logger.info('File data included in message.');
+        if (sessionId) logger.info(`Message for session: ${sessionId}`);
+
+        // Comprehensive input validation
+        const currentConfig = agent.getEffectiveConfig(sessionId);
+        const validation = validateInputForLLM(
+            {
+                text: req.body.message,
+                ...(imageDataInput && { imageData: imageDataInput }),
+                ...(fileDataInput && { fileData: fileDataInput }),
+            },
+            {
+                provider: currentConfig.llm.provider,
+                model: currentConfig.llm.model,
+            }
+        );
+
+        if (!validation.isValid) {
+            return res.status(400).send(
+                createInputValidationError(validation, {
+                    provider: currentConfig.llm.provider,
+                    model: currentConfig.llm.model,
+                })
+            );
+        }
+
         try {
-            const sessionId = req.body.sessionId as string | undefined;
-            const stream = req.body.stream === true; // Extract stream preference, default to false
             const responseText = await agent.run(
                 req.body.message,
                 imageDataInput,
+                fileDataInput,
                 sessionId,
                 stream
             );
@@ -288,18 +367,62 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     // Route confirmation back via AgentEventBus and do not broadcast an error
                     agent.agentEventBus.emit('saiki:toolConfirmationResponse', data.data);
                     return;
-                } else if (data.type === 'message' && data.content) {
+                } else if (
+                    data.type === 'message' &&
+                    (data.content || data.imageData || data.fileData)
+                ) {
                     logger.info(
                         `Processing message from WebSocket: ${data.content.substring(0, 50)}...`
                     );
                     const imageDataInput = data.imageData
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
+
+                    // Process file data
+                    const fileDataInput = data.fileData
+                        ? {
+                              data: data.fileData.base64,
+                              mimeType: data.fileData.mimeType,
+                              filename: data.fileData.filename,
+                          }
+                        : undefined;
+
                     const sessionId = data.sessionId as string | undefined;
                     const stream = data.stream === true; // Extract stream preference, default to false
                     if (imageDataInput) logger.info('Image data included in message.');
+                    if (fileDataInput) logger.info('File data included in message.');
                     if (sessionId) logger.info(`Message for session: ${sessionId}`);
-                    await agent.run(data.content, imageDataInput, sessionId, stream);
+
+                    // Comprehensive input validation
+                    const currentConfig = agent.getEffectiveConfig(sessionId);
+                    const validation = validateInputForLLM(
+                        {
+                            text: data.content,
+                            ...(imageDataInput && { imageData: imageDataInput }),
+                            ...(fileDataInput && { fileData: fileDataInput }),
+                        },
+                        {
+                            provider: currentConfig.llm.provider,
+                            model: currentConfig.llm.model,
+                        }
+                    );
+
+                    if (!validation.isValid) {
+                        const errorDetails = createInputValidationError(validation, {
+                            provider: currentConfig.llm.provider,
+                            model: currentConfig.llm.model,
+                        });
+
+                        ws.send(
+                            JSON.stringify({
+                                event: 'error',
+                                data: errorDetails,
+                            })
+                        );
+                        return;
+                    }
+
+                    await agent.run(data.content, imageDataInput, fileDataInput, sessionId, stream);
                 } else if (data.type === 'reset') {
                     const sessionId = data.sessionId as string | undefined;
                     logger.info(

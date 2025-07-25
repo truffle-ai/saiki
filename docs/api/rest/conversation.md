@@ -15,6 +15,10 @@ sidebar_position: 1
 - `imageData` (object, optional):
     - `base64` (string): Base64-encoded image.
     - `mimeType` (string): The MIME type of the image (e.g., `image/png`).
+- `fileData` (object, optional):
+    - `base64` (string): Base64-encoded file data.
+    - `mimeType` (string): The MIME type of the file (e.g., `application/pdf`).
+    - `filename` (string, optional): The filename.
 
 #### Responses
 
@@ -41,6 +45,13 @@ sidebar_position: 1
 #### Request Body
 - `message` (string, required): The user's message.
 - `sessionId` (string, optional): The session to use for this message.
+- `imageData` (object, optional):
+    - `base64` (string): Base64-encoded image.
+    - `mimeType` (string): The MIME type of the image (e.g., `image/png`).
+- `fileData` (object, optional):
+    - `base64` (string): Base64-encoded file data.
+    - `mimeType` (string): The MIME type of the file (e.g., `application/pdf`).
+    - `filename` (string, optional): The filename.
 - `stream` (boolean, optional): Set to `true` to receive streaming chunks over WebSocket.
 
 #### Responses
@@ -70,3 +81,9 @@ sidebar_position: 1
   "sessionId": "b4a2a3e8-72b1-4d00-a5c3-1a2c3d4e5f6a"
 }
 ```
+
+## Supported File Types
+
+File parts currently support:
+- **PDF files** (`application/pdf`)
+- **Audio files** (`audio/mp3`, `audio/wav`) - with OpenAI `gpt-4o-audio-preview` and Google Gemini models

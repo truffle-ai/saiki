@@ -1,5 +1,5 @@
-import { IMessageFormatter } from './formatters/types.js';
-import { InternalMessage, ImageData } from './types.js';
+import { IMessageFormatter, FormatterContext } from './formatters/types.js';
+import { InternalMessage, ImageData, FileData } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { ICompressionStrategy } from './compression/types.js';
 import { MiddleRemovalStrategy } from './compression/middle-removal.js';
@@ -355,25 +355,63 @@ export class ContextManager {
     }
 
     /**
-     * Convenience method to add a user message to the conversation
+     * Adds a user message to the conversation
+     * Can include image data for multimodal input
      *
-     * @param content The user message content
+     * @param textContent The user message content
+     * @param imageData Optional image data for multimodal input
+     * @param fileData Optional file data for file input
      * @throws Error if content is empty or not a string
      */
-    async addUserMessage(textContent: string, imageData?: ImageData): Promise<void> {
-        if (typeof textContent !== 'string' || textContent.trim() === '') {
-            throw new Error('addUserMessage: Content must be a non-empty string.');
+    async addUserMessage(
+        textContent: string,
+        imageData?: ImageData,
+        fileData?: FileData
+    ): Promise<void> {
+        // Allow empty text if we have image or file data
+        if (
+            typeof textContent !== 'string' ||
+            (textContent.trim() === '' && !imageData && !fileData)
+        ) {
+            throw new Error(
+                'addUserMessage: Content must be a non-empty string or have imageData/fileData.'
+            );
         }
-        const messageParts: InternalMessage['content'] = imageData
-            ? [
-                  { type: 'text', text: textContent },
-                  {
-                      type: 'image',
-                      image: imageData.image,
-                      mimeType: imageData.mimeType || 'image/jpeg',
-                  },
-              ]
-            : [{ type: 'text', text: textContent }];
+
+        // If text is empty but we have attachments, use a placeholder
+        const finalTextContent = textContent.trim() || (imageData || fileData ? '' : textContent);
+
+        // Build message parts array to support multiple attachment types
+        const messageParts: InternalMessage['content'] = [];
+
+        // Add text if present
+        if (finalTextContent) {
+            messageParts.push({ type: 'text' as const, text: finalTextContent });
+        }
+
+        // Add image if present
+        if (imageData) {
+            messageParts.push({
+                type: 'image' as const,
+                image: imageData.image,
+                mimeType: imageData.mimeType || 'image/jpeg',
+            });
+        }
+
+        // Add file if present
+        if (fileData) {
+            messageParts.push({
+                type: 'file' as const,
+                data: fileData.data,
+                mimeType: fileData.mimeType,
+                ...(fileData.filename && { filename: fileData.filename }),
+            });
+        }
+
+        // Fallback to text-only if no parts were added
+        if (messageParts.length === 0) {
+            messageParts.push({ type: 'text' as const, text: finalTextContent });
+        }
         logger.debug(
             `ContextManager: Adding user message: ${JSON.stringify(messageParts, null, 2)}`
         );
@@ -487,7 +525,17 @@ export class ContextManager {
         try {
             // Use pre-computed system prompt if provided
             const prompt = systemPrompt ?? (await this.getSystemPrompt(context));
-            return this.formatter.format([...messageHistory], prompt);
+
+            // Map DynamicContributorContext to FormatterContext
+            const formatterContext: FormatterContext | undefined = context.llmProvider
+                ? {
+                      mcpManager: context.mcpManager,
+                      provider: context.llmProvider,
+                      model: context.llmModel || '',
+                  }
+                : undefined;
+
+            return this.formatter.format([...messageHistory], prompt, formatterContext);
         } catch (error) {
             logger.error(
                 `Error formatting messages: ${error instanceof Error ? error.message : String(error)}`

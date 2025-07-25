@@ -137,10 +137,14 @@ export default function ChatApp() {
     setServerRegistryOpen(false);
   }, []);
 
-  const handleSend = useCallback(async (content: string, imageData?: { base64: string; mimeType: string }) => {
+  const handleSend = useCallback(async (
+    content: string,
+    imageData?: { base64: string; mimeType: string },
+    fileData?: { base64: string; mimeType: string; filename?: string }
+  ) => {
     setIsSendingMessage(true);
     try {
-      await sendMessage(content, imageData);
+      await sendMessage(content, imageData, fileData);
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {

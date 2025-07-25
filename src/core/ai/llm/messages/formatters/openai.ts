@@ -1,6 +1,12 @@
-import { IMessageFormatter } from './types.js';
+import { IMessageFormatter, FormatterContext } from './types.js';
 import { InternalMessage } from '../types.js';
-import { getImageData } from '../utils.js';
+import {
+    getImageData,
+    getFileData,
+    filterMessagesByLLMCapabilities,
+    FilteringConfig,
+} from '../utils.js';
+import { logger } from '../../../../logger/index.js';
 
 /**
  * Message formatter for OpenAI's Chat Completion API.
@@ -18,8 +24,29 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
      * @param systemPrompt System prompt to include at the beginning of messages
      * @returns Array of messages formatted for OpenAI's API
      */
-    format(history: Readonly<InternalMessage[]>, systemPrompt: string | null): any[] {
+    format(
+        history: Readonly<InternalMessage[]>,
+        systemPrompt: string | null,
+        context?: FormatterContext
+    ): unknown[] {
         const formatted = [];
+
+        // Apply model-aware capability filtering
+        let filteredHistory: InternalMessage[];
+        try {
+            if (!context?.provider) {
+                throw new Error('Provider is required for OpenAI formatter context');
+            }
+
+            const config: FilteringConfig = {
+                provider: context.provider,
+                model: context.model,
+            };
+            filteredHistory = filterMessagesByLLMCapabilities([...history], config);
+        } catch (error) {
+            logger.warn(`Failed to apply capability filtering, using original history: ${error}`);
+            filteredHistory = [...history];
+        }
 
         // Add system message if provided
         if (systemPrompt) {
@@ -29,7 +56,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
             });
         }
 
-        for (const msg of history) {
+        for (const msg of filteredHistory) {
             switch (msg.role) {
                 case 'system':
                     // We already handled the systemPrompt, but if there are additional
@@ -92,10 +119,11 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
     /**
      * Parses OpenAI API response into internal message objects.
      */
-    parseResponse(response: any): InternalMessage[] {
+    parseResponse(response: unknown): InternalMessage[] {
         const internal: InternalMessage[] = [];
-        if (!response.choices || !Array.isArray(response.choices)) return internal;
-        for (const choice of response.choices) {
+        const typedResponse = response as { choices?: unknown[] };
+        if (!typedResponse.choices || !Array.isArray(typedResponse.choices)) return internal;
+        for (const choice of typedResponse.choices) {
             const msg = (choice as any).message;
             if (!msg || !msg.role) continue;
             const role = msg.role as InternalMessage['role'];
@@ -104,14 +132,17 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
                 const content = msg.content ?? null;
                 // Handle tool calls if present
                 if (msg.tool_calls && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
-                    const calls = msg.tool_calls.map((call: any) => ({
-                        id: call.id,
-                        type: 'function' as const,
-                        function: {
-                            name: call.function.name,
-                            arguments: call.function.arguments,
-                        },
-                    }));
+                    const calls = msg.tool_calls.map((call: unknown) => {
+                        const typedCall = call as any; // Type assertion for complex API response structure
+                        return {
+                            id: typedCall.id,
+                            type: 'function' as const,
+                            function: {
+                                name: typedCall.function.name,
+                                arguments: typedCall.function.arguments,
+                            },
+                        };
+                    });
                     internal.push({ role: 'assistant', content, toolCalls: calls });
                 } else {
                     internal.push({ role: 'assistant', content });
@@ -136,8 +167,8 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
         return internal;
     }
 
-    // Helper to format user message parts (text + image) into chat API shape
-    private formatUserContent(content: InternalMessage['content']): any {
+    // Helper to format user message parts (text + image + file) into chat API shape
+    private formatUserContent(content: InternalMessage['content']): unknown {
         if (!Array.isArray(content)) {
             return content;
         }
@@ -155,6 +186,16 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
                             ? raw
                             : `data:${part.mimeType || 'application/octet-stream'};base64,${raw}`;
                     return { type: 'image_url', image_url: { url } };
+                }
+                if (part.type === 'file') {
+                    const raw = getFileData(part);
+                    const url =
+                        raw.startsWith('http://') ||
+                        raw.startsWith('https://') ||
+                        raw.startsWith('data:')
+                            ? raw
+                            : `data:${part.mimeType || 'application/octet-stream'};base64,${raw}`;
+                    return { type: 'file_url', file_url: { url } };
                 }
                 return null;
             })
