@@ -1,5 +1,4 @@
 import { describe, test, expect } from 'vitest';
-import { ValidationError } from '@core/error/index.js';
 import { validateInputForLLM, createInputValidationError } from './validation.js';
 
 describe('validateInputForLLM', () => {
