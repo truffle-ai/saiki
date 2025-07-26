@@ -28,6 +28,7 @@ import {
 import type { LLMConfig } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
 import { validateInputForLLM, createInputValidationError } from '@core/ai/llm/validation.js';
+import { registerShutdownHandlers } from '@core/lifecycle/shutdown.js';
 
 /**
  * Helper function to send JSON response with optional pretty printing
@@ -47,6 +48,7 @@ function sendJsonResponse(res: any, data: any, statusCode = 200) {
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
     const app = express();
+    registerShutdownHandlers();
 
     // this will apply middleware to all /api/llm/* routes
     app.use('/api/llm', expressRedactionMiddleware);

@@ -6,6 +6,7 @@ import { SaikiAgent } from '@core/index.js';
 import { parseInput } from './command-parser.js';
 import { executeCommand } from './commands.js';
 import { getSaikiPath } from '@core/utils/path.js';
+import { registerShutdownHandlers } from '@core/lifecycle/shutdown.js';
 
 /**
  * Find and load the most recent session based on lastActivity.
@@ -53,7 +54,7 @@ async function loadMostRecentSession(agent: SaikiAgent): Promise<void> {
  */
 async function _initCli(agent: SaikiAgent): Promise<void> {
     await loadMostRecentSession(agent);
-
+    registerShutdownHandlers();
     // Log connection info
     logger.debug(`Log level: ${logger.getLevel()}`);
     logger.info(`Connected servers: ${agent.mcpManager.getClients().size}`, null, 'green');

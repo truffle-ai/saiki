@@ -23,7 +23,7 @@ import type { ToolSet } from '../types.js';
 import { SearchService } from '../search/index.js';
 import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';
 import { getSaikiPath } from '../../utils/path.js';
-
+import { cleanupManager } from '../../lifecycle/cleanup.js';
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
     'promptManager',
@@ -165,6 +165,16 @@ export class SaikiAgent {
             // Show log location for SDK users
             const logPath = getSaikiPath('logs', 'saiki.log');
             console.log(`📋 Logs available at: ${logPath}`);
+
+            cleanupManager.addCleanupTask(async () => {
+                logger.info('Stopping SaikiAgent...');
+                await this.stop();
+            });
+
+            cleanupManager.addCleanupTask(async () => {
+                logger.info('Closing database connections...');
+                await this.services.storageManager?.disconnect();
+            });
         } catch (error) {
             logger.error('Failed to start SaikiAgent', error);
             throw error;
@@ -236,6 +246,8 @@ export class SaikiAgent {
             } else {
                 logger.info('SaikiAgent stopped successfully.');
             }
+
+            cleanupManager.removeCleanupTask(this.stop);
         } catch (error) {
             logger.error('Failed to stop SaikiAgent', error);
             throw error;
