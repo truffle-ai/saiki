@@ -854,7 +854,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
     },
     {
         name: 'tools',
-        description: 'List all available MCP tools',
+        description: 'List all available tools (both MCP and custom tools)',
         usage: '/tools',
         category: 'Tool Management',
         handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
@@ -875,7 +875,9 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                     console.log(`  ${chalk.yellow(toolName)} - ${chalk.dim(description)}`);
                 }
 
-                console.log(chalk.dim('💡 Tools are provided by connected MCP servers'));
+                console.log(
+                    chalk.dim('💡 Tools are provided by connected MCP servers and custom tools')
+                );
             } catch (error) {
                 logger.error(
                     `Failed to list tools: ${error instanceof Error ? error.message : String(error)}`

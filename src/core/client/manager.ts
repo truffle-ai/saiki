@@ -11,28 +11,31 @@ import { ToolExecutionDeniedError } from './tool-confirmation/errors.js';
 /**
  * Centralized manager for Multiple Model Context Protocol (MCP) servers.
  *
- * The MCPManager serves as a unified interface for managing connections to multiple MCP servers,
- * providing access to their tools, prompts, and resources through a single entry point.
+ * The MCPManager serves as a focused interface for managing connections to MCP servers
+ * and providing access to their capabilities (tools, prompts, resources).
  *
  * Key responsibilities:
  * - **Client Management**: Register, connect, disconnect, and remove MCP clients
- * - **Resource Discovery**: Cache and provide access to tools, prompts, and resources from all connected clients
- * - **Tool Execution**: Execute tools with built-in confirmation mechanisms for security
+ * - **Resource Discovery**: Cache and provide access to tools, prompts, and resources from connected clients
+ * - **MCP Tool Execution**: Execute MCP tools with built-in confirmation mechanisms
  * - **Connection Handling**: Support both strict and lenient connection modes with error tracking
  * - **Caching**: Maintain efficient lookup maps for fast access to client capabilities
  *
  * The manager supports dynamic client connections, allowing servers to be added or removed at runtime.
  * It includes robust error handling and maintains connection state for debugging purposes.
  *
+ * Note: This class focuses only on MCP server management. For unified tool management
+ * across multiple sources (MCP + custom tools), use the ToolManager class.
+ *
  * @example
  * ```typescript
  * const manager = new MCPManager();
  * await manager.initializeFromConfig(serverConfigs);
  *
- * // Execute a tool from any connected server
+ * // Execute an MCP tool
  * const result = await manager.executeTool('my_tool', { param: 'value' });
  *
- * // Get all available tools across all servers
+ * // Get all available MCP tools
  * const tools = await manager.getAllTools();
  * ```
  */
@@ -220,7 +223,7 @@ export class MCPManager {
     }
 
     /**
-     * Get all available tools from all connected clients, updating the cache.
+     * Get all available MCP tools from all connected clients, updating the cache.
      * Conflicted tools are prefixed with server name using distinctive delimiter.
      * @returns Promise resolving to a ToolSet mapping tool names to Tool definitions
      */
@@ -237,7 +240,7 @@ export class MCPManager {
             return clientToolsCache.get(client)!;
         };
 
-        // Add non-conflicted tools directly
+        // Add non-conflicted MCP tools directly
         for (const [toolName, client] of Array.from(this.toolToClientMap.entries())) {
             const clientTools = await getClientTools(client);
             const toolDef = clientTools[toolName];
@@ -268,7 +271,7 @@ export class MCPManager {
         }
 
         logger.debug(
-            `🔧 Tool discovery summary: ${Object.keys(allTools).length} total tools, ${this.toolConflicts.size} conflicts, connected servers: ${Array.from(this.serverToolsMap.keys()).join(', ')}`
+            `🔧 MCP tool discovery: ${Object.keys(allTools).length} total tools, ${this.toolConflicts.size} conflicts, connected servers: ${Array.from(this.serverToolsMap.keys()).join(', ')}`
         );
 
         if (logger.getLevel() === 'debug') {
@@ -281,7 +284,7 @@ export class MCPManager {
             });
         }
 
-        logger.silly(`All tools: ${JSON.stringify(allTools, null, 2)}`);
+        logger.silly(`MCP tools: ${JSON.stringify(allTools, null, 2)}`);
         return allTools;
     }
 
@@ -333,25 +336,27 @@ export class MCPManager {
     }
 
     /**
-     * Execute a specific tool with the given arguments.
-     * @param toolName Name of the tool to execute (may include server prefix)
+     * Execute a specific MCP tool with the given arguments.
+     * @param toolName Name of the MCP tool to execute (may include server prefix)
      * @param args Arguments to pass to the tool
      * @param sessionId Optional session ID
      * @returns Promise resolving to the tool execution result
      */
     async executeTool(toolName: string, args: any, sessionId?: string): Promise<any> {
-        logger.debug(`🔧 Tool execution requested: '${toolName}'`);
+        logger.debug(`🔧 MCP tool execution requested: '${toolName}'`);
         logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
 
         const client = this.getToolClient(toolName);
         if (!client) {
-            logger.error(`❌ No client found for tool: ${toolName}`);
-            logger.debug(`Available tools: ${Array.from(this.toolToClientMap.keys()).join(', ')}`);
+            logger.error(`❌ No MCP tool found: ${toolName}`);
+            logger.debug(
+                `Available MCP tools: ${Array.from(this.toolToClientMap.keys()).join(', ')}`
+            );
             logger.debug(`Conflicted tools: ${Array.from(this.toolConflicts).join(', ')}`);
             logger.debug(
                 `Server tools map keys: ${Array.from(this.serverToolsMap.keys()).join(', ')}`
             );
-            throw new Error(`No client found for tool: ${toolName}`);
+            throw new Error(`No MCP tool found: ${toolName}`);
         }
 
         // Extract actual tool name (remove server prefix if present)
@@ -360,7 +365,7 @@ export class MCPManager {
         const serverName = parsed ? parsed.serverName : 'direct';
 
         logger.debug(
-            `🎯 Tool routing: '${toolName}' -> server: '${serverName}', actual tool: '${actualToolName}'`
+            `🎯 MCP tool routing: '${toolName}' -> server: '${serverName}', actual tool: '${actualToolName}'`
         );
 
         const approved = await this.confirmationProvider.requestConfirmation({
@@ -368,22 +373,22 @@ export class MCPManager {
             args,
         });
         if (!approved) {
-            logger.warn(`🚫 Tool execution denied: ${toolName}`);
+            logger.warn(`🚫 MCP tool execution denied: ${toolName}`);
             throw new ToolExecutionDeniedError(toolName, sessionId);
         }
 
-        logger.debug(`▶️  Executing tool '${actualToolName}' on server '${serverName}'...`);
+        logger.debug(`▶️  Executing MCP tool '${actualToolName}' on server '${serverName}'...`);
         const startTime = Date.now();
 
         try {
             const result = await client.callTool(actualToolName, args);
             const duration = Date.now() - startTime;
-            logger.debug(`✅ Tool execution completed in ${duration}ms: '${actualToolName}'`);
+            logger.debug(`✅ MCP tool execution completed in ${duration}ms: '${actualToolName}'`);
             return result;
         } catch (error) {
             const duration = Date.now() - startTime;
             logger.error(
-                `❌ Tool execution failed after ${duration}ms: '${actualToolName}' - ${error instanceof Error ? error.message : String(error)}`
+                `❌ MCP tool execution failed after ${duration}ms: '${actualToolName}' - ${error instanceof Error ? error.message : String(error)}`
             );
             throw error;
         }

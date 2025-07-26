@@ -122,6 +122,7 @@ describe('SaikiAgent.switchLLM', () => {
 
         const mockServices = {
             mcpManager: mockMcpManager,
+            toolManager: {} as any,
             promptManager: mockPromptManager,
             agentEventBus: mockEventBus,
             stateManager: mockStateManager,

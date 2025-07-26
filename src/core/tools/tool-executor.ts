@@ -1,0 +1,250 @@
+import { ToolRegistry } from './tool-registry.js';
+import { ToolExecutionContext, ToolExecutionError, ToolSet } from './types.js';
+import { ValidatedCustomToolsConfig } from '../config/schemas.js';
+import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
+import { validateToolResult } from './tool-factory.js';
+import { SchemaConverter } from './schema-converter.js';
+import { logger } from '../logger/index.js';
+
+/**
+ * No-op confirmation provider for testing
+ */
+class NoOpConfirmationProvider implements ToolConfirmationProvider {
+    allowedToolsProvider: any = null;
+
+    async requestConfirmation(): Promise<boolean> {
+        return true; // Auto-approve all tools
+    }
+}
+
+/**
+ * Dedicated tool execution engine
+ *
+ * Handles all custom tool execution logic with proper separation of concerns
+ */
+export class ToolExecutor {
+    private registry: ToolRegistry;
+    private config: ValidatedCustomToolsConfig;
+    private confirmationProvider: ToolConfirmationProvider;
+
+    constructor(
+        registry: ToolRegistry,
+        config: ValidatedCustomToolsConfig = {} as ValidatedCustomToolsConfig,
+        confirmationProvider?: ToolConfirmationProvider
+    ) {
+        this.registry = registry;
+
+        // Use defaults if config is incomplete
+        this.config = {
+            toolsDirectory: config.toolsDirectory || './tools',
+            autoDiscover: config.autoDiscover !== false,
+            toolConfigs: config.toolConfigs || {},
+            globalSettings: config.globalSettings || {
+                requiresConfirmation: false,
+                timeout: 30000,
+                enableCaching: false,
+            },
+        };
+
+        this.confirmationProvider = confirmationProvider || new NoOpConfirmationProvider();
+
+        logger.debug(`ToolExecutor initialized with ${this.registry.getToolIds().length} tools`);
+    }
+
+    /**
+     * Check if a tool exists
+     */
+    hasTool(toolId: string): boolean {
+        return this.registry.has(toolId);
+    }
+
+    /**
+     * Execute a tool by ID
+     */
+    async executeTool(
+        toolId: string,
+        args: Record<string, any>,
+        context?: ToolExecutionContext
+    ): Promise<any> {
+        const tool = this.registry.get(toolId);
+        if (!tool) {
+            throw new ToolExecutionError(toolId, 'Tool not found');
+        }
+
+        logger.debug(`🔧 Custom tool execution requested: '${toolId}'`);
+        logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
+
+        // Validate input against schema
+        try {
+            const validatedArgs = tool.inputSchema.parse(args);
+            args = validatedArgs;
+        } catch (error) {
+            throw new ToolExecutionError(
+                toolId,
+                `Input validation failed: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+
+        // Check for confirmation requirement
+        const requiresConfirmation =
+            tool.settings?.requiresConfirmation ??
+            this.config.globalSettings?.requiresConfirmation ??
+            false;
+
+        if (requiresConfirmation) {
+            const approved = await this.confirmationProvider.requestConfirmation({
+                toolName: toolId,
+                args,
+            });
+
+            if (!approved) {
+                logger.warn(`🚫 Custom tool execution denied: ${toolId}`);
+                throw new ToolExecutionError(toolId, 'Tool execution denied by user');
+            }
+        }
+
+        // Apply timeout if configured
+        const timeout = tool.settings?.timeout ?? this.config.globalSettings?.timeout ?? 30000;
+
+        const startTime = Date.now();
+
+        try {
+            logger.debug(`▶️  Executing custom tool '${toolId}'...`);
+
+            let result: any;
+
+            if (timeout > 0) {
+                // Execute with timeout
+                result = await Promise.race([
+                    Promise.resolve(tool.execute(args, context)),
+                    new Promise((_, reject) =>
+                        setTimeout(
+                            () => reject(new Error(`Tool execution timeout after ${timeout}ms`)),
+                            timeout
+                        )
+                    ),
+                ]);
+            } else {
+                // Execute without timeout
+                result = await Promise.resolve(tool.execute(args, context));
+            }
+
+            const validatedResult = validateToolResult(result);
+            const duration = Date.now() - startTime;
+
+            logger.debug(`✅ Custom tool execution completed in ${duration}ms: '${toolId}'`);
+
+            return validatedResult.data;
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            const errorMessage = error instanceof Error ? error.message : String(error);
+
+            logger.error(
+                `❌ Custom tool execution failed after ${duration}ms: '${toolId}' - ${errorMessage}`
+            );
+
+            throw new ToolExecutionError(toolId, errorMessage, error as Error);
+        }
+    }
+
+    /**
+     * Get all tools in ToolSet format (for compatibility with MCP)
+     */
+    getAllTools(): ToolSet {
+        const toolSet: ToolSet = {};
+
+        for (const tool of this.registry.getAll()) {
+            const jsonSchema = SchemaConverter.zodToJsonSchema(tool.inputSchema);
+            toolSet[tool.id] = {
+                description: tool.description,
+                parameters:
+                    jsonSchema.type === 'object'
+                        ? {
+                              type: 'object',
+                              properties: jsonSchema.properties || {},
+                              ...(jsonSchema.required && { required: jsonSchema.required }),
+                          }
+                        : {
+                              type: 'object',
+                              properties: {},
+                          },
+            };
+        }
+
+        return toolSet;
+    }
+
+    /**
+     * Get tool names
+     */
+    getToolNames(): string[] {
+        return this.registry.getToolIds();
+    }
+
+    /**
+     * Get tools by category
+     */
+    getToolsByCategory(category: string): ToolSet {
+        const toolSet: ToolSet = {};
+        const tools = this.registry.getByCategory(category);
+
+        for (const tool of tools) {
+            const jsonSchema = SchemaConverter.zodToJsonSchema(tool.inputSchema);
+            toolSet[tool.id] = {
+                description: tool.description,
+                parameters:
+                    jsonSchema.type === 'object'
+                        ? {
+                              type: 'object',
+                              properties: jsonSchema.properties || {},
+                              ...(jsonSchema.required && { required: jsonSchema.required }),
+                          }
+                        : {
+                              type: 'object',
+                              properties: {},
+                          },
+            };
+        }
+
+        return toolSet;
+    }
+
+    /**
+     * Get tools by tags
+     */
+    getToolsByTags(tags: string[]): ToolSet {
+        const toolSet: ToolSet = {};
+        const tools = this.registry.getByTags(tags);
+
+        for (const tool of tools) {
+            const jsonSchema = SchemaConverter.zodToJsonSchema(tool.inputSchema);
+            toolSet[tool.id] = {
+                description: tool.description,
+                parameters:
+                    jsonSchema.type === 'object'
+                        ? {
+                              type: 'object',
+                              properties: jsonSchema.properties || {},
+                              ...(jsonSchema.required && { required: jsonSchema.required }),
+                          }
+                        : {
+                              type: 'object',
+                              properties: {},
+                          },
+            };
+        }
+
+        return toolSet;
+    }
+
+    /**
+     * Get execution statistics
+     */
+    getStats(): {
+        totalTools: number;
+        categories: Record<string, number>;
+        tags: Record<string, number>;
+    } {
+        return this.registry.getStats();
+    }
+}

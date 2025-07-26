@@ -23,6 +23,13 @@ describe('AgentStateManager Events', () => {
                     connectionMode: 'lenient',
                 },
             },
+            customTools: {
+                toolsDirectory: './tools',
+                autoDiscover: true,
+                globalSettings: {
+                    enableCaching: false,
+                },
+            },
             llm: {
                 provider: 'openai',
                 model: 'gpt-4o',

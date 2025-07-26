@@ -587,6 +587,47 @@ export const StorageSchema = z
 
 export type StorageConfig = z.infer<typeof StorageSchema>;
 
+export const CustomToolsConfigSchema = z
+    .object({
+        toolsDirectory: z
+            .string()
+            .default('./tools')
+            .describe('Directory path where custom tools are located, defaults to ./tools'),
+        autoDiscover: z
+            .boolean()
+            .default(true)
+            .describe('Whether to automatically discover and load tools from the tools directory'),
+        toolConfigs: z
+            .record(z.record(z.any()))
+            .optional()
+            .describe('Tool-specific configurations keyed by tool name'),
+        globalSettings: z
+            .object({
+                requiresConfirmation: z
+                    .boolean()
+                    .optional()
+                    .describe('Default confirmation requirement for all custom tools'),
+                timeout: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe('Default execution timeout for custom tools in milliseconds'),
+                enableCaching: z
+                    .boolean()
+                    .default(false)
+                    .describe('Whether to enable result caching for custom tools'),
+            })
+            .default({})
+            .describe('Global settings that apply to all custom tools'),
+    })
+    .default({
+        toolsDirectory: './tools',
+        autoDiscover: true,
+        globalSettings: {},
+    })
+    .describe('Configuration for custom tools system');
+
 export const AgentConfigSchema = z
     .object({
         agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
@@ -597,6 +638,9 @@ export const AgentConfigSchema = z
             ),
         mcpServers: ServerConfigsSchema.default({}).describe(
             'Configurations for MCP (Model Context Protocol) servers used by the agent'
+        ),
+        customTools: CustomToolsConfigSchema.describe(
+            'Configuration for custom tools that work alongside MCP servers'
         ),
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 
@@ -661,6 +705,10 @@ export const AgentConfigSchema = z
     })
     .strict()
     .describe('Main configuration for an agent, including its LLM and server connections');
+// Custom tools config types
+export type CustomToolsConfig = z.input<typeof CustomToolsConfigSchema>;
+export type ValidatedCustomToolsConfig = z.infer<typeof CustomToolsConfigSchema>;
+
 // Input type for user-facing API (pre-parsing) - makes fields with defaults optional
 export type AgentConfig = z.input<typeof AgentConfigSchema>;
 // Validated type for internal use (post-parsing) - all defaults applied

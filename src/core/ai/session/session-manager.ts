@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { ChatSession } from './chat-session.js';
 import { PromptManager } from '../systemPrompt/manager.js';
-import { MCPManager } from '../../client/manager.js';
+import { ToolManager } from '../../tools/tool-manager.js';
 import { AgentEventBus } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
@@ -53,7 +53,7 @@ export class SessionManager {
         private services: {
             stateManager: AgentStateManager;
             promptManager: PromptManager;
-            mcpManager: MCPManager;
+            toolManager: ToolManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
         },
