@@ -47,6 +47,19 @@ export default function ChatApp() {
   // Conversation management states
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+   const [feedbackMessage, setFeedbackMessage] = useState<{ title: string; description: string; variant: 'success' | 'destructive' } | null>(null);
+
+
+  const isMac = navigator.platform.includes('Mac');
+
+    // Auto-dismiss feedback Alert after 3 seconds
+  useEffect(() => {
+    if (feedbackMessage) {
+      const timer = setTimeout(() => setFeedbackMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [feedbackMessage]);
+
 
   useEffect(() => {
     if (isExportOpen) {
@@ -146,7 +159,6 @@ export default function ChatApp() {
   const handleSessionChange = useCallback(async (sessionId: string) => {
     try {
       await switchSession(sessionId);
-      // Close sessions panel after switching (for mobile experience)
       setSessionsPanelOpen(false);
     } catch (error) {
       console.error('Error switching session:', error);
@@ -154,9 +166,8 @@ export default function ChatApp() {
   }, [switchSession]);
 
 
-  const handleDeleteConversation = useCallback(async () => {
+    const handleDeleteConversation = useCallback(async () => {
     if (!currentSessionId) return;
-    
     setIsDeleting(true);
     try {
       const response = await fetch(`/api/sessions/${currentSessionId}`, {
@@ -165,18 +176,23 @@ export default function ChatApp() {
           'Content-Type': 'application/json',
         },
       });
-
       if (!response.ok) {
         throw new Error('Failed to delete conversation');
       }
-
-      // After deleting, return to welcome state
-      // Don't switch to any specific session, let user start fresh
       setDeleteDialogOpen(false);
       returnToWelcome();
+      setFeedbackMessage({
+        title: 'Session Deleted',
+        description: `Conversation ${currentSessionId} has been successfully deleted.`,
+        variant: 'success',
+      });
     } catch (error) {
       console.error('Error deleting conversation:', error);
-      // You might want to show a toast notification here
+      setFeedbackMessage({
+        title: 'Deletion Failed',
+        description: error instanceof Error ? error.message : 'Failed to delete the conversation.',
+        variant: 'destructive',
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -237,6 +253,15 @@ export default function ChatApp() {
         e.preventDefault();
         setShowShortcuts(true);
       }
+
+       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'Backspace') {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Ctrl+Backspace: Attempting to open delete dialog', { currentSessionId, isWelcomeState }); // Debug
+      if (currentSessionId && !isWelcomeState) {
+        setDeleteDialogOpen(true); // Open existing delete dialog
+      }
+    }
       // Escape to close panels
       if (e.key === 'Escape') {
         if (isServersPanelOpen) setServersPanelOpen(false);
@@ -400,10 +425,10 @@ export default function ChatApp() {
                       </button>
                     ))}
                   </div>
-                
+                =
                   {/* Quick Tips */}
                   <div className="text-xs text-muted-foreground space-y-1 text-center">
-                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools/servers, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground</p>
+                    <p>💡 Try <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘J</kbd> for sessions, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> for tools/servers, <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘L</kbd> for playground,  <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">{isMac ? '⌘⌫' : 'Ctrl+⌫'}</kbd> to delete session</p>
                   </div>
                 </div>
               </div>
@@ -428,6 +453,17 @@ export default function ChatApp() {
               </div>
             </div>
           </div>
+
+
+            d{feedbackMessage && (
+            <div className="fixed bottom-4 right-4 z-50 max-w-sm animate-in fade-in-0 slide-in-from-bottom-4">
+              <Alert className="shadow-lg">
+                <AlertTitle>{feedbackMessage.title}</AlertTitle>
+                <AlertDescription>{feedbackMessage.description}</AlertDescription>
+              </Alert>
+            </div>
+          )}
+
 
           {/* Sessions Panel - Slide Animation */}
           <div className={cn(
@@ -590,6 +626,7 @@ export default function ChatApp() {
                 { key: '⌘L', desc: 'Open playground' },
                 { key: '⌘⇧E', desc: 'Export config' },
                 { key: '⌘/', desc: 'Show shortcuts' },
+                { key: isMac ? '⌘⌫' : 'Ctrl+⌫', desc: 'Delete current session' }, 
                 { key: 'Esc', desc: 'Close panels' },
               ].map((shortcut, index) => (
                 <div key={index} className="flex justify-between items-center py-1">
@@ -606,7 +643,9 @@ export default function ChatApp() {
                 <Button variant="outline">Close</Button>
               </DialogClose>
             </DialogFooter>
-          </DialogContent>
+          </DialogContent>ResetConversation
+
+
         </Dialog>
       </main>
       
