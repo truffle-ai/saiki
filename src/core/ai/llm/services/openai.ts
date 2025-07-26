@@ -5,7 +5,7 @@ import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
-import { ImageData } from '../messages/types.js';
+import { ImageData, FileData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
 
@@ -45,12 +45,13 @@ export class OpenAIService implements ILLMService {
     }
 
     async completeTask(
-        userInput: string,
+        textInput: string,
         imageData?: ImageData,
+        fileData?: FileData,
         _stream?: boolean
     ): Promise<string> {
-        // Add user message with optional image data
-        await this.contextManager.addUserMessage(userInput, imageData);
+        // Add user message with optional image and file data
+        await this.contextManager.addUserMessage(textInput, imageData, fileData);
 
         // Get all tools
         const rawTools = await this.toolManager.getAllTools();
@@ -255,7 +256,11 @@ export class OpenAIService implements ILLMService {
 
             try {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = { mcpManager: this.toolManager.getMcpManager() };
+                const context = {
+                    mcpManager: this.toolManager.getMcpManager(),
+                    provider: 'openai',
+                    model: this.model,
+                };
                 const {
                     formattedMessages,
                     systemPrompt: _systemPrompt,

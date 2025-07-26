@@ -22,6 +22,7 @@ import type { IMCPClient } from '../../client/types.js';
 import type { ToolSet } from '../types.js';
 import { SearchService } from '../search/index.js';
 import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';
+import { getSaikiPath } from '../../utils/path.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
@@ -160,6 +161,10 @@ export class SaikiAgent {
 
             this._isStarted = true;
             logger.info('SaikiAgent started successfully.');
+
+            // Show log location for SDK users
+            const logPath = getSaikiPath('logs', 'saiki.log');
+            console.log(`📋 Logs available at: ${logPath}`);
         } catch (error) {
             logger.error('Failed to start SaikiAgent', error);
             throw error;
@@ -272,15 +277,17 @@ export class SaikiAgent {
      * Main method for processing user input.
      * Processes user input through the agent's LLM service and returns the response.
      *
-     * @param userInput - The user's message or query to process
+     * @param textInput - The user's text message or query to process
      * @param imageDataInput - Optional image data and MIME type for multimodal input
+     * @param fileDataInput - Optional file data and MIME type for file input
      * @param sessionId - Optional session ID for multi-session scenarios
      * @returns Promise that resolves to the AI's response text, or null if no significant response
      * @throws Error if processing fails
      */
     public async run(
-        userInput: string,
+        textInput: string,
         imageDataInput?: { image: string; mimeType: string },
+        fileDataInput?: { data: string; mimeType: string; filename?: string },
         sessionId?: string,
         stream: boolean = false
     ): Promise<string | null> {
@@ -310,9 +317,9 @@ export class SaikiAgent {
             }
 
             logger.debug(
-                `SaikiAgent.run: userInput: ${userInput}, imageDataInput: ${imageDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
+                `SaikiAgent.run: textInput: ${textInput}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
             );
-            const response = await session.run(userInput, imageDataInput, stream);
+            const response = await session.run(textInput, imageDataInput, fileDataInput, stream);
 
             // Increment message count for this session (counts each)
             await this.sessionManager.incrementMessageCount(session.id);

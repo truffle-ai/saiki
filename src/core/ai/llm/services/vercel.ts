@@ -6,7 +6,7 @@ import { ToolSet } from '../../types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
-import { ImageData } from '../messages/types.js';
+import { ImageData, FileData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
 import { ToolExecutionDeniedError } from '../../../client/tool-confirmation/errors.js';
@@ -66,15 +66,15 @@ export class VercelLLMService implements ILLMService {
             const tool = tools[toolName];
             if (tool) {
                 acc[toolName] = {
-                    parameters: jsonSchema(tool.parameters as any),
-                    execute: async (args: any) => {
+                    parameters: jsonSchema(tool.parameters as any), // JSONSchema7 type assertion needed
+                    execute: async (args: unknown) => {
                         try {
                             return await this.toolManager.executeTool(
                                 toolName,
                                 args,
                                 this.sessionId
                             );
-                        } catch (err: any) {
+                        } catch (err: unknown) {
                             if (err instanceof ToolExecutionDeniedError) {
                                 return { error: err.message, denied: true };
                             }
@@ -134,15 +134,16 @@ export class VercelLLMService implements ILLMService {
             this.toolSupportCache.set(modelKey, true);
             logger.debug(`Model ${modelKey} supports tools`);
             return true;
-        } catch (error: any) {
-            if (error.message.includes('does not support tools')) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('does not support tools')) {
                 this.toolSupportCache.set(modelKey, false);
                 logger.debug(`Model ${modelKey} does not support tools`);
                 return false;
             }
             // Other errors - assume tools are supported and let the actual call handle it
             logger.debug(
-                `Tool validation error for ${modelKey}, assuming supported: ${error.message}`
+                `Tool validation error for ${modelKey}, assuming supported: ${errorMessage}`
             );
             this.toolSupportCache.set(modelKey, true);
             return true;
@@ -150,15 +151,16 @@ export class VercelLLMService implements ILLMService {
     }
 
     async completeTask(
-        userInput: string,
+        textInput: string,
         imageData?: ImageData,
+        fileData?: FileData,
         stream?: boolean
     ): Promise<string> {
-        // Add user message, with optional image data
+        // Add user message, with optional image and file data
         logger.debug(
-            `VercelLLMService: Adding user message: ${userInput} and imageData: ${imageData}`
+            `VercelLLMService: Adding user message: ${textInput}, imageData: ${imageData}, fileData: ${fileData}`
         );
-        await this.contextManager.addUserMessage(userInput, imageData);
+        await this.contextManager.addUserMessage(textInput, imageData, fileData);
 
         // Get all tools
         const tools = await this.toolManager.getAllTools();
@@ -182,7 +184,11 @@ export class VercelLLMService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = { mcpManager: this.toolManager.getMcpManager() };
+                const context = {
+                    mcpManager: this.toolManager.getMcpManager(),
+                    provider: this.provider, // Use our internal provider name, not SDK's provider name
+                    model: this.model.modelId,
+                };
                 const {
                     formattedMessages,
                     systemPrompt: _systemPrompt,
@@ -229,7 +235,7 @@ export class VercelLLMService implements ILLMService {
     }
 
     async generateText(
-        messages: any[],
+        messages: unknown[],
         tools: VercelToolSet,
         maxSteps: number = 50
     ): Promise<string> {
@@ -256,7 +262,7 @@ export class VercelLLMService implements ILLMService {
 
         const response = await generateText({
             model: this.model,
-            messages: messages,
+            messages: messages as any, // Type assertion for complex message structure compatibility
             tools: effectiveTools,
             onStepFinish: (step) => {
                 logger.debug(`Step iteration: ${stepIteration}`);
@@ -323,7 +329,7 @@ export class VercelLLMService implements ILLMService {
 
     // Updated streamText to behave like generateText - returns string and handles message processing internally
     async streamText(
-        messages: any[],
+        messages: unknown[],
         tools: VercelToolSet,
         maxSteps: number = 10
     ): Promise<string> {
@@ -346,7 +352,7 @@ export class VercelLLMService implements ILLMService {
         // use vercel's streamText
         const response = streamText({
             model: this.model,
-            messages: messages,
+            messages: messages as any, // Type assertion for complex message structure compatibility
             tools: effectiveTools,
             onChunk: (chunk) => {
                 logger.debug(`Chunk type: ${chunk.chunk.type}`);
@@ -491,7 +497,7 @@ export class VercelLLMService implements ILLMService {
         // Max tokens may not be found if the model is supplied by user
         try {
             modelMaxInputTokens = getMaxInputTokensForModel(
-                this.model.provider,
+                this.provider, // Use our internal provider name
                 this.model.modelId
             );
         } catch (error) {
@@ -508,7 +514,7 @@ export class VercelLLMService implements ILLMService {
         }
         return {
             router: 'vercel',
-            provider: `${this.model.provider}`,
+            provider: this.provider, // Use our internal provider name
             model: this.model,
             configuredMaxInputTokens: configuredMaxTokens,
             modelMaxInputTokens: modelMaxInputTokens,

@@ -8,7 +8,7 @@ import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/t
  */
 export interface ToolProvider {
     getTools(): Promise<ToolSet>;
-    callTool(toolName: string, args: any): Promise<any>;
+    callTool(toolName: string, args: Record<string, unknown>): Promise<unknown>;
 }
 
 /**
@@ -21,7 +21,7 @@ export interface IMCPClient extends ToolProvider {
 
     // Prompt Management
     listPrompts(): Promise<string[]>;
-    getPrompt(name: string, args?: any): Promise<GetPromptResult>;
+    getPrompt(name: string, args?: Record<string, unknown>): Promise<GetPromptResult>;
 
     // Resource Management
     listResources(): Promise<string[]>;

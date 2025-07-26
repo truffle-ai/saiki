@@ -56,4 +56,19 @@ mcpServers:
             /Failed to load config file at .*nonexistent\.yml/
         );
     });
+
+    it('loads default config when no path is provided', async () => {
+        // This test verifies that loadAgentConfig() works without parameters
+        // It will use auto-discovery logic from resolveConfigPath()
+        try {
+            const config = await loadAgentConfig();
+            // Should successfully load a config (either bundled or project-local)
+            expect(config).toBeDefined();
+            expect(config.llm).toBeDefined();
+        } catch (error) {
+            // If no default config is found, it should throw a specific error
+            expect(error).toBeInstanceOf(Error);
+            expect((error as Error).message).toMatch(/No agent\.yml found|No bundled config found/);
+        }
+    });
 });

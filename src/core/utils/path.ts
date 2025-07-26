@@ -1,10 +1,7 @@
 import * as path from 'path';
 import { existsSync, readFileSync } from 'fs';
-import { createRequire } from 'module';
 import { homedir } from 'os';
-
-// Create require function for ES modules
-const require = createRequire(import.meta.url);
+import { createRequire } from 'module';
 
 /**
  * Default config file path (relative to package root)
@@ -35,32 +32,125 @@ export function walkUpDirectories(
 }
 
 /**
- * Async version of directory walker for async predicates
- * @param startPath Starting directory path
- * @param predicate Async function that returns true when the desired condition is found
- * @returns The directory path where the condition was met, or null if not found
+ * Check if directory has saiki as dependency (MOST RELIABLE)
+ * @param dirPath Directory to check
+ * @returns True if directory contains saiki as dependency
  */
-export async function walkUpDirectoriesAsync(
-    startPath: string,
-    predicate: (dirPath: string) => Promise<boolean>
-): Promise<string | null> {
-    let currentPath = path.resolve(startPath);
-    const rootPath = path.parse(currentPath).root;
+function hasSaikiDependency(dirPath: string): boolean {
+    const packageJsonPath = path.join(dirPath, 'package.json');
 
-    while (currentPath !== rootPath) {
-        if (await predicate(currentPath)) {
-            return currentPath;
+    try {
+        const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+
+        // Case 1: This IS the saiki package itself (local testing)
+        if (pkg.name === '@truffle-ai/saiki') {
+            return true;
         }
-        currentPath = path.dirname(currentPath);
-    }
 
-    return null;
+        // Case 2: Project using saiki as dependency (SDK/CLI in project)
+        const allDeps = {
+            ...pkg.dependencies,
+            ...pkg.devDependencies,
+            ...pkg.peerDependencies,
+        };
+
+        return '@truffle-ai/saiki' in allDeps;
+    } catch {
+        return false;
+    }
 }
 
 /**
- * Find the nearest package.json by walking up directories
+ * Check if we're currently in a saiki project
  * @param startPath Starting directory path
- * @returns The directory containing package.json, or null if not found
+ * @returns True if in a saiki project
+ */
+export function isSaikiProject(startPath: string = process.cwd()): boolean {
+    return getSaikiProjectRoot(startPath) !== null;
+}
+
+/**
+ * Get saiki project root (or null if not in project)
+ * @param startPath Starting directory path
+ * @returns Project root directory or null
+ */
+export function getSaikiProjectRoot(startPath: string = process.cwd()): string | null {
+    return walkUpDirectories(startPath, hasSaikiDependency);
+}
+
+/**
+ * Standard path resolver for logs/db/config/anything in saiki projects
+ * @param type Path type (logs, database, config, etc.)
+ * @param filename Optional filename to append
+ * @param startPath Starting directory for project detection
+ * @returns Absolute path to the requested location
+ */
+export function getSaikiPath(type: string, filename?: string, startPath?: string): string {
+    const projectRoot = getSaikiProjectRoot(startPath);
+
+    let basePath: string;
+
+    if (projectRoot) {
+        // In saiki project: /project/.saiki/logs/
+        basePath = path.join(projectRoot, '.saiki', type);
+    } else {
+        // Global: ~/.saiki/logs/
+        basePath = path.join(homedir(), '.saiki', type);
+    }
+
+    return filename ? path.join(basePath, filename) : basePath;
+}
+
+/**
+ * Resolve config path with context awareness
+ * @param configPath Optional explicit config path
+ * @param startPath Starting directory for project detection
+ * @returns Absolute path to config file
+ */
+export function resolveConfigPath(configPath?: string, startPath?: string): string {
+    if (configPath) {
+        // Explicit path provided
+        return path.resolve(configPath);
+    }
+
+    const projectRoot = getSaikiProjectRoot(startPath);
+
+    if (projectRoot) {
+        // In saiki project: Look for config in project (multiple possible locations)
+        const configPaths = [
+            path.join(projectRoot, 'agents', 'agent.yml'), // Standard
+            path.join(projectRoot, 'src', 'agents', 'agent.yml'), // Common
+            path.join(projectRoot, 'src', 'saiki', 'agents', 'agent.yml'), // Test app structure
+            path.join(projectRoot, '.saiki', 'agent.yml'), // Hidden
+            path.join(projectRoot, 'agent.yml'), // Root
+        ];
+
+        for (const configPath of configPaths) {
+            if (existsSync(configPath)) {
+                return configPath;
+            }
+        }
+
+        throw new Error(`No agent.yml found in project. Searched: ${configPaths.join(', ')}`);
+    } else {
+        // Global CLI: Use bundled default config
+        try {
+            const bundledConfigPath = resolveBundledScript('agents/agent.yml');
+            if (existsSync(bundledConfigPath)) {
+                return bundledConfigPath;
+            }
+        } catch {
+            // Fallback if bundled script resolution fails
+        }
+
+        throw new Error('Global CLI: No bundled config found and no explicit config provided');
+    }
+}
+
+/**
+ * Find package root (for other utilities)
+ * @param startPath Starting directory path
+ * @returns Directory containing package.json or null
  */
 export function findPackageRoot(startPath: string = process.cwd()): string | null {
     return walkUpDirectories(startPath, (dirPath) => {
@@ -70,181 +160,23 @@ export function findPackageRoot(startPath: string = process.cwd()): string | nul
 }
 
 /**
- * Find project root by looking for package manager lock files
- * @param startPath Starting directory path
- * @returns The project root directory, or null if not found
+ * Resolve bundled script paths for MCP servers
+ * @param scriptPath Relative script path
+ * @returns Absolute path to bundled script
  */
-export function findProjectRootByLockFiles(startPath: string = process.cwd()): string | null {
-    const lockFiles = [
-        'package-lock.json', // npm
-        'yarn.lock', // yarn
-        'pnpm-lock.yaml', // pnpm
-        'bun.lock', // bun
-    ];
-
-    return walkUpDirectories(startPath, (dirPath) => {
-        return lockFiles.some((lockFile) => existsSync(path.join(dirPath, lockFile)));
-    });
-}
-
-/**
- * Check if a specific directory contains a package.json with a given name
- * @param dirPath Directory to check
- * @param packageName Expected package name
- * @returns True if the directory contains the specified package
- */
-export function isDirectoryPackage(dirPath: string, packageName: string): boolean {
-    const packageJsonPath = path.join(dirPath, 'package.json');
-
+export function resolveBundledScript(scriptPath: string): string {
     try {
-        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-        return packageJson.name === packageName;
+        // Try to resolve from the installed package
+        const require = createRequire(import.meta.url);
+        const packageJsonPath = require.resolve('@truffle-ai/saiki/package.json');
+        const packageRoot = path.dirname(packageJsonPath);
+        return path.resolve(packageRoot, scriptPath);
     } catch {
-        return false;
-    }
-}
-
-/**
- * Find directory containing a package with a specific name
- * @param packageName Package name to search for
- * @param startPath Starting directory path
- * @returns The directory containing the specified package, or null if not found
- */
-export function findPackageByName(
-    packageName: string,
-    startPath: string = process.cwd()
-): string | null {
-    return walkUpDirectories(startPath, (dirPath) => {
-        return isDirectoryPackage(dirPath, packageName);
-    });
-}
-
-/**
- * Check if current directory is the Saiki project
- * @param dirPath Directory to check (defaults to current working directory)
- * @returns True if the directory is the Saiki project root
- */
-export function isCurrentDirectorySaikiProject(dirPath: string = process.cwd()): boolean {
-    return isDirectoryPackage(dirPath, '@truffle-ai/saiki');
-}
-
-/**
- * Find the Saiki project root by walking up directories
- * @param startPath Starting directory path
- * @returns The Saiki project root directory, or null if not found
- */
-export function findSaikiProjectRoot(startPath: string = process.cwd()): string | null {
-    return findPackageByName('@truffle-ai/saiki', startPath);
-}
-
-/**
- * Detect if we're running as a global install (not in the Saiki project directory)
- * @returns True if running globally, false if in Saiki project
- */
-export function isGlobalInstall(): boolean {
-    const isInSaikiProject = isSaikiProject();
-    return !isInSaikiProject;
-}
-
-/**
- * Resolve the configuration file path.
- * - If it's absolute, return as-is.
- * - If it's the default config, resolve relative to the package installation root.
- * - Otherwise resolve relative to the current working directory.
- */
-export function resolvePackagePath(targetPath: string, resolveFromPackageRoot: boolean): string {
-    if (path.isAbsolute(targetPath)) {
-        return targetPath;
-    }
-    if (resolveFromPackageRoot) {
-        // For default config, we need to find the actual Saiki package installation root
-        try {
-            // First try to find the installed package using require.resolve
-            // This works for both global installs and local development
-            const packageJsonPath = require.resolve('@truffle-ai/saiki/package.json');
-            const packageRoot = path.dirname(packageJsonPath);
-            return path.resolve(packageRoot, targetPath);
-        } catch (_err) {
-            // If require.resolve fails, fall back to the old method
-            // This should handle edge cases or development scenarios
-            const packageRoot = findPackageRoot(process.cwd());
-
-            if (!packageRoot) {
-                throw new Error(
-                    `Cannot find package root when resolving default path: ${targetPath}`
-                );
-            }
-
-            return path.resolve(packageRoot, targetPath);
+        // Fallback for development
+        const packageRoot = findPackageRoot();
+        if (!packageRoot) {
+            throw new Error(`Cannot resolve bundled script: ${scriptPath}`);
         }
+        return path.resolve(packageRoot, scriptPath);
     }
-    // User-specified relative path
-    return path.resolve(process.cwd(), targetPath);
-}
-
-/**
- * Check if a directory contains a Saiki configuration file
- * @param dirPath Directory to check
- * @returns True if the directory contains agents/agent.yml
- */
-export function hasSaikiConfig(dirPath: string): boolean {
-    const configPath = path.join(dirPath, DEFAULT_CONFIG_PATH);
-    return existsSync(configPath);
-}
-
-/**
- * Resolve the default log file path for Saiki
- * Uses reliable synchronous detection for immediate use in logger initialization
- * @param logFileName Optional custom log file name (defaults to 'saiki.log')
- * @returns Absolute path to the log file
- */
-export function resolveSaikiLogPath(logFileName: string = 'saiki.log'): string {
-    // Use reliable package detection - check if we're in a Saiki project
-    const isInSaikiProject = isSaikiProject();
-    const logDir = isInSaikiProject
-        ? path.join(process.cwd(), '.saiki', 'logs')
-        : path.join(homedir(), '.saiki', 'logs');
-
-    return path.join(logDir, logFileName);
-}
-
-/**
- * Find Saiki project root by looking for agents/agent.yml
- * @param startPath Starting directory path
- * @returns The directory containing agents/agent.yml, or null if not found
- */
-export function findSaikiProjectByConfig(startPath: string = process.cwd()): string | null {
-    return walkUpDirectories(startPath, hasSaikiConfig);
-}
-
-/**
- * Enhanced Saiki project detection that checks both package.json and config file
- * @param dirPath Directory to check (defaults to current working directory)
- * @returns True if the directory is a Saiki project (by package name OR config file)
- */
-export function isSaikiProject(dirPath: string = process.cwd()): boolean {
-    // Check for package.json with @truffle-ai/saiki name
-    const isPackage = isDirectoryPackage(dirPath, '@truffle-ai/saiki');
-    if (isPackage) {
-        return true;
-    }
-
-    // Check for agents/agent.yml
-    return hasSaikiConfig(dirPath);
-}
-
-/**
- * Enhanced Saiki project root finder that checks both package.json and config file
- * @param startPath Starting directory path
- * @returns The Saiki project root directory, or null if not found
- */
-export function findSaikiProjectRootEnhanced(startPath: string = process.cwd()): string | null {
-    // First try finding by package.json
-    const packageRoot = findPackageByName('@truffle-ai/saiki', startPath);
-    if (packageRoot) {
-        return packageRoot;
-    }
-
-    // Then try finding by configuration file
-    return findSaikiProjectByConfig(startPath);
 }

@@ -1,7 +1,12 @@
-import { IMessageFormatter } from './types.js';
+import { IMessageFormatter, FormatterContext } from './types.js';
 import { InternalMessage } from '../types.js';
 import { logger } from '../../../../logger/index.js';
-import { getImageData } from '../utils.js';
+import {
+    getImageData,
+    getFileData,
+    filterMessagesByLLMCapabilities,
+    FilteringConfig,
+} from '../utils.js';
 
 /**
  * Message formatter for Anthropic's Claude API.
@@ -24,21 +29,42 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
      * @param history Array of internal messages to format
      * @returns Array of messages formatted for Anthropic's API
      */
-    format(history: Readonly<InternalMessage[]>): any[] {
+    format(
+        history: Readonly<InternalMessage[]>,
+        systemPrompt?: string | null,
+        context?: FormatterContext
+    ): unknown[] {
         const formatted = [];
+
+        // Apply model-aware capability filtering
+        let filteredHistory: InternalMessage[];
+        try {
+            if (!context?.provider) {
+                throw new Error('Provider is required for Anthropic formatter context');
+            }
+
+            const config: FilteringConfig = {
+                provider: context.provider,
+                model: context.model,
+            };
+            filteredHistory = filterMessagesByLLMCapabilities([...history], config);
+        } catch (error) {
+            logger.warn('Failed to apply capability filtering, using original history:', error);
+            filteredHistory = [...history];
+        }
 
         // We need to track tool calls and their associated results
         const pendingToolCalls = new Map<
             string,
             {
-                assistantMsg: any;
+                assistantMsg: unknown;
                 index: number;
             }
         >();
 
         // Process messages in chronological order
-        for (let i = 0; i < history.length; i++) {
-            const msg = history[i];
+        for (let i = 0; i < filteredHistory.length; i++) {
+            const msg = filteredHistory[i];
 
             // Skip null/undefined messages
             if (!msg) {
@@ -180,31 +206,33 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
     /**
      * Parses Anthropic API response into internal message objects.
      */
-    parseResponse(response: any): InternalMessage[] {
+    parseResponse(response: unknown): InternalMessage[] {
         const internal: InternalMessage[] = [];
         // Ensure response has content blocks
-        if (!response || !Array.isArray(response.content)) {
+        const typedResponse = response as { content?: unknown[] };
+        if (!typedResponse || !Array.isArray(typedResponse.content)) {
             return internal;
         }
         // Accumulate text and tool calls
         let combinedText: string | null = null;
         const calls: InternalMessage['toolCalls'] = [];
-        for (const block of response.content) {
-            if (block.type === 'text') {
-                combinedText = (combinedText ?? '') + block.text;
-            } else if (block.type === 'tool_use') {
+        for (const block of typedResponse.content) {
+            const typedBlock = block as any; // Type assertion for complex API response structure
+            if (typedBlock.type === 'text') {
+                combinedText = (combinedText ?? '') + typedBlock.text;
+            } else if (typedBlock.type === 'tool_use') {
                 calls.push({
-                    id: block.id,
+                    id: typedBlock.id,
                     type: 'function',
                     function: {
-                        name: block.name,
-                        arguments: JSON.stringify(block.input),
+                        name: typedBlock.name,
+                        arguments: JSON.stringify(typedBlock.input),
                     },
                 });
             }
         }
         // Push assistant message with optional tool calls
-        const assistantMessage: any = {
+        const assistantMessage: InternalMessage = {
             role: 'assistant',
             content: combinedText,
         };
@@ -215,8 +243,8 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
         return internal;
     }
 
-    // Helper to format user message parts (text + image) into Anthropic multimodal API format
-    private formatUserContent(content: InternalMessage['content']): any {
+    // Helper to format user message parts (text + image + file) into Anthropic multimodal API format
+    private formatUserContent(content: InternalMessage['content']): unknown {
         if (!Array.isArray(content)) {
             return content;
         }
@@ -227,7 +255,7 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
                 }
                 if (part.type === 'image') {
                     const raw = getImageData(part);
-                    let source: any;
+                    let source: unknown;
                     if (raw.startsWith('http://') || raw.startsWith('https://')) {
                         source = { type: 'url', url: raw };
                     } else if (raw.startsWith('data:')) {
@@ -244,6 +272,26 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
                         source = { type: 'base64', media_type: part.mimeType, data: raw };
                     }
                     return { type: 'image', source };
+                }
+                if (part.type === 'file') {
+                    const raw = getFileData(part);
+                    let source: unknown;
+                    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+                        source = { type: 'url', url: raw };
+                    } else if (raw.startsWith('data:')) {
+                        // Data URI: split metadata and base64 data
+                        const [meta, b64] = raw.split(',', 2);
+                        const mediaTypeMatch = meta?.match(/data:(.*);base64/);
+                        const media_type =
+                            (mediaTypeMatch && mediaTypeMatch[1]) ||
+                            part.mimeType ||
+                            'application/octet-stream';
+                        source = { type: 'base64', media_type, data: b64 };
+                    } else {
+                        // Plain base64 string
+                        source = { type: 'base64', media_type: part.mimeType, data: raw };
+                    }
+                    return { type: 'file', source };
                 }
                 return null;
             })

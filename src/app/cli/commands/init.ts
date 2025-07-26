@@ -6,7 +6,7 @@ import path from 'node:path';
 import { getPackageManager, getPackageManagerInstallCommand } from '../utils/package-mgmt.js';
 import { executeWithTimeout } from '../utils/execute.js';
 import { createRequire } from 'module';
-import { findProjectRoot } from '../utils/path.js';
+import { findPackageRoot } from '../../../core/utils/path.js';
 import { getDefaultModelForProvider, LLMProvider, logger } from '@core/index.js';
 import { parseDocument } from 'yaml';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
@@ -154,8 +154,18 @@ export async function initSaiki(
         logger.debug('Creating saiki config file...');
         const saikiDir = path.join(directory, 'saiki');
         const agentsDir = path.join(saikiDir, 'agents');
-        const configPath = await createSaikiConfigFile(agentsDir);
-        logger.debug(`Saiki config file created at ${configPath}`);
+
+        let configPath: string;
+        try {
+            configPath = await createSaikiConfigFile(agentsDir);
+            logger.debug(`Saiki config file created at ${configPath}`);
+        } catch (configError) {
+            spinner.stop(chalk.red('Failed to create agent config file'));
+            logger.error(`Config creation error: ${configError}`);
+            throw new Error(
+                `Failed to create agent.yml: ${configError instanceof Error ? configError.message : String(configError)}`
+            );
+        }
 
         // update saiki config file based on llmProvider
         if (llmProvider) {
@@ -226,16 +236,38 @@ export async function createSaikiDirectories(
 export async function createSaikiConfigFile(directory: string): Promise<string> {
     // Ensure the directory exists
     await fsExtra.ensureDir(directory);
-    // Locate the Saiki package installation directory
-    const pkgJsonPath = require.resolve('@truffle-ai/saiki/package.json');
-    const pkgDir = path.dirname(pkgJsonPath);
-    // Build path to the configuration template inside the package
-    const templateConfigSrc = path.join(pkgDir, 'agents', 'agent.yml');
-    // Path to the destination config file
-    const destConfigPath = path.join(directory, 'agent.yml');
-    // Copy the config file from the Saiki package
-    await fsExtra.copy(templateConfigSrc, destConfigPath);
-    return destConfigPath;
+
+    try {
+        // Locate the Saiki package installation directory
+        const pkgJsonPath = require.resolve('@truffle-ai/saiki/package.json');
+        const pkgDir = path.dirname(pkgJsonPath);
+        logger.debug(`Package directory: ${pkgDir}`);
+
+        // Build path to the configuration template for create-app (with auto-approve toolConfirmation)
+        const templateConfigSrc = path.join(pkgDir, 'agents', 'agent-template.yml');
+        logger.debug(`Looking for template at: ${templateConfigSrc}`);
+
+        // Check if template exists - fail if not found
+        const templateExists = await fsExtra.pathExists(templateConfigSrc);
+        if (!templateExists) {
+            throw new Error(
+                `Template file not found at: ${templateConfigSrc}. This indicates a build issue - the template should be included in the package.`
+            );
+        }
+
+        // Path to the destination config file
+        const destConfigPath = path.join(directory, 'agent.yml');
+        logger.debug(`Copying template to: ${destConfigPath}`);
+
+        // Copy the config file from the Saiki package
+        await fsExtra.copy(templateConfigSrc, destConfigPath);
+        logger.debug(`Successfully created config file at: ${destConfigPath}`);
+
+        return destConfigPath;
+    } catch (error) {
+        logger.error(`Failed to create Saiki config file: ${error}`);
+        throw error;
+    }
 }
 
 /**
@@ -266,24 +298,64 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
 
     const indexTsLines = [
         "import 'dotenv/config';",
-        "import { loadAgentConfig, SaikiAgent } from '@truffle-ai/saiki';",
+        "import { SaikiAgent, loadAgentConfig } from '@truffle-ai/saiki';",
         '',
-        '// 1. Initialize the agent from the config file',
-        '// Every agent is defined by its own config file',
-        `const config = await loadAgentConfig('${configPath}');`,
-        'const agent = new SaikiAgent(config);',
+        "console.log('🚀 Starting Saiki Basic Example\\n');",
         '',
-        '// 2. Start the agent (initialize async services)',
-        'await agent.start();',
+        'try {',
+        '  // Load the agent configuration',
+        `  const config = await loadAgentConfig('${configPath}');`,
         '',
-        '// 3. Run the agent',
-        'const response = await agent.run("What are the files in this directory");',
-        'console.log("Agent response:", response);',
+        '  // Create a new SaikiAgent instance',
+        '  const agent = new SaikiAgent(config);',
         '',
-        '// 4. Clean shutdown when done',
-        'await agent.stop();',
+        '  // Start the agent (connects to MCP servers)',
+        "  console.log('🔗 Connecting to MCP servers...');",
+        '  await agent.start();',
+        "  console.log('✅ Agent started successfully!\\n');",
         '',
-        '// 5. Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki',
+        '  // Example 1: Simple task',
+        "  console.log('📋 Example 1: Simple information request');",
+        "  const response1 = await agent.run('What tools do you have available?');",
+        "  console.log('Response:', response1);",
+        "  console.log('\\n——\\n');",
+        '',
+        '  // Example 2: File operation',
+        "  console.log('📄 Example 2: File creation');",
+        '  const response2 = await agent.run(\'Create a file called test-output.txt with the content "Hello from Saiki!"\');',
+        "  console.log('Response:', response2);",
+        "  console.log('\\n——\\n');",
+        '',
+        '  // Example 3: Multi-step conversation',
+        "  console.log('🗣️ Example 3: Multi-step conversation');",
+        '  await agent.run(\'Create a simple HTML file called demo.html with a heading that says "Saiki Demo"\');',
+        "  const response3 = await agent.run('Now add a paragraph to that HTML file explaining what Saiki is');",
+        "  console.log('Response:', response3);",
+        "  console.log('\\n——\\n');",
+        '',
+        '  // Reset conversation (clear context)',
+        "  console.log('🔄 Resetting conversation context...');",
+        '  agent.resetConversation();',
+        '',
+        '  // Example 4: Complex task',
+        "  console.log('🏗️ Example 4: Complex multi-tool task');",
+        '  const response4 = await agent.run(',
+        "    'Create a simple webpage about AI agents with HTML, CSS, and JavaScript. ' +",
+        "    'The page should have a title, some content about what AI agents are, ' +",
+        "    'and a button that shows an alert when clicked.'",
+        '  );',
+        "  console.log('Response:', response4);",
+        '',
+        '  // Stop the agent (disconnect from MCP servers)',
+        "  console.log('\\n🛑 Stopping agent...');",
+        '  await agent.stop();',
+        "  console.log('✅ Agent stopped successfully!');",
+        '',
+        '} catch (error) {',
+        "  console.error('❌ Error:', error);",
+        '}',
+        '',
+        "console.log('\\n📖 Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki');",
     ];
     const indexTsContent = indexTsLines.join('\n');
     const outputPath = path.join(directory, 'saiki-example.ts');
@@ -335,7 +407,7 @@ export async function updateEnvFile(
     ];
 
     // Find project root and build .env file path
-    const projectRoot = findProjectRoot(directory);
+    const projectRoot = findPackageRoot(directory);
     if (!projectRoot) {
         throw new Error('Could not find project root (no lock file found)');
     }

@@ -1,4 +1,20 @@
+import { MCPManager } from '@core/client/manager.js';
 import { InternalMessage } from '../types.js';
+
+/**
+ * Context interface for message formatters.
+ * Provides runtime information for model-aware processing.
+ */
+export interface FormatterContext {
+    /** MCP manager for tool handling */
+    mcpManager?: MCPManager;
+
+    /** LLM provider name (e.g., 'google.generative-ai', 'openai') */
+    provider: string;
+
+    /** Specific LLM model name (e.g., 'gemini-2.5-flash', 'gpt-4') */
+    model: string;
+}
 
 /**
  * Interface for converting internal message format to LLM provider-specific formats.
@@ -13,14 +29,19 @@ export interface IMessageFormatter {
      *
      * @param history The raw internal message history (read-only to prevent modifications)
      * @param systemPrompt The system prompt, if any
+     * @param context Optional context containing model information for capability-based filtering
      * @returns The message history structured for the target API
      */
-    format(history: Readonly<InternalMessage[]>, systemPrompt?: string | null): any[];
+    format(
+        history: Readonly<InternalMessage[]>,
+        systemPrompt?: string | null,
+        context?: FormatterContext
+    ): unknown[];
 
     /**
      * Parses raw LLM response into an array of InternalMessage objects.
      */
-    parseResponse(response: any): InternalMessage[];
+    parseResponse(response: unknown): InternalMessage[];
 
     /**
      * Optional method for handling system prompt separately.
@@ -38,5 +59,5 @@ export interface IMessageFormatter {
      * @param response The streaming response from the LLM provider
      * @returns Promise that resolves to an array of InternalMessage objects
      */
-    parseStreamResponse?(response: any): Promise<InternalMessage[]>;
+    parseStreamResponse?(response: unknown): Promise<InternalMessage[]>;
 }

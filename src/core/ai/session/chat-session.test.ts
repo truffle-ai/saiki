@@ -389,6 +389,7 @@ describe('ChatSession', () => {
             expect(mockLLMService.completeTask).toHaveBeenCalledWith(
                 userMessage,
                 undefined,
+                undefined,
                 undefined
             );
         });

@@ -19,13 +19,15 @@ import { createAgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
-import { resolvePackagePath } from '@core/index.js';
+import { resolveBundledScript } from '@core/index.js';
 import {
     LLM_REGISTRY,
     getSupportedRoutersForProvider,
     supportsBaseURL,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
+import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
+import { validateInputForLLM, createInputValidationError } from '@core/ai/llm/validation.js';
 
 /**
  * Helper function to send JSON response with optional pretty printing
@@ -45,6 +47,11 @@ function sendJsonResponse(res: any, data: any, statusCode = 200) {
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
 export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
     const app = express();
+
+    // this will apply middleware to all /api/llm/* routes
+    app.use('/api/llm', expressRedactionMiddleware);
+    app.use('/api/config.yaml', expressRedactionMiddleware);
+
     const server = http.createServer(app);
     const wss = new WebSocketServer({ server });
 
@@ -84,7 +91,47 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         try {
             const sessionId = req.body.sessionId as string | undefined;
             const stream = req.body.stream === true; // Extract stream preference, default to false
-            await agent.run(req.body.message, undefined, sessionId, stream);
+            const imageDataInput = req.body.imageData
+                ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
+                : undefined;
+
+            // Process file data
+            const fileDataInput = req.body.fileData
+                ? {
+                      data: req.body.fileData.base64,
+                      mimeType: req.body.fileData.mimeType,
+                      filename: req.body.fileData.filename,
+                  }
+                : undefined;
+
+            if (imageDataInput) logger.info('Image data included in message.');
+            if (fileDataInput) logger.info('File data included in message.');
+            if (sessionId) logger.info(`Message for session: ${sessionId}`);
+
+            // Comprehensive input validation
+            const currentConfig = agent.getEffectiveConfig(sessionId);
+            const validation = validateInputForLLM(
+                {
+                    text: req.body.message,
+                    ...(imageDataInput && { imageData: imageDataInput }),
+                    ...(fileDataInput && { fileData: fileDataInput }),
+                },
+                {
+                    provider: currentConfig.llm.provider,
+                    model: currentConfig.llm.model,
+                }
+            );
+
+            if (!validation.isValid) {
+                return res.status(400).send(
+                    createInputValidationError(validation, {
+                        provider: currentConfig.llm.provider,
+                        model: currentConfig.llm.model,
+                    })
+                );
+            }
+
+            await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);
             return res.status(202).send({ status: 'processing', sessionId });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -99,16 +146,54 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         if (!req.body || !req.body.message) {
             return res.status(400).send({ error: 'Missing message content' });
         }
-        // Extract optional image data
+        // Extract optional image and file data
         const imageDataInput = req.body.imageData
             ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
             : undefined;
+
+        // Process file data
+        const fileDataInput = req.body.fileData
+            ? {
+                  data: req.body.fileData.base64,
+                  mimeType: req.body.fileData.mimeType,
+                  filename: req.body.fileData.filename,
+              }
+            : undefined;
+
+        const sessionId = req.body.sessionId as string | undefined;
+        const stream = req.body.stream === true; // Extract stream preference, default to false
+        if (imageDataInput) logger.info('Image data included in message.');
+        if (fileDataInput) logger.info('File data included in message.');
+        if (sessionId) logger.info(`Message for session: ${sessionId}`);
+
+        // Comprehensive input validation
+        const currentConfig = agent.getEffectiveConfig(sessionId);
+        const validation = validateInputForLLM(
+            {
+                text: req.body.message,
+                ...(imageDataInput && { imageData: imageDataInput }),
+                ...(fileDataInput && { fileData: fileDataInput }),
+            },
+            {
+                provider: currentConfig.llm.provider,
+                model: currentConfig.llm.model,
+            }
+        );
+
+        if (!validation.isValid) {
+            return res.status(400).send(
+                createInputValidationError(validation, {
+                    provider: currentConfig.llm.provider,
+                    model: currentConfig.llm.model,
+                })
+            );
+        }
+
         try {
-            const sessionId = req.body.sessionId as string | undefined;
-            const stream = req.body.stream === true; // Extract stream preference, default to false
             const responseText = await agent.run(
                 req.body.message,
                 imageDataInput,
+                fileDataInput,
                 sessionId,
                 stream
             );
@@ -282,18 +367,62 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     // Route confirmation back via AgentEventBus and do not broadcast an error
                     agent.agentEventBus.emit('saiki:toolConfirmationResponse', data.data);
                     return;
-                } else if (data.type === 'message' && data.content) {
+                } else if (
+                    data.type === 'message' &&
+                    (data.content || data.imageData || data.fileData)
+                ) {
                     logger.info(
                         `Processing message from WebSocket: ${data.content.substring(0, 50)}...`
                     );
                     const imageDataInput = data.imageData
                         ? { image: data.imageData.base64, mimeType: data.imageData.mimeType }
                         : undefined;
+
+                    // Process file data
+                    const fileDataInput = data.fileData
+                        ? {
+                              data: data.fileData.base64,
+                              mimeType: data.fileData.mimeType,
+                              filename: data.fileData.filename,
+                          }
+                        : undefined;
+
                     const sessionId = data.sessionId as string | undefined;
                     const stream = data.stream === true; // Extract stream preference, default to false
                     if (imageDataInput) logger.info('Image data included in message.');
+                    if (fileDataInput) logger.info('File data included in message.');
                     if (sessionId) logger.info(`Message for session: ${sessionId}`);
-                    await agent.run(data.content, imageDataInput, sessionId, stream);
+
+                    // Comprehensive input validation
+                    const currentConfig = agent.getEffectiveConfig(sessionId);
+                    const validation = validateInputForLLM(
+                        {
+                            text: data.content,
+                            ...(imageDataInput && { imageData: imageDataInput }),
+                            ...(fileDataInput && { fileData: fileDataInput }),
+                        },
+                        {
+                            provider: currentConfig.llm.provider,
+                            model: currentConfig.llm.model,
+                        }
+                    );
+
+                    if (!validation.isValid) {
+                        const errorDetails = createInputValidationError(validation, {
+                            provider: currentConfig.llm.provider,
+                            model: currentConfig.llm.model,
+                        });
+
+                        ws.send(
+                            JSON.stringify({
+                                event: 'error',
+                                data: errorDetails,
+                            })
+                        );
+                        return;
+                    }
+
+                    await agent.run(data.content, imageDataInput, fileDataInput, sessionId, stream);
                 } else if (data.type === 'reset') {
                     const sessionId = data.sessionId as string | undefined;
                     logger.info(
@@ -449,11 +578,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 ? agent.getEffectiveConfig(sessionId as string).llm
                 : agent.getCurrentLLMConfig();
 
-            // Mask apiKey before returning
-            if (currentConfig?.apiKey) {
-                currentConfig.apiKey = '[REDACTED]';
-            }
-
             res.json({ config: currentConfig });
         } catch (error: any) {
             logger.error(`Error getting current LLM config: ${error.message}`);
@@ -513,10 +637,6 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             Object.assign(llmConfig, otherFields);
 
             const result = await agent.switchLLM(llmConfig, sessionId);
-            // Mask apiKey in result if present
-            if (result?.config?.apiKey) {
-                result.config.apiKey = '[REDACTED]';
-            }
             return res.json(result);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -893,7 +1013,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
 /** Serves the legacy web UI on the express app. will be deprecated soon */
 export function startLegacyWebUI(app: Express) {
-    const publicPath = resolvePackagePath('public', true);
+    const publicPath = resolveBundledScript('public');
     logger.info(`Serving static files from: ${publicPath}`);
     app.use(express.static(publicPath));
 }

@@ -1,6 +1,6 @@
 {
     "name": "@truffle-ai/saiki",
-    "version": "0.3.6",
+    "version": "0.3.7",
     "engines": {
         "node": ">=20.0.0",
         "npm": ">=8.3.0"
@@ -63,6 +63,7 @@
     "files": [
         "dist/",
         "agents/agent.yml",
+        "agents/agent-template.yml",
         "public/"
     ],
     "dependencies": {
