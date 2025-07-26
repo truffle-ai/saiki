@@ -171,7 +171,7 @@ describe('CustomToolProvider', () => {
         });
 
         it('should log initialization progress', async () => {
-            const logSpy = vi.spyOn(console, 'log').mockImplementation();
+            const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
             await customToolProvider.initialize();
 

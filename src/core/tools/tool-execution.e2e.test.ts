@@ -1,12 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
 import { CustomToolProvider } from './custom-tool-provider.js';
-import { ToolRegistry } from './tool-registry.js';
-import { ToolExecutor } from './tool-executor.js';
 import { createTool } from './tool-factory.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
 import { z } from 'zod';
-import type { Tool, ToolExecutionContext, ToolSet } from './types.js';
+import type { ToolExecutionContext, ToolSet } from './types.js';
 
 /**
  * End-to-end tests for tool execution flows
@@ -14,7 +12,7 @@ import type { Tool, ToolExecutionContext, ToolSet } from './types.js';
  */
 
 // Real tool implementations for testing
-const testTools = {
+const _testTools = {
     calculator: createTool({
         id: 'calculator',
         description: 'Perform basic mathematical calculations',
@@ -261,7 +259,7 @@ describe('Tool Execution End-to-End Tests', () => {
             async executeTool(toolName: string, args: any, context: any) {
                 // Simulate the execution logic for test tools
                 switch (toolName) {
-                    case 'calculator':
+                    case 'calculator': {
                         const { operation, a, b } = args;
                         let result: number;
                         switch (operation) {
@@ -286,8 +284,9 @@ describe('Tool Execution End-to-End Tests', () => {
                             result,
                             operation: `${a} ${operation} ${b} = ${result}`,
                         };
+                    }
 
-                    case 'text_processor':
+                    case 'text_processor': {
                         const { text, operation: textOp, options } = args;
                         let processedText = options?.trimWhitespace ? text.trim() : text;
                         let processedResult: string | number;
@@ -317,8 +316,9 @@ describe('Tool Execution End-to-End Tests', () => {
                             sessionId: context?.sessionId,
                             executedAt: new Date().toISOString(),
                         };
+                    }
 
-                    case 'async_delay':
+                    case 'async_delay': {
                         const { delayMs, message = 'Async operation completed', shouldFail } = args;
                         await new Promise((resolve) => setTimeout(resolve, delayMs));
 
@@ -332,6 +332,7 @@ describe('Tool Execution End-to-End Tests', () => {
                             delayMs,
                             completedAt: new Date().toISOString(),
                         };
+                    }
 
                     default:
                         throw new Error(`Custom tool not found: ${toolName}`);
@@ -565,8 +566,8 @@ describe('Tool Execution End-to-End Tests', () => {
             expect(tools).toHaveProperty('mcp_web_search');
 
             // Check tool descriptions
-            expect(tools.calculator.description).toContain('mathematical calculations');
-            expect(tools.text_processor.description).toContain('Process and transform text');
+            expect(tools.calculator?.description).toContain('mathematical calculations');
+            expect(tools.text_processor?.description).toContain('Process and transform text');
         });
 
         it('should correctly identify tool existence', async () => {

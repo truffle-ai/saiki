@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
-import { MCPManager } from '../client/manager.js';
-import { CustomToolProvider } from './custom-tool-provider.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
 import type { ToolSet, ToolExecutionContext } from './types.js';
 
@@ -145,8 +143,8 @@ describe('ToolManager', () => {
         it('should add source information to conflicted tool descriptions', async () => {
             const tools = await toolManager.getAllTools();
 
-            expect(tools['mcp--shared_tool'].description).toContain('(via MCP servers)');
-            expect(tools['custom--shared_tool'].description).toContain('(custom tool)');
+            expect(tools['mcp--shared_tool']?.description).toContain('(via MCP servers)');
+            expect(tools['custom--shared_tool']?.description).toContain('(custom tool)');
         });
 
         it('should update conflicts when tools change', async () => {
@@ -329,10 +327,10 @@ describe('ToolManager', () => {
             };
 
             // Start with no custom tool provider
-            toolManager['customToolProvider'] = undefined;
+            (toolManager as any)['customToolProvider'] = undefined;
 
             // Mock the CustomToolProvider constructor
-            const mockProvider = {
+            const _mockProvider = {
                 initialize: vi.fn().mockResolvedValue(undefined),
             };
 

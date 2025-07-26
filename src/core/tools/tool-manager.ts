@@ -111,11 +111,12 @@ export class ToolManager {
 
         for (const [toolName, toolDef] of Object.entries(customTools)) {
             if (!this.crossSourceConflicts.has(toolName)) {
+                const typedToolDef = toolDef as any;
                 allTools[toolName] = {
-                    description: toolDef.description || 'No description provided',
-                    ...(toolDef.parameters &&
-                        toolDef.parameters.type === 'object' && {
-                            parameters: toolDef.parameters as {
+                    description: typedToolDef.description || 'No description provided',
+                    ...(typedToolDef.parameters &&
+                        typedToolDef.parameters.type === 'object' && {
+                            parameters: typedToolDef.parameters as {
                                 type: 'object';
                                 properties: Record<string, any>;
                                 required?: string[];
@@ -147,13 +148,14 @@ export class ToolManager {
             }
 
             // Add custom version with prefix
-            if (customTools[toolName]) {
+            if ((customTools as Record<string, any>)[toolName]) {
+                const typedCustomTool = (customTools as Record<string, any>)[toolName];
                 const qualifiedName = `${ToolManager.CUSTOM_PREFIX}${ToolManager.SOURCE_DELIMITER}${toolName}`;
                 allTools[qualifiedName] = {
-                    description: `${customTools[toolName].description || 'Custom tool'} (custom tool)`,
-                    ...(customTools[toolName].parameters &&
-                        customTools[toolName].parameters.type === 'object' && {
-                            parameters: customTools[toolName].parameters as {
+                    description: `${typedCustomTool.description || 'Custom tool'} (custom tool)`,
+                    ...(typedCustomTool.parameters &&
+                        typedCustomTool.parameters.type === 'object' && {
+                            parameters: typedCustomTool.parameters as {
                                 type: 'object';
                                 properties: Record<string, any>;
                                 required?: string[];

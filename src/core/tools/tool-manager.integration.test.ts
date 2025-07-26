@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
-import { CustomToolProvider } from './custom-tool-provider.js';
-import { MCPManager } from '../client/manager.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
 import type { ToolSet, ToolExecutionContext } from './types.js';
 
@@ -151,8 +149,8 @@ describe('ToolManager Integration Tests', () => {
             expect(tools).toHaveProperty('custom--file_read');
 
             // Check that descriptions indicate source
-            expect(tools['mcp--file_read'].description).toContain('(via MCP servers)');
-            expect(tools['custom--file_read'].description).toContain('(custom tool)');
+            expect(tools['mcp--file_read']?.description).toContain('(via MCP servers)');
+            expect(tools['custom--file_read']?.description).toContain('(custom tool)');
         });
 
         it('should handle multiple conflicts with different parameter schemas', async () => {
