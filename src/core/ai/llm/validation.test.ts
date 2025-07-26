@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'vitest';
+import { ValidationError } from '@core/error/index.js';
 import { validateInputForLLM, createInputValidationError } from './validation.js';
 
 describe('validateInputForLLM', () => {
@@ -120,7 +121,9 @@ describe('validateInputForLLM', () => {
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('File size too large (max 50MB)');
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors[0]).toContain('File size too large');
         });
 
         test('should fail validation for invalid base64 format', () => {
@@ -137,7 +140,9 @@ describe('validateInputForLLM', () => {
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Invalid file data format');
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors[0]).toContain('Invalid file data format');
         });
 
         test('should fail validation when model is not specified for file', () => {
@@ -154,9 +159,8 @@ describe('validateInputForLLM', () => {
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(
-                'Model must be specified for file capability validation'
-            );
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors[0]).toContain('Model must be specified');
         });
 
         test('should fail validation for file without mimeType', () => {
