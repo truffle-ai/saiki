@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { MCPManager } from '../../../client/manager.js';
+import { ToolManager } from '../../../tools/tool-manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../types.js';
 import { logger } from '../../../logger/index.js';
@@ -15,14 +15,14 @@ import type { SessionEventBus } from '../../../events/index.js';
 export class AnthropicService implements ILLMService {
     private anthropic: Anthropic;
     private model: string;
-    private mcpManager: MCPManager;
+    private toolManager: ToolManager;
     private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
     private readonly sessionId: string;
 
     constructor(
-        mcpManager: MCPManager,
+        toolManager: ToolManager,
         anthropic: Anthropic,
         sessionEventBus: SessionEventBus,
         contextManager: ContextManager,
@@ -33,14 +33,14 @@ export class AnthropicService implements ILLMService {
         this.maxIterations = maxIterations;
         this.model = model;
         this.anthropic = anthropic;
-        this.mcpManager = mcpManager;
+        this.toolManager = toolManager;
         this.sessionEventBus = sessionEventBus;
         this.contextManager = contextManager;
         this.sessionId = sessionId;
     }
 
     getAllTools(): Promise<any> {
-        return this.mcpManager.getAllTools();
+        return this.toolManager.getAllTools();
     }
 
     async completeTask(
@@ -52,7 +52,7 @@ export class AnthropicService implements ILLMService {
         await this.contextManager.addUserMessage(userInput, imageData);
 
         // Get all tools
-        const rawTools = await this.mcpManager.getAllTools();
+        const rawTools = await this.toolManager.getAllTools();
         const formattedTools = this.formatToolsForClaude(rawTools);
 
         logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
@@ -70,7 +70,8 @@ export class AnthropicService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = { mcpManager: this.mcpManager };
+                // For system prompt generation, we need to pass the mcpManager as the context expects
+                const context = { mcpManager: this.toolManager.getMcpManager() };
                 const {
                     formattedMessages,
                     systemPrompt: _systemPrompt,
@@ -165,7 +166,7 @@ export class AnthropicService implements ILLMService {
 
                     // Execute tool
                     try {
-                        const result = await this.mcpManager.executeTool(
+                        const result = await this.toolManager.executeTool(
                             toolName,
                             args,
                             this.sessionId

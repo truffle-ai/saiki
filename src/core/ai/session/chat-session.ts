@@ -7,7 +7,7 @@ import { getEffectiveMaxInputTokens } from '../llm/registry.js';
 import type { ContextManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
-import type { MCPManager } from '../../client/manager.js';
+import type { ToolManager } from '../../tools/tool-manager.js';
 import type { ValidatedLLMConfig } from '../../config/schemas.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
 import type { StorageBackends } from '../../storage/backend/types.js';
@@ -114,7 +114,7 @@ export class ChatSession {
         private services: {
             stateManager: AgentStateManager;
             promptManager: PromptManager;
-            mcpManager: MCPManager;
+            toolManager: ToolManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
         },
@@ -199,7 +199,7 @@ export class ChatSession {
         this.llmService = createLLMService(
             llmConfig,
             llmConfig.router,
-            this.services.mcpManager,
+            this.services.toolManager,
             this.eventBus, // Use session event bus
             this.contextManager,
             this.id
@@ -373,7 +373,7 @@ export class ChatSession {
             const newLLMService = createLLMService(
                 newLLMConfig,
                 router,
-                this.services.mcpManager,
+                this.services.toolManager,
                 this.eventBus, // Use session event bus
                 this.contextManager,
                 this.id

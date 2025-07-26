@@ -1,38 +1,6 @@
 import { z } from 'zod';
 import { Tool, ToolExecutionResult, ToolExecutionContext } from './types.js';
-
-/**
- * Global registry for tools defined via decorators
- */
-class ToolRegistry {
-    private tools: Map<string, Tool> = new Map();
-
-    register(tool: Tool): void {
-        if (this.tools.has(tool.id)) {
-            console.warn(`Tool '${tool.id}' is already registered. Overwriting...`);
-        }
-        this.tools.set(tool.id, tool);
-    }
-
-    get(id: string): Tool | undefined {
-        return this.tools.get(id);
-    }
-
-    getAll(): Tool[] {
-        return Array.from(this.tools.values());
-    }
-
-    clear(): void {
-        this.tools.clear();
-    }
-
-    has(id: string): boolean {
-        return this.tools.has(id);
-    }
-}
-
-// Global registry instance
-const registry = new ToolRegistry();
+import { globalToolRegistry } from './tool-registry.js';
 
 /**
  * Tool creation options - clean and simple
@@ -62,7 +30,7 @@ export interface CreateToolOptions {
 }
 
 /**
- * Create a tool with the new clean API
+ * Create a tool with the clean API
  *
  * @example
  * ```typescript
@@ -94,8 +62,8 @@ export function createTool(options: CreateToolOptions): Tool {
         ...(options.settings && { settings: options.settings }),
     };
 
-    // Auto-register the tool
-    registry.register(tool);
+    // Auto-register the tool in the global registry
+    globalToolRegistry.register(tool);
 
     return tool;
 }
@@ -129,37 +97,9 @@ export function tool(
             ...(options?.settings && { settings: options.settings }),
         };
 
-        registry.register(toolDef);
+        globalToolRegistry.register(toolDef);
         return descriptor;
     };
-}
-
-/**
- * Get all registered tools
- */
-export function getRegisteredTools(): Tool[] {
-    return registry.getAll();
-}
-
-/**
- * Get a specific registered tool
- */
-export function getRegisteredTool(id: string): Tool | undefined {
-    return registry.get(id);
-}
-
-/**
- * Clear all registered tools
- */
-export function clearRegisteredTools(): void {
-    registry.clear();
-}
-
-/**
- * Check if a tool is registered
- */
-export function isToolRegistered(id: string): boolean {
-    return registry.has(id);
 }
 
 /**
@@ -176,6 +116,29 @@ export function validateToolResult(result: any): ToolExecutionResult {
         success: true,
         data: result,
     };
+}
+
+/**
+ * Validate tool definition
+ */
+export function validateToolDefinition(tool: Tool): boolean {
+    if (!tool.id || typeof tool.id !== 'string') {
+        return false;
+    }
+
+    if (!tool.description || typeof tool.description !== 'string') {
+        return false;
+    }
+
+    if (!tool.inputSchema || typeof tool.inputSchema !== 'object') {
+        return false;
+    }
+
+    if (!tool.execute || typeof tool.execute !== 'function') {
+        return false;
+    }
+
+    return true;
 }
 
 // Legacy exports for backward compatibility

@@ -22,6 +22,7 @@
  */
 
 import { MCPManager } from '../client/manager.js';
+import { ToolManager } from '../tools/tool-manager.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { ConfigManager } from '../config/config-manager.js';
@@ -39,6 +40,7 @@ import { AgentEventBus } from '../events/index.js';
  */
 export type AgentServices = {
     mcpManager: MCPManager;
+    toolManager: ToolManager;
     promptManager: PromptManager;
     agentEventBus: AgentEventBus;
     stateManager: AgentStateManager;
@@ -94,9 +96,12 @@ export async function createAgentServices(
     const mcpManager = new MCPManager(confirmationProvider);
     await mcpManager.initializeFromConfig(config.mcpServers);
 
+    // 5. Initialize unified tool manager
+    const toolManager = new ToolManager(mcpManager, confirmationProvider);
+
     // Initialize custom tools if configured
     if (config.customTools) {
-        await mcpManager.initializeCustomTools(config.customTools);
+        await toolManager.initializeCustomTools(config.customTools);
     }
 
     const mcpServerCount = Object.keys(config.mcpServers).length;
@@ -106,23 +111,23 @@ export async function createAgentServices(
         logger.debug(`Client manager initialized with ${mcpServerCount} MCP server(s)`);
     }
 
-    // 5. Initialize prompt manager
+    // 6. Initialize prompt manager
     const configDir = configPath ? dirname(resolve(configPath)) : process.cwd();
     logger.debug(
         `[ServiceInitializer] Creating PromptManager with configPath: ${configPath} → configDir: ${configDir}`
     );
     const promptManager = new PromptManager(config.systemPrompt, configDir);
 
-    // 6. Initialize state manager for runtime state tracking
+    // 7. Initialize state manager for runtime state tracking
     const stateManager = new AgentStateManager(config, agentEventBus);
     logger.debug('Agent state manager initialized');
 
-    // 7. Initialize session manager
+    // 8. Initialize session manager
     const sessionManager = new SessionManager(
         {
             stateManager,
             promptManager,
-            mcpManager,
+            toolManager,
             agentEventBus,
             storage, // Add storage backends to session services
         },
@@ -137,9 +142,10 @@ export async function createAgentServices(
 
     logger.debug('Session manager initialized with storage support');
 
-    // 8. Return the core services
+    // 9. Return the core services
     return {
         mcpManager,
+        toolManager,
         promptManager,
         agentEventBus,
         stateManager,

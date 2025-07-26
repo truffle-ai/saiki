@@ -1,5 +1,5 @@
 import { generateText, LanguageModelV1, streamText } from 'ai';
-import { MCPManager } from '../../../client/manager.js';
+import { ToolManager } from '../../../tools/tool-manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../logger/index.js';
 import { ToolSet } from '../../types.js';
@@ -18,7 +18,7 @@ import { ToolExecutionDeniedError } from '../../../client/tool-confirmation/erro
 export class VercelLLMService implements ILLMService {
     private model: LanguageModelV1;
     private provider: string;
-    private mcpManager: MCPManager;
+    private toolManager: ToolManager;
     private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
     private maxIterations: number;
@@ -29,7 +29,7 @@ export class VercelLLMService implements ILLMService {
     private toolSupportCache: Map<string, boolean> = new Map();
 
     constructor(
-        mcpManager: MCPManager,
+        toolManager: ToolManager,
         model: LanguageModelV1,
         provider: string,
         sessionEventBus: SessionEventBus,
@@ -43,7 +43,7 @@ export class VercelLLMService implements ILLMService {
         this.model = model;
         this.provider = provider;
         this.maxIterations = maxIterations;
-        this.mcpManager = mcpManager;
+        this.toolManager = toolManager;
         this.sessionEventBus = sessionEventBus;
         this.contextManager = contextManager;
         this.temperature = temperature;
@@ -57,7 +57,7 @@ export class VercelLLMService implements ILLMService {
     }
 
     getAllTools(): Promise<ToolSet> {
-        return this.mcpManager.getAllTools();
+        return this.toolManager.getAllTools();
     }
 
     formatTools(tools: ToolSet): VercelToolSet {
@@ -69,7 +69,7 @@ export class VercelLLMService implements ILLMService {
                     parameters: jsonSchema(tool.parameters as any),
                     execute: async (args: any) => {
                         try {
-                            return await this.mcpManager.executeTool(
+                            return await this.toolManager.executeTool(
                                 toolName,
                                 args,
                                 this.sessionId
@@ -161,7 +161,7 @@ export class VercelLLMService implements ILLMService {
         await this.contextManager.addUserMessage(userInput, imageData);
 
         // Get all tools
-        const tools = await this.mcpManager.getAllTools();
+        const tools = await this.toolManager.getAllTools();
         logger.silly(
             `[VercelLLMService] Tools before formatting: ${JSON.stringify(tools, null, 2)}`
         );
@@ -182,7 +182,7 @@ export class VercelLLMService implements ILLMService {
                 logger.debug(`Iteration ${iterationCount}`);
 
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = { mcpManager: this.mcpManager };
+                const context = { mcpManager: this.toolManager.getMcpManager() };
                 const {
                     formattedMessages,
                     systemPrompt: _systemPrompt,

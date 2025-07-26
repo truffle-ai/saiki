@@ -44,6 +44,7 @@ describe('SaikiAgent Lifecycle Management', () => {
                 disconnectAll: vi.fn(),
                 initializeFromConfig: vi.fn().mockResolvedValue(undefined),
             } as any,
+            toolManager: {} as any,
             promptManager: {} as any,
             agentEventBus: {} as any,
             stateManager: {
