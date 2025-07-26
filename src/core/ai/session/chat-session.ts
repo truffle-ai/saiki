@@ -1,5 +1,6 @@
 import { createDatabaseHistoryProvider } from '../llm/messages/history/factory.js';
 import { createContextManager } from '../llm/messages/factory.js';
+import { ValidationError } from '@core/error/index.js';
 import { createLLMService } from '../llm/services/factory.js';
 import { createTokenizer } from '../llm/tokenizer/factory.js';
 import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
@@ -244,34 +245,39 @@ export class ChatSession {
 
         // Validate input at session level
         const currentConfig = this.services.stateManager.getLLMConfig(this.id);
-        const validation = validateInputForLLM(
-            {
-                text: input,
-                ...(imageDataInput && { imageData: imageDataInput }),
-                ...(fileDataInput && { fileData: fileDataInput }),
-            },
-            {
-                provider: currentConfig.provider,
-                model: currentConfig.model,
+        try {
+            validateInputForLLM(
+                {
+                    text: input,
+                    ...(imageDataInput && { imageData: imageDataInput }),
+                    ...(fileDataInput && { fileData: fileDataInput }),
+                },
+                {
+                    provider: currentConfig.provider,
+                    model: currentConfig.model,
+                }
+            );
+        } catch (error: unknown) {
+            if (error instanceof ValidationError) {
+                // Emit unsupported input event
+                this.eventBus.emit('saiki:unsupportedInput', {
+                    sessionId: this.id,
+                    error: error.message,
+                    type: error.name,
+                });
+                logger.error(`Session ${this.id}: Input validation failed`, {
+                    error: error.message,
+                    type: error.name,
+                    field: error.field,
+                });
+                throw error; // rethrow the error to be handled by the caller
+            } else {
+                logger.error(`Session ${this.id}: Unexpected error during input validation`, {
+                    error: error instanceof Error ? error.message : String(error),
+                    type: error instanceof Error ? error.name : 'UnknownError',
+                });
+                throw error instanceof Error ? error : new Error(String(error)); // rethrow unexpected errors
             }
-        );
-
-        if (!validation.isValid) {
-            // Emit unsupported input event
-            const errorDetails = createInputValidationError(validation, {
-                provider: currentConfig.provider,
-                model: currentConfig.model,
-            });
-
-            this.eventBus.emit('llmservice:unsupportedInput', {
-                errors: validation.errors,
-                provider: currentConfig.provider,
-                model: currentConfig.model,
-                fileType: errorDetails.fileType,
-                details: errorDetails.details,
-            });
-
-            throw new Error(`Input validation failed: ${validation.errors.join('; ')}`);
         }
 
         const response = await this.llmService.completeTask(

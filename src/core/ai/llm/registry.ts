@@ -6,6 +6,7 @@ import {
     ModelNotFoundError,
     ProviderNotFoundError,
 } from './errors.js';
+import { UnknownProviderError, UnknownModelError } from '@core/error/index.js';
 
 export interface ModelInfo {
     name: string;
@@ -389,9 +390,10 @@ export function getSupportedFileTypesForModel(
 ): SupportedFileType[] {
     const providerInfo = LLM_REGISTRY[provider as LLMProvider];
     if (!providerInfo) {
-        throw new Error(
-            `Provider '${provider}' not found in LLM registry. Available providers: ${Object.keys(LLM_REGISTRY).join(', ')}`
+        logger.error(
+            `Provider '${provider}' not found in LLM registry. Supported: ${Object.keys(LLM_REGISTRY).join(', ')}`
         );
+        throw new UnknownProviderError(provider, Object.keys(LLM_REGISTRY));
     }
 
     // Special case: providers that accept any model name (e.g., openai-compatible)
@@ -402,10 +404,8 @@ export function getSupportedFileTypesForModel(
     // Find the specific model
     const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === model.toLowerCase());
     if (!modelInfo) {
-        const availableModels = providerInfo.models.map((m) => m.name).join(', ');
-        throw new Error(
-            `Model '${model}' not found in provider '${provider}'. Available models: ${availableModels || 'none'}`
-        );
+        const availableModels = providerInfo.models.map((m) => m.name);
+        throw new UnknownModelError(provider, model, availableModels);
     }
 
     return modelInfo.supportedFileTypes;

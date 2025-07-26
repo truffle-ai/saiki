@@ -3,6 +3,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { AgentConfig } from './schemas.js';
 import { logger } from '../logger/index.js';
 import { resolveConfigPath } from '../utils/path.js';
+import { ConfigurationError } from '@core/error/index.js';
 /**
  * Load the complete agent configuration
  * @param configPath Path to the configuration file
@@ -54,13 +55,14 @@ export async function loadAgentConfig(configPath?: string): Promise<AgentConfig>
             const expandedConfig = expandEnvVars(config);
             return expandedConfig;
         } catch (parseError) {
-            throw new Error(
-                `Failed to parse YAML: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+            throw new ConfigurationError(
+                `Failed to parse YAML: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+                absolutePath
             );
         }
     } catch (error: any) {
         // Include path & cause for better diagnostics
-        throw new Error(
+        throw new ConfigurationError(
             `Failed to load config file at ${error.path || configPath}: ${error.message}`
         );
     }
@@ -73,7 +75,7 @@ export async function writeConfigFile(configPath: string | undefined, config: Ag
         await fs.writeFile(absolutePath, yamlContent, 'utf-8');
         logger.debug(`Wrote saiki config to: ${absolutePath}`);
     } catch (error: any) {
-        throw new Error(
+        throw new ConfigurationError(
             `Failed to write config file at ${error.path || configPath}: ${error.message}`
         );
     }

@@ -6,7 +6,12 @@ import { SaikiAgent } from '@core/index.js';
 import { parseInput } from './command-parser.js';
 import { executeCommand } from './commands.js';
 import { getSaikiPath } from '@core/utils/path.js';
-
+import {
+    ValidationError,
+    UnknownProviderError,
+    UnknownModelError,
+    ConfigurationError,
+} from '@core/error/index.js';
 /**
  * Find and load the most recent session based on lastActivity.
  * This provides better UX than always loading the "default" session.
@@ -209,9 +214,19 @@ export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promi
             await agent.run(prompt);
         }
     } catch (error) {
-        logger.error(
-            `Error in processing input: ${error instanceof Error ? error.message : String(error)}`
-        );
+        if (error instanceof ValidationError) {
+            logger.error(`Validation error: ${error.message}`, null, 'red');
+        } else if (error instanceof UnknownProviderError) {
+            logger.error(`Provider error: ${error.message}`, null, 'red');
+        } else if (error instanceof UnknownModelError) {
+            logger.error(`Model error: ${error.message}`, null, 'red');
+        } else if (error instanceof ConfigurationError) {
+            logger.error(`Configuration error: ${error.message}`, null, 'red');
+        } else {
+            logger.error(
+                `Error in processing input: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
         process.exit(1); // Exit with error code if headless execution fails
     }
 }

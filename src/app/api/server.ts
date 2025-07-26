@@ -1,5 +1,6 @@
 import express from 'express';
 import type { Express } from 'express';
+import { ValidationError } from '@core/error/index.js';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
@@ -110,25 +111,27 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
             // Comprehensive input validation
             const currentConfig = agent.getEffectiveConfig(sessionId);
-            const validation = validateInputForLLM(
-                {
-                    text: req.body.message,
-                    ...(imageDataInput && { imageData: imageDataInput }),
-                    ...(fileDataInput && { fileData: fileDataInput }),
-                },
-                {
-                    provider: currentConfig.llm.provider,
-                    model: currentConfig.llm.model,
-                }
-            );
-
-            if (!validation.isValid) {
-                return res.status(400).send(
-                    createInputValidationError(validation, {
+            try {
+                validateInputForLLM(
+                    {
+                        text: req.body.message,
+                        ...(imageDataInput && { imageData: imageDataInput }),
+                        ...(fileDataInput && { fileData: fileDataInput }),
+                    },
+                    {
                         provider: currentConfig.llm.provider,
                         model: currentConfig.llm.model,
-                    })
+                    }
                 );
+            } catch (error) {
+                if (error instanceof ValidationError) {
+                    return res.status(400).send({
+                        error: error.message,
+                        type: error.name,
+                        field: error.field,
+                    });
+                }
+                throw error; // rethrow unexpected errors
             }
 
             await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);

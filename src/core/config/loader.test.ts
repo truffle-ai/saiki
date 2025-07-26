@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { ValidationError } from '@core/error/index.js';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { loadAgentConfig } from './loader.js';
@@ -67,8 +68,10 @@ mcpServers:
             expect(config.llm).toBeDefined();
         } catch (error) {
             // If no default config is found, it should throw a specific error
-            expect(error).toBeInstanceOf(Error);
-            expect((error as Error).message).toMatch(/No agent\.yml found|No bundled config found/);
+            expect(error).toBeInstanceOf(ValidationError);
+            expect((error as ValidationError).message).toMatch(
+                /No agent\.yml found|No bundled config found/
+            );
         }
     });
 });
