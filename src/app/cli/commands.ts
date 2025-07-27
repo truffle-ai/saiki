@@ -625,15 +625,11 @@ const modelCommands: CommandDefinition = {
     },
 };
 
-/**
- * MCP management commands
- */
 const mcpCommands: CommandDefinition = {
     name: 'mcp',
     description: 'Manage MCP servers',
     usage: '/mcp <subcommand> [args]',
     category: 'MCP Management',
-    aliases: ['mc'],
     subcommands: [
         {
             name: 'list',
@@ -746,15 +742,29 @@ const mcpCommands: CommandDefinition = {
                 console.log(
                     `  ${chalk.yellow('/mcp remove')} ${chalk.blue('<name>')} - Remove an MCP server`
                 );
-                console.log(`\n        Examples:`);
+
+                console.log(`\n📦 MCP Server Examples:\n`);
+                console.log(chalk.magenta('▶️ STDIO MCP:'));
                 console.log(
-                    `          ${chalk.dim('/mcp add my-mcp-server \'{"command":"mcp-filesystem"}\'')}`
+                    `  ${chalk.dim(`/mcp add my-stdio-server '{"type":"stdio","command":"/usr/local/bin/my-stdio-binary"}'`)}`
                 );
-                console.log(`          ${chalk.dim('/mcp remove my-mcp-server')}`);
+                console.log(chalk.magenta('🌐 HTTP MCP:'));
                 console.log(
-                    chalk.dim('💡 MCP servers are used to access external tools and services.')
+                    `  ${chalk.dim(`/mcp add my-http-server '{"type":"http","command":"http://localhost:8080"}'`)}`
                 );
-                console.log(chalk.dim('💡 Use /mcp help for detailed command descriptions.\n'));
+                console.log(chalk.magenta('📡 SSE MCP:'));
+                console.log(
+                    `  ${chalk.dim(`/mcp add my-sse-server '{"type":"sse","command":"http://localhost:9000/events"}'`)}`
+                );
+
+                console.log(`\n🧹 Remove MCP Server:`);
+                console.log(`  ${chalk.dim(`/mcp remove my-http-server`)}`);
+
+                console.log(
+                    chalk.dim(
+                        '\n💡 MCP servers let you connect to external tools and services for command processing.\n'
+                    )
+                );
                 return true;
             },
         },
