@@ -36,8 +36,8 @@ export class ToolExecutor {
 
         // Use defaults if config is incomplete
         this.config = {
-            toolsDirectory: config.toolsDirectory || './tools',
-            autoDiscover: config.autoDiscover !== false,
+            enabledTools: config.enabledTools ?? 'all',
+            disabledTools: config.disabledTools || [],
             toolConfigs: config.toolConfigs || {},
             globalSettings: config.globalSettings || {
                 requiresConfirmation: false,
@@ -85,8 +85,10 @@ export class ToolExecutor {
             );
         }
 
-        // Check for confirmation requirement
+        // Check for confirmation requirement with proper precedence
+        const toolSpecificConfig = this.config.toolConfigs?.[toolId];
         const requiresConfirmation =
+            toolSpecificConfig?.requiresConfirmation ??
             tool.settings?.requiresConfirmation ??
             this.config.globalSettings?.requiresConfirmation ??
             false;
@@ -103,8 +105,12 @@ export class ToolExecutor {
             }
         }
 
-        // Apply timeout if configured
-        const timeout = tool.settings?.timeout ?? this.config.globalSettings?.timeout ?? 30000;
+        // Apply timeout with proper precedence
+        const timeout =
+            toolSpecificConfig?.timeout ??
+            tool.settings?.timeout ??
+            this.config.globalSettings?.timeout ??
+            30000;
 
         const startTime = Date.now();
 

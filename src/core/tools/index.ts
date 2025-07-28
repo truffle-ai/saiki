@@ -24,9 +24,9 @@ export type {
 export { ToolExecutionError, ToolRegistrationError } from './types.js';
 
 // Tool creation and management
-export { tool, createTool, validateToolResult, validateToolDefinition } from './tool-factory.js';
+export { createTool, validateToolResult, validateToolDefinition } from './tool-factory.js';
 
-export type { CreateToolOptions, ToolOptions, ParameterOptions } from './tool-factory.js';
+export type { CreateToolOptions } from './tool-factory.js';
 
 // Tool registry
 export { ToolRegistry, globalToolRegistry } from './tool-registry.js';
@@ -41,8 +41,8 @@ export { ToolDiscovery } from './tool-discovery.js';
 export { SchemaConverter } from './schema-converter.js';
 export type { JSONSchema } from './schema-converter.js';
 
-// Tool provider (orchestrates all services)
-export { CustomToolProvider } from './custom-tool-provider.js';
+// Custom tools provider (orchestrates all custom tool services)
+export { CustomToolsProvider } from './custom-tools-provider.js';
 
 // Unified tool manager (main interface for LLM)
 export { ToolManager } from './tool-manager.js';

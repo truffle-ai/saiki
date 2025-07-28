@@ -46,7 +46,7 @@ class RealisticMCPManager {
     }
 }
 
-class RealisticCustomToolProvider {
+class RealisticCustomToolsProvider {
     private tools: Record<string, any>;
     private initialized = false;
 
@@ -60,7 +60,7 @@ class RealisticCustomToolProvider {
 
     getAllTools(): ToolSet {
         if (!this.initialized) {
-            throw new Error('CustomToolProvider not initialized');
+            throw new Error('CustomToolsProvider not initialized');
         }
         return this.tools;
     }
@@ -71,7 +71,7 @@ class RealisticCustomToolProvider {
 
     async executeTool(toolName: string, args: any, context?: ToolExecutionContext): Promise<any> {
         if (!this.initialized) {
-            throw new Error('CustomToolProvider not initialized');
+            throw new Error('CustomToolsProvider not initialized');
         }
 
         if (!this.tools[toolName]) {
@@ -95,7 +95,7 @@ class RealisticCustomToolProvider {
 describe('ToolManager Integration Tests', () => {
     let toolManager: ToolManager;
     let mcpManager: RealisticMCPManager;
-    let customToolProvider: RealisticCustomToolProvider;
+    let customToolProvider: RealisticCustomToolsProvider;
     let confirmationProvider: NoOpConfirmationProvider;
 
     beforeEach(() => {
@@ -122,7 +122,7 @@ describe('ToolManager Integration Tests', () => {
                 },
             });
 
-            customToolProvider = new RealisticCustomToolProvider({
+            customToolProvider = new RealisticCustomToolsProvider({
                 file_read: {
                     description: 'Read files using custom implementation',
                     parameters: {
@@ -181,7 +181,7 @@ describe('ToolManager Integration Tests', () => {
                 },
             });
 
-            customToolProvider = new RealisticCustomToolProvider({
+            customToolProvider = new RealisticCustomToolsProvider({
                 search: {
                     description: 'Search using custom logic',
                     parameters: {
@@ -235,7 +235,7 @@ describe('ToolManager Integration Tests', () => {
                 dynamic_tool: { description: 'MCP version' },
             });
 
-            customToolProvider = new RealisticCustomToolProvider({
+            customToolProvider = new RealisticCustomToolsProvider({
                 dynamic_tool: { description: 'Custom version' },
             });
 
@@ -250,7 +250,7 @@ describe('ToolManager Integration Tests', () => {
             expect(tools).not.toHaveProperty('dynamic_tool');
 
             // Simulate removal of custom tool
-            customToolProvider = new RealisticCustomToolProvider({
+            customToolProvider = new RealisticCustomToolsProvider({
                 other_tool: { description: 'Different tool' },
             });
             toolManager['customToolProvider'] = customToolProvider as any;
@@ -288,7 +288,7 @@ describe('ToolManager Integration Tests', () => {
                 },
             });
 
-            customToolProvider = new RealisticCustomToolProvider({
+            customToolProvider = new RealisticCustomToolsProvider({
                 custom_validator: {
                     description: 'Validate input using custom logic',
                     parameters: {
@@ -400,7 +400,7 @@ describe('ToolManager Integration Tests', () => {
                 common_name: { description: 'Common tool via MCP' },
             });
 
-            customToolProvider = new RealisticCustomToolProvider({
+            customToolProvider = new RealisticCustomToolsProvider({
                 custom_tool_1: { description: 'First custom tool' },
                 custom_tool_2: { description: 'Second custom tool' },
                 common_name: { description: 'Common tool via custom' },
@@ -459,7 +459,7 @@ describe('ToolManager Integration Tests', () => {
                 getToolClient: vi.fn().mockReturnValue(undefined),
             };
 
-            customToolProvider = new RealisticCustomToolProvider({
+            customToolProvider = new RealisticCustomToolsProvider({
                 backup_tool: { description: 'Backup custom tool' },
             });
 

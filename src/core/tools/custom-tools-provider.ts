@@ -1,7 +1,6 @@
 import { ToolRegistry } from './tool-registry.js';
 import { ToolExecutor } from './tool-executor.js';
-import { ToolDiscovery } from './tool-discovery.js';
-import { ToolDiscoveryResult, ToolExecutionContext, ToolSet } from './types.js';
+import { ToolExecutionContext, ToolSet, Tool } from './types.js';
 import { ValidatedCustomToolsConfig } from '../config/schemas.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
 import { logger } from '../logger/index.js';
@@ -10,12 +9,11 @@ import { logger } from '../logger/index.js';
  * Provides custom tool functionality using dedicated service classes
  *
  * This provider follows the codebase pattern of being a thin orchestrator
- * that delegates to specialized service classes
+ * that delegates to specialized service classes for custom tools
  */
-export class CustomToolProvider {
+export class CustomToolsProvider {
     private registry: ToolRegistry;
     private executor: ToolExecutor;
-    private discovery: ToolDiscovery;
     private config: ValidatedCustomToolsConfig;
 
     constructor(
@@ -24,8 +22,8 @@ export class CustomToolProvider {
     ) {
         // Use defaults if config is incomplete
         this.config = {
-            toolsDirectory: config.toolsDirectory || './tools',
-            autoDiscover: config.autoDiscover !== false,
+            enabledTools: config.enabledTools ?? 'all',
+            disabledTools: config.disabledTools || [],
             toolConfigs: config.toolConfigs || {},
             globalSettings: config.globalSettings || {
                 requiresConfirmation: false,
@@ -37,41 +35,76 @@ export class CustomToolProvider {
         // Initialize service classes
         this.registry = new ToolRegistry();
         this.executor = new ToolExecutor(this.registry, this.config, confirmationProvider);
-        this.discovery = new ToolDiscovery(this.registry);
 
-        logger.debug(`CustomToolProvider initialized with config: ${JSON.stringify(this.config)}`);
+        logger.debug(`CustomToolsProvider initialized with config: ${JSON.stringify(this.config)}`);
     }
 
     /**
      * Initialize the tool provider
+     * Tools are automatically registered when createTool() is called, so this just loads them
      */
     async initialize(): Promise<void> {
-        logger.info('Initializing CustomToolProvider...');
+        logger.info('Initializing CustomToolsProvider...');
 
         try {
-            // Load decorator-registered tools first
-            await this.discovery.loadRegisteredTools();
-
-            // Discover tools from directory
-            if (this.config.autoDiscover && this.config.toolsDirectory) {
-                await this.discovery.discoverTools(this.config.toolsDirectory);
-            }
+            // Load tools from the global registry (tools register themselves via createTool)
+            await this.loadRegisteredTools();
 
             const toolCount = this.registry.getToolIds().length;
-            logger.info(`CustomToolProvider initialized with ${toolCount} tools`);
+            logger.info(`CustomToolsProvider initialized with ${toolCount} tools`);
         } catch (error) {
             logger.error(
-                `Failed to initialize CustomToolProvider: ${error instanceof Error ? error.message : String(error)}`
+                `Failed to initialize CustomToolsProvider: ${error instanceof Error ? error.message : String(error)}`
             );
             throw error;
         }
     }
 
     /**
-     * Discover tools from directory (delegates to ToolDiscovery)
+     * Load tools from the global registry (tools register themselves via createTool)
      */
-    async discoverTools(toolsDirectory: string): Promise<ToolDiscoveryResult> {
-        return await this.discovery.discoverTools(toolsDirectory);
+    private async loadRegisteredTools(): Promise<void> {
+        // Import the global registry to ensure all tools are loaded
+        const { globalToolRegistry } = await import('./tool-registry.js');
+        const registeredTools = globalToolRegistry.getAll();
+
+        // Apply filtering logic
+        const filteredTools = this.filterTools(registeredTools);
+
+        for (const tool of filteredTools) {
+            this.registry.register(tool);
+        }
+
+        logger.debug(
+            `Loaded ${filteredTools.length} tools (filtered from ${registeredTools.length} total)`
+        );
+    }
+
+    /**
+     * Filter tools based on configuration settings
+     */
+    private filterTools(tools: Tool[]): Tool[] {
+        let filteredTools = [...tools];
+
+        // Filter by enabled tools
+        if (this.config.enabledTools !== 'all') {
+            const enabledSet = new Set(this.config.enabledTools);
+            const beforeCount = filteredTools.length;
+            filteredTools = filteredTools.filter((tool) => enabledSet.has(tool.id));
+            logger.debug(
+                `Filtered to ${filteredTools.length} explicitly enabled tools (from ${beforeCount})`
+            );
+        }
+
+        // Remove disabled tools (always excluded regardless of enabledTools)
+        if (this.config.disabledTools && this.config.disabledTools.length > 0) {
+            const disabledSet = new Set(this.config.disabledTools);
+            const beforeCount = filteredTools.length;
+            filteredTools = filteredTools.filter((tool) => !disabledSet.has(tool.id));
+            logger.debug(`Filtered out ${beforeCount - filteredTools.length} disabled tools`);
+        }
+
+        return filteredTools;
     }
 
     /**
@@ -129,16 +162,6 @@ export class CustomToolProvider {
         tags: Record<string, number>;
     } {
         return this.executor.getStats();
-    }
-
-    /**
-     * Validate tools directory (delegates to ToolDiscovery)
-     */
-    async validateToolsDirectory(directory: string): Promise<{
-        validFiles: string[];
-        invalidFiles: Array<{ filePath: string; error: string }>;
-    }> {
-        return await this.discovery.validateToolsDirectory(directory);
     }
 
     /**

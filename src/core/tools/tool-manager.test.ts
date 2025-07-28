@@ -27,8 +27,8 @@ class MockMCPManager {
     }
 }
 
-// Mock CustomToolProvider
-class MockCustomToolProvider {
+// Mock CustomToolsProvider
+class MockCustomToolsProvider {
     private tools: Record<string, any> = {};
 
     constructor(tools: Record<string, any> = {}) {
@@ -58,7 +58,7 @@ class MockCustomToolProvider {
 describe('ToolManager', () => {
     let toolManager: ToolManager;
     let mockMCPManager: MockMCPManager;
-    let mockCustomToolProvider: MockCustomToolProvider;
+    let mockCustomToolProvider: MockCustomToolsProvider;
     let confirmationProvider: NoOpConfirmationProvider;
 
     beforeEach(() => {
@@ -95,7 +95,7 @@ describe('ToolManager', () => {
             toolManager = new ToolManager(mockMCPManager as any, confirmationProvider);
 
             // Setup custom tools
-            mockCustomToolProvider = new MockCustomToolProvider({
+            mockCustomToolProvider = new MockCustomToolsProvider({
                 custom_tool: { description: 'Custom Tool' },
             });
 
@@ -118,7 +118,7 @@ describe('ToolManager', () => {
                 unique_mcp: { description: 'Unique MCP tool' },
             });
 
-            mockCustomToolProvider = new MockCustomToolProvider({
+            mockCustomToolProvider = new MockCustomToolsProvider({
                 shared_tool: { description: 'Custom version of shared tool' },
                 unique_custom: { description: 'Unique custom tool' },
             });
@@ -154,7 +154,7 @@ describe('ToolManager', () => {
             expect(tools).toHaveProperty('custom--shared_tool');
 
             // Remove custom tool (simulate provider change)
-            mockCustomToolProvider = new MockCustomToolProvider({
+            mockCustomToolProvider = new MockCustomToolsProvider({
                 unique_custom: { description: 'Unique custom tool' },
             });
             toolManager['customToolProvider'] = mockCustomToolProvider as any;
@@ -178,7 +178,7 @@ describe('ToolManager', () => {
                 shared_tool: { description: 'MCP version' },
             });
 
-            mockCustomToolProvider = new MockCustomToolProvider({
+            mockCustomToolProvider = new MockCustomToolsProvider({
                 custom_tool: { description: 'Custom Tool' },
                 shared_tool: { description: 'Custom version' },
             });
@@ -199,7 +199,7 @@ describe('ToolManager', () => {
             expect(result.sessionId).toBe('session123');
         });
 
-        it('should route custom tools to CustomToolProvider', async () => {
+        it('should route custom tools to CustomToolsProvider', async () => {
             const result = await toolManager.executeTool(
                 'custom_tool',
                 { test: 'data' },
@@ -281,7 +281,7 @@ describe('ToolManager', () => {
                 mcp_tool: { description: 'MCP Tool' },
             });
 
-            mockCustomToolProvider = new MockCustomToolProvider({
+            mockCustomToolProvider = new MockCustomToolsProvider({
                 custom_tool: { description: 'Custom Tool' },
             });
 
@@ -300,7 +300,7 @@ describe('ToolManager', () => {
             mockMCPManager = new MockMCPManager({
                 shared: { description: 'MCP version' },
             });
-            mockCustomToolProvider = new MockCustomToolProvider({
+            mockCustomToolProvider = new MockCustomToolsProvider({
                 shared: { description: 'Custom version' },
             });
 
@@ -316,8 +316,7 @@ describe('ToolManager', () => {
     describe('Custom Tool Initialization', () => {
         it('should initialize custom tools when configured', async () => {
             const mockConfig = {
-                toolsDirectory: './tools',
-                autoDiscover: true,
+                enabledTools: 'all' as const,
                 toolConfigs: {},
                 globalSettings: {
                     requiresConfirmation: false,
@@ -329,7 +328,7 @@ describe('ToolManager', () => {
             // Start with no custom tool provider
             (toolManager as any)['customToolProvider'] = undefined;
 
-            // Mock the CustomToolProvider constructor
+            // Mock the CustomToolsProvider constructor
             const _mockProvider = {
                 initialize: vi.fn().mockResolvedValue(undefined),
             };
@@ -343,12 +342,11 @@ describe('ToolManager', () => {
 
         it('should not reinitialize if custom tools already exist', async () => {
             // Set up existing custom tool provider
-            const existingProvider = new MockCustomToolProvider();
+            const existingProvider = new MockCustomToolsProvider();
             toolManager['customToolProvider'] = existingProvider as any;
 
             const mockConfig = {
-                toolsDirectory: './tools',
-                autoDiscover: true,
+                enabledTools: 'all' as const,
                 toolConfigs: {},
                 globalSettings: {
                     requiresConfirmation: false,
@@ -385,7 +383,7 @@ describe('ToolManager', () => {
             await expect(toolManager.getAllTools()).rejects.toThrow('MCP Error');
         });
 
-        it('should handle CustomToolProvider errors gracefully', async () => {
+        it('should handle CustomToolsProvider errors gracefully', async () => {
             const errorCustomProvider = {
                 getAllTools: vi.fn().mockImplementation(() => {
                     throw new Error('Custom Provider Error');

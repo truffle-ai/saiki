@@ -24,8 +24,7 @@ describe('AgentStateManager Events', () => {
                 },
             },
             customTools: {
-                toolsDirectory: './tools',
-                autoDiscover: true,
+                enabledTools: 'all',
                 globalSettings: {
                     enableCaching: false,
                 },

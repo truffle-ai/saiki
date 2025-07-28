@@ -1,5 +1,5 @@
 import { MCPManager } from '../client/manager.js';
-import { CustomToolProvider } from './custom-tool-provider.js';
+import { CustomToolsProvider } from './custom-tools-provider.js';
 import { ToolSet, ToolExecutionContext } from './types.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
 import { ValidatedCustomToolsConfig } from '../config/schemas.js';
@@ -20,11 +20,11 @@ import { logger } from '../logger/index.js';
  * - Handle cross-source naming conflicts
  *
  * Architecture:
- * LLMService → ToolManager → [MCPManager, CustomToolProvider]
+ * LLMService → ToolManager → [MCPManager, CustomToolsProvider]
  */
 export class ToolManager {
     private mcpManager: MCPManager;
-    private customToolProvider?: CustomToolProvider;
+    private customToolProvider?: CustomToolsProvider;
     private confirmationProvider: ToolConfirmationProvider;
 
     // Tool conflict resolution
@@ -52,7 +52,7 @@ export class ToolManager {
      */
     async initializeCustomTools(customToolsConfig: ValidatedCustomToolsConfig): Promise<void> {
         if (!this.customToolProvider) {
-            this.customToolProvider = new CustomToolProvider(
+            this.customToolProvider = new CustomToolsProvider(
                 customToolsConfig,
                 this.confirmationProvider
             );

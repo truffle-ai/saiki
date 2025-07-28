@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
-import { CustomToolProvider } from './custom-tool-provider.js';
+import { CustomToolsProvider } from './custom-tools-provider.js';
 import { createTool } from './tool-factory.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
 import { z } from 'zod';
@@ -187,7 +187,7 @@ class E2EMCPManager {
 
 describe('Tool Execution End-to-End Tests', () => {
     let toolManager: ToolManager;
-    let customToolProvider: CustomToolProvider;
+    let customToolProvider: CustomToolsProvider;
     let mcpManager: E2EMCPManager;
     let confirmationProvider: NoOpConfirmationProvider;
 
@@ -195,10 +195,9 @@ describe('Tool Execution End-to-End Tests', () => {
         confirmationProvider = new NoOpConfirmationProvider();
 
         // Set up real custom tool provider with actual tools
-        customToolProvider = new CustomToolProvider(
+        customToolProvider = new CustomToolsProvider(
             {
-                toolsDirectory: './test-tools',
-                autoDiscover: false, // We'll register tools manually
+                enabledTools: 'all',
                 toolConfigs: {},
                 globalSettings: {
                     requiresConfirmation: false,

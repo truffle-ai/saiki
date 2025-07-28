@@ -589,18 +589,23 @@ export type StorageConfig = z.infer<typeof StorageSchema>;
 
 export const CustomToolsConfigSchema = z
     .object({
-        toolsDirectory: z
-            .string()
-            .default('./tools')
-            .describe('Directory path where custom tools are located, defaults to ./tools'),
-        autoDiscover: z
-            .boolean()
-            .default(true)
-            .describe('Whether to automatically discover and load tools from the tools directory'),
+        // Tool filtering options
+        enabledTools: z
+            .union([z.literal('all'), z.array(z.string())])
+            .default('all')
+            .describe('Enable all tools with "all" or specify array of tool IDs to enable'),
+        disabledTools: z
+            .array(z.string())
+            .optional()
+            .describe('List of tool IDs to disable (always excluded regardless of enabledTools)'),
+
+        // Tool-specific configurations
         toolConfigs: z
             .record(z.record(z.any()))
             .optional()
             .describe('Tool-specific configurations keyed by tool name'),
+
+        // Global settings
         globalSettings: z
             .object({
                 requiresConfirmation: z
@@ -622,8 +627,7 @@ export const CustomToolsConfigSchema = z
             .describe('Global settings that apply to all custom tools'),
     })
     .default({
-        toolsDirectory: './tools',
-        autoDiscover: true,
+        enabledTools: 'all',
         globalSettings: {},
     })
     .describe('Configuration for custom tools system');

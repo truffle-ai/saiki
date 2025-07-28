@@ -10,30 +10,35 @@
 #       - "@modelcontextprotocol/server-filesystem"
 #       - .
 
-# Custom tools configuration (NEW!)
+# Custom tools configuration
 customTools:
-  # Directory where custom tools are located
-  toolsDirectory: "./tools"
+  # Enable all tools (default behavior)
+  enabledTools: 'all'
   
-  # Whether to automatically discover and load tools
-  autoDiscover: true
+  # Or enable specific tools only
+  # enabledTools: ['add', 'multiply', 'power']
   
-  # Tool-specific configurations
+  # Disable specific tools (optional - overrides enabledTools)
+  disabledTools: ['dangerous_tool', 'admin_tool']
+  
+  # Tool-specific configurations (optional)
+  # Override settings for specific tools by their ID
   toolConfigs:
-    add:
-      description: "Custom calculator for addition"
     power:
+      # Require confirmation for this specific tool
       requiresConfirmation: true
+      # Override timeout for this specific tool (in milliseconds)
+      timeout: 60000
   
-  # Global settings for all custom tools
+  # Global settings that apply to all custom tools (optional)
   globalSettings:
-    # Whether tools require confirmation by default
+    # Whether tools require confirmation by default (default: false)
     requiresConfirmation: false
     
-    # Execution timeout in milliseconds
+    # Default execution timeout in milliseconds (default: 30000)
     timeout: 30000
     
-    # Whether to enable result caching
+    # Whether to enable result caching (default: false)
     enableCaching: false
 
 # System prompt configuration

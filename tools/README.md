@@ -6,7 +6,7 @@ This directory demonstrates Saiki's custom tools system, which allows you to cre
 
 The custom tools system provides:
 - **Clean, simple API** for defining tools with minimal boilerplate
-- **Automatic tool discovery** from the `/tools` directory
+- **Automatic tool registration** - tools register themselves when you use `createTool()`
 - **YAML configuration** for tool settings
 - **Integration with existing MCP tools** - all work together seamlessly
 - **Type safety** with full TypeScript support and Zod validation
@@ -19,15 +19,13 @@ Add the `customTools` section to your `agent.yml`:
 
 ```yaml
 customTools:
-  toolsDirectory: "./tools"
-  autoDiscover: true
   globalSettings:
     requiresConfirmation: false
 ```
 
 ### 2. Create Your First Tool
 
-Create a `.ts` file in the tools directory:
+Create a `.ts` file anywhere in your project:
 
 ```typescript
 // tools/hello.ts
@@ -63,7 +61,7 @@ npx saiki --agent tools/example-agent.yml
 
 The AI can now use your custom tool alongside MCP tools!
 
-## Tool Definition Patterns
+## Tool Definition Pattern
 
 ### Basic Tool Structure
 
@@ -188,48 +186,238 @@ export const configTool = createTool({
 
 ## Configuration
 
-### Agent Configuration
+### Configuration Structure
 
 ```yaml
 customTools:
-  # Directory containing tool files
-  toolsDirectory: "./tools"
+  # Tool filtering options (optional)
+  enabledTools: 'all'                    # Enable all tools (default)
+  # enabledTools: ['tool1', 'tool2']    # Or enable specific tools only
+  disabledTools: ['tool3', 'tool4']     # Disable specific tools (overrides enabled)
   
-  # Auto-discover tools on startup
-  autoDiscover: true
-  
-  # Tool-specific settings
-  toolConfigs:
-    tool_name:
+  toolConfigs:                            # Tool-specific overrides
+    tool_id:
       requiresConfirmation: true
       timeout: 60000
-  
-  # Global settings
-  globalSettings:
+  globalSettings:                         # Global defaults for all tools
     requiresConfirmation: false
     timeout: 30000
     enableCaching: false
 ```
 
-### Tool File Organization
+### How Tools Work
 
+1. **Create tools** using `createTool()` in your TypeScript files
+2. **Tools auto-register** themselves when the code is imported
+3. **Configure behavior** via YAML settings
+4. **Tools are available** to the AI agent automatically
+
+### Parameters Reference
+
+#### Tool Filtering Options
+
+##### `enabledTools` (string or array, default: 'all')
+- **Description**: Enable all tools or a specific list of tool IDs. Set to `'all'` to enable all tools.
+- **Example**: `'all'` (enable all), `['add', 'multiply', 'power']` (enable specific)
+
+##### `disabledTools` (array, optional)
+- **Description**: List of tool IDs to disable (always excluded regardless of other settings)
+- **Example**: `['dangerous_tool', 'admin_tool']`
+
+#### Tool Configuration Options
+
+#### `toolConfigs` (object, optional)
+Tool-specific configuration overrides. Keys should match the tool IDs defined in your tool files.
+
+##### Available tool-specific settings:
+
+###### `requiresConfirmation` (boolean, optional)
+- **Description**: Override whether this specific tool requires user confirmation
+- **Example**: `true` (requires confirmation), `false` (auto-approve)
+
+###### `timeout` (number, optional)
+- **Description**: Override execution timeout for this tool (in milliseconds)
+- **Example**: `60000` (60 seconds)
+
+#### `globalSettings` (object, optional)
+Global settings that apply to all custom tools unless overridden by tool-specific configs.
+
+##### Available global settings:
+
+###### `requiresConfirmation` (boolean, optional)
+- **Default**: `false`
+- **Description**: Whether tools require confirmation by default
+- **Example**: `true` (all tools require confirmation), `false` (auto-approve all tools)
+
+###### `timeout` (number, optional)
+- **Default**: `30000` (30 seconds)
+- **Description**: Default execution timeout for all tools (in milliseconds)
+- **Example**: `60000` (60 seconds), `5000` (5 seconds)
+
+###### `enableCaching` (boolean, optional)
+- **Default**: `false`
+- **Description**: Whether to enable result caching for tools
+- **Example**: `true` (cache results), `false` (no caching)
+
+### Configuration Examples
+
+#### Basic Configuration (All Tools Enabled)
+```yaml
+customTools:
+  # No configuration needed - all tools enabled by default
+  enabledTools: 'all'  # Default behavior
 ```
-tools/
-├── math.ts          # Mathematical operations
-├── network.ts       # Network utilities
-├── data/
-│   ├── parsers.ts   # Data parsing tools
-│   └── validators.ts # Data validation tools
-└── integrations/
-    ├── api.ts       # API integration tools
-    └── database.ts  # Database tools
+
+#### Enable Specific Tools Only
+```yaml
+customTools:
+  enabledTools: ['add', 'multiply', 'power']  # Only these tools enabled
 ```
+
+#### Enable All But Disable Specific
+```yaml
+customTools:
+  enabledTools: 'all'                    # Enable all tools
+  disabledTools: ['dangerous_tool']      # But disable this one
+```
+
+#### Security-Focused Configuration
+```yaml
+customTools:
+  enabledTools: ['add', 'multiply']      # Only safe tools enabled
+  globalSettings:
+    requiresConfirmation: true            # Require confirmation for all tools
+```
+
+
+
+#### Security-Focused Configuration
+```yaml
+customTools:
+  globalSettings:
+    requiresConfirmation: true  # All tools require confirmation
+    timeout: 10000              # 10 second timeout
+```
+
+#### Performance-Focused Configuration
+```yaml
+customTools:
+  globalSettings:
+    requiresConfirmation: false  # Auto-approve all tools
+    timeout: 60000               # 60 second timeout
+    enableCaching: true          # Enable result caching
+```
+
+#### Mixed Security Configuration
+```yaml
+customTools:
+  globalSettings:
+    requiresConfirmation: false  # Most tools auto-approve
+    timeout: 30000
+  toolConfigs:
+    dangerous_tool:
+      requiresConfirmation: true  # This specific tool requires confirmation
+      timeout: 120000             # Longer timeout for this tool
+    safe_tool:
+      requiresConfirmation: false # Explicitly auto-approve this tool
+```
+
+### Tool Registration Process
+
+Tools are automatically registered when:
+
+1. **You use `createTool()`** in your TypeScript files
+2. **The file is imported** (either directly or through module resolution)
+3. **The tool is added** to the global registry automatically
+4. **The agent loads** and applies filtering rules
+5. **Filtered tools are available** to the AI agent
+
+### Tool Filtering Logic
+
+The filtering process follows this order:
+
+1. **Start with all registered tools**
+2. **If `enabledTools` is `'all'` (default)** → All tools available
+3. **If `enabledTools` is a list** → Only explicitly enabled tools available
+4. **Remove `disabledTools`** → Always excluded regardless of other settings
+5. **Apply tool-specific settings** → Override global settings for remaining tools
+
+#### Filtering Examples
+
+```yaml
+# Example: Start with tools: [add, power, random, admin_tool, dangerous_tool]
+
+# Enable all tools (default)
+customTools:
+  enabledTools: 'all'  # All tools available
+  # Final available tools: [add, power, random, admin_tool, dangerous_tool]
+
+# Enable specific tools only
+customTools:
+  enabledTools: ['add', 'power', 'random']        # Only these tools enabled
+  # Final available tools: [add, power, random]
+
+# Enable all but disable specific
+customTools:
+  enabledTools: 'all'                              # All tools enabled
+  disabledTools: ['dangerous_tool', 'admin_tool']  # Remove: [add, power, random]
+  # Final available tools: [add, power, random]
+```
+
+### Tool-Specific vs Global Settings
+
+Settings follow this precedence order (highest to lowest priority):
+
+1. **Tool-specific settings** in `toolConfigs[tool_id]` (highest priority)
+2. **Tool code settings** defined in `tool.settings` 
+3. **Global settings** in `globalSettings`
+4. **System defaults** (hardcoded fallbacks)
+
+#### Example: Confirmation Requirements
+
+```yaml
+# Global settings
+customTools:
+  globalSettings:
+    requiresConfirmation: true  # All tools require confirmation by default
+  
+  # Tool-specific overrides
+  toolConfigs:
+    safe_tool:
+      requiresConfirmation: false  # This tool auto-approves (overrides global)
+    dangerous_tool:
+      requiresConfirmation: true   # This tool requires confirmation (uses global)
+```
+
+In this example:
+- `safe_tool` will **auto-approve** (tool-specific config overrides global)
+- `dangerous_tool` will **require confirmation** (uses global setting)
+- Any other tools will **require confirmation** (use global setting)
+
+#### Example: Timeout Settings
+
+```yaml
+customTools:
+  globalSettings:
+    timeout: 30000  # 30 seconds default
+  
+  toolConfigs:
+    fast_tool:
+      timeout: 5000   # 5 seconds (tool-specific override)
+    slow_tool:
+      timeout: 120000 # 2 minutes (tool-specific override)
+```
+
+In this example:
+- `fast_tool` uses **5 second timeout** (tool-specific override)
+- `slow_tool` uses **2 minute timeout** (tool-specific override)  
+- Other tools use **30 second timeout** (global default)
 
 ## Examples
 
 This directory includes example tools:
 
-- **math.ts** - Mathematical operations (add, power, random) using the new clean API
+- **math.ts** - Mathematical operations (add, power, random) using the clean API
 - **example-agent.yml** - Complete agent configuration example
 
 ### Math Tools Example
@@ -308,6 +496,16 @@ export const powerTool = createTool({
 - **Document parameters** - Use Zod descriptions for clarity
 - **Include examples** - Show how to use the tool effectively
 
+### 6. Security
+- Use `requiresConfirmation: true` for tools that perform destructive operations
+- Set appropriate timeouts to prevent hanging operations
+- Consider tool-specific confirmation for sensitive operations
+
+### 7. Organization
+- Use descriptive tool IDs that match your configuration keys
+- Document tool-specific requirements in your configuration
+- Group related tools in separate files for better organization
+
 ## Integration with MCP Tools
 
 Custom tools work seamlessly with MCP tools:
@@ -321,12 +519,28 @@ mcpServers:
     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
 
 customTools:
-  toolsDirectory: "./tools"
-  autoDiscover: true
+  globalSettings:
+    requiresConfirmation: false
 ```
 
 The AI agent can use both custom tools and MCP tools in the same conversation, choosing the best tool for each task.
 
+## Troubleshooting
+
+### Tools Not Available
+- Ensure you're using `createTool()` to define your tools
+- Check that the file containing your tools is being imported
+- Verify tool IDs match your configuration keys
+
+### Tools Requiring Unexpected Confirmation
+- Check `globalSettings.requiresConfirmation`
+- Check tool-specific settings in `toolConfigs`
+- Verify tool code doesn't override settings
+
+### Tools Timing Out
+- Increase `timeout` in `globalSettings` or tool-specific config
+- Check if the tool is actually hanging or just slow
+- Consider if the operation should be cached
 
 ## Contributing
 

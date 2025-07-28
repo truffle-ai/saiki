@@ -69,40 +69,6 @@ export function createTool(options: CreateToolOptions): Tool {
 }
 
 /**
- * Decorator for marking functions as tools (legacy support)
- *
- * @param id - Tool identifier
- * @param description - Tool description
- * @param inputSchema - Zod schema for validation
- * @param options - Additional options
- */
-export function tool(
-    id: string,
-    description: string,
-    inputSchema: z.ZodSchema,
-    options?: {
-        metadata?: CreateToolOptions['metadata'];
-        settings?: CreateToolOptions['settings'];
-    }
-) {
-    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-        const originalMethod = descriptor.value;
-
-        const toolDef: Tool = {
-            id,
-            description,
-            inputSchema,
-            execute: originalMethod,
-            ...(options?.metadata && { metadata: options.metadata }),
-            ...(options?.settings && { settings: options.settings }),
-        };
-
-        globalToolRegistry.register(toolDef);
-        return descriptor;
-    };
-}
-
-/**
  * Validate tool execution result
  */
 export function validateToolResult(result: any): ToolExecutionResult {
@@ -140,8 +106,3 @@ export function validateToolDefinition(tool: Tool): boolean {
 
     return true;
 }
-
-// Legacy exports for backward compatibility
-export { createTool as createParameter }; // Deprecated
-export type ToolOptions = CreateToolOptions; // Deprecated
-export type ParameterOptions = any; // Deprecated
