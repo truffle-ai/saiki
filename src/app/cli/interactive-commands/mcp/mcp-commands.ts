@@ -270,7 +270,16 @@ export const mcpCommands: CommandDefinition = {
                 console.log(chalk.dim(`  /mcp add stdio <name> <command> [args...] [options]`));
                 console.log(chalk.dim(`  Examples:`));
                 console.log(chalk.dim(`    /mcp add stdio music uvx truffle-ai-music-creator-mcp`));
-                console.log(chalk.dim(`    /mcp add stdio fs node server.js --timeout=60000`));
+                console.log(
+                    chalk.dim(
+                        `    /mcp add stdio filesystem npx -y @modelcontextprotocol/server-filesystem .`
+                    )
+                );
+                console.log(
+                    chalk.dim(
+                        `    /mcp add stdio sqlite npx -y @executeautomation/database-server example.db`
+                    )
+                );
 
                 console.log(chalk.magenta('\n🌐 HTTP Servers:'));
                 console.log(chalk.dim(`  /mcp add http <name> <url> [options]`));
@@ -278,7 +287,7 @@ export const mcpCommands: CommandDefinition = {
                 console.log(chalk.dim(`    /mcp add http remote http://localhost:8080`));
                 console.log(
                     chalk.dim(
-                        `    /mcp add http api https://api.example.com --header-Authorization="Bearer token"`
+                        `    /mcp add http notion https://api.notion.com --header-Authorization="Bearer token"`
                     )
                 );
 
