@@ -43,7 +43,7 @@ export const systemCommands: CommandDefinition[] = [
             }
 
             if (validLevels.includes(level)) {
-                logger.setLevel(level as any);
+                logger.setLevel(level);
                 logger.info(`Log level set to ${level}`, null, 'green');
             } else {
                 logger.error(
