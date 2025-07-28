@@ -27,8 +27,8 @@ export class CustomToolsProvider {
         this.config = {
             enabledTools: config.enabledTools ?? 'all',
             enableToolDiscovery: config.enableToolDiscovery ?? true,
-            toolConfigs: config.toolConfigs || {},
-            globalSettings: config.globalSettings || {
+            toolConfigs: config.toolConfigs ?? {},
+            globalSettings: config.globalSettings ?? {
                 requiresConfirmation: false,
                 timeout: 30000,
                 enableCaching: false,
