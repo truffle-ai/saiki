@@ -31,7 +31,7 @@
  *   - /model switch <model> - Switch to a different model (provider auto-detected)
  *
  * MCP MANAGEMENT:
- * - /mcp, /mc - Manage MCP servers (defaults to help)
+ * - /mcp - Manage MCP servers (defaults to help)
  *   - /mcp help - Show detailed help for MCP commands
  *   - /mcp list - List all available MCP servers
  *   - /mcp add <name> <type> <config> - Add a new MCP server
@@ -834,7 +834,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                 return true;
             }
 
-            if (commandName === 'mcp' || commandName === 'mc') {
+            if (commandName === 'mcp') {
                 console.log(chalk.blue('💡 For detailed MCP help, use:'));
                 console.log(`   ${chalk.cyan('/mcp help')}`);
                 console.log(
