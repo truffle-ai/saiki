@@ -19,7 +19,7 @@ import {
 import { createAgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
-import os from 'os';
+import os, { type } from 'os';
 import { resolveBundledScript } from '@core/index.js';
 import {
     LLM_REGISTRY,
@@ -172,25 +172,27 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
         // Comprehensive input validation
         const currentConfig = agent.getEffectiveConfig(sessionId);
-        const validation = validateInputForLLM(
-            {
-                text: req.body.message,
-                ...(imageDataInput && { imageData: imageDataInput }),
-                ...(fileDataInput && { fileData: fileDataInput }),
-            },
-            {
-                provider: currentConfig.llm.provider,
-                model: currentConfig.llm.model,
-            }
-        );
-
-        if (!validation.isValid) {
-            return res.status(400).send(
-                createInputValidationError(validation, {
+        try {
+            validateInputForLLM(
+                {
+                    text: req.body.message,
+                    ...(imageDataInput && { imageData: imageDataInput }),
+                    ...(fileDataInput && { fileData: fileDataInput }),
+                },
+                {
                     provider: currentConfig.llm.provider,
                     model: currentConfig.llm.model,
-                })
+                }
             );
+        } catch (error) {
+            if (error instanceof ValidationError) {
+                return res.status(400).send({
+                    error: error.message,
+                    type: error.name,
+                    field: error.field,
+                });
+            }
+            throw error;
         }
 
         try {
