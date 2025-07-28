@@ -31,9 +31,10 @@ import {
     createTsconfigJson,
     addSaikiScriptsToPackageJson,
     postCreateSaiki,
-} from './cli/commands/create.js';
-import { initSaiki, postInitSaiki } from './cli/commands/init.js';
-import { getUserInputToInitSaikiApp } from './cli/commands/init.js';
+    initSaiki,
+    postInitSaiki,
+    getUserInputToInitSaikiApp,
+} from './cli/project-commands/index.js';
 import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
 import { startNextJsWebServer } from './web.js';
 import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
