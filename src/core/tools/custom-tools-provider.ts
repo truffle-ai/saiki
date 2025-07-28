@@ -23,7 +23,6 @@ export class CustomToolsProvider {
         // Use defaults if config is incomplete
         this.config = {
             enabledTools: config.enabledTools ?? 'all',
-            disabledTools: config.disabledTools ?? [],
             toolConfigs: config.toolConfigs || {},
             globalSettings: config.globalSettings || {
                 requiresConfirmation: false,
@@ -94,14 +93,6 @@ export class CustomToolsProvider {
             logger.debug(
                 `Filtered to ${filteredTools.length} explicitly enabled tools (from ${beforeCount})`
             );
-        }
-
-        // Remove disabled tools (always excluded regardless of enabledTools)
-        if (this.config.disabledTools && this.config.disabledTools.length > 0) {
-            const disabledSet = new Set(this.config.disabledTools);
-            const beforeCount = filteredTools.length;
-            filteredTools = filteredTools.filter((tool) => !disabledSet.has(tool.id));
-            logger.debug(`Filtered out ${beforeCount - filteredTools.length} disabled tools`);
         }
 
         return filteredTools;

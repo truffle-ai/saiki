@@ -1,5 +1,5 @@
-import { ToolRegistry } from './tool-registry.js';
 import { ToolExecutionContext, ToolExecutionError, ToolSet, Tool } from './types.js';
+import { ToolRegistry } from './tool-registry.js';
 import { ValidatedCustomToolsConfig } from '../config/schemas.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
 import { IAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/types.js';
@@ -7,6 +7,41 @@ import { InMemoryAllowedToolsProvider } from '../client/tool-confirmation/allowe
 import { validateToolResult } from './tool-factory.js';
 import { SchemaConverter } from './schema-converter.js';
 import { logger } from '../logger/index.js';
+
+/**
+ * Tool execution arguments interface
+ */
+export interface ToolExecutionArgs {
+    [key: string]: any;
+}
+
+/**
+ * Tool execution result interface
+ */
+export interface ToolExecutionResult {
+    data?: any;
+    metadata?: Record<string, any>;
+    error?: string;
+}
+
+/**
+ * Tool execution request interface
+ */
+export interface ToolExecutionRequest {
+    toolId: string;
+    args: ToolExecutionArgs;
+    context?: ToolExecutionContext;
+}
+
+/**
+ * Tool execution response interface
+ */
+export interface ToolExecutionResponse {
+    success: boolean;
+    data?: any;
+    error?: string;
+    metadata?: Record<string, any>;
+}
 
 /**
  * No-op confirmation provider for testing
@@ -39,7 +74,6 @@ export class ToolExecutor {
         // Use defaults if config is incomplete
         this.config = {
             enabledTools: config.enabledTools ?? 'all',
-            disabledTools: config.disabledTools || [],
             toolConfigs: config.toolConfigs || {},
             globalSettings: config.globalSettings || {
                 requiresConfirmation: false,
@@ -65,9 +99,9 @@ export class ToolExecutor {
      */
     async executeTool(
         toolId: string,
-        args: Record<string, any>,
+        args: ToolExecutionArgs,
         context?: ToolExecutionContext
-    ): Promise<any> {
+    ): Promise<ToolExecutionResponse> {
         const tool = this.registry.get(toolId);
         if (!tool) {
             throw new ToolExecutionError(toolId, 'Tool not found');
@@ -119,13 +153,13 @@ export class ToolExecutor {
         try {
             logger.debug(`▶️  Executing custom tool '${toolId}'...`);
 
-            let result: any;
+            let result: ToolExecutionResult;
 
             if (timeout > 0) {
                 // Execute with timeout
                 result = await Promise.race([
                     Promise.resolve(tool.execute(args, context)),
-                    new Promise((_, reject) =>
+                    new Promise<never>((_, reject) =>
                         setTimeout(
                             () => reject(new Error(`Tool execution timeout after ${timeout}ms`)),
                             timeout
@@ -142,7 +176,11 @@ export class ToolExecutor {
 
             logger.debug(`✅ Custom tool execution completed in ${duration}ms: '${toolId}'`);
 
-            return validatedResult.data;
+            return {
+                success: true,
+                data: validatedResult.data,
+                metadata: validatedResult.metadata,
+            };
         } catch (error) {
             const duration = Date.now() - startTime;
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -151,7 +189,11 @@ export class ToolExecutor {
                 `❌ Custom tool execution failed after ${duration}ms: '${toolId}' - ${errorMessage}`
             );
 
-            throw new ToolExecutionError(toolId, errorMessage, error as Error);
+            return {
+                success: false,
+                error: errorMessage,
+                metadata: { duration },
+            };
         }
     }
 

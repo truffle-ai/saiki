@@ -594,10 +594,6 @@ export const CustomToolsConfigSchema = z
             .union([z.literal('all'), z.array(z.string())])
             .default('all')
             .describe('Enable all tools with "all" or specify array of tool IDs to enable'),
-        disabledTools: z
-            .array(z.string())
-            .optional()
-            .describe('List of tool IDs to disable (always excluded regardless of enabledTools)'),
 
         // Tool-specific configurations
         toolConfigs: z

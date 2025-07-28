@@ -14,11 +14,6 @@ export type {
     ToolDiscoveryResult,
     ToolDiscoveryMetadata,
     ToolExecutionSettings,
-    // Legacy types for backward compatibility
-    CustomTool,
-    ToolFunction,
-    ToolParameter,
-    ToolMetadata,
 } from './types.js';
 
 export { ToolExecutionError, ToolRegistrationError } from './types.js';

@@ -193,7 +193,6 @@ customTools:
   # Tool filtering options (optional)
   enabledTools: 'all'                    # Enable all tools (default)
   # enabledTools: ['tool1', 'tool2']    # Or enable specific tools only
-  disabledTools: ['tool3', 'tool4']     # Disable specific tools (overrides enabled)
   
   toolConfigs:                            # Tool-specific overrides
     tool_id:
@@ -219,10 +218,6 @@ customTools:
 ##### `enabledTools` (string or array, default: 'all')
 - **Description**: Enable all tools or a specific list of tool IDs. Set to `'all'` to enable all tools.
 - **Example**: `'all'` (enable all), `['add', 'multiply', 'power']` (enable specific)
-
-##### `disabledTools` (array, optional)
-- **Description**: List of tool IDs to disable (always excluded regardless of other settings)
-- **Example**: `['dangerous_tool', 'admin_tool']`
 
 #### Tool Configuration Options
 
@@ -272,13 +267,6 @@ customTools:
 ```yaml
 customTools:
   enabledTools: ['add', 'multiply', 'power']  # Only these tools enabled
-```
-
-#### Enable All But Disable Specific
-```yaml
-customTools:
-  enabledTools: 'all'                    # Enable all tools
-  disabledTools: ['dangerous_tool']      # But disable this one
 ```
 
 #### Security-Focused Configuration
@@ -339,8 +327,7 @@ The filtering process follows this order:
 1. **Start with all registered tools**
 2. **If `enabledTools` is `'all'` (default)** → All tools available
 3. **If `enabledTools` is a list** → Only explicitly enabled tools available
-4. **Remove `disabledTools`** → Always excluded regardless of other settings
-5. **Apply tool-specific settings** → Override global settings for remaining tools
+4. **Apply tool-specific settings** → Override global settings for remaining tools
 
 #### Filtering Examples
 
@@ -354,13 +341,7 @@ customTools:
 
 # Enable specific tools only
 customTools:
-  enabledTools: ['add', 'power', 'random']        # Only these tools enabled
-  # Final available tools: [add, power, random]
-
-# Enable all but disable specific
-customTools:
-  enabledTools: 'all'                              # All tools enabled
-  disabledTools: ['dangerous_tool', 'admin_tool']  # Remove: [add, power, random]
+  enabledTools: ['add', 'power', 'random']  # Only these tools enabled
   # Final available tools: [add, power, random]
 ```
 

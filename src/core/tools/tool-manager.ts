@@ -83,6 +83,49 @@ export class ToolManager {
     }
 
     /**
+     * Normalize tool parameters to ensure consistent structure
+     */
+    private normalizeToolParameters(toolDef: any): any {
+        if (!toolDef.parameters) {
+            return undefined;
+        }
+
+        // Handle MCP tools with flexible parameter structure
+        if (toolDef.parameters.type === 'object' || !toolDef.parameters.type) {
+            return {
+                type: 'object' as const,
+                properties: toolDef.parameters.properties || {},
+                ...(toolDef.parameters.required && {
+                    required: toolDef.parameters.required,
+                }),
+            };
+        }
+
+        // Handle custom tools with strict parameter structure
+        if (toolDef.parameters.type === 'object') {
+            return toolDef.parameters;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Build normalized tool definition
+     */
+    private buildNormalizedToolDefinition(
+        toolName: string,
+        toolDef: any,
+        description: string | undefined
+    ): any {
+        const normalizedParams = this.normalizeToolParameters(toolDef);
+
+        return {
+            description: description || 'No description provided',
+            ...(normalizedParams && { parameters: normalizedParams }),
+        };
+    }
+
+    /**
      * Build all tools from sources with conflict resolution
      */
     private async buildAllTools(): Promise<ToolSet> {
@@ -107,31 +150,21 @@ export class ToolManager {
         // Add non-conflicted tools directly
         for (const [toolName, toolDef] of Object.entries(mcpTools)) {
             if (!this.crossSourceConflicts.has(toolName)) {
-                allTools[toolName] = {
-                    description: toolDef.description || 'No description provided',
-                    ...(toolDef.parameters &&
-                        (toolDef.parameters.type === 'object' || !toolDef.parameters.type) && {
-                            parameters: {
-                                type: 'object' as const,
-                                properties: toolDef.parameters.properties || {},
-                                ...(toolDef.parameters.required && {
-                                    required: toolDef.parameters.required,
-                                }),
-                            },
-                        }),
-                };
+                allTools[toolName] = this.buildNormalizedToolDefinition(
+                    toolName,
+                    toolDef,
+                    toolDef.description
+                );
             }
         }
 
         for (const [toolName, toolDef] of Object.entries(customTools)) {
             if (!this.crossSourceConflicts.has(toolName)) {
-                allTools[toolName] = {
-                    description: toolDef.description || 'No description provided',
-                    ...(toolDef.parameters &&
-                        toolDef.parameters.type === 'object' && {
-                            parameters: toolDef.parameters,
-                        }),
-                };
+                allTools[toolName] = this.buildNormalizedToolDefinition(
+                    toolName,
+                    toolDef,
+                    toolDef.description
+                );
             }
         }
 
@@ -140,33 +173,22 @@ export class ToolManager {
             // Add MCP version with prefix
             if (mcpTools[toolName]) {
                 const qualifiedName = `${ToolManager.MCP_PREFIX}${ToolManager.SOURCE_DELIMITER}${toolName}`;
-                allTools[qualifiedName] = {
-                    description: `${mcpTools[toolName].description || 'No description provided'} (via MCP servers)`,
-                    ...(mcpTools[toolName].parameters &&
-                        (mcpTools[toolName].parameters.type === 'object' ||
-                            !mcpTools[toolName].parameters.type) && {
-                            parameters: {
-                                type: 'object' as const,
-                                properties: mcpTools[toolName].parameters.properties || {},
-                                ...(mcpTools[toolName].parameters.required && {
-                                    required: mcpTools[toolName].parameters.required,
-                                }),
-                            },
-                        }),
-                };
+                allTools[qualifiedName] = this.buildNormalizedToolDefinition(
+                    qualifiedName,
+                    mcpTools[toolName],
+                    `${mcpTools[toolName].description || 'No description provided'} (via MCP servers)`
+                );
             }
 
             // Add custom version with prefix
             if (customTools[toolName]) {
                 const customTool = customTools[toolName];
                 const qualifiedName = `${ToolManager.CUSTOM_PREFIX}${ToolManager.SOURCE_DELIMITER}${toolName}`;
-                allTools[qualifiedName] = {
-                    description: `${customTool.description || 'Custom tool'} (custom tool)`,
-                    ...(customTool.parameters &&
-                        customTool.parameters.type === 'object' && {
-                            parameters: customTool.parameters,
-                        }),
-                };
+                allTools[qualifiedName] = this.buildNormalizedToolDefinition(
+                    qualifiedName,
+                    customTool,
+                    `${customTool.description || 'Custom tool'} (custom tool)`
+                );
             }
         }
 

@@ -132,12 +132,3 @@ export class ToolRegistrationError extends Error {
         this.name = 'ToolRegistrationError';
     }
 }
-
-// Legacy types for backward compatibility
-export type CustomTool = Tool;
-export type ToolFunction = Tool['execute'];
-export type ToolParameter = any; // Deprecated
-export type ToolMetadata = ToolDiscoveryMetadata; // Deprecated
-
-// Re-export for convenience
-export { z } from 'zod';

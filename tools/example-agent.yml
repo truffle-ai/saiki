@@ -14,13 +14,10 @@
 customTools:
   # Enable all tools (default behavior)
   enabledTools: 'all'
-  
+
   # Or enable specific tools only
   # enabledTools: ['add', 'multiply', 'power']
-  
-  # Disable specific tools (optional - overrides enabledTools)
-  disabledTools: ['dangerous_tool', 'admin_tool']
-  
+
   # Tool-specific configurations (optional)
   # Override settings for specific tools by their ID
   toolConfigs:
@@ -29,15 +26,15 @@ customTools:
       requiresConfirmation: true
       # Override timeout for this specific tool (in milliseconds)
       timeout: 60000
-  
+
   # Global settings that apply to all custom tools (optional)
   globalSettings:
     # Whether tools require confirmation by default (default: false)
     requiresConfirmation: false
-    
+
     # Default execution timeout in milliseconds (default: 30000)
     timeout: 30000
-    
+
     # Whether to enable result caching (default: false)
     enableCaching: false
 
@@ -49,12 +46,12 @@ systemPrompt:
       priority: 0
       content: |
         You are a helpful AI assistant with access to both MCP server tools and custom tools.
-        
+
         Available custom tools include:
         - add: Adds two numbers together
         - power: Raises a number to a power
         - random: Generates random numbers
-        
+
         Use these tools when appropriate to solve mathematical problems or generate random values.
         You can combine custom tools with MCP tools for complex tasks.
 
@@ -70,4 +67,4 @@ storage:
     type: in-memory
   database:
     type: sqlite
-    # path: ./data/saiki.db 
+    # path: ./data/saiki.db
