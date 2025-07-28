@@ -40,7 +40,7 @@ export interface ToolExecutionResponse {
     success: boolean;
     data?: any;
     error?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, any> | undefined;
 }
 
 /**
@@ -110,47 +110,40 @@ export class ToolExecutor {
         logger.debug(`🔧 Custom tool execution requested: '${toolId}'`);
         logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
 
-        // Validate input against schema
-        try {
-            const validatedArgs = tool.inputSchema.parse(args);
-            args = validatedArgs;
-        } catch (error) {
-            throw new ToolExecutionError(
-                toolId,
-                `Input validation failed: ${error instanceof Error ? error.message : String(error)}`
-            );
-        }
-
-        // Check for confirmation requirement with proper precedence
-        const toolSpecificConfig = this.config.toolConfigs?.[toolId];
-        const requiresConfirmation =
-            toolSpecificConfig?.requiresConfirmation ??
-            tool.settings?.requiresConfirmation ??
-            this.config.globalSettings?.requiresConfirmation ??
-            false;
-
-        if (requiresConfirmation) {
-            const approved = await this.confirmationProvider.requestConfirmation({
-                toolName: toolId,
-                args,
-            });
-
-            if (!approved) {
-                logger.warn(`🚫 Custom tool execution denied: ${toolId}`);
-                throw new ToolExecutionError(toolId, 'Tool execution denied by user');
-            }
-        }
-
-        // Apply timeout with proper precedence
-        const timeout =
-            toolSpecificConfig?.timeout ??
-            tool.settings?.timeout ??
-            this.config.globalSettings?.timeout ??
-            30000;
-
         const startTime = Date.now();
 
         try {
+            // Validate input against schema
+            const validatedArgs = tool.inputSchema.parse(args);
+            args = validatedArgs;
+
+            // Check for confirmation requirement with proper precedence
+            const toolSpecificConfig = this.config.toolConfigs?.[toolId];
+            const requiresConfirmation =
+                toolSpecificConfig?.requiresConfirmation ??
+                tool.settings?.requiresConfirmation ??
+                this.config.globalSettings?.requiresConfirmation ??
+                false;
+
+            if (requiresConfirmation) {
+                const approved = await this.confirmationProvider.requestConfirmation({
+                    toolName: toolId,
+                    args,
+                });
+
+                if (!approved) {
+                    logger.warn(`🚫 Custom tool execution denied: ${toolId}`);
+                    throw new Error('Tool execution denied by user');
+                }
+            }
+
+            // Apply timeout with proper precedence
+            const timeout =
+                toolSpecificConfig?.timeout ??
+                tool.settings?.timeout ??
+                this.config.globalSettings?.timeout ??
+                30000;
+
             logger.debug(`▶️  Executing custom tool '${toolId}'...`);
 
             let result: ToolExecutionResult;

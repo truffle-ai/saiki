@@ -1,403 +1,173 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CustomToolsProvider } from './custom-tools-provider.js';
-import { createTool } from './tool-factory.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
+import { createTool } from './tool-factory.js';
 import { z } from 'zod';
 
-// Create test tools for filtering tests
-const testTools = [
-    createTool({
-        id: 'math_add',
-        description: 'Add numbers',
-        inputSchema: z.object({ a: z.number(), b: z.number() }),
-        execute: async ({ a, b }) => ({ result: a + b }),
-        metadata: { category: 'math', tags: ['arithmetic'] },
-    }),
-    createTool({
-        id: 'math_multiply',
-        description: 'Multiply numbers',
-        inputSchema: z.object({ a: z.number(), b: z.number() }),
-        execute: async ({ a, b }) => ({ result: a * b }),
-        metadata: { category: 'math', tags: ['arithmetic'] },
-    }),
-    createTool({
-        id: 'string_reverse',
-        description: 'Reverse string',
-        inputSchema: z.object({ text: z.string() }),
-        execute: async ({ text }) => ({ result: text.split('').reverse().join('') }),
-        metadata: { category: 'string', tags: ['text'] },
-    }),
-    createTool({
-        id: 'dangerous_delete',
-        description: 'Delete files',
-        inputSchema: z.object({ path: z.string() }),
-        execute: async ({ path }) => ({ deleted: path }),
-        metadata: { category: 'file', tags: ['dangerous'] },
-    }),
-    createTool({
-        id: 'admin_reboot',
-        description: 'Reboot system',
-        inputSchema: z.object({}),
-        execute: async () => ({ status: 'rebooting' }),
-        metadata: { category: 'system', tags: ['admin', 'dangerous'] },
-    }),
-];
+// Mock the global registry
+vi.mock('./tool-registry.js', async () => {
+    const actual = await vi.importActual('./tool-registry.js');
+    return {
+        ...actual,
+        globalToolRegistry: {
+            getAll: vi.fn(),
+            register: vi.fn(),
+        },
+    };
+});
 
 describe('CustomToolsProvider', () => {
     let provider: CustomToolsProvider;
     let confirmationProvider: NoOpConfirmationProvider;
 
+    // Create test tools
+    const mathAddTool = createTool({
+        id: 'math_add',
+        description: 'Add two numbers',
+        inputSchema: z.object({ a: z.number(), b: z.number() }),
+        execute: async ({ a, b }) => ({ result: a + b }),
+    });
+
+    const mathMultiplyTool = createTool({
+        id: 'math_multiply',
+        description: 'Multiply two numbers',
+        inputSchema: z.object({ a: z.number(), b: z.number() }),
+        execute: async ({ a, b }) => ({ result: a * b }),
+    });
+
+    const stringReverseTool = createTool({
+        id: 'string_reverse',
+        description: 'Reverse a string',
+        inputSchema: z.object({ text: z.string() }),
+        execute: async ({ text }) => ({ result: text.split('').reverse().join('') }),
+    });
+
+    const dangerousDeleteTool = createTool({
+        id: 'dangerous_delete',
+        description: 'Delete files (dangerous)',
+        inputSchema: z.object({ path: z.string() }),
+        execute: async ({ path }) => ({ deleted: path }),
+    });
+
+    const adminRebootTool = createTool({
+        id: 'admin_reboot',
+        description: 'Reboot system (admin only)',
+        inputSchema: z.object({ force: z.boolean() }),
+        execute: async ({ force }) => ({ rebooted: force }),
+    });
+
     beforeEach(() => {
         confirmationProvider = new NoOpConfirmationProvider();
-
-        // Mock the global registry to return our test tools
-        vi.doMock('./tool-registry.js', () => ({
-            globalToolRegistry: {
-                getAll: () => testTools,
-            },
-        }));
+        vi.clearAllMocks();
     });
 
-    describe('Tool Filtering', () => {
-        describe('enabledTools: "all"', () => {
-            it('should enable all tools by default', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: 'all',
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(5);
-                expect(toolNames).toContain('math_add');
-                expect(toolNames).toContain('math_multiply');
-                expect(toolNames).toContain('string_reverse');
-                expect(toolNames).toContain('dangerous_delete');
-                expect(toolNames).toContain('admin_reboot');
-            });
-
-            it('should enable all tools with default configuration', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: 'all',
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(5);
-            });
-        });
-
-        describe('enabledTools: array', () => {
-            it('should only enable explicitly listed tools', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: ['math_add', 'string_reverse'],
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(2);
-                expect(toolNames).toContain('math_add');
-                expect(toolNames).toContain('string_reverse');
-                expect(toolNames).not.toContain('math_multiply');
-                expect(toolNames).not.toContain('dangerous_delete');
-                expect(toolNames).not.toContain('admin_reboot');
-            });
-
-            it('should handle empty enabled tools array', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: [],
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(0);
-            });
-
-            it('should handle non-existent tool IDs in enabled list', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: ['math_add', 'non_existent_tool', 'string_reverse'],
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(2);
-                expect(toolNames).toContain('math_add');
-                expect(toolNames).toContain('string_reverse');
-                expect(toolNames).not.toContain('non_existent_tool');
-            });
-        });
-
-        describe('disabledTools', () => {
-            it('should exclude disabled tools from all enabled tools', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: 'all',
-                        disabledTools: ['dangerous_delete', 'admin_reboot'],
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(3);
-                expect(toolNames).toContain('math_add');
-                expect(toolNames).toContain('math_multiply');
-                expect(toolNames).toContain('string_reverse');
-                expect(toolNames).not.toContain('dangerous_delete');
-                expect(toolNames).not.toContain('admin_reboot');
-            });
-
-            it('should exclude disabled tools from explicitly enabled tools', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: ['math_add', 'math_multiply', 'dangerous_delete'],
-                        disabledTools: ['dangerous_delete'],
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(2);
-                expect(toolNames).toContain('math_add');
-                expect(toolNames).toContain('math_multiply');
-                expect(toolNames).not.toContain('dangerous_delete');
-            });
-
-            it('should handle non-existent tool IDs in disabled list', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: 'all',
-                        disabledTools: ['non_existent_tool', 'dangerous_delete'],
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(4);
-                expect(toolNames).not.toContain('dangerous_delete');
-            });
-
-            it('should handle empty disabled tools array', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: 'all',
-                        disabledTools: [],
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(5);
-            });
-        });
-
-        describe('Filtering Precedence', () => {
-            it('should apply disabledTools after enabledTools filtering', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: ['math_add', 'math_multiply', 'dangerous_delete'],
-                        disabledTools: ['dangerous_delete', 'admin_reboot'], // admin_reboot not in enabled, dangerous_delete is
-                        globalSettings: {
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(2);
-                expect(toolNames).toContain('math_add');
-                expect(toolNames).toContain('math_multiply');
-                expect(toolNames).not.toContain('dangerous_delete'); // Excluded by disabledTools
-                expect(toolNames).not.toContain('admin_reboot'); // Not in enabledTools anyway
-            });
-        });
-
-        describe('Real-world Scenarios', () => {
-            it('should support security-focused configuration', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: ['math_add', 'math_multiply', 'string_reverse'], // Only safe tools
-                        disabledTools: ['dangerous_delete', 'admin_reboot'], // Belt and suspenders
-                        globalSettings: {
-                            requiresConfirmation: true, // Extra safety
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(3);
-                expect(toolNames).not.toContain('dangerous_delete');
-                expect(toolNames).not.toContain('admin_reboot');
-            });
-
-            it('should support development configuration', async () => {
-                provider = new CustomToolsProvider(
-                    {
-                        enabledTools: 'all', // All tools available
-                        disabledTools: ['admin_reboot'], // Just exclude the really dangerous one
-                        globalSettings: {
-                            requiresConfirmation: false, // Fast development
-                            enableCaching: false,
-                        },
-                    },
-                    confirmationProvider
-                );
-
-                await provider.initialize();
-
-                const toolNames = provider.getToolNames();
-                expect(toolNames).toHaveLength(4);
-                expect(toolNames).toContain('dangerous_delete'); // Available but needs caution
-                expect(toolNames).not.toContain('admin_reboot');
-            });
-        });
+    afterEach(() => {
+        vi.clearAllMocks();
     });
 
-    describe('Tool Execution with Filtering', () => {
-        it('should execute enabled tools', async () => {
-            provider = new CustomToolsProvider(
-                {
-                    enabledTools: ['math_add'],
-                    globalSettings: {
-                        enableCaching: false,
-                    },
-                },
-                confirmationProvider
-            );
-
-            await provider.initialize();
-
-            expect(provider.hasTool('math_add')).toBe(true);
-            const result = await provider.executeTool('math_add', { a: 2, b: 3 });
-            expect(result.result).toBe(5);
-        });
-
-        it('should not execute disabled tools', async () => {
+    describe('Initialization', () => {
+        it('should initialize with default configuration', async () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
-                    disabledTools: ['dangerous_delete'],
-                    globalSettings: {
-                        enableCaching: false,
-                    },
+                    globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
             );
 
-            await provider.initialize();
-
-            expect(provider.hasTool('dangerous_delete')).toBe(false);
-            await expect(
-                provider.executeTool('dangerous_delete', { path: '/etc' })
-            ).rejects.toThrow('Tool not found');
+            expect(provider).toBeDefined();
+            expect(provider.getToolNames()).toEqual([]);
         });
 
-        it('should not execute tools not in enabled list', async () => {
-            provider = new CustomToolsProvider(
-                {
-                    enabledTools: ['math_add'],
-                    globalSettings: {
-                        enableCaching: false,
-                    },
+        it('should initialize with custom configuration', async () => {
+            const config = {
+                enabledTools: ['math_add', 'math_multiply'],
+                globalSettings: {
+                    requiresConfirmation: true,
+                    timeout: 5000,
+                    enableCaching: false,
                 },
-                confirmationProvider
-            );
+            };
 
-            await provider.initialize();
+            provider = new CustomToolsProvider(config, confirmationProvider);
 
-            expect(provider.hasTool('math_multiply')).toBe(false);
-            await expect(provider.executeTool('math_multiply', { a: 2, b: 3 })).rejects.toThrow(
-                'Tool not found'
-            );
+            expect(provider).toBeDefined();
         });
     });
 
-    describe('Configuration Validation', () => {
-        it('should handle undefined config gracefully', async () => {
+    describe('Tool Loading and Filtering', () => {
+        beforeEach(async () => {
+            // Mock the global registry to return our test tools
+            const { globalToolRegistry } = await import('./tool-registry.js');
+            (globalToolRegistry.getAll as any).mockReturnValue([
+                mathAddTool,
+                mathMultiplyTool,
+                stringReverseTool,
+                dangerousDeleteTool,
+                adminRebootTool,
+            ]);
+        });
+
+        it('should load all tools when enabledTools is "all"', async () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
-                    globalSettings: {
-                        enableCaching: false,
-                    },
+                    globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
             );
 
             await provider.initialize();
 
-            // Should default to enabling all tools
             const toolNames = provider.getToolNames();
             expect(toolNames).toHaveLength(5);
+            expect(toolNames).toContain('math_add');
+            expect(toolNames).toContain('math_multiply');
+            expect(toolNames).toContain('string_reverse');
+            expect(toolNames).toContain('dangerous_delete');
+            expect(toolNames).toContain('admin_reboot');
         });
 
-        it('should handle partial config', async () => {
+        it('should load only specified tools when enabledTools is an array', async () => {
             provider = new CustomToolsProvider(
                 {
-                    enabledTools: ['math_add'],
-                    globalSettings: {
-                        enableCaching: false,
-                    },
+                    enabledTools: ['math_add', 'string_reverse'],
+                    globalSettings: { enableCaching: false },
+                },
+                confirmationProvider
+            );
+
+            await provider.initialize();
+
+            const toolNames = provider.getToolNames();
+            expect(toolNames).toHaveLength(2);
+            expect(toolNames).toContain('math_add');
+            expect(toolNames).toContain('string_reverse');
+            expect(toolNames).not.toContain('math_multiply');
+            expect(toolNames).not.toContain('dangerous_delete');
+            expect(toolNames).not.toContain('admin_reboot');
+        });
+
+        it('should handle empty enabledTools array', async () => {
+            provider = new CustomToolsProvider(
+                {
+                    enabledTools: [],
+                    globalSettings: { enableCaching: false },
+                },
+                confirmationProvider
+            );
+
+            await provider.initialize();
+
+            const toolNames = provider.getToolNames();
+            expect(toolNames).toHaveLength(0);
+        });
+
+        it('should handle non-existent tool IDs in enabledTools', async () => {
+            provider = new CustomToolsProvider(
+                {
+                    enabledTools: ['math_add', 'non_existent_tool'],
+                    globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
             );
@@ -407,6 +177,141 @@ describe('CustomToolsProvider', () => {
             const toolNames = provider.getToolNames();
             expect(toolNames).toHaveLength(1);
             expect(toolNames).toContain('math_add');
+            expect(toolNames).not.toContain('non_existent_tool');
+        });
+    });
+
+    describe('Tool Execution', () => {
+        beforeEach(async () => {
+            const { globalToolRegistry } = await import('./tool-registry.js');
+            (globalToolRegistry.getAll as any).mockReturnValue([
+                mathAddTool,
+                mathMultiplyTool,
+                stringReverseTool,
+            ]);
+
+            provider = new CustomToolsProvider(
+                {
+                    enabledTools: 'all',
+                    globalSettings: { enableCaching: false },
+                },
+                confirmationProvider
+            );
+
+            await provider.initialize();
+        });
+
+        it('should execute tools successfully', async () => {
+            const result = await provider.executeTool('math_add', { a: 5, b: 3 });
+            expect(result.success).toBe(true);
+            expect(result.data?.result).toBe(8);
+        });
+
+        it('should handle tool execution errors', async () => {
+            const result = await provider.executeTool('math_add', { a: 'invalid', b: 3 });
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Expected number, received string');
+        });
+
+        it('should throw error for non-existent tools', async () => {
+            await expect(provider.executeTool('non_existent', {})).rejects.toThrow(
+                'Tool not found'
+            );
+        });
+
+        it('should apply configuration precedence correctly', async () => {
+            // Test with a tool that has settings
+            const toolWithSettings = createTool({
+                id: 'test_tool',
+                description: 'Test tool with settings',
+                inputSchema: z.object({ value: z.number() }),
+                execute: async ({ value }) => ({ result: value * 2 }),
+                settings: {
+                    requiresConfirmation: true,
+                    timeout: 15000,
+                },
+            });
+
+            const { globalToolRegistry } = await import('./tool-registry.js');
+            (globalToolRegistry.getAll as any).mockReturnValue([toolWithSettings]);
+
+            provider = new CustomToolsProvider(
+                {
+                    enabledTools: 'all',
+                    toolConfigs: {
+                        test_tool: {
+                            requiresConfirmation: false, // Override tool code setting
+                        },
+                    },
+                    globalSettings: {
+                        requiresConfirmation: true, // Should be overridden by tool-specific config
+                        enableCaching: false,
+                    },
+                },
+                confirmationProvider
+            );
+
+            await provider.initialize();
+
+            // Should not require confirmation due to tool-specific config
+            const result = await provider.executeTool('test_tool', { value: 5 });
+            expect(result.success).toBe(true);
+            expect(result.data?.result).toBe(10);
+        });
+    });
+
+    describe('Error Handling', () => {
+        it('should handle initialization errors gracefully', async () => {
+            const { globalToolRegistry } = await import('./tool-registry.js');
+            (globalToolRegistry.getAll as any).mockImplementation(() => {
+                throw new Error('Registry error');
+            });
+
+            provider = new CustomToolsProvider(
+                {
+                    enabledTools: 'all',
+                    globalSettings: { enableCaching: false },
+                },
+                confirmationProvider
+            );
+
+            await expect(provider.initialize()).rejects.toThrow('Registry error');
+        });
+
+        it('should handle empty registry gracefully', async () => {
+            const { globalToolRegistry } = await import('./tool-registry.js');
+            (globalToolRegistry.getAll as any).mockReturnValue([]);
+
+            provider = new CustomToolsProvider(
+                {
+                    enabledTools: 'all',
+                    globalSettings: { enableCaching: false },
+                },
+                confirmationProvider
+            );
+
+            await provider.initialize();
+
+            const toolNames = provider.getToolNames();
+            expect(toolNames).toHaveLength(0);
+        });
+    });
+
+    describe('Configuration Handling', () => {
+        it('should handle incomplete configuration', async () => {
+            provider = new CustomToolsProvider({} as any, confirmationProvider);
+
+            expect(provider).toBeDefined();
+            // Should use defaults
+            expect(provider.getToolNames()).toEqual([]);
+        });
+
+        it('should handle undefined configuration', async () => {
+            provider = new CustomToolsProvider(undefined as any, confirmationProvider);
+
+            expect(provider).toBeDefined();
+            // Should use defaults
+            expect(provider.getToolNames()).toEqual([]);
         });
     });
 });

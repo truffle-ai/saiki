@@ -72,7 +72,8 @@ describe('ToolExecutor', () => {
 
                 // Tool should execute without confirmation due to tool-specific config
                 const result = await executor.executeTool('confirmation_tool', { action: 'test' });
-                expect(result.performed).toBe('test');
+                expect(result.success).toBe(true);
+                expect(result.data?.performed).toBe('test');
             });
 
             it('should use tool code settings over global settings', async () => {
@@ -90,7 +91,8 @@ describe('ToolExecutor', () => {
 
                 // testTool has requiresConfirmation: false in code, should override global
                 const result = await executor.executeTool('test_tool', { value: 5 });
-                expect(result.result).toBe(10);
+                expect(result.success).toBe(true);
+                expect(result.data?.result).toBe(10);
             });
 
             it('should use global settings for tools without code settings', async () => {
@@ -112,9 +114,9 @@ describe('ToolExecutor', () => {
                 );
 
                 // defaultTool has no settings, should use global setting (true)
-                await expect(
-                    executor.executeTool('default_tool', { data: 'test' })
-                ).rejects.toThrow('Tool execution denied by user');
+                const result = await executor.executeTool('default_tool', { data: 'test' });
+                expect(result.success).toBe(false);
+                expect(result.error).toBe('Tool execution denied by user');
 
                 expect(mockConfirmationProvider.requestConfirmation).toHaveBeenCalledWith({
                     toolName: 'default_tool',
@@ -137,7 +139,8 @@ describe('ToolExecutor', () => {
 
                 // defaultTool should use system default (false)
                 const result = await executor.executeTool('default_tool', { data: 'test' });
-                expect(result.processed).toBe('test');
+                expect(result.success).toBe(true);
+                expect(result.data?.processed).toBe('test');
             });
         });
 
@@ -189,9 +192,10 @@ describe('ToolExecutor', () => {
                     confirmationProvider
                 );
 
-                await expect(executor.executeTool('slow_tool', {})).rejects.toThrow(
-                    'Tool execution timeout after 100ms'
-                );
+                const result = await executor.executeTool('slow_tool', {});
+                expect(result.success).toBe(false);
+                expect(result.error).toBe('Tool execution timeout after 100ms');
+                expect(result.metadata?.duration).toBeGreaterThan(0);
             });
 
             it('should use tool code settings over global settings', async () => {
@@ -211,7 +215,8 @@ describe('ToolExecutor', () => {
                 // testTool has timeout: 15000 in code, should work even if global is shorter
                 // (We can't easily test the actual timeout without making tests slow)
                 const result = await executor.executeTool('test_tool', { value: 3 });
-                expect(result.result).toBe(6);
+                expect(result.success).toBe(true);
+                expect(result.data?.result).toBe(6);
             });
 
             it('should use global settings for tools without code settings', async () => {
@@ -240,9 +245,10 @@ describe('ToolExecutor', () => {
                     confirmationProvider
                 );
 
-                await expect(executor.executeTool('slow_default_tool', {})).rejects.toThrow(
-                    'Tool execution timeout after 100ms'
-                );
+                const result = await executor.executeTool('slow_default_tool', {});
+                expect(result.success).toBe(false);
+                expect(result.error).toBe('Tool execution timeout after 100ms');
+                expect(result.metadata?.duration).toBeGreaterThan(0);
             });
 
             it('should fall back to system defaults when no settings provided', async () => {
@@ -260,7 +266,8 @@ describe('ToolExecutor', () => {
 
                 // Should use system default (30000ms) - tool should execute fine
                 const result = await executor.executeTool('default_tool', { data: 'test' });
-                expect(result.processed).toBe('test');
+                expect(result.success).toBe(true);
+                expect(result.data?.processed).toBe('test');
             });
         });
     });
@@ -270,14 +277,16 @@ describe('ToolExecutor', () => {
             executor = new ToolExecutor(registry, {} as any, confirmationProvider);
 
             const result = await executor.executeTool('test_tool', { value: 7 });
-            expect(result.result).toBe(14);
+            expect(result.success).toBe(true);
+            expect(result.data?.result).toBe(14);
         });
 
         it('should handle undefined configuration gracefully', async () => {
             executor = new ToolExecutor(registry, undefined as any, confirmationProvider);
 
             const result = await executor.executeTool('test_tool', { value: 8 });
-            expect(result.result).toBe(16);
+            expect(result.success).toBe(true);
+            expect(result.data?.result).toBe(16);
         });
 
         it('should handle partial configurations', async () => {
@@ -321,7 +330,8 @@ describe('ToolExecutor', () => {
             );
 
             const result = await executor.executeTool('test_tool', { value: 9 });
-            expect(result.result).toBe(18);
+            expect(result.success).toBe(true);
+            expect(result.data?.result).toBe(18);
             expect(mockConfirmationProvider.requestConfirmation).toHaveBeenCalled();
         });
     });
@@ -351,19 +361,30 @@ describe('ToolExecutor', () => {
         });
 
         it('should throw ToolExecutionError for input validation failures', async () => {
-            await expect(
-                executor.executeTool('test_tool', { wrongParam: 'invalid' })
-            ).rejects.toThrow(ToolExecutionError);
+            executor = new ToolExecutor(
+                registry,
+                {
+                    enabledTools: 'all',
+                    globalSettings: {
+                        enableCaching: false,
+                    },
+                },
+                confirmationProvider
+            );
 
-            await expect(
-                executor.executeTool('test_tool', { wrongParam: 'invalid' })
-            ).rejects.toThrow('Input validation failed');
+            const result = await executor.executeTool('test_tool', { wrongParam: 'invalid' });
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Required');
+
+            await expect(executor.executeTool('non_existent_tool', {})).rejects.toThrow(
+                ToolExecutionError
+            );
         });
 
         it('should throw ToolExecutionError when confirmation is denied', async () => {
-            const denyingProvider = {
+            const mockConfirmationProvider = {
                 allowedToolsProvider: null,
-                requestConfirmation: vi.fn().mockResolvedValue(false), // Deny
+                requestConfirmation: vi.fn().mockResolvedValue(false), // Deny confirmation
             };
 
             executor = new ToolExecutor(
@@ -375,16 +396,12 @@ describe('ToolExecutor', () => {
                         enableCaching: false,
                     },
                 },
-                denyingProvider as any
+                mockConfirmationProvider as any
             );
 
-            await expect(executor.executeTool('default_tool', { data: 'test' })).rejects.toThrow(
-                ToolExecutionError
-            );
-
-            await expect(executor.executeTool('default_tool', { data: 'test' })).rejects.toThrow(
-                'Tool execution denied by user'
-            );
+            const result = await executor.executeTool('default_tool', { data: 'test' });
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Tool execution denied by user');
         });
     });
 
