@@ -1,0 +1,33 @@
+# Organized File Storage Test Configuration
+# Use this for testing organized file storage with proper directory structure
+
+agentCard:
+  name: "Organized File Storage Test Agent"
+  description: "Test agent demonstrating organized file storage with specialized providers"
+  url: "http://localhost:3000"
+  version: "1.0.0"
+
+systemPrompt: "You are a helpful AI assistant for testing organized file storage."
+
+# LLM Configuration  
+llm:
+  provider: "anthropic"
+  model: "claude-3-haiku-20240307"
+  apiKey: "$ANTHROPIC_API_KEY"
+
+# Organized File Storage Configuration
+storage:
+  # Memory cache for fast access
+  cache:
+    type: "memory"
+  # SQLite database for organized persistent storage
+  database:
+    type: "sqlite"
+    path: "./test-storage-data/organized-storage.db"
+
+# No MCP servers for this test
+mcpServers: {}
+
+sessions:
+  maxSessions: 50
+  sessionTTL: 1800000  # 30 minutes 

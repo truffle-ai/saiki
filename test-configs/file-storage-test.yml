@@ -1,0 +1,46 @@
+# File Storage Test Configuration
+# Use this for testing persistent file-based storage
+
+name: "File Storage Test"
+
+# System prompt configuration - defines the agent's behavior and instructions
+systemPrompt: "You are a dummy agent. You are testing with file-based storage - data persists across restarts"
+
+# LLM Configuration
+llm:
+  provider: "openai"
+  model: "gpt-4o-mini"
+  apiKey: "${OPENAI_API_KEY}"
+  maxInputTokens: 4000
+  temperature: 0.7
+
+# File Storage Configuration
+storage:
+  # Use memory cache for fast access
+  cache:
+    type: "memory"
+  # Use SQLite database for persistent file-based storage
+  database:
+    type: "sqlite"
+    path: "./test-storage-data/saiki.db"
+
+# Session Configuration
+session:
+  maxSessions: 20
+  sessionTimeout: 7200000  # 2 hours in milliseconds
+  cleanupInterval: 600000  # 10 minutes in milliseconds
+
+# # Logging
+# logging:
+#   level: "debug"
+#   enableConsole: true
+#   enableFile: true
+#   logFile: "./test-storage-data/agent.log"
+
+# Test Instructions:
+# 1. Run: npm run start -- --config test-configs/file-storage-test.yml
+# 2. Create sessions and messages
+# 3. Check that files are created in ./test-storage-data/
+# 4. Restart the agent - data should persist
+# 5. Verify backup files are created periodically
+# 6. Test file corruption recovery 

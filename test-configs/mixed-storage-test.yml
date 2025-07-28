@@ -1,0 +1,51 @@
+# Mixed Storage Test Configuration
+# Demonstrates how ~/.saiki automatic path resolution works with different storage types
+
+name: "Mixed Storage Test"
+description: "Testing mixed storage providers with automatic ~/.saiki path resolution"
+
+systemPrompt: "You are a test agent demonstrating mixed storage capabilities"
+
+# LLM Configuration
+llm:
+  provider: "openai"
+  model: "gpt-4o-mini"
+  apiKey: "${OPENAI_API_KEY}"
+  maxInputTokens: 4000
+  temperature: 0.7
+
+# Mixed Storage Configuration - demonstrates cache + database architecture
+storage:
+  # Memory cache for fast ephemeral access
+  cache:
+    type: "memory"
+  # SQLite database for persistent storage
+  database:
+    type: "sqlite"
+    path: "./test-storage-data/saiki.db"
+
+# Session Configuration
+session:
+  maxSessions: 25
+  sessionTimeout: 5400000  # 1.5 hours in milliseconds
+  cleanupInterval: 600000  # 10 minutes in milliseconds
+
+# Logging
+logging:
+  level: "info"
+  enableConsole: true
+  enableFile: false
+
+# Test Instructions:
+# 1. Run: saiki --agent test-configs/mixed-storage-test.yml
+# 2. Check where files are created:
+#    - Development mode: Look in ./project/.saiki/
+#    - Production mode: Look in ~/.saiki/
+# 3. Create sessions, send messages, use tools
+# 4. Restart agent and verify:
+#    - Sessions persist (SQLite)
+#    - History persists (File)
+#    - User info persists (File)
+#    - Tool cache is empty (Memory)
+#    - Tool permissions persist (SQLite)
+# 5. This demonstrates the power of mixed storage strategies 
