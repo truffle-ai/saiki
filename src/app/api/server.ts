@@ -339,8 +339,8 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     .json({ success: false, error: `Server '${serverId}' not found` });
             }
             try {
-                // Execute tool through the agent's wrapper method
-                const rawResult = await agent.executeMcpTool(toolName, req.body);
+                // Execute tool through the agent's unified wrapper method
+                const rawResult = await agent.executeTool(toolName, req.body);
                 // Return standardized result shape
                 return res.json({ success: true, data: rawResult });
             } catch (error) {

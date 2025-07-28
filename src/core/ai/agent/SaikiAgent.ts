@@ -914,8 +914,8 @@ export class SaikiAgent {
                 success: true,
             });
             this.agentEventBus.emit('saiki:availableToolsUpdated', {
-                tools: Object.keys(await this.mcpManager.getAllTools()),
-                source: 'mcp',
+                tools: Object.keys(await this.services.toolManager.getAllTools()),
+                source: 'unified',
             });
             logger.info(`SaikiAgent: Successfully added and connected to MCP server '${name}'.`);
         } catch (error) {
@@ -957,6 +957,18 @@ export class SaikiAgent {
     public async executeMcpTool(toolName: string, args: any): Promise<any> {
         this.ensureStarted();
         return await this.mcpManager.executeTool(toolName, args);
+    }
+
+    /**
+     * Executes a tool from any source (MCP servers or custom tools).
+     * This is the unified interface for tool execution that can handle both MCP and custom tools.
+     * @param toolName The name of the tool to execute
+     * @param args The arguments to pass to the tool
+     * @returns The result of the tool execution
+     */
+    public async executeTool(toolName: string, args: any): Promise<any> {
+        this.ensureStarted();
+        return await this.services.toolManager.executeTool(toolName, args);
     }
 
     /**

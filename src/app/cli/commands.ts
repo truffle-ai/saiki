@@ -835,11 +835,22 @@ export const CLI_COMMANDS: CommandDefinition[] = [
 
                 // Tools
                 try {
-                    const tools = await agent.mcpManager.getAllTools();
+                    const allTools = await agent.getAllTools();
+                    const mcpTools = await agent.getAllMcpTools();
+                    const customTools = Object.keys(allTools).filter(
+                        (name) => !Object.keys(mcpTools).includes(name)
+                    );
+
+                    console.log(chalk.bold('\n🔧 Tools:'));
                     console.log(
-                        `  Available Tools: ${chalk.cyan(Object.keys(tools).length.toString())}`
+                        `  MCP Tools: ${chalk.cyan(Object.keys(mcpTools).length.toString())}`
+                    );
+                    console.log(`  Custom Tools: ${chalk.cyan(customTools.length.toString())}`);
+                    console.log(
+                        `  Total Tools: ${chalk.cyan(Object.keys(allTools).length.toString())}`
                     );
                 } catch {
+                    console.log(chalk.bold('\n🔧 Tools:'));
                     console.log(`  Available Tools: ${chalk.dim('Unable to count')}`);
                 }
 
@@ -859,8 +870,9 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         category: 'Tool Management',
         handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
             try {
-                const tools = await agent.getAllTools();
-                const toolEntries = Object.entries(tools);
+                const allTools = await agent.getAllTools();
+                const mcpTools = await agent.getAllMcpTools();
+                const toolEntries = Object.entries(allTools);
 
                 if (toolEntries.length === 0) {
                     console.log(chalk.yellow('📋 No tools available'));
@@ -869,14 +881,18 @@ export const CLI_COMMANDS: CommandDefinition[] = [
 
                 console.log(chalk.bold.green(`\n🔧 Available Tools (${toolEntries.length}):\n`));
 
-                // Display tools with descriptions
+                // Display tools with descriptions and source
                 for (const [toolName, toolInfo] of toolEntries) {
                     const description = toolInfo.description || 'No description available';
-                    console.log(`  ${chalk.yellow(toolName)} - ${chalk.dim(description)}`);
+                    const isMcpTool = Object.keys(mcpTools).includes(toolName);
+                    const source = isMcpTool ? chalk.blue('[MCP]') : chalk.magenta('[Custom]');
+                    console.log(
+                        `  ${chalk.yellow(toolName)} ${source} - ${chalk.dim(description)}`
+                    );
                 }
 
                 console.log(
-                    chalk.dim('💡 Tools are provided by connected MCP servers and custom tools')
+                    chalk.dim('\n💡 Tools are provided by connected MCP servers and custom tools')
                 );
             } catch (error) {
                 logger.error(
