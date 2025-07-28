@@ -26,6 +26,7 @@ export class CustomToolsProvider {
         // Use defaults if config is incomplete
         this.config = {
             enabledTools: config.enabledTools ?? 'all',
+            enableToolDiscovery: config.enableToolDiscovery ?? true,
             toolConfigs: config.toolConfigs || {},
             globalSettings: config.globalSettings || {
                 requiresConfirmation: false,
@@ -53,8 +54,10 @@ export class CustomToolsProvider {
             // Load tools from the global registry (tools register themselves via createTool)
             await this.loadRegisteredTools();
 
-            // Discover tools from the tools/ directory
-            await this.discoverToolsFromDirectory();
+            // Discover tools from the tools/ directory (only if not disabled)
+            if (this.config.enableToolDiscovery !== false) {
+                await this.discoverToolsFromDirectory();
+            }
 
             const toolCount = this.registry.getToolIds().length;
             logger.info(`CustomToolsProvider initialized with ${toolCount} tools`);

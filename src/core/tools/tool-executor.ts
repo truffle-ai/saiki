@@ -10,17 +10,19 @@ import { logger } from '../logger/index.js';
 
 /**
  * Tool execution arguments interface
+ * Represents the input arguments passed to a tool, which will be validated against the tool's Zod schema
  */
 export interface ToolExecutionArgs {
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 /**
  * Tool execution result interface
+ * Represents the result returned by a tool execution
  */
 export interface ToolExecutionResult {
-    data?: any;
-    metadata?: Record<string, any>;
+    data?: unknown;
+    metadata?: Record<string, unknown>;
     error?: string;
 }
 
@@ -35,12 +37,13 @@ export interface ToolExecutionRequest {
 
 /**
  * Tool execution response interface
+ * Represents the standardized response format for tool execution
  */
 export interface ToolExecutionResponse {
     success: boolean;
-    data?: any;
+    data?: unknown;
     error?: string;
-    metadata?: Record<string, any> | undefined;
+    metadata?: Record<string, unknown> | undefined;
 }
 
 /**
@@ -74,6 +77,7 @@ export class ToolExecutor {
         // Use defaults if config is incomplete
         this.config = {
             enabledTools: config.enabledTools ?? 'all',
+            enableToolDiscovery: config.enableToolDiscovery ?? true,
             toolConfigs: config.toolConfigs || {},
             globalSettings: config.globalSettings || {
                 requiresConfirmation: false,

@@ -317,11 +317,12 @@ describe('ToolManager', () => {
         it('should initialize custom tools when configured', async () => {
             const mockConfig = {
                 enabledTools: 'all' as const,
+                enableToolDiscovery: false, // Disable tool discovery for testing
                 toolConfigs: {},
                 globalSettings: {
-                    requiresConfirmation: false,
-                    timeout: 30000,
-                    enableCaching: false,
+                    requiresConfirmation: true,
+                    timeout: 5000,
+                    enableCaching: true,
                 },
             };
 
@@ -347,6 +348,7 @@ describe('ToolManager', () => {
 
             const mockConfig = {
                 enabledTools: 'all' as const,
+                enableToolDiscovery: false, // Disable tool discovery for testing
                 toolConfigs: {},
                 globalSettings: {
                     requiresConfirmation: false,

@@ -70,6 +70,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
@@ -82,6 +83,7 @@ describe('CustomToolsProvider', () => {
         it('should initialize with custom configuration', async () => {
             const config = {
                 enabledTools: ['math_add', 'math_multiply'],
+                enableToolDiscovery: false, // Disable tool discovery for testing
                 globalSettings: {
                     requiresConfirmation: true,
                     timeout: 5000,
@@ -112,6 +114,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
@@ -132,6 +135,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: ['math_add', 'string_reverse'],
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
@@ -152,6 +156,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: [],
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
@@ -167,6 +172,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: ['math_add', 'non_existent_tool'],
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
@@ -193,6 +199,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
@@ -238,6 +245,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     toolConfigs: {
                         test_tool: {
                             requiresConfirmation: false, // Override tool code setting
@@ -270,6 +278,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: { enableCaching: false },
                 },
                 confirmationProvider
@@ -285,6 +294,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: { enableCaching: false },
                 },
                 confirmationProvider

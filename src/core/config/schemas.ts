@@ -595,6 +595,12 @@ export const CustomToolsConfigSchema = z
             .default('all')
             .describe('Enable all tools with "all" or specify array of tool IDs to enable'),
 
+        // Tool discovery options
+        enableToolDiscovery: z
+            .boolean()
+            .default(true)
+            .describe('Whether to automatically discover tools from the tools/ directory'),
+
         // Tool-specific configurations
         toolConfigs: z
             .record(z.record(z.any()))
@@ -630,6 +636,7 @@ export const CustomToolsConfigSchema = z
     .strict()
     .default({
         enabledTools: 'all',
+        enableToolDiscovery: true,
         globalSettings: {
             enableCaching: false,
         },

@@ -57,6 +57,7 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        enableToolDiscovery: false, // Disable tool discovery for testing
                         toolConfigs: {
                             confirmation_tool: {
                                 requiresConfirmation: false, // Override tool code setting (true)
@@ -73,7 +74,7 @@ describe('ToolExecutor', () => {
                 // Tool should execute without confirmation due to tool-specific config
                 const result = await executor.executeTool('confirmation_tool', { action: 'test' });
                 expect(result.success).toBe(true);
-                expect(result.data?.performed).toBe('test');
+                expect((result.data as { performed: string })?.performed).toBe('test');
             });
 
             it('should use tool code settings over global settings', async () => {
@@ -81,6 +82,7 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        enableToolDiscovery: false, // Disable tool discovery for testing
                         globalSettings: {
                             requiresConfirmation: true, // Global setting
                             enableCaching: false,
@@ -92,7 +94,7 @@ describe('ToolExecutor', () => {
                 // testTool has requiresConfirmation: false in code, should override global
                 const result = await executor.executeTool('test_tool', { value: 5 });
                 expect(result.success).toBe(true);
-                expect(result.data?.result).toBe(10);
+                expect((result.data as { result: number })?.result).toBe(10);
             });
 
             it('should use global settings for tools without code settings', async () => {
@@ -105,6 +107,7 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        enableToolDiscovery: false, // Disable tool discovery for testing
                         globalSettings: {
                             requiresConfirmation: true, // Should apply to defaultTool
                             enableCaching: false,
@@ -129,6 +132,7 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        enableToolDiscovery: false, // Disable tool discovery for testing
                         globalSettings: {
                             enableCaching: false,
                         },
@@ -140,7 +144,7 @@ describe('ToolExecutor', () => {
                 // defaultTool should use system default (false)
                 const result = await executor.executeTool('default_tool', { data: 'test' });
                 expect(result.success).toBe(true);
-                expect(result.data?.processed).toBe('test');
+                expect((result.data as { processed: string })?.processed).toBe('test');
             });
         });
 
@@ -150,6 +154,7 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        enableToolDiscovery: false, // Disable tool discovery for testing
                         toolConfigs: {
                             test_tool: {
                                 timeout: 5000, // Override tool code setting (15000)
@@ -180,6 +185,7 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        enableToolDiscovery: false, // Disable tool discovery for testing
                         toolConfigs: {
                             slow_tool: {
                                 timeout: 100, // Very short timeout
@@ -204,6 +210,7 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        enableToolDiscovery: false, // Disable tool discovery for testing
                         globalSettings: {
                             timeout: 5000, // Global setting
                             enableCaching: false,
@@ -216,7 +223,7 @@ describe('ToolExecutor', () => {
                 // (We can't easily test the actual timeout without making tests slow)
                 const result = await executor.executeTool('test_tool', { value: 3 });
                 expect(result.success).toBe(true);
-                expect(result.data?.result).toBe(6);
+                expect((result.data as { result: number })?.result).toBe(6);
             });
 
             it('should use global settings for tools without code settings', async () => {
@@ -237,6 +244,7 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        enableToolDiscovery: false, // Disable tool discovery for testing
                         globalSettings: {
                             timeout: 100, // Should apply to slowDefaultTool
                             enableCaching: false,
@@ -256,6 +264,7 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        enableToolDiscovery: false, // Disable tool discovery for testing
                         globalSettings: {
                             enableCaching: false,
                         },
@@ -267,7 +276,7 @@ describe('ToolExecutor', () => {
                 // Should use system default (30000ms) - tool should execute fine
                 const result = await executor.executeTool('default_tool', { data: 'test' });
                 expect(result.success).toBe(true);
-                expect(result.data?.processed).toBe('test');
+                expect((result.data as { processed: string })?.processed).toBe('test');
             });
         });
     });
@@ -278,7 +287,7 @@ describe('ToolExecutor', () => {
 
             const result = await executor.executeTool('test_tool', { value: 7 });
             expect(result.success).toBe(true);
-            expect(result.data?.result).toBe(14);
+            expect((result.data as { result: number })?.result).toBe(14);
         });
 
         it('should handle undefined configuration gracefully', async () => {
@@ -286,7 +295,7 @@ describe('ToolExecutor', () => {
 
             const result = await executor.executeTool('test_tool', { value: 8 });
             expect(result.success).toBe(true);
-            expect(result.data?.result).toBe(16);
+            expect((result.data as { result: number })?.result).toBe(16);
         });
 
         it('should handle partial configurations', async () => {
@@ -294,6 +303,7 @@ describe('ToolExecutor', () => {
                 registry,
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     toolConfigs: {
                         test_tool: {
                             requiresConfirmation: true,
@@ -317,6 +327,7 @@ describe('ToolExecutor', () => {
                 registry,
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     toolConfigs: {
                         test_tool: {
                             requiresConfirmation: true,
@@ -331,7 +342,7 @@ describe('ToolExecutor', () => {
 
             const result = await executor.executeTool('test_tool', { value: 9 });
             expect(result.success).toBe(true);
-            expect(result.data?.result).toBe(18);
+            expect((result.data as { result: number })?.result).toBe(18);
             expect(mockConfirmationProvider.requestConfirmation).toHaveBeenCalled();
         });
     });
@@ -342,6 +353,7 @@ describe('ToolExecutor', () => {
                 registry,
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: {
                         enableCaching: false,
                     },
@@ -365,6 +377,7 @@ describe('ToolExecutor', () => {
                 registry,
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: {
                         enableCaching: false,
                     },
@@ -391,6 +404,7 @@ describe('ToolExecutor', () => {
                 registry,
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: {
                         requiresConfirmation: true,
                         enableCaching: false,
@@ -411,6 +425,7 @@ describe('ToolExecutor', () => {
                 registry,
                 {
                     enabledTools: 'all',
+                    enableToolDiscovery: false, // Disable tool discovery for testing
                     globalSettings: {
                         enableCaching: false,
                     },

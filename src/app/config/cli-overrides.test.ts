@@ -38,6 +38,7 @@ describe('CLI Overrides', () => {
         },
         customTools: {
             enabledTools: 'all',
+            enableToolDiscovery: true,
             globalSettings: {
                 enableCaching: false,
             },

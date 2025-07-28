@@ -25,6 +25,7 @@ describe('AgentStateManager Events', () => {
             },
             customTools: {
                 enabledTools: 'all',
+                enableToolDiscovery: true,
                 globalSettings: {
                     enableCaching: false,
                 },
