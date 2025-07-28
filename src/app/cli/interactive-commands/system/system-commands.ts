@@ -31,6 +31,10 @@ export const systemCommands: CommandDefinition[] = [
 
             if (!level) {
                 console.log(chalk.blue(`\nCurrent log level: ${chalk.cyan(logger.getLevel())}`));
+                const logFilePath = logger.getLogFilePath();
+                if (logFilePath) {
+                    console.log(chalk.blue(`Log file location: ${chalk.cyan(logFilePath)}`));
+                }
                 console.log(
                     chalk.dim('Available levels: error, warn, info, http, verbose, debug, silly')
                 );
