@@ -1,18 +1,21 @@
 /**
  * Session Management Commands
  *
- * This module contains all session-related CLI commands extracted from the monolithic commands.ts.
- * These commands provide functionality for managing chat sessions including creation, switching,
- * deletion, and history management.
+ * This module contains all session-related CLI commands.
+ * These commands provide functionality for managing chat sessions, viewing history,
+ * and searching sessions.
  *
- * Commands:
+ * Session Commands:
  * - list: List all available sessions with metadata
  * - new: Create a new session with optional custom ID
  * - switch: Switch to a different session
  * - current: Show current active session info
- * - history: Show conversation history for current/specified session
  * - delete: Delete a session (cannot delete active session)
  * - help: Show detailed help for session commands
+ *
+ * History Commands:
+ * - history: Show session history for current/specified session
+ * - search: Search session history across sessions
  */
 
 import chalk from 'chalk';
@@ -37,12 +40,12 @@ async function getCurrentSessionInfo(
  * Helper to display session history with consistent formatting
  */
 async function displaySessionHistory(sessionId: string, agent: SaikiAgent): Promise<void> {
-    console.log(chalk.blue(`\n💬 Conversation History for: ${chalk.bold(sessionId)}\n`));
+    console.log(chalk.blue(`\n💬 Session History for: ${chalk.bold(sessionId)}\n`));
 
     const history = await agent.getSessionHistory(sessionId);
 
     if (history.length === 0) {
-        console.log(chalk.dim('  No messages in this conversation yet.\n'));
+        console.log(chalk.dim('  No messages in this session yet.\n'));
         return;
     }
 
@@ -53,14 +56,14 @@ async function displaySessionHistory(sessionId: string, agent: SaikiAgent): Prom
 
     console.log(chalk.dim(`\n  Total: ${history.length} messages`));
     console.log(
-        chalk.dim('  💡 Use /clear to reset conversation or /session switch to change sessions\n')
+        chalk.dim('  💡 Use /clear to reset session or /session switch to change sessions\n')
     );
 }
 
 /**
  * Session management commands
  */
-export const sessionCommands: CommandDefinition = {
+export const sessionCommand: CommandDefinition = {
     name: 'session',
     description: 'Manage chat sessions',
     usage: '/session <subcommand> [args]',
@@ -144,7 +147,7 @@ export const sessionCommands: CommandDefinition = {
                     if (metadata && metadata.messageCount > 0) {
                         console.log(chalk.dim(`   ${metadata.messageCount} messages in history`));
                     } else {
-                        console.log(chalk.dim('   New conversation - no previous messages'));
+                        console.log(chalk.dim('   New session - no previous messages'));
                     }
                 } catch (error) {
                     logger.error(
@@ -174,7 +177,7 @@ export const sessionCommands: CommandDefinition = {
         },
         {
             name: 'history',
-            description: 'Show conversation history for current session',
+            description: 'Show session history for current session',
             usage: '/session history [sessionId]',
             aliases: ['h'],
             handler: async (args: string[], agent: SaikiAgent) => {
@@ -254,7 +257,7 @@ export const sessionCommands: CommandDefinition = {
                     `  ${chalk.yellow('/session current')} - Show current session info and message count`
                 );
                 console.log(
-                    `  ${chalk.yellow('/session history')} - Display conversation history for current session`
+                    `  ${chalk.yellow('/session history')} - Display session history for current session`
                 );
                 console.log(
                     `  ${chalk.yellow('/session delete')} ${chalk.blue('<id>')} - Delete a session (cannot delete active session)`
@@ -262,7 +265,7 @@ export const sessionCommands: CommandDefinition = {
                 console.log(`  ${chalk.yellow('/session help')} - Show this help message`);
 
                 console.log(
-                    chalk.dim('\n💡 Sessions allow you to maintain separate conversations')
+                    chalk.dim('\n💡 Sessions allow you to maintain separate chat sessions')
                 );
                 console.log(chalk.dim('💡 Use /session switch <id> to change sessions'));
                 console.log(chalk.dim('💡 Session names can be custom or auto-generated UUIDs\n'));
@@ -274,7 +277,7 @@ export const sessionCommands: CommandDefinition = {
     handler: async (args: string[], agent: SaikiAgent) => {
         // Default to help if no subcommand
         if (args.length === 0) {
-            const helpSubcommand = sessionCommands.subcommands?.find((s) => s.name === 'help');
+            const helpSubcommand = sessionCommand.subcommands?.find((s) => s.name === 'help');
             if (helpSubcommand) {
                 return helpSubcommand.handler([], agent);
             }
@@ -285,7 +288,7 @@ export const sessionCommands: CommandDefinition = {
         const subArgs = args.slice(1);
 
         // Find matching subcommand
-        const subcmd = sessionCommands.subcommands?.find((s) => s.name === subcommand);
+        const subcmd = sessionCommand.subcommands?.find((s) => s.name === subcommand);
         if (subcmd) {
             return subcmd.handler(subArgs, agent);
         }
@@ -295,6 +298,167 @@ export const sessionCommands: CommandDefinition = {
             chalk.dim('Available subcommands: list, new, switch, current, history, delete, help')
         );
         console.log(chalk.dim('💡 Use /session help for detailed command descriptions'));
+        return true;
+    },
+};
+
+/**
+ * Standalone history command for quick access
+ */
+export const historyCommand: CommandDefinition = {
+    name: 'history',
+    description: 'Show session history',
+    usage: '/history [sessionId]',
+    category: 'Session Management',
+    aliases: ['hist'],
+    handler: async (args: string[], agent: SaikiAgent) => {
+        try {
+            // Use provided session ID or current session
+            const sessionId = args.length > 0 && args[0] ? args[0] : agent.getCurrentSessionId();
+
+            await displaySessionHistory(sessionId, agent);
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('not found')) {
+                console.log(chalk.red(`❌ Session not found: ${args[0] || 'current'}`));
+                console.log(chalk.dim('   Use /session list to see available sessions'));
+            } else {
+                logger.error(
+                    `Failed to get session history: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+        }
+        return true;
+    },
+};
+
+/**
+ * Standalone search command for quick access
+ */
+export const searchCommand: CommandDefinition = {
+    name: 'search',
+    description: 'Search session history',
+    usage: '/search <query> [options]',
+    category: 'Session Management',
+    aliases: ['find'],
+    handler: async (args: string[], agent: SaikiAgent) => {
+        if (args.length === 0) {
+            console.log(chalk.red('❌ Search query is required'));
+            console.log(
+                chalk.dim(
+                    'Usage: /search <query> [--session <sessionId>] [--role <role>] [--limit <number>]'
+                )
+            );
+            console.log(chalk.dim('Examples:'));
+            console.log(chalk.dim('  /search "hello world"'));
+            console.log(chalk.dim('  /search error --role assistant'));
+            console.log(chalk.dim('  /search deploy --session abc123'));
+            return true;
+        }
+
+        try {
+            // Parse arguments
+            const options: {
+                limit: number;
+                sessionId?: string;
+                role?: 'user' | 'assistant' | 'system' | 'tool';
+            } = { limit: 10 };
+            let query = '';
+            let i = 0;
+
+            while (i < args.length) {
+                const arg = args[i];
+                if (arg === '--session' && i + 1 < args.length) {
+                    const sessionValue = args[i + 1];
+                    if (sessionValue) {
+                        options.sessionId = sessionValue;
+                    }
+                    i += 2;
+                } else if (arg === '--role' && i + 1 < args.length) {
+                    const roleValue = args[i + 1] as 'user' | 'assistant' | 'system' | 'tool';
+                    if (roleValue && ['user', 'assistant', 'system', 'tool'].includes(roleValue)) {
+                        options.role = roleValue;
+                    }
+                    i += 2;
+                } else if (arg === '--limit' && i + 1 < args.length) {
+                    const limitValue = args[i + 1];
+                    options.limit = limitValue ? parseInt(limitValue) || 10 : 10;
+                    i += 2;
+                } else {
+                    if (!arg) {
+                        i++;
+                        continue;
+                    }
+                    // Remove surrounding quotes if present
+                    let cleanArg = arg;
+                    if (
+                        cleanArg &&
+                        ((cleanArg.startsWith('"') && cleanArg.endsWith('"')) ||
+                            (cleanArg.startsWith("'") && cleanArg.endsWith("'")))
+                    ) {
+                        cleanArg = cleanArg.slice(1, -1);
+                    }
+                    query += (query ? ' ' : '') + cleanArg;
+                    i++;
+                }
+            }
+
+            if (!query.trim()) {
+                console.log(chalk.red('❌ Search query is required'));
+                return true;
+            }
+
+            console.log(chalk.blue(`🔍 Searching for: "${query}"`));
+            if (options.sessionId) {
+                console.log(chalk.dim(`   Session: ${options.sessionId}`));
+            }
+            if (options.role) {
+                console.log(chalk.dim(`   Role: ${options.role}`));
+            }
+            console.log(chalk.dim(`   Limit: ${options.limit}`));
+            console.log();
+
+            const results = await agent.searchMessages(query, options);
+
+            if (results.results.length === 0) {
+                console.log(chalk.yellow('📭 No messages found matching your search'));
+                return true;
+            }
+
+            console.log(
+                chalk.green(`✅ Found ${results.total} result${results.total === 1 ? '' : 's'}`)
+            );
+            if (results.hasMore) {
+                console.log(chalk.dim(`   Showing first ${results.results.length} results`));
+            }
+            console.log();
+
+            // Display results
+            results.results.forEach((result, index) => {
+                const roleColor =
+                    result.message.role === 'user'
+                        ? chalk.blue
+                        : result.message.role === 'assistant'
+                          ? chalk.green
+                          : chalk.yellow;
+
+                console.log(
+                    `${chalk.dim(`${index + 1}.`)} ${chalk.cyan(result.sessionId)} ${roleColor(`[${result.message.role}]`)}`
+                );
+                console.log(
+                    `   ${result.context.replace(new RegExp(`(${query})`, 'gi'), chalk.inverse('$1'))}`
+                );
+                console.log();
+            });
+
+            if (results.hasMore) {
+                console.log(chalk.dim('💡 Use --limit to see more results'));
+            }
+        } catch (error) {
+            logger.error(
+                `Search failed: ${error instanceof Error ? error.message : String(error)}`
+            );
+            console.log(chalk.red('❌ Search failed. Please try again.'));
+        }
         return true;
     },
 };

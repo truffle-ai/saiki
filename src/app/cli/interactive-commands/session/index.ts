@@ -6,8 +6,15 @@
  *
  * Exports:
  * - sessionCommands: Complete session command definition with all subcommands
+ * - historyCommand: Standalone history command
+ * - searchCommand: Standalone search command
+ * - sessionCommands: Array of all session-related commands
  * - Formatter utilities from helpers (re-exported for convenience)
  */
 
-export { sessionCommands } from './session-commands.js';
+export { sessionCommand, historyCommand, searchCommand } from './session-commands.js';
 export { formatSessionInfo, formatHistoryMessage } from './helpers/formatters.js';
+
+// Export all session commands as a convenient array
+import { sessionCommand, historyCommand, searchCommand } from './session-commands.js';
+export const sessionCommands = [sessionCommand, historyCommand, searchCommand];

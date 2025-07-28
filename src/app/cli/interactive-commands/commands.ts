@@ -24,7 +24,7 @@ import type { CommandDefinition } from './command-parser.js';
 
 // Import modular command definitions
 import { generalCommands, createHelpCommand } from './general-commands.js';
-import { conversationCommands } from './conversation/index.js';
+import { sessionCommands } from './session/index.js';
 import { modelCommands } from './model/index.js';
 import { mcpCommands } from './mcp/index.js';
 import { systemCommands } from './system/index.js';
@@ -39,7 +39,7 @@ import { documentationCommands } from './documentation-commands.js';
  *
  * Commands are organized by category:
  * - General: help, exit, clear
- * - Conversation Management: session, history, search
+ * - Session Management: session, history, search
  * - Model Management: model
  * - MCP Management: mcp
  * - Tool Management: tools
@@ -54,8 +54,8 @@ const baseCommands: CommandDefinition[] = [
     // General commands (without help)
     ...generalCommands,
 
-    // Conversation management commands
-    ...conversationCommands,
+    // Session management commands
+    ...sessionCommands,
 
     // Model management commands
     modelCommands,

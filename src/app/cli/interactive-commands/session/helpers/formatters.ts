@@ -6,7 +6,7 @@
  */
 
 import chalk from 'chalk';
-import type { SessionMetadata } from '@core/index.js';
+import type { SessionMetadata, InternalMessage } from '@core/index.js';
 
 /**
  * Helper to format session information consistently
@@ -41,30 +41,30 @@ export function formatSessionInfo(
 /**
  * Helper to format conversation history
  */
-export function formatHistoryMessage(message: any, index: number): string {
+export function formatHistoryMessage(message: InternalMessage, index: number): string {
     const timestamp = message.timestamp
         ? new Date(message.timestamp).toLocaleTimeString()
         : `#${index + 1}`;
 
     let roleColor = chalk.dim;
-    let roleLabel = message.role;
+    let displayLabel: string = message.role;
 
     switch (message.role) {
         case 'user':
             roleColor = chalk.blue;
-            roleLabel = 'You';
+            displayLabel = 'You';
             break;
         case 'assistant':
             roleColor = chalk.green;
-            roleLabel = 'Assistant';
+            displayLabel = 'Assistant';
             break;
         case 'system':
             roleColor = chalk.yellow;
-            roleLabel = 'System';
+            displayLabel = 'System';
             break;
         case 'tool':
             roleColor = chalk.magenta;
-            roleLabel = 'Tool';
+            displayLabel = 'Tool';
             break;
     }
 
@@ -72,12 +72,15 @@ export function formatHistoryMessage(message: any, index: number): string {
     let content = '';
     if (typeof message.content === 'string') {
         content = message.content;
+    } else if (message.content === null) {
+        content = '[No content]';
     } else if (Array.isArray(message.content)) {
         // Handle multimodal content
         content = message.content
-            .map((part: any) => {
+            .map((part) => {
                 if (part.type === 'text') return part.text;
                 if (part.type === 'image') return '[Image]';
+                if (part.type === 'file') return `[File: ${part.filename || 'unknown'}]`;
                 return '[Unknown content]';
             })
             .join(' ');
@@ -99,5 +102,5 @@ export function formatHistoryMessage(message: any, index: number): string {
         toolInfo = chalk.dim(` [Tools: ${toolNames}]`);
     }
 
-    return `  ${chalk.dim(timestamp)} ${roleColor.bold(roleLabel)}: ${content}${toolInfo}`;
+    return `  ${chalk.dim(timestamp)} ${roleColor.bold(displayLabel)}: ${content}${toolInfo}`;
 }

@@ -52,13 +52,11 @@ export function createHelpCommand(getAllCommands: () => CommandDefinition[]): Co
             }
 
             // Redirect to contextual help for commands that have their own help subcommands
-            if (commandName === 'conversation' || commandName === 'session') {
-                console.log(chalk.blue('💡 For detailed conversation help, use:'));
-                console.log(`   ${chalk.cyan('/conversation help')}`);
+            if (commandName === 'session') {
+                console.log(chalk.blue('💡 For detailed session help, use:'));
+                console.log(`   ${chalk.cyan('/session help')}`);
                 console.log(
-                    chalk.dim(
-                        '\n   This shows all conversation subcommands with examples and tips.'
-                    )
+                    chalk.dim('\n   This shows all session subcommands with examples and tips.')
                 );
                 return true;
             }
