@@ -32,14 +32,14 @@ async function handleMcpAddStdio(args: string[], agent: SaikiAgent): Promise<boo
     }
 
     // Get existing server names for validation
-    const existingServers = Array.from(agent.mcpManager.getClients().keys());
+    const existingServers = Array.from(agent.getMcpClients().keys());
 
     if (!validateAndShowErrors(serverName, config, existingServers)) {
         return true;
     }
 
     try {
-        await agent.mcpManager.connectServer(serverName, config);
+        await agent.connectMcpServer(serverName, config);
         console.log(chalk.green(`✅ STDIO MCP server '${serverName}' added successfully`));
         console.log(chalk.dim(`   Command: ${config.command} ${config.args.join(' ')}`));
         console.log(chalk.dim(`   Connection mode: ${config.connectionMode}`));
@@ -66,14 +66,14 @@ async function handleMcpAddHttp(args: string[], agent: SaikiAgent): Promise<bool
     }
 
     // Get existing server names for validation
-    const existingServers = Array.from(agent.mcpManager.getClients().keys());
+    const existingServers = Array.from(agent.getMcpClients().keys());
 
     if (!validateAndShowErrors(serverName, config, existingServers)) {
         return true;
     }
 
     try {
-        await agent.mcpManager.connectServer(serverName, config);
+        await agent.connectMcpServer(serverName, config);
         console.log(chalk.green(`✅ HTTP MCP server '${serverName}' added successfully`));
         console.log(chalk.dim(`   URL: ${config.url}`));
         if (config.headers && Object.keys(config.headers).length > 0) {
@@ -103,14 +103,14 @@ async function handleMcpAddSse(args: string[], agent: SaikiAgent): Promise<boole
     }
 
     // Get existing server names for validation
-    const existingServers = Array.from(agent.mcpManager.getClients().keys());
+    const existingServers = Array.from(agent.getMcpClients().keys());
 
     if (!validateAndShowErrors(serverName, config, existingServers)) {
         return true;
     }
 
     try {
-        await agent.mcpManager.connectServer(serverName, config);
+        await agent.connectMcpServer(serverName, config);
         console.log(chalk.green(`✅ SSE MCP server '${serverName}' added successfully`));
         console.log(chalk.dim(`   URL: ${config.url}`));
         if (config.headers && Object.keys(config.headers).length > 0) {
@@ -139,8 +139,8 @@ export const mcpCommands: CommandDefinition = {
             usage: '/mcp list',
             handler: async (_args: string[], agent: SaikiAgent) => {
                 try {
-                    const clients = agent.mcpManager.getClients();
-                    const failedConnections = agent.mcpManager.getFailedConnections();
+                    const clients = agent.getMcpClients();
+                    const failedConnections = agent.getMcpFailedConnections();
 
                     if (clients.size === 0 && Object.keys(failedConnections).length === 0) {
                         console.log(chalk.yellow('📋 No MCP servers configured or connected.'));
@@ -238,7 +238,7 @@ export const mcpCommands: CommandDefinition = {
 
                 const name = args[0]!;
                 try {
-                    await agent.mcpManager.removeClient(name);
+                    await agent.removeMcpServer(name);
                     console.log(chalk.green(`✅ MCP server '${name}' removed successfully`));
                 } catch (error) {
                     logger.error(

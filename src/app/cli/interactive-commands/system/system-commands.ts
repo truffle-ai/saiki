@@ -114,10 +114,8 @@ export const systemCommands: CommandDefinition[] = [
 
                 // MCP stats
                 console.log(chalk.bold('\n🔌 MCP Servers:'));
-                const connectedServers = agent.mcpManager.getClients().size;
-                const failedConnections = Object.keys(
-                    agent.mcpManager.getFailedConnections()
-                ).length;
+                const connectedServers = agent.getMcpClients().size;
+                const failedConnections = Object.keys(agent.getMcpFailedConnections()).length;
                 console.log(`  Connected: ${chalk.green(connectedServers.toString())}`);
                 if (failedConnections > 0) {
                     console.log(`  Failed: ${chalk.red(failedConnections.toString())}`);
@@ -125,7 +123,7 @@ export const systemCommands: CommandDefinition[] = [
 
                 // Tools
                 try {
-                    const tools = await agent.mcpManager.getAllTools();
+                    const tools = await agent.getAllMcpTools();
                     console.log(
                         `  Available Tools: ${chalk.cyan(Object.keys(tools).length.toString())}`
                     );
