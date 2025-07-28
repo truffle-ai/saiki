@@ -16,7 +16,7 @@ export function registerGracefulShutdown(agent: SaikiAgent): void {
                 await agent.stop(); // Use existing comprehensive shutdown
                 process.exit(0);
             } catch (error) {
-                +logger.error(`Shutdown error: ${error}`);
+                logger.error(`Shutdown error: ${error}`);
                 process.exit(1);
             }
         });
