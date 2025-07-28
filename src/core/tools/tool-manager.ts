@@ -33,11 +33,23 @@ export class ToolManager {
     private static readonly CUSTOM_PREFIX = 'custom';
     private static readonly SOURCE_DELIMITER = '--';
 
+    // Tool caching for performance
+    private toolsCache: ToolSet = {};
+    private cacheValid: boolean = false;
+
     constructor(mcpManager: MCPManager, confirmationProvider: ToolConfirmationProvider) {
         this.mcpManager = mcpManager;
         this.confirmationProvider = confirmationProvider;
 
         logger.debug('ToolManager initialized');
+    }
+
+    /**
+     * Invalidate the tools cache when tool sources change
+     */
+    private invalidateCache(): void {
+        this.cacheValid = false;
+        this.toolsCache = {};
     }
 
     /**
@@ -61,6 +73,9 @@ export class ToolManager {
             // Rebuild conflicts after custom tools are loaded
             await this.rebuildCrossSourceConflicts();
 
+            // Invalidate cache since tools have changed
+            this.invalidateCache();
+
             logger.info(
                 `Custom tools initialized: ${this.customToolProvider.getToolNames().length} tools available`
             );
@@ -68,15 +83,14 @@ export class ToolManager {
     }
 
     /**
-     * Get all available tools from all sources with conflict resolution
-     * This is the single interface the LLM uses to discover tools
+     * Build all tools from sources with conflict resolution
      */
-    async getAllTools(): Promise<ToolSet> {
+    private async buildAllTools(): Promise<ToolSet> {
         const allTools: ToolSet = {};
 
         // Get tools from both sources
         const mcpTools = await this.mcpManager.getAllTools();
-        let customTools = {};
+        let customTools: ToolSet = {};
 
         try {
             customTools = this.customToolProvider?.getAllTools() || {};
@@ -111,16 +125,11 @@ export class ToolManager {
 
         for (const [toolName, toolDef] of Object.entries(customTools)) {
             if (!this.crossSourceConflicts.has(toolName)) {
-                const typedToolDef = toolDef as any;
                 allTools[toolName] = {
-                    description: typedToolDef.description || 'No description provided',
-                    ...(typedToolDef.parameters &&
-                        typedToolDef.parameters.type === 'object' && {
-                            parameters: typedToolDef.parameters as {
-                                type: 'object';
-                                properties: Record<string, any>;
-                                required?: string[];
-                            },
+                    description: toolDef.description || 'No description provided',
+                    ...(toolDef.parameters &&
+                        toolDef.parameters.type === 'object' && {
+                            parameters: toolDef.parameters,
                         }),
                 };
             }
@@ -148,18 +157,14 @@ export class ToolManager {
             }
 
             // Add custom version with prefix
-            if ((customTools as Record<string, any>)[toolName]) {
-                const typedCustomTool = (customTools as Record<string, any>)[toolName];
+            if (customTools[toolName]) {
+                const customTool = customTools[toolName];
                 const qualifiedName = `${ToolManager.CUSTOM_PREFIX}${ToolManager.SOURCE_DELIMITER}${toolName}`;
                 allTools[qualifiedName] = {
-                    description: `${typedCustomTool.description || 'Custom tool'} (custom tool)`,
-                    ...(typedCustomTool.parameters &&
-                        typedCustomTool.parameters.type === 'object' && {
-                            parameters: typedCustomTool.parameters as {
-                                type: 'object';
-                                properties: Record<string, any>;
-                                required?: string[];
-                            },
+                    description: `${customTool.description || 'Custom tool'} (custom tool)`,
+                    ...(customTool.parameters &&
+                        customTool.parameters.type === 'object' && {
+                            parameters: customTool.parameters,
                         }),
                 };
             }
@@ -175,6 +180,21 @@ export class ToolManager {
         );
 
         return allTools;
+    }
+
+    /**
+     * Get all available tools from all sources with conflict resolution
+     * This is the single interface the LLM uses to discover tools
+     * Uses caching to avoid rebuilding on every call
+     */
+    async getAllTools(): Promise<ToolSet> {
+        if (this.cacheValid) {
+            return this.toolsCache;
+        }
+
+        this.toolsCache = await this.buildAllTools();
+        this.cacheValid = true;
+        return this.toolsCache;
     }
 
     /**
@@ -323,7 +343,9 @@ export class ToolManager {
      * Update cross-source conflict detection (for tests)
      */
     async updateCrossSourceConflicts(): Promise<void> {
-        return this.rebuildCrossSourceConflicts();
+        await this.rebuildCrossSourceConflicts();
+        // Invalidate cache since conflicts may have changed tool names
+        this.invalidateCache();
     }
 
     /**
@@ -366,6 +388,10 @@ export class ToolManager {
      */
     async refresh(): Promise<void> {
         await this.rebuildCrossSourceConflicts();
+
+        // Invalidate cache since MCP servers may have changed
+        this.invalidateCache();
+
         logger.debug('ToolManager refreshed');
     }
 }

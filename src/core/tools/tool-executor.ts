@@ -1,7 +1,9 @@
 import { ToolRegistry } from './tool-registry.js';
-import { ToolExecutionContext, ToolExecutionError, ToolSet } from './types.js';
+import { ToolExecutionContext, ToolExecutionError, ToolSet, Tool } from './types.js';
 import { ValidatedCustomToolsConfig } from '../config/schemas.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
+import { IAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/types.js';
+import { InMemoryAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/in-memory.js';
 import { validateToolResult } from './tool-factory.js';
 import { SchemaConverter } from './schema-converter.js';
 import { logger } from '../logger/index.js';
@@ -10,7 +12,7 @@ import { logger } from '../logger/index.js';
  * No-op confirmation provider for testing
  */
 class NoOpConfirmationProvider implements ToolConfirmationProvider {
-    allowedToolsProvider: any = null;
+    allowedToolsProvider: IAllowedToolsProvider = new InMemoryAllowedToolsProvider();
 
     async requestConfirmation(): Promise<boolean> {
         return true; // Auto-approve all tools
@@ -154,12 +156,12 @@ export class ToolExecutor {
     }
 
     /**
-     * Get all tools in ToolSet format (for compatibility with MCP)
+     * Convert tools array to ToolSet format
      */
-    getAllTools(): ToolSet {
+    private convertToolsToToolSet(tools: Tool[]): ToolSet {
         const toolSet: ToolSet = {};
 
-        for (const tool of this.registry.getAll()) {
+        for (const tool of tools) {
             const jsonSchema = SchemaConverter.zodToJsonSchema(tool.inputSchema);
             toolSet[tool.id] = {
                 description: tool.description,
@@ -178,6 +180,13 @@ export class ToolExecutor {
         }
 
         return toolSet;
+    }
+
+    /**
+     * Get all tools in ToolSet format (for compatibility with MCP)
+     */
+    getAllTools(): ToolSet {
+        return this.convertToolsToToolSet(this.registry.getAll());
     }
 
     /**
@@ -191,56 +200,14 @@ export class ToolExecutor {
      * Get tools by category
      */
     getToolsByCategory(category: string): ToolSet {
-        const toolSet: ToolSet = {};
-        const tools = this.registry.getByCategory(category);
-
-        for (const tool of tools) {
-            const jsonSchema = SchemaConverter.zodToJsonSchema(tool.inputSchema);
-            toolSet[tool.id] = {
-                description: tool.description,
-                parameters:
-                    jsonSchema.type === 'object'
-                        ? {
-                              type: 'object',
-                              properties: jsonSchema.properties || {},
-                              ...(jsonSchema.required && { required: jsonSchema.required }),
-                          }
-                        : {
-                              type: 'object',
-                              properties: {},
-                          },
-            };
-        }
-
-        return toolSet;
+        return this.convertToolsToToolSet(this.registry.getByCategory(category));
     }
 
     /**
      * Get tools by tags
      */
     getToolsByTags(tags: string[]): ToolSet {
-        const toolSet: ToolSet = {};
-        const tools = this.registry.getByTags(tags);
-
-        for (const tool of tools) {
-            const jsonSchema = SchemaConverter.zodToJsonSchema(tool.inputSchema);
-            toolSet[tool.id] = {
-                description: tool.description,
-                parameters:
-                    jsonSchema.type === 'object'
-                        ? {
-                              type: 'object',
-                              properties: jsonSchema.properties || {},
-                              ...(jsonSchema.required && { required: jsonSchema.required }),
-                          }
-                        : {
-                              type: 'object',
-                              properties: {},
-                          },
-            };
-        }
-
-        return toolSet;
+        return this.convertToolsToToolSet(this.registry.getByTags(tags));
     }
 
     /**

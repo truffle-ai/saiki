@@ -603,7 +603,9 @@ export const CustomToolsConfigSchema = z
         toolConfigs: z
             .record(z.record(z.any()))
             .optional()
-            .describe('Tool-specific configurations keyed by tool name'),
+            .describe(
+                'Per-tool configuration overrides keyed by tool ID, allowing customization of individual tool settings'
+            ),
 
         // Global settings
         globalSettings: z
@@ -623,12 +625,18 @@ export const CustomToolsConfigSchema = z
                     .default(false)
                     .describe('Whether to enable result caching for custom tools'),
             })
-            .default({})
+            .strict()
+            .default({
+                enableCaching: false,
+            })
             .describe('Global settings that apply to all custom tools'),
     })
+    .strict()
     .default({
         enabledTools: 'all',
-        globalSettings: {},
+        globalSettings: {
+            enableCaching: false,
+        },
     })
     .describe('Configuration for custom tools system');
 

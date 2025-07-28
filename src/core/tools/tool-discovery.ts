@@ -1,7 +1,6 @@
 import { promises as fs } from 'fs';
-import { resolve, join, extname } from 'path';
-import { ToolRegistry } from './tool-registry.js';
-import { globalToolRegistry } from './tool-registry.js';
+import { resolve, join, extname, normalize } from 'path';
+import { globalToolRegistry, ToolRegistry } from './tool-registry.js';
 import { Tool, ToolDiscoveryResult, ToolRegistrationError } from './types.js';
 import { validateToolDefinition } from './tool-factory.js';
 import { logger } from '../logger/index.js';
@@ -44,7 +43,7 @@ export class ToolDiscovery {
 
             for (const filePath of files) {
                 try {
-                    await this.loadToolFile(filePath);
+                    await this.loadToolFile(filePath, resolvedPath);
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : String(error);
                     logger.warn(`Failed to load tool file '${filePath}': ${errorMessage}`);
@@ -92,6 +91,11 @@ export class ToolDiscovery {
         for (const entry of entries) {
             const fullPath = join(directory, entry.name);
 
+            // Skip symbolic links to prevent infinite recursion and unintended access
+            if (entry.isSymbolicLink()) {
+                continue;
+            }
+
             if (entry.isDirectory()) {
                 const subFiles = await this.getToolFiles(fullPath);
                 files.push(...subFiles);
@@ -107,51 +111,83 @@ export class ToolDiscovery {
     }
 
     /**
-     * Load a tool file and register exported tools
+     * Validate that the file path is within the expected tools directory
      */
-    private async loadToolFile(filePath: string): Promise<void> {
-        try {
-            logger.debug(`Loading tool file: ${filePath}`);
+    private validateFilePath(filePath: string, toolsDirectory: string): void {
+        const normalizedFilePath = normalize(resolve(filePath));
+        const normalizedToolsDir = normalize(resolve(toolsDirectory));
 
-            const module = await import(`file://${filePath}`);
-            let exportedToolsCount = 0;
+        if (!normalizedFilePath.startsWith(normalizedToolsDir)) {
+            throw new Error(`Unauthorized file access: ${filePath} is outside the tools directory`);
+        }
 
-            for (const [_exportName, exportValue] of Object.entries(module)) {
-                // Handle single tool exports
-                if (this.isValidToolExport(exportValue)) {
-                    const tool = exportValue as Tool;
+        // Check for path traversal sequences
+        if (
+            filePath.includes('..') ||
+            filePath.includes('/.') ||
+            filePath.includes('\\..') ||
+            filePath.includes('\\.')
+        ) {
+            throw new Error(`Path traversal detected in file path: ${filePath}`);
+        }
+    }
 
-                    if (validateToolDefinition(tool)) {
-                        this.registry.register(tool);
-                        exportedToolsCount++;
-                        logger.debug(`Registered exported tool: ${tool.id}`);
-                    } else {
-                        logger.warn(`Invalid tool definition for '${tool.id}' in ${filePath}`);
-                    }
+    /**
+     * Extract tools from a module file
+     */
+    private async extractToolsFromModule(
+        filePath: string,
+        toolsDirectory?: string
+    ): Promise<Tool[]> {
+        // Validate file path if tools directory is provided
+        if (toolsDirectory) {
+            this.validateFilePath(filePath, toolsDirectory);
+        }
+
+        const module = await import(`file://${filePath}`);
+        const tools: Tool[] = [];
+
+        for (const [_exportName, exportValue] of Object.entries(module)) {
+            // Handle single tool exports
+            if (this.isValidToolExport(exportValue)) {
+                const tool = exportValue as Tool;
+                if (validateToolDefinition(tool)) {
+                    tools.push(tool);
                 }
+            }
 
-                // Handle array exports
-                if (Array.isArray(exportValue)) {
-                    for (const item of exportValue) {
-                        if (this.isValidToolExport(item)) {
-                            const tool = item as Tool;
-
-                            if (validateToolDefinition(tool)) {
-                                this.registry.register(tool);
-                                exportedToolsCount++;
-                                logger.debug(`Registered exported tool from array: ${tool.id}`);
-                            } else {
-                                logger.warn(
-                                    `Invalid tool definition for '${tool.id}' in ${filePath}`
-                                );
-                            }
+            // Handle array exports
+            if (Array.isArray(exportValue)) {
+                for (const item of exportValue) {
+                    if (this.isValidToolExport(item)) {
+                        const tool = item as Tool;
+                        if (validateToolDefinition(tool)) {
+                            tools.push(tool);
                         }
                     }
                 }
             }
+        }
 
-            if (exportedToolsCount > 0) {
-                logger.debug(`Loaded ${exportedToolsCount} tools from ${filePath}`);
+        return tools;
+    }
+
+    /**
+     * Load a tool file and register exported tools
+     */
+    private async loadToolFile(filePath: string, toolsDirectory?: string): Promise<void> {
+        try {
+            logger.debug(`Loading tool file: ${filePath}`);
+
+            const tools = await this.extractToolsFromModule(filePath, toolsDirectory);
+
+            for (const tool of tools) {
+                this.registry.register(tool);
+                logger.debug(`Registered exported tool: ${tool.id}`);
+            }
+
+            if (tools.length > 0) {
+                logger.debug(`Loaded ${tools.length} tools from ${filePath}`);
             } else {
                 logger.debug(`No valid tools found in ${filePath}`);
             }
@@ -207,21 +243,10 @@ export class ToolDiscovery {
 
             for (const filePath of files) {
                 try {
-                    // Try to import and validate without registering
-                    const module = await import(`file://${filePath}`);
-                    let hasValidTools = false;
+                    // Use shared extraction method to validate without registering
+                    const tools = await this.extractToolsFromModule(filePath, resolvedPath);
 
-                    for (const [_exportName, exportValue] of Object.entries(module)) {
-                        if (this.isValidToolExport(exportValue)) {
-                            const tool = exportValue as Tool;
-                            if (validateToolDefinition(tool)) {
-                                hasValidTools = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (hasValidTools) {
+                    if (tools.length > 0) {
                         result.validFiles.push(filePath);
                     } else {
                         result.invalidFiles.push({

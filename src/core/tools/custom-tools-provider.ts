@@ -23,7 +23,7 @@ export class CustomToolsProvider {
         // Use defaults if config is incomplete
         this.config = {
             enabledTools: config.enabledTools ?? 'all',
-            disabledTools: config.disabledTools || [],
+            disabledTools: config.disabledTools ?? [],
             toolConfigs: config.toolConfigs || {},
             globalSettings: config.globalSettings || {
                 requiresConfirmation: false,

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { AgentEventBus } from '../events/index.js';
+import type { StorageManager } from '../storage/storage-manager.js';
 
 /**
  * Core tool definition - clean and simple
@@ -30,9 +32,9 @@ export interface ToolExecutionContext {
     /** Session ID if available */
     sessionId?: string | undefined;
     /** Event bus for emitting events */
-    eventBus?: any;
+    eventBus?: AgentEventBus;
     /** Storage access */
-    storage?: any;
+    storage?: StorageManager;
 }
 
 /**

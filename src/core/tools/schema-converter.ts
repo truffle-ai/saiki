@@ -5,7 +5,7 @@ import { logger } from '../logger/index.js';
  * JSON Schema representation used by MCP tools
  */
 export interface JSONSchema {
-    type: string;
+    type?: string;
     properties?: Record<string, any>;
     required?: string[];
     items?: JSONSchema;
@@ -19,6 +19,7 @@ export interface JSONSchema {
     minItems?: number;
     maxItems?: number;
     additionalProperties?: JSONSchema | boolean;
+    anyOf?: JSONSchema[];
 }
 
 /**
@@ -142,11 +143,11 @@ export class SchemaConverter {
             }
 
             if (def.minLength !== null) {
-                result.minItems = def.minLength.value;
+                result.minItems = def.minLength;
             }
 
             if (def.maxLength !== null) {
-                result.maxItems = def.maxLength.value;
+                result.maxItems = def.maxLength;
             }
 
             return result;
@@ -192,11 +193,14 @@ export class SchemaConverter {
             return result;
         }
 
-        // Handle ZodUnion (basic support)
+        // Handle ZodUnion
         if (def.typeName === 'ZodUnion') {
-            // For simplicity, take the first option
-            // In practice, you might want more sophisticated union handling
-            return SchemaConverter.convertZodType(def.options[0]);
+            const anyOfSchemas = def.options.map((option: any) =>
+                SchemaConverter.convertZodType(option)
+            );
+            return {
+                anyOf: anyOfSchemas,
+            };
         }
 
         // Handle ZodRecord

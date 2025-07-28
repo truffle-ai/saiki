@@ -1,148 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
-import { CustomToolsProvider } from './custom-tools-provider.js';
-import { createTool } from './tool-factory.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
-import { z } from 'zod';
-import type { ToolExecutionContext, ToolSet } from './types.js';
+import type { ToolSet } from './types.js';
 
 /**
  * End-to-end tests for tool execution flows
  * These tests simulate real-world tool usage scenarios
  */
-
-// Real tool implementations for testing
-const _testTools = {
-    calculator: createTool({
-        id: 'calculator',
-        description: 'Perform basic mathematical calculations',
-        inputSchema: z.object({
-            operation: z.enum(['add', 'subtract', 'multiply', 'divide']),
-            a: z.number(),
-            b: z.number(),
-        }),
-        execute: async (input) => {
-            const { operation, a, b } = input;
-            let result: number;
-
-            switch (operation) {
-                case 'add':
-                    result = a + b;
-                    break;
-                case 'subtract':
-                    result = a - b;
-                    break;
-                case 'multiply':
-                    result = a * b;
-                    break;
-                case 'divide':
-                    if (b === 0) throw new Error('Division by zero');
-                    result = a / b;
-                    break;
-                default:
-                    throw new Error(`Unknown operation: ${operation}`);
-            }
-
-            return {
-                success: true,
-                result,
-                operation: `${a} ${operation} ${b} = ${result}`,
-            };
-        },
-        metadata: {
-            category: 'math',
-            tags: ['calculator', 'arithmetic'],
-            version: '1.0.0',
-        },
-    }),
-
-    textProcessor: createTool({
-        id: 'text_processor',
-        description: 'Process and transform text',
-        inputSchema: z.object({
-            text: z.string(),
-            operation: z.enum(['uppercase', 'lowercase', 'reverse', 'length']),
-            options: z
-                .object({
-                    trimWhitespace: z.boolean().optional(),
-                })
-                .optional(),
-        }),
-        execute: async (input, context?: ToolExecutionContext) => {
-            let { text } = input;
-            const { operation, options } = input;
-
-            // Apply options
-            if (options?.trimWhitespace) {
-                text = text.trim();
-            }
-
-            let result: string | number;
-
-            switch (operation) {
-                case 'uppercase':
-                    result = text.toUpperCase();
-                    break;
-                case 'lowercase':
-                    result = text.toLowerCase();
-                    break;
-                case 'reverse':
-                    result = text.split('').reverse().join('');
-                    break;
-                case 'length':
-                    result = text.length;
-                    break;
-                default:
-                    throw new Error(`Unknown operation: ${operation}`);
-            }
-
-            return {
-                success: true,
-                originalText: input.text,
-                processedText: result,
-                operation,
-                sessionId: context?.sessionId,
-                executedAt: new Date().toISOString(),
-            };
-        },
-        metadata: {
-            category: 'text',
-            tags: ['text', 'processing', 'utility'],
-            version: '2.1.0',
-        },
-    }),
-
-    asyncDelayTool: createTool({
-        id: 'async_delay',
-        description: 'Simulate async operations with configurable delay',
-        inputSchema: z.object({
-            delayMs: z.number().min(0).max(5000),
-            message: z.string().optional(),
-            shouldFail: z.boolean().optional(),
-        }),
-        execute: async (input) => {
-            const { delayMs, message = 'Async operation completed', shouldFail = false } = input;
-
-            await new Promise((resolve) => setTimeout(resolve, delayMs));
-
-            if (shouldFail) {
-                throw new Error('Simulated async operation failure');
-            }
-
-            return {
-                success: true,
-                message,
-                delayMs,
-                completedAt: new Date().toISOString(),
-            };
-        },
-        metadata: {
-            category: 'utility',
-            tags: ['async', 'testing', 'delay'],
-            version: '1.0.0',
-        },
-    }),
-};
 
 // Mock MCP Manager for E2E tests
 class E2EMCPManager {
@@ -187,26 +51,12 @@ class E2EMCPManager {
 
 describe('Tool Execution End-to-End Tests', () => {
     let toolManager: ToolManager;
-    let customToolProvider: CustomToolsProvider;
+    let customToolProvider: any;
     let mcpManager: E2EMCPManager;
     let confirmationProvider: NoOpConfirmationProvider;
 
     beforeEach(async () => {
         confirmationProvider = new NoOpConfirmationProvider();
-
-        // Set up real custom tool provider with actual tools
-        customToolProvider = new CustomToolsProvider(
-            {
-                enabledTools: 'all',
-                toolConfigs: {},
-                globalSettings: {
-                    requiresConfirmation: false,
-                    timeout: 30000,
-                    enableCaching: false,
-                },
-            },
-            confirmationProvider
-        );
 
         // Mock the customToolProvider with simpler implementation
         customToolProvider = {
@@ -488,7 +338,7 @@ describe('Tool Execution End-to-End Tests', () => {
                 })
             ).rejects.toThrow();
 
-            // Missing required parameters - should still work but produce NaN
+            // Missing required parameters - mock doesn't validate, produces NaN
             const result = await toolManager.executeTool('calculator', {
                 operation: 'add',
                 a: 1,
@@ -496,7 +346,7 @@ describe('Tool Execution End-to-End Tests', () => {
             });
             expect(result.result).toBeNaN();
 
-            // Wrong parameter types - JavaScript allows this but produces string concatenation
+            // Wrong parameter types - mock doesn't validate, produces string concatenation
             const badTypeResult = await toolManager.executeTool('calculator', {
                 operation: 'add',
                 a: 'not_a_number',
