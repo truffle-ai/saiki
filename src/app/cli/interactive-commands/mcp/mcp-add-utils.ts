@@ -5,37 +5,8 @@ import {
     McpServerConfig,
 } from '@core/config/schemas.js';
 import { validateMcpServerConfig } from '@core/config/validation-utils.js';
+import { parseOptions } from '../utils/arg-parser.js';
 import chalk from 'chalk';
-
-/**
- * Parse --key=value style options from arguments
- */
-export function parseOptions(args: string[]): {
-    parsedArgs: string[];
-    options: Record<string, string>;
-    flags: Set<string>;
-} {
-    const parsedArgs: string[] = [];
-    const options: Record<string, string> = {};
-    const flags: Set<string> = new Set();
-
-    for (const arg of args) {
-        if (arg.startsWith('--')) {
-            if (arg.includes('=')) {
-                const [key, ...valueParts] = arg.slice(2).split('=');
-                if (key) {
-                    options[key] = valueParts.join('=');
-                }
-            } else {
-                flags.add(arg.slice(2));
-            }
-        } else {
-            parsedArgs.push(arg);
-        }
-    }
-
-    return { parsedArgs, options, flags };
-}
 
 /**
  * Parse stdio server arguments
