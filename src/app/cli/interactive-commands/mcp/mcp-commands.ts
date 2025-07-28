@@ -8,14 +8,14 @@
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
-import { CommandDefinition } from '../../command-parser.js';
+import { CommandDefinition } from '../command-parser.js';
 import {
     parseStdioArgs,
     parseHttpArgs,
     parseSseArgs,
     showMcpAddHelp,
     validateAndShowErrors,
-} from '../../utils/mcp-add-utils.js';
+} from './mcp-add-utils.js';
 
 /**
  * Handler for /mcp add stdio command

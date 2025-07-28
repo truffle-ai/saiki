@@ -22,8 +22,8 @@
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
 import type { SaikiAgent } from '@core/index.js';
-import type { CommandDefinition } from '../../command-parser.js';
-import { displayAllCommands, formatCommandHelp } from '../../command-parser.js';
+import type { CommandDefinition } from '../command-parser.js';
+import { displayAllCommands, formatCommandHelp } from '../command-parser.js';
 
 /**
  * Creates system commands with injected CLI_COMMANDS for help functionality.

@@ -1,0 +1,4 @@
+llm:
+  provider: anthropic
+  model: claude-3-5-haiku-20241022
+  apiKey: fake-key-for-testing

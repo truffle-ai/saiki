@@ -3,8 +3,8 @@ import chalk from 'chalk';
 import { logger } from '@core/index.js';
 import { CLISubscriber } from './cli-subscriber.js';
 import { SaikiAgent } from '@core/index.js';
-import { parseInput } from './command-parser.js';
-import { executeCommand } from './commands.js';
+import { parseInput } from './interactive-commands/command-parser.js';
+import { executeCommand } from './interactive-commands/commands.js';
 import { getSaikiPath } from '@core/utils/path.js';
 
 /**

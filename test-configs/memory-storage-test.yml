@@ -1,0 +1,41 @@
+# Memory Storage Test Configuration
+# Use this for testing basic functionality without persistence
+
+name: "Memory Storage Test"
+description: "Testing with in-memory storage - data will be lost on restart"
+
+# LLM Configuration
+llm:
+  provider: "openai"
+  model: "gpt-4o-mini"
+  apiKey: "${OPENAI_API_KEY}"
+  maxInputTokens: 4000
+  temperature: 0.7
+
+# Memory Storage Configuration
+storage:
+  cache:
+    type: "memory"
+    # Optional memory storage settings:
+    # maxSize: 1000  # Maximum number of items to store
+    # ttl: 3600000   # Time-to-live in milliseconds (1 hour)
+  database:
+    type: "memory"
+
+# Session Configuration
+session:
+  maxSessions: 10
+  sessionTimeout: 3600000  # 1 hour in milliseconds
+  cleanupInterval: 300000  # 5 minutes in milliseconds
+
+# Logging
+logging:
+  level: "info"
+  enableConsole: true
+  enableFile: false
+
+# Test Instructions:
+# 1. Run: npm run start -- --config test-configs/memory-storage-test.yml
+# 2. Create some sessions and messages
+# 3. Restart the agent - all data should be lost
+# 4. Verify sessions don't persist across restarts 
