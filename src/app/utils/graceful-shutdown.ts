@@ -16,7 +16,7 @@ export function registerGracefulShutdown(agent: SaikiAgent): void {
                 await agent.stop(); // Use existing comprehensive shutdown
                 process.exit(0);
             } catch (error) {
-                logger.error('Shutdown error:', error);
+                +logger.error(`Shutdown error: ${error}`);
                 process.exit(1);
             }
         });
@@ -24,26 +24,28 @@ export function registerGracefulShutdown(agent: SaikiAgent): void {
 
     // Handle uncaught exceptions
     process.on('uncaughtException', async (error) => {
-        console.error('Uncaught exception:', error);
+        logger.error(`Uncaught exception: ${error}`, undefined, 'red');
         if (!isShuttingDown) {
             isShuttingDown = true;
             try {
                 await agent.stop();
             } catch (innerError) {
-                logger.error('Error during shutdown initiated by uncaughtException:', innerError);
+                logger.error(`Error during shutdown initiated by uncaughtException: ${innerError}`);
             }
         }
         process.exit(1);
     });
 
     process.on('unhandledRejection', async (reason) => {
-        console.error('Unhandled rejection:', reason);
+        logger.error(`Unhandled rejection: ${reason}`, undefined, 'red');
         if (!isShuttingDown) {
             isShuttingDown = true;
             try {
                 await agent.stop();
             } catch (innerError) {
-                logger.error('Error during shutdown initiated by unhandledRejection:', innerError);
+                logger.error(
+                    `Error during shutdown initiated by unhandledRejection: ${innerError}`
+                );
             }
         }
         process.exit(1);
