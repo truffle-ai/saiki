@@ -859,7 +859,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
         category: 'Tool Management',
         handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
             try {
-                const tools = await agent.getAllMcpTools();
+                const tools = await agent.getAllTools();
                 const toolEntries = Object.entries(tools);
 
                 if (toolEntries.length === 0) {

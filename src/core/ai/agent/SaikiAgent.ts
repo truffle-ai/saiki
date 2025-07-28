@@ -970,6 +970,16 @@ export class SaikiAgent {
     }
 
     /**
+     * Gets all available tools from all sources (MCP servers and custom tools).
+     * This is the unified interface for tool discovery that includes both MCP and custom tools.
+     * @returns Promise resolving to a map of tool names to tool definitions
+     */
+    public async getAllTools(): Promise<ToolSet> {
+        this.ensureStarted();
+        return await this.services.toolManager.getAllTools();
+    }
+
+    /**
      * Gets all connected MCP clients.
      * Used by the API layer to inspect client status.
      * @returns Map of client names to client instances

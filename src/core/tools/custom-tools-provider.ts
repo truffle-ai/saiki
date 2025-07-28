@@ -1,9 +1,11 @@
 import { ToolRegistry } from './tool-registry.js';
 import { ToolExecutor } from './tool-executor.js';
+import { ToolDiscovery } from './tool-discovery.js';
 import { ToolExecutionContext, ToolSet, Tool } from './types.js';
 import { ValidatedCustomToolsConfig } from '../config/schemas.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
 import { logger } from '../logger/index.js';
+import { join } from 'path';
 
 /**
  * Provides custom tool functionality using dedicated service classes
@@ -14,6 +16,7 @@ import { logger } from '../logger/index.js';
 export class CustomToolsProvider {
     private registry: ToolRegistry;
     private executor: ToolExecutor;
+    private discovery: ToolDiscovery;
     private config: ValidatedCustomToolsConfig;
 
     constructor(
@@ -34,6 +37,7 @@ export class CustomToolsProvider {
         // Initialize service classes
         this.registry = new ToolRegistry();
         this.executor = new ToolExecutor(this.registry, this.config, confirmationProvider);
+        this.discovery = new ToolDiscovery(this.registry);
 
         logger.debug(`CustomToolsProvider initialized with config: ${JSON.stringify(this.config)}`);
     }
@@ -48,6 +52,9 @@ export class CustomToolsProvider {
         try {
             // Load tools from the global registry (tools register themselves via createTool)
             await this.loadRegisteredTools();
+
+            // Discover tools from the tools/ directory
+            await this.discoverToolsFromDirectory();
 
             const toolCount = this.registry.getToolIds().length;
             logger.info(`CustomToolsProvider initialized with ${toolCount} tools`);
@@ -77,6 +84,36 @@ export class CustomToolsProvider {
         logger.debug(
             `Loaded ${filteredTools.length} tools (filtered from ${registeredTools.length} total)`
         );
+    }
+
+    /**
+     * Discover tools from the tools/ directory
+     */
+    private async discoverToolsFromDirectory(): Promise<void> {
+        try {
+            // Look for tools in the tools/ directory relative to the current working directory
+            const toolsDirectory = join(process.cwd(), 'tools');
+            logger.debug(`Discovering tools from directory: ${toolsDirectory}`);
+
+            const discoveryResult = await this.discovery.discoverTools(toolsDirectory);
+
+            if (discoveryResult.tools.length > 0) {
+                logger.info(
+                    `Discovered ${discoveryResult.tools.length} tools from tools/ directory`
+                );
+            }
+
+            if (discoveryResult.errors.length > 0) {
+                logger.warn(`Tool discovery had ${discoveryResult.errors.length} errors`);
+                for (const error of discoveryResult.errors) {
+                    logger.warn(`  - ${error.filePath}: ${error.error}`);
+                }
+            }
+        } catch (error) {
+            logger.warn(
+                `Failed to discover tools from tools/ directory: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
     }
 
     /**
