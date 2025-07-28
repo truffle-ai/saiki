@@ -5,7 +5,7 @@
  * It serves as the main entry point for session management functionality in the CLI.
  *
  * Exports:
- * - sessionCommands: Complete session command definition with all subcommands
+ * - sessionCommand: Complete session command definition with all subcommands
  * - historyCommand: Standalone history command
  * - searchCommand: Standalone search command
  * - sessionCommands: Array of all session-related commands
