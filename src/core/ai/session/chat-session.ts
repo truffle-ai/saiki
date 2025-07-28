@@ -19,7 +19,7 @@ import {
     SessionEventName,
 } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
-import { validateInputForLLM, createInputValidationError } from '../llm/validation.js';
+import { validateInputForLLM } from '../llm/validation.js';
 
 /**
  * Represents an isolated conversation session within a Saiki agent.

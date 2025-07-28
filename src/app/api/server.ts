@@ -19,7 +19,7 @@ import {
 import { createAgentCard } from '@core/index.js';
 import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
-import os, { type } from 'os';
+import os from 'os';
 import { resolveBundledScript } from '@core/index.js';
 import {
     LLM_REGISTRY,
