@@ -2,8 +2,12 @@
  * System Commands Module Index
  *
  * This module exports all system-level CLI commands for the Saiki interactive interface.
- * System commands provide general functionality like help, configuration, statistics,
- * and system management.
+ * System commands provide functionality for configuration, logging, and statistics.
+ *
+ * Available commands:
+ * - /log - Set or view log level
+ * - /config - Show current configuration
+ * - /stats - Show system statistics
  */
 
 export { systemCommands } from './system-commands.js';

@@ -18,7 +18,7 @@ import { SaikiAgent } from '@core/index.js';
 import { CommandDefinition } from '../command-parser.js';
 
 /**
- * Model management commands
+ * Model management command definition
  */
 export const modelCommands: CommandDefinition = {
     name: 'model',

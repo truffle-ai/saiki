@@ -37,6 +37,13 @@ export interface InternalMessage {
     role: 'system' | 'user' | 'assistant' | 'tool';
 
     /**
+     * Timestamp when the message was created (Unix timestamp in milliseconds).
+     * TODO: Populate this field when messages are created. Currently not implemented.
+     * @see https://github.com/truffle-ai/saiki/issues/XXX
+     */
+    timestamp?: number;
+
+    /**
      * The content of the message.
      * - String for system, assistant (text only), and tool messages.
      * - Array of parts for user messages (can include text, images, and files).

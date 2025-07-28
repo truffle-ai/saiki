@@ -6,10 +6,14 @@
  * while using the new modular structure internally.
  *
  * The commands are organized into logical modules:
- * - Session Commands: Session management (create, switch, delete, etc.)
+ * - General Commands: Basic CLI functionality (help, exit, clear)
+ * - Conversation Commands: Session management, history, and search
  * - Model Commands: Model switching and configuration
  * - MCP Commands: MCP server management
- * - System Commands: General system commands (help, config, stats, etc.)
+ * - System Commands: Configuration, logging, and statistics
+ * - Tool Commands: Tool listing and management
+ * - Prompt Commands: System prompt management
+ * - Documentation Commands: Help and documentation access
  *
  * This file serves as the integration layer that combines all modular commands
  * into a single CLI_COMMANDS array for the command execution system.
@@ -19,43 +23,64 @@ import type { SaikiAgent } from '@core/index.js';
 import type { CommandDefinition } from './command-parser.js';
 
 // Import modular command definitions
-import { sessionCommands } from './session/index.js';
+import { generalCommands, createHelpCommand } from './general-commands.js';
+import { conversationCommands } from './conversation/index.js';
 import { modelCommands } from './model/index.js';
 import { mcpCommands } from './mcp/index.js';
-import { createSystemCommands } from './system/system-commands.js';
-
-// Create the initial commands list without system commands
-const baseCommands: CommandDefinition[] = [
-    // Session management commands
-    sessionCommands,
-
-    // Model management commands
-    modelCommands,
-
-    // MCP server management commands
-    mcpCommands,
-];
+import { systemCommands } from './system/index.js';
+import { toolCommands } from './tool-commands.js';
+import { promptCommands } from './prompt-commands.js';
+import { documentationCommands } from './documentation-commands.js';
 
 /**
  * Complete list of all available CLI commands.
  * This array combines commands from all extracted modules to maintain
  * the same interface as the original monolithic implementation.
  *
- * System commands are created with the full commands list injected
- * to resolve circular dependency issues with the help command.
+ * Commands are organized by category:
+ * - General: help, exit, clear
+ * - Conversation Management: session, history, search
+ * - Model Management: model
+ * - MCP Management: mcp
+ * - Tool Management: tools
+ * - Prompt Management: prompt
+ * - System: log, config, stats
+ * - Documentation: docs
  */
-export const CLI_COMMANDS: CommandDefinition[] = [
-    ...baseCommands,
-    // System commands with full commands list injected for help functionality
-    ...createSystemCommands(undefined), // Will be updated after CLI_COMMANDS is complete
+export const CLI_COMMANDS: CommandDefinition[] = [];
+
+// Build the commands array with proper help command that can access all commands
+const baseCommands: CommandDefinition[] = [
+    // General commands (without help)
+    ...generalCommands,
+
+    // Conversation management commands
+    ...conversationCommands,
+
+    // Model management commands
+    modelCommands,
+
+    // MCP server management commands
+    mcpCommands,
+
+    // Tool management commands
+    ...toolCommands,
+
+    // Prompt management commands
+    ...promptCommands,
+
+    // System commands
+    ...systemCommands,
+
+    // Documentation commands
+    ...documentationCommands,
 ];
 
-// Update system commands with the complete commands list for help functionality
-CLI_COMMANDS.splice(
-    baseCommands.length,
-    CLI_COMMANDS.length - baseCommands.length,
-    ...createSystemCommands(CLI_COMMANDS)
-);
+// Add help command that can see all commands
+CLI_COMMANDS.push(createHelpCommand(() => CLI_COMMANDS));
+
+// Add all other commands
+CLI_COMMANDS.push(...baseCommands);
 
 /**
  * Execute a slash command
@@ -81,11 +106,19 @@ export async function executeCommand(
     }
 
     try {
+        // Execute the handler with error handling
         return await cmd.handler(args, agent);
     } catch (error) {
-        console.error(
-            `Command execution failed: ${error instanceof Error ? error.message : String(error)}`
-        );
+        console.error(`❌ Error executing command /${command}:`);
+        console.error(error instanceof Error ? error.message : String(error));
         return true;
     }
+}
+
+/**
+ * Get all available command definitions
+ * This is used by external systems that need to inspect available commands
+ */
+export function getAllCommands(): CommandDefinition[] {
+    return CLI_COMMANDS;
 }
