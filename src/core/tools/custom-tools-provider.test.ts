@@ -64,7 +64,9 @@ describe('CustomToolsProvider', () => {
                 provider = new CustomToolsProvider(
                     {
                         enabledTools: 'all',
-                        globalSettings: {},
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -81,7 +83,15 @@ describe('CustomToolsProvider', () => {
             });
 
             it('should enable all tools with default configuration', async () => {
-                provider = new CustomToolsProvider({}, confirmationProvider);
+                provider = new CustomToolsProvider(
+                    {
+                        enabledTools: 'all',
+                        globalSettings: {
+                            enableCaching: false,
+                        },
+                    },
+                    confirmationProvider
+                );
 
                 await provider.initialize();
 
@@ -95,7 +105,9 @@ describe('CustomToolsProvider', () => {
                 provider = new CustomToolsProvider(
                     {
                         enabledTools: ['math_add', 'string_reverse'],
-                        globalSettings: {},
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -115,7 +127,9 @@ describe('CustomToolsProvider', () => {
                 provider = new CustomToolsProvider(
                     {
                         enabledTools: [],
-                        globalSettings: {},
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -130,7 +144,9 @@ describe('CustomToolsProvider', () => {
                 provider = new CustomToolsProvider(
                     {
                         enabledTools: ['math_add', 'non_existent_tool', 'string_reverse'],
-                        globalSettings: {},
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -151,7 +167,9 @@ describe('CustomToolsProvider', () => {
                     {
                         enabledTools: 'all',
                         disabledTools: ['dangerous_delete', 'admin_reboot'],
-                        globalSettings: {},
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -172,7 +190,9 @@ describe('CustomToolsProvider', () => {
                     {
                         enabledTools: ['math_add', 'math_multiply', 'dangerous_delete'],
                         disabledTools: ['dangerous_delete'],
-                        globalSettings: {},
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -191,7 +211,9 @@ describe('CustomToolsProvider', () => {
                     {
                         enabledTools: 'all',
                         disabledTools: ['non_existent_tool', 'dangerous_delete'],
-                        globalSettings: {},
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -208,7 +230,9 @@ describe('CustomToolsProvider', () => {
                     {
                         enabledTools: 'all',
                         disabledTools: [],
-                        globalSettings: {},
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -226,7 +250,9 @@ describe('CustomToolsProvider', () => {
                     {
                         enabledTools: ['math_add', 'math_multiply', 'dangerous_delete'],
                         disabledTools: ['dangerous_delete', 'admin_reboot'], // admin_reboot not in enabled, dangerous_delete is
-                        globalSettings: {},
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -250,6 +276,7 @@ describe('CustomToolsProvider', () => {
                         disabledTools: ['dangerous_delete', 'admin_reboot'], // Belt and suspenders
                         globalSettings: {
                             requiresConfirmation: true, // Extra safety
+                            enableCaching: false,
                         },
                     },
                     confirmationProvider
@@ -270,6 +297,7 @@ describe('CustomToolsProvider', () => {
                         disabledTools: ['admin_reboot'], // Just exclude the really dangerous one
                         globalSettings: {
                             requiresConfirmation: false, // Fast development
+                            enableCaching: false,
                         },
                     },
                     confirmationProvider
@@ -290,7 +318,9 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: ['math_add'],
-                    globalSettings: {},
+                    globalSettings: {
+                        enableCaching: false,
+                    },
                 },
                 confirmationProvider
             );
@@ -307,7 +337,9 @@ describe('CustomToolsProvider', () => {
                 {
                     enabledTools: 'all',
                     disabledTools: ['dangerous_delete'],
-                    globalSettings: {},
+                    globalSettings: {
+                        enableCaching: false,
+                    },
                 },
                 confirmationProvider
             );
@@ -324,7 +356,9 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: ['math_add'],
-                    globalSettings: {},
+                    globalSettings: {
+                        enableCaching: false,
+                    },
                 },
                 confirmationProvider
             );
@@ -340,7 +374,15 @@ describe('CustomToolsProvider', () => {
 
     describe('Configuration Validation', () => {
         it('should handle undefined config gracefully', async () => {
-            provider = new CustomToolsProvider(undefined as any, confirmationProvider);
+            provider = new CustomToolsProvider(
+                {
+                    enabledTools: 'all',
+                    globalSettings: {
+                        enableCaching: false,
+                    },
+                },
+                confirmationProvider
+            );
 
             await provider.initialize();
 
@@ -353,8 +395,10 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: ['math_add'],
-                    // Missing other properties
-                } as any,
+                    globalSettings: {
+                        enableCaching: false,
+                    },
+                },
                 confirmationProvider
             );
 

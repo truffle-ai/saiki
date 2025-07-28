@@ -64,6 +64,7 @@ describe('ToolExecutor', () => {
                         },
                         globalSettings: {
                             requiresConfirmation: true, // This should be ignored for this tool
+                            enableCaching: false,
                         },
                     },
                     confirmationProvider
@@ -81,6 +82,7 @@ describe('ToolExecutor', () => {
                         enabledTools: 'all',
                         globalSettings: {
                             requiresConfirmation: true, // Global setting
+                            enableCaching: false,
                         },
                     },
                     confirmationProvider
@@ -103,6 +105,7 @@ describe('ToolExecutor', () => {
                         enabledTools: 'all',
                         globalSettings: {
                             requiresConfirmation: true, // Should apply to defaultTool
+                            enableCaching: false,
                         },
                     },
                     mockConfirmationProvider as any
@@ -124,6 +127,9 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                         // No toolConfigs, no globalSettings
                     },
                     confirmationProvider
@@ -148,6 +154,7 @@ describe('ToolExecutor', () => {
                         },
                         globalSettings: {
                             timeout: 60000, // This should be ignored for this tool
+                            enableCaching: false,
                         },
                     },
                     confirmationProvider
@@ -175,6 +182,9 @@ describe('ToolExecutor', () => {
                                 timeout: 100, // Very short timeout
                             },
                         },
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                     },
                     confirmationProvider
                 );
@@ -192,6 +202,7 @@ describe('ToolExecutor', () => {
                         enabledTools: 'all',
                         globalSettings: {
                             timeout: 5000, // Global setting
+                            enableCaching: false,
                         },
                     },
                     confirmationProvider
@@ -223,6 +234,7 @@ describe('ToolExecutor', () => {
                         enabledTools: 'all',
                         globalSettings: {
                             timeout: 100, // Should apply to slowDefaultTool
+                            enableCaching: false,
                         },
                     },
                     confirmationProvider
@@ -238,6 +250,9 @@ describe('ToolExecutor', () => {
                     registry,
                     {
                         enabledTools: 'all',
+                        globalSettings: {
+                            enableCaching: false,
+                        },
                         // No timeout settings anywhere
                     },
                     confirmationProvider
@@ -276,7 +291,9 @@ describe('ToolExecutor', () => {
                             // Missing timeout
                         },
                     },
-                    // Missing globalSettings
+                    globalSettings: {
+                        enableCaching: false,
+                    },
                 },
                 confirmationProvider
             );
@@ -296,6 +313,9 @@ describe('ToolExecutor', () => {
                             requiresConfirmation: true,
                         },
                     },
+                    globalSettings: {
+                        enableCaching: false,
+                    },
                 },
                 mockConfirmationProvider as any
             );
@@ -312,7 +332,9 @@ describe('ToolExecutor', () => {
                 registry,
                 {
                     enabledTools: 'all',
-                    globalSettings: {},
+                    globalSettings: {
+                        enableCaching: false,
+                    },
                 },
                 confirmationProvider
             );
@@ -350,6 +372,7 @@ describe('ToolExecutor', () => {
                     enabledTools: 'all',
                     globalSettings: {
                         requiresConfirmation: true,
+                        enableCaching: false,
                     },
                 },
                 denyingProvider as any
@@ -371,7 +394,9 @@ describe('ToolExecutor', () => {
                 registry,
                 {
                     enabledTools: 'all',
-                    globalSettings: {},
+                    globalSettings: {
+                        enableCaching: false,
+                    },
                 },
                 confirmationProvider
             );
@@ -399,9 +424,9 @@ describe('ToolExecutor', () => {
             const tools = executor.getAllTools();
 
             expect(tools.test_tool).toBeDefined();
-            expect(tools.test_tool.description).toBe('Test tool');
-            expect(tools.test_tool.parameters).toBeDefined();
-            expect(tools.test_tool.parameters.properties).toHaveProperty('value');
+            expect(tools.test_tool?.description).toBe('Test tool');
+            expect(tools.test_tool?.parameters).toBeDefined();
+            expect(tools.test_tool?.parameters?.properties).toHaveProperty('value');
         });
     });
 });
