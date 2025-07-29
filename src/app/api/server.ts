@@ -111,7 +111,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
             // Comprehensive input validation
             const currentConfig = agent.getEffectiveConfig(sessionId);
-            const validationResult = validateInputForLLM(
+            const validation = validateInputForLLM(
                 {
                     text: req.body.message,
                     ...(imageDataInput && { imageData: imageDataInput }),
@@ -123,9 +123,9 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 }
             );
 
-            if (!validationResult.isValid) {
+            if (!validation.isValid) {
                 return res.status(400).send(
-                    createInputValidationError(validationResult, {
+                    createInputValidationError(validation, {
                         provider: currentConfig.llm.provider,
                         model: currentConfig.llm.model,
                     })
@@ -170,7 +170,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
             // Comprehensive input validation
             const currentConfig = agent.getEffectiveConfig(sessionId);
-            const validationResult = validateInputForLLM(
+            const validation = validateInputForLLM(
                 {
                     text: req.body.message,
                     ...(imageDataInput && { imageData: imageDataInput }),
@@ -182,9 +182,9 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 }
             );
 
-            if (!validationResult.isValid) {
+            if (!validation.isValid) {
                 return res.status(400).send(
-                    createInputValidationError(validationResult, {
+                    createInputValidationError(validation, {
                         provider: currentConfig.llm.provider,
                         model: currentConfig.llm.model,
                     })
