@@ -71,7 +71,7 @@ export async function loadAgentConfig(configPath?: string): Promise<AgentConfig>
         // Attempt to access the file. If it doesn't exist or permissions are insufficient,
         // `fs.access` will throw an error, which we catch.
         await fs.access(absolutePath);
-    } catch {
+    } catch (_error) {
         // Throw a specific error indicating that the configuration file was not found.
         throw new ConfigFileNotFoundError(absolutePath);
     }
