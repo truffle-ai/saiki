@@ -1,6 +1,5 @@
 import express from 'express';
 import type { Express } from 'express';
-import { LLMInputValidationError } from '@core/error/index.js';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
