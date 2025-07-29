@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { validateInputForLLM, createInputValidationError } from './validation.js';
+import { LLMInputValidationError } from '@core/error/index.js';
 
 describe('validateInputForLLM', () => {
     describe('text validation', () => {
@@ -121,7 +122,6 @@ describe('validateInputForLLM', () => {
 
             expect(result.isValid).toBe(false);
             expect(result.errors.length).toBeGreaterThan(0);
-            expect(result.errors.length).toBeGreaterThan(0);
             expect(result.errors[0]).toContain('File size too large');
         });
 
@@ -139,7 +139,6 @@ describe('validateInputForLLM', () => {
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors.length).toBeGreaterThan(0);
             expect(result.errors.length).toBeGreaterThan(0);
             expect(result.errors[0]).toContain('Invalid file data format');
         });
@@ -408,6 +407,54 @@ describe('createInputValidationError', () => {
             error: 'Text input cannot be empty',
             provider: 'openai',
             model: 'gpt-4',
+            fileType: undefined,
+            details: {
+                fileValidation: undefined,
+                imageValidation: undefined,
+            },
+        });
+    });
+
+    test('should correctly format an error originating from LLMInputValidationError', () => {
+        const validation = {
+            isValid: false,
+            errors: [new LLMInputValidationError('Input text too short', 'text').message], // Simulate error message from LLMInputValidationError
+        };
+
+        const config = { provider: 'anthropic', model: 'claude-3-opus' };
+
+        const result = createInputValidationError(validation, config);
+
+        expect(result).toEqual({
+            error: 'Input text too short',
+            provider: 'anthropic',
+            model: 'claude-3-opus',
+            fileType: undefined, // No file data involved in this simulated error
+            details: {
+                fileValidation: undefined,
+                imageValidation: undefined,
+            },
+        });
+    });
+
+    test('should combine multiple error messages, including those from ValidationErrors', () => {
+        const validation = {
+            isValid: false,
+            errors: [
+                new LLMInputValidationError('Invalid API key format', 'apiKey').message,
+                'Model not found for provider',
+                new LLMInputValidationError('Max tokens must be positive', 'max_tokens').message,
+            ],
+        };
+
+        const config = { provider: 'google', model: 'gemini-pro' };
+
+        const result = createInputValidationError(validation, config);
+
+        expect(result).toEqual({
+            error: 'Invalid API key format; Model not found for provider; Max tokens must be positive',
+            provider: 'google',
+            model: 'gemini-pro',
             fileType: undefined,
             details: {
                 fileValidation: undefined,

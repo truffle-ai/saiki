@@ -1,7 +1,7 @@
 import { validateModelFileSupport, getAllowedMimeTypes } from './registry.js';
 import { logger } from '../../logger/index.js';
 import type { ImageData, FileData } from './messages/types.js';
-import { ValidationError } from '@core/error/index.js';
+import { LLMInputValidationError } from '@core/error/index.js';
 
 export interface InputValidationResult {
     isValid: boolean;
@@ -78,7 +78,7 @@ export function validateInputForLLM(
         logger.error(
             `Error during input validation: ${error instanceof Error ? error.message : String(error)}`
         );
-        throw new ValidationError('Failed to validate input', 'input');
+        throw new LLMInputValidationError('Failed to validate input', 'input');
     }
 }
 

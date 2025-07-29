@@ -1,4 +1,26 @@
 /**
+ * Custom error class for when there's a problem with the input parameters
+ * specifically related to LLM (Large Language Model) operations.
+ * This class is used for validation failures of LLM configuration or call parameters.
+ * @class LLMInputValidationError
+ * @extends {Error}
+ */
+export class LLMInputValidationError extends Error {
+    /**
+     * Creates an instance of LLMInputValidationError.
+     * @param {string} message The validation failure message.
+     * @param {string} [field] The name of the field that failed validation (optional, e.g., 'model', 'maxInputTokens').
+     */
+    constructor(
+        message: string,
+        public readonly field?: string
+    ) {
+        super(message);
+        this.name = 'LLMInputValidationError';
+    }
+}
+
+/**
  * Custom error class for when a requested provider is not found.
  * @class UnknownProviderError
  * @extends {Error}
@@ -44,28 +66,6 @@ export class UnknownModelError extends Error {
 
         // Set the name of the error.
         this.name = 'UnknownModelError';
-    }
-}
-
-/**
- * Custom error class for when validation of data fails.
- * @class ValidationError
- * @extends {Error}
- */
-export class ValidationError extends Error {
-    /**
-     * Creates an instance of ValidationError.
-     * @param {string} message The validation failure message.
-     * @param {string} [field] The name of the field that failed validation.
-     */
-    constructor(
-        message: string,
-        public readonly field?: string
-    ) {
-        super(message);
-
-        // Set the name of the error.
-        this.name = 'ValidationError';
     }
 }
 

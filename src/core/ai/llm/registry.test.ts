@@ -16,9 +16,17 @@ import {
     modelSupportsFileType,
     validateModelFileSupport,
 } from './registry.js';
-import { ModelNotFoundError } from './errors.js';
-import { EffectiveMaxInputTokensError } from './errors.js';
-import { ProviderNotFoundError } from './errors.js';
+import {
+    ModelNotFoundError,
+    EffectiveMaxInputTokensError,
+    ProviderNotFoundError,
+    CantInferProviderError,
+} from './errors.js';
+import { UnknownProviderError, UnknownModelError } from '@core/error/index.js';
+
+function fail(message: string): never {
+    throw new Error(message);
+}
 
 describe('LLM Registry', () => {
     it('should return all provider keys', () => {
@@ -100,8 +108,8 @@ describe('LLM Registry', () => {
         expect(getProviderFromModel('O4-MINI')).toBe('openai');
     });
 
-    it('should throw for unknown model in getProviderFromModel', () => {
-        expect(() => getProviderFromModel('foo')).toThrow();
+    it('should throw CantInferProviderError for unknown model in getProviderFromModel', () => {
+        expect(() => getProviderFromModel('foo')).toThrow(CantInferProviderError);
     });
 
     it('should return all supported models for getAllSupportedModels', () => {
@@ -290,16 +298,32 @@ describe('File support functionality', () => {
             expect(getSupportedFileTypesForModel('cohere', 'command-r')).toEqual([]);
         });
 
-        it('should throw error for unknown provider', () => {
-            expect(() => getSupportedFileTypesForModel('unknown-provider', 'any-model')).toThrow(
-                "Provider 'unknown-provider' not found. Available providers: openai, openai-compatible, anthropic, google, groq, xai, cohere"
+        it('should throw UnknownProviderError for unknown provider', () => {
+            const unknownProvider = 'unknown-provider';
+            expect(() => getSupportedFileTypesForModel(unknownProvider, 'any-model')).toThrow(
+                UnknownProviderError
             );
         });
 
-        it('should be case-sensitive for provider names but case-insensitive for model names', () => {
-            expect(() => getSupportedFileTypesForModel('OpenAI', 'gpt-4o')).toThrow(
-                "Provider 'OpenAI' not found. Available providers: openai, openai-compatible, anthropic, google, groq, xai, cohere"
+        it('should throw UnknownModelError for unknown model', () => {
+            const unknownModel = 'unknown-model';
+            expect(() => getSupportedFileTypesForModel('openai', unknownModel)).toThrow(
+                UnknownModelError
             );
+        });
+
+        it('should throw UnknownProviderError and include available providers for case-sensitive provider names', () => {
+            const unknownProvider = 'OpenAI';
+            const expectedMessagePart = 'Available providers:';
+            try {
+                getSupportedFileTypesForModel(unknownProvider, 'gpt-4o');
+                fail('Expected UnknownProviderError to be thrown');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnknownProviderError);
+            }
+        });
+
+        it('should be case-insensitive for model names', () => {
             expect(getSupportedFileTypesForModel('openai', 'GPT-4O')).toEqual(['pdf']);
         });
     });
@@ -314,20 +338,6 @@ describe('File support functionality', () => {
                 expect(getSupportedFileTypesForModel('openai', 'gpt-4o')).toEqual(['pdf']);
             });
 
-            it('should throw error for unknown models', () => {
-                expect(() => getSupportedFileTypesForModel('openai', 'unknown-model')).toThrow(
-                    "Model 'unknown-model' not found in provider 'openai'"
-                );
-            });
-
-            it('should throw error for unknown provider', () => {
-                expect(() =>
-                    getSupportedFileTypesForModel('unknown-provider', 'any-model')
-                ).toThrow(
-                    "Provider 'unknown-provider' not found. Available providers: openai, openai-compatible, anthropic, google, groq, xai, cohere"
-                );
-            });
-
             it('should return empty array for openai-compatible provider with any model (custom endpoints)', () => {
                 expect(getSupportedFileTypesForModel('openai-compatible', 'custom-model')).toEqual(
                     []
@@ -340,12 +350,18 @@ describe('File support functionality', () => {
                 ).toEqual([]);
             });
 
-            it('should be case-sensitive for provider names but case-insensitive for model names', () => {
-                expect(() =>
-                    getSupportedFileTypesForModel('OpenAI', 'gpt-4o-audio-preview')
-                ).toThrow(
-                    "Provider 'OpenAI' not found. Available providers: openai, openai-compatible, anthropic, google, groq, xai, cohere"
-                );
+            it('should throw UnknownProviderError and include available providers for case-sensitive provider names', () => {
+                const unknownProvider = 'OpenAI';
+                const expectedMessagePart = 'Available providers:';
+                try {
+                    getSupportedFileTypesForModel(unknownProvider, 'gpt-4o-audio-preview');
+                    fail('Expected UnknownProviderError to be thrown');
+                } catch (error) {
+                    expect(error).toBeInstanceOf(UnknownProviderError);
+                }
+            });
+
+            it('should be case-insensitive for model names', () => {
                 expect(getSupportedFileTypesForModel('openai', 'GPT-4O-AUDIO-PREVIEW')).toEqual([
                     'pdf',
                     'audio',
@@ -377,12 +393,17 @@ describe('File support functionality', () => {
                 expect(modelSupportsFileType('openai-compatible', 'any-model', 'pdf')).toBe(false);
             });
 
-            it('should throw error for unknown model or provider', () => {
-                expect(() => modelSupportsFileType('unknown-provider', 'any-model', 'pdf')).toThrow(
-                    "Provider 'unknown-provider' not found. Available providers: openai, openai-compatible, anthropic, google, groq, xai, cohere"
+            it('should throw UnknownProviderError for unknown provider', () => {
+                const unknownProvider = 'unknown-provider';
+                expect(() => modelSupportsFileType(unknownProvider, 'any-model', 'pdf')).toThrow(
+                    UnknownProviderError
                 );
-                expect(() => modelSupportsFileType('openai', 'unknown-model', 'pdf')).toThrow(
-                    "Model 'unknown-model' not found in provider 'openai'"
+            });
+
+            it('should throw UnknownModelError for unknown model', () => {
+                const unknownModel = 'unknown-model';
+                expect(() => modelSupportsFileType('openai', unknownModel, 'pdf')).toThrow(
+                    UnknownModelError
                 );
             });
         });
