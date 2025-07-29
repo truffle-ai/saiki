@@ -40,7 +40,7 @@ export type ValidationErrorType =
 /**
  * Structured validation error with context
  */
-export interface ValidationError {
+export interface LLMInputValidationError {
     type: ValidationErrorType;
     message: string;
     field?: string;
@@ -55,7 +55,7 @@ export interface ValidationError {
  */
 export interface ValidationResult {
     isValid: boolean;
-    errors: ValidationError[];
+    errors: LLMInputValidationError[];
     warnings: string[];
     config?: LLMConfig; // Optional validated config for buildLLMConfig
 }
@@ -76,8 +76,8 @@ function validateLLMCore(config: {
     model?: string;
     router?: string;
     baseURL?: string;
-}): ValidationError[] {
-    const errors: ValidationError[] = [];
+}): LLMInputValidationError[] {
+    const errors: LLMInputValidationError[] = [];
     const { provider, model, router, baseURL } = config;
 
     // Validate provider
@@ -141,7 +141,7 @@ export function validateLLMSwitchRequest(request: {
     model?: string;
     router?: string;
     baseURL?: string;
-}): ValidationError[] {
+}): LLMInputValidationError[] {
     const { provider, model } = request;
 
     // Check required fields
@@ -170,7 +170,7 @@ export async function buildValidatedLLMConfig(
     config: ValidatedLLMConfig;
     configWarnings: string[];
     isValid: boolean;
-    errors: ValidationError[];
+    errors: LLMInputValidationError[];
 }> {
     const result = await buildLLMConfig(updates, currentConfig);
 
@@ -207,9 +207,9 @@ export async function buildValidatedLLMConfig(
 }
 
 /**
- * Helper function to convert ValidationError array to string array for backward compatibility
+ * Helper function to convert LLMInputValidationError array to string array for backward compatibility
  */
-export function validationErrorsToStrings(errors: ValidationError[]): string[] {
+export function validationErrorsToStrings(errors: LLMInputValidationError[]): string[] {
     return errors.map((error) => error.message);
 }
 
@@ -221,7 +221,7 @@ export async function buildLLMConfig(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig
 ): Promise<LLMConfigResult> {
-    const errors: ValidationError[] = [];
+    const errors: LLMInputValidationError[] = [];
     const warnings: string[] = [];
 
     // Step 1: Determine model
@@ -308,7 +308,7 @@ export async function buildLLMConfig(
 function resolveModel(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
-    errors: ValidationError[]
+    errors: LLMInputValidationError[]
 ): string {
     if (updates.model !== undefined) {
         if (typeof updates.model !== 'string' || updates.model.trim() === '') {
@@ -327,7 +327,7 @@ function resolveProvider(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
     model: string,
-    errors: ValidationError[],
+    errors: LLMInputValidationError[],
     _warnings: string[]
 ): string {
     if (updates.provider !== undefined) {
@@ -383,7 +383,7 @@ function resolveModelProviderCompatibility(
     provider: string,
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
-    errors: ValidationError[],
+    errors: LLMInputValidationError[],
     warnings: string[]
 ): { finalModel: string; finalProvider: string } {
     if (acceptsAnyModel(provider) || isValidProviderModel(provider, model)) {
@@ -417,7 +417,7 @@ function resolveRouter(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
     provider: string,
-    errors: ValidationError[],
+    errors: LLMInputValidationError[],
     warnings: string[]
 ): 'vercel' | 'in-built' {
     if (updates.router !== undefined) {
@@ -478,7 +478,7 @@ async function resolveApiKey(
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
     provider: string,
-    errors: ValidationError[],
+    errors: LLMInputValidationError[],
     warnings: string[]
 ): Promise<string> {
     const providerChanged = provider !== currentConfig.provider;
@@ -513,7 +513,7 @@ function buildFinalConfig(
     core: { provider: string; model: string; router: 'vercel' | 'in-built'; apiKey: string },
     updates: Partial<LLMConfig>,
     currentConfig: LLMConfig,
-    errors: ValidationError[],
+    errors: LLMInputValidationError[],
     warnings: string[]
 ): ValidatedLLMConfig {
     // Base URL
@@ -597,7 +597,7 @@ function buildFinalConfig(
  */
 export interface McpServerValidationResult {
     isValid: boolean;
-    errors: ValidationError[];
+    errors: LLMInputValidationError[];
     warnings: string[];
     config: ValidatedMcpServerConfig | undefined;
 }
@@ -610,7 +610,7 @@ export function validateMcpServerConfig(
     serverConfig: McpServerConfig,
     existingServerNames: string[] = []
 ): McpServerValidationResult {
-    const errors: ValidationError[] = [];
+    const errors: LLMInputValidationError[] = [];
     const warnings: string[] = [];
 
     // Validate server name

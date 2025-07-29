@@ -1,6 +1,6 @@
 import { createDatabaseHistoryProvider } from '../llm/messages/history/factory.js';
 import { createContextManager } from '../llm/messages/factory.js';
-import { ValidationError } from '@core/error/index.js';
+import { LLMInputValidationError } from '@core/error/index.js';
 import { createLLMService } from '../llm/services/factory.js';
 import { createTokenizer } from '../llm/tokenizer/factory.js';
 import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
@@ -258,7 +258,7 @@ export class ChatSession {
                 }
             );
         } catch (error: unknown) {
-            if (error instanceof ValidationError) {
+            if (error instanceof LLMInputValidationError) {
                 // Emit unsupported input event
                 this.eventBus.emit('saiki:unsupportedInput', {
                     sessionId: this.id,

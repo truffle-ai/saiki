@@ -8,7 +8,7 @@ import { executeCommand } from './interactive-commands/commands.js';
 import { getSaikiPath } from '@core/utils/path.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
 import {
-    ValidationError,
+    LLMInputValidationError,
     UnknownProviderError,
     UnknownModelError,
     ConfigurationError,
@@ -215,7 +215,7 @@ export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promi
             await agent.run(prompt);
         }
     } catch (error) {
-        if (error instanceof ValidationError) {
+        if (error instanceof LLMInputValidationError) {
             logger.error(`Validation error: ${error.message}`, null, 'red');
         } else if (error instanceof UnknownProviderError) {
             logger.error(`Provider error: ${error.message}`, null, 'red');

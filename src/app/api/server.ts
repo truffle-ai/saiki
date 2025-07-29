@@ -1,6 +1,6 @@
 import express from 'express';
 import type { Express } from 'express';
-import { ValidationError } from '@core/error/index.js';
+import { LLMInputValidationError } from '@core/error/index.js';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
@@ -125,7 +125,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     }
                 );
             } catch (error) {
-                if (error instanceof ValidationError) {
+                if (error instanceof LLMInputValidationError) {
                     return res.status(400).send({
                         error: error.message,
                         type: error.name,
@@ -185,7 +185,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 }
             );
         } catch (error) {
-            if (error instanceof ValidationError) {
+            if (error instanceof LLMInputValidationError) {
                 return res.status(400).send({
                     error: error.message,
                     type: error.name,
