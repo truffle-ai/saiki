@@ -6,7 +6,6 @@ import {
     ConfigFileNotFoundError,
     ConfigFileReadError,
     ConfigParseError,
-    ConfigEnvVarError,
 } from '@core/error/index.js';
 const tmpFile = path.resolve(process.cwd(), 'src/core/config/temp-config.yml');
 
