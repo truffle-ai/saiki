@@ -16,6 +16,18 @@ vi.mock('./tool-registry.js', async () => {
     };
 });
 
+// Mock the tool discovery to prevent loading tools from filesystem
+vi.mock('./tool-discovery.js', () => {
+    return {
+        ToolDiscovery: vi.fn(() => ({
+            discoverTools: vi.fn().mockResolvedValue({
+                tools: [],
+                errors: [],
+            }),
+        })),
+    };
+});
+
 describe('CustomToolsProvider', () => {
     let provider: CustomToolsProvider;
     let confirmationProvider: NoOpConfirmationProvider;
@@ -67,27 +79,31 @@ describe('CustomToolsProvider', () => {
 
     describe('Initialization', () => {
         it('should initialize with default configuration', async () => {
+            // Mock the global registry to return empty array for this test
+            const { globalToolRegistry } = await import('./tool-registry.js');
+            (globalToolRegistry.getAll as any).mockReturnValue([]);
+
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
-                    enableToolDiscovery: false, // Disable tool discovery for testing
-                    globalSettings: { enableCaching: false },
+                    globalSettings: {},
                 },
                 confirmationProvider
             );
 
+            await provider.initialize();
+
             expect(provider).toBeDefined();
-            expect(provider.getToolNames()).toEqual([]);
+            const toolNames = provider.getToolNames();
+            expect(toolNames).toHaveLength(0); // Should load all registered tools (empty in this test)
         });
 
         it('should initialize with custom configuration', async () => {
             const config = {
                 enabledTools: ['math_add', 'math_multiply'],
-                enableToolDiscovery: false, // Disable tool discovery for testing
                 globalSettings: {
                     requiresConfirmation: true,
                     timeout: 5000,
-                    enableCaching: false,
                 },
             };
 
@@ -114,8 +130,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
-                    enableToolDiscovery: false, // Disable tool discovery for testing
-                    globalSettings: { enableCaching: false },
+                    globalSettings: {},
                 },
                 confirmationProvider
             );
@@ -135,8 +150,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: ['math_add', 'string_reverse'],
-                    enableToolDiscovery: false, // Disable tool discovery for testing
-                    globalSettings: { enableCaching: false },
+                    globalSettings: {},
                 },
                 confirmationProvider
             );
@@ -156,8 +170,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: [],
-                    enableToolDiscovery: false, // Disable tool discovery for testing
-                    globalSettings: { enableCaching: false },
+                    globalSettings: {},
                 },
                 confirmationProvider
             );
@@ -168,22 +181,18 @@ describe('CustomToolsProvider', () => {
             expect(toolNames).toHaveLength(0);
         });
 
-        it('should handle non-existent tool IDs in enabledTools', async () => {
+        it('should throw error for non-existent tool IDs in enabledTools', async () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: ['math_add', 'non_existent_tool'],
-                    enableToolDiscovery: false, // Disable tool discovery for testing
-                    globalSettings: { enableCaching: false },
+                    globalSettings: {},
                 },
                 confirmationProvider
             );
 
-            await provider.initialize();
-
-            const toolNames = provider.getToolNames();
-            expect(toolNames).toHaveLength(1);
-            expect(toolNames).toContain('math_add');
-            expect(toolNames).not.toContain('non_existent_tool');
+            await expect(provider.initialize()).rejects.toThrow(
+                'Invalid tool IDs specified in enabledTools: non_existent_tool'
+            );
         });
     });
 
@@ -199,8 +208,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
-                    enableToolDiscovery: false, // Disable tool discovery for testing
-                    globalSettings: { enableCaching: false },
+                    globalSettings: {},
                 },
                 confirmationProvider
             );
@@ -245,7 +253,6 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
-                    enableToolDiscovery: false, // Disable tool discovery for testing
                     toolConfigs: {
                         test_tool: {
                             requiresConfirmation: false, // Override tool code setting
@@ -253,7 +260,6 @@ describe('CustomToolsProvider', () => {
                     },
                     globalSettings: {
                         requiresConfirmation: true, // Should be overridden by tool-specific config
-                        enableCaching: false,
                     },
                 },
                 confirmationProvider
@@ -278,8 +284,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
-                    enableToolDiscovery: false, // Disable tool discovery for testing
-                    globalSettings: { enableCaching: false },
+                    globalSettings: {},
                 },
                 confirmationProvider
             );
@@ -294,8 +299,7 @@ describe('CustomToolsProvider', () => {
             provider = new CustomToolsProvider(
                 {
                     enabledTools: 'all',
-                    enableToolDiscovery: false, // Disable tool discovery for testing
-                    globalSettings: { enableCaching: false },
+                    globalSettings: {},
                 },
                 confirmationProvider
             );

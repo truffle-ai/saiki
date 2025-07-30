@@ -1,5 +1,6 @@
 // src/ai/agent/SaikiAgent.ts
 import { MCPManager } from '../../client/manager.js';
+import { ToolManager } from '../../tools/tool-manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
 import { AgentStateManager } from '../../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
@@ -26,6 +27,7 @@ import { getSaikiPath } from '../../utils/path.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
+    'toolManager',
     'promptManager',
     'agentEventBus',
     'stateManager',
@@ -93,6 +95,7 @@ export class SaikiAgent {
     public readonly agentEventBus!: AgentEventBus;
     public readonly stateManager!: AgentStateManager;
     public readonly sessionManager!: SessionManager;
+    public readonly toolManager!: ToolManager;
     public readonly services!: AgentServices;
 
     // Search service for conversation search
@@ -149,6 +152,7 @@ export class SaikiAgent {
             // Use Object.assign to set readonly properties
             Object.assign(this, {
                 mcpManager: services.mcpManager,
+                toolManager: services.toolManager,
                 promptManager: services.promptManager,
                 agentEventBus: services.agentEventBus,
                 stateManager: services.stateManager,
@@ -156,8 +160,8 @@ export class SaikiAgent {
                 services: services,
             });
 
-            // Initialize search service
-            this.searchService = new SearchService(services.storage.database);
+            // Initialize search service from services
+            this.searchService = services.searchService;
 
             this._isStarted = true;
             logger.info('SaikiAgent started successfully.');
@@ -914,8 +918,8 @@ export class SaikiAgent {
                 success: true,
             });
             this.agentEventBus.emit('saiki:availableToolsUpdated', {
-                tools: Object.keys(await this.services.toolManager.getAllTools()),
-                source: 'unified',
+                tools: Object.keys(await this.toolManager.getAllTools()),
+                source: 'mcp', // All tools are sent but source of updated tools is denoted in the event
             });
             logger.info(`SaikiAgent: Successfully added and connected to MCP server '${name}'.`);
         } catch (error) {
@@ -948,27 +952,15 @@ export class SaikiAgent {
     }
 
     /**
-     * Executes a tool on a connected MCP server.
-     * Useful for users to experiment with tools directly.
-     * @param toolName The name of the tool to execute
-     * @param args The arguments to pass to the tool
-     * @returns The result of the tool execution
-     */
-    public async executeMcpTool(toolName: string, args: any): Promise<any> {
-        this.ensureStarted();
-        return await this.mcpManager.executeTool(toolName, args);
-    }
-
-    /**
-     * Executes a tool from any source (MCP servers or custom tools).
-     * This is the unified interface for tool execution that can handle both MCP and custom tools.
+     * Executes a tool from any source (MCP servers, custom tools, or internal tools).
+     * This is the unified interface for tool execution that can handle all tool types.
      * @param toolName The name of the tool to execute
      * @param args The arguments to pass to the tool
      * @returns The result of the tool execution
      */
     public async executeTool(toolName: string, args: any): Promise<any> {
         this.ensureStarted();
-        return await this.services.toolManager.executeTool(toolName, args);
+        return await this.toolManager.executeTool(toolName, args);
     }
 
     /**
@@ -988,7 +980,36 @@ export class SaikiAgent {
      */
     public async getAllTools(): Promise<ToolSet> {
         this.ensureStarted();
-        return await this.services.toolManager.getAllTools();
+        return await this.toolManager.getAllTools();
+    }
+
+    /**
+     * Gets only custom tools (excludes MCP and internal tools).
+     * Useful for filtering UI displays or analytics that need to distinguish tool sources.
+     * @returns Array of custom tool names
+     */
+    public async getCustomTools(): Promise<string[]> {
+        this.ensureStarted();
+
+        const allTools = await this.toolManager.getAllTools();
+        const toolNames = Object.keys(allTools);
+
+        // Filter tools by source using the tool manager's categorization
+        const customTools = toolNames.filter((toolName) => {
+            // Get the source of the tool using the tool manager's public method
+            const source = this.toolManager.getToolSource(toolName);
+
+            // Only include tools that are explicitly from the custom source
+            return source === 'custom';
+        });
+
+        // Strip any custom-- prefixes from conflict-resolved tools
+        return customTools.map((name) => {
+            if (name.startsWith('custom--')) {
+                return name.substring('custom--'.length);
+            }
+            return name;
+        });
     }
 
     /**

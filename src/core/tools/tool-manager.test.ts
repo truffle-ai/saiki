@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
-import type { ToolSet, ToolExecutionContext } from './types.js';
+import type { ToolManagerToolSet, ToolExecutionContext } from './types.js';
 
 // Mock MCPManager
 class MockMCPManager {
@@ -11,7 +11,7 @@ class MockMCPManager {
         this.tools = tools;
     }
 
-    async getAllTools(): Promise<ToolSet> {
+    async getAllTools(): Promise<ToolManagerToolSet> {
         return this.tools;
     }
 
@@ -35,7 +35,7 @@ class MockCustomToolsProvider {
         this.tools = tools;
     }
 
-    getAllTools(): ToolSet {
+    getAllTools(): ToolManagerToolSet {
         return this.tools;
     }
 

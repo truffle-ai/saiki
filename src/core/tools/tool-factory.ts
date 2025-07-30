@@ -25,7 +25,6 @@ export interface CreateToolOptions {
     settings?: {
         requiresConfirmation?: boolean;
         timeout?: number;
-        enableCaching?: boolean;
     };
 }
 

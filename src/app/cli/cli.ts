@@ -75,9 +75,7 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
     try {
         const allTools = await agent.getAllTools();
         const mcpTools = await agent.getAllMcpTools();
-        const customTools = Object.keys(allTools).filter(
-            (name) => !Object.keys(mcpTools).includes(name)
-        );
+        const customTools = await agent.getCustomTools();
 
         logger.info(
             `Loaded ${Object.keys(allTools).length} total tools: ${Object.keys(mcpTools).length} from MCP servers, ${customTools.length} custom tools`

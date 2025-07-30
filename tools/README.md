@@ -201,7 +201,6 @@ customTools:
   globalSettings:                         # Global defaults for all tools
     requiresConfirmation: false
     timeout: 30000
-    enableCaching: false
 ```
 
 ### How Tools Work
@@ -249,10 +248,6 @@ Global settings that apply to all custom tools unless overridden by tool-specifi
 - **Description**: Default execution timeout for all tools (in milliseconds)
 - **Example**: `60000` (60 seconds), `5000` (5 seconds)
 
-###### `enableCaching` (boolean, optional)
-- **Default**: `false`
-- **Description**: Whether to enable result caching for tools
-- **Example**: `true` (cache results), `false` (no caching)
 
 ### Configuration Examples
 
@@ -293,7 +288,6 @@ customTools:
   globalSettings:
     requiresConfirmation: false  # Auto-approve all tools
     timeout: 60000               # 60 second timeout
-    enableCaching: true          # Enable result caching
 ```
 
 #### Mixed Security Configuration

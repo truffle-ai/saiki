@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
-import type { ToolSet, ToolExecutionContext } from './types.js';
+import type { ToolManagerToolSet, ToolExecutionContext } from './types.js';
 
 /**
  * Integration tests for ToolManager cross-source conflict resolution
@@ -16,7 +16,7 @@ class RealisticMCPManager {
         this.tools = tools;
     }
 
-    async getAllTools(): Promise<ToolSet> {
+    async getAllTools(): Promise<ToolManagerToolSet> {
         return this.tools;
     }
 
@@ -58,7 +58,7 @@ class RealisticCustomToolsProvider {
         this.initialized = true;
     }
 
-    getAllTools(): ToolSet {
+    getAllTools(): ToolManagerToolSet {
         if (!this.initialized) {
             throw new Error('CustomToolsProvider not initialized');
         }

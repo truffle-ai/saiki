@@ -1,22 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
-import type { ToolSet } from './types.js';
+import type { ToolManagerToolSet } from './types.js';
 
 /**
- * End-to-end tests for tool execution flows
- * These tests simulate real-world tool usage scenarios
+ * Integration tests for tool execution flows
+ * These tests simulate real-world tool usage scenarios across multiple system components
  */
 
-// Mock MCP Manager for E2E tests
-class E2EMCPManager {
-    private tools: ToolSet;
+// Mock MCP Manager for integration tests
+class IntegrationMCPManager {
+    private tools: ToolManagerToolSet;
 
-    constructor(tools: ToolSet = {}) {
+    constructor(tools: ToolManagerToolSet = {}) {
         this.tools = tools;
     }
 
-    async getAllTools(): Promise<ToolSet> {
+    async getAllTools(): Promise<ToolManagerToolSet> {
         return this.tools;
     }
 
@@ -49,16 +49,16 @@ class E2EMCPManager {
     }
 }
 
-describe('Tool Execution End-to-End Tests', () => {
+describe('Tool Execution Integration Tests', () => {
     let toolManager: ToolManager;
     let customToolProvider: any;
-    let mcpManager: E2EMCPManager;
+    let mcpManager: IntegrationMCPManager;
     let confirmationProvider: NoOpConfirmationProvider;
 
     beforeEach(async () => {
         confirmationProvider = new NoOpConfirmationProvider();
 
-        // Mock the customToolProvider with simpler implementation
+        // Mock the customToolProvider with simpler implementation for integration testing
         customToolProvider = {
             async initialize() {
                 /* no-op */
@@ -190,7 +190,7 @@ describe('Tool Execution End-to-End Tests', () => {
         } as any;
 
         // Set up MCP manager with some mock tools
-        mcpManager = new E2EMCPManager({
+        mcpManager = new IntegrationMCPManager({
             mcp_file_reader: {
                 description: 'Read files via MCP server',
                 parameters: {
@@ -235,9 +235,9 @@ describe('Tool Execution End-to-End Tests', () => {
                 'test-session-1'
             );
 
-            expect(result.success).toBe(true);
-            expect(result.result).toBe(42);
-            expect(result.operation).toBe('15 add 27 = 42');
+            expect((result as any).success).toBe(true);
+            expect((result as any).result).toBe(42);
+            expect((result as any).operation).toBe('15 add 27 = 42');
         });
 
         it('should execute MCP tools successfully', async () => {
@@ -249,11 +249,11 @@ describe('Tool Execution End-to-End Tests', () => {
                 'test-session-2'
             );
 
-            expect(result.type).toBe('tool_result');
-            expect(result.content[0].text).toContain('mcp_file_reader');
-            expect(result.content[0].text).toContain('/path/to/test/file.txt');
-            expect(result.metadata.source).toBe('mcp');
-            expect(result.metadata.sessionId).toBe('test-session-2');
+            expect((result as any).type).toBe('tool_result');
+            expect((result as any).content[0].text).toContain('mcp_file_reader');
+            expect((result as any).content[0].text).toContain('/path/to/test/file.txt');
+            expect((result as any).metadata.source).toBe('mcp');
+            expect((result as any).metadata.sessionId).toBe('test-session-2');
         });
 
         it('should handle complex custom tool operations', async () => {
@@ -269,11 +269,11 @@ describe('Tool Execution End-to-End Tests', () => {
                 'text-session'
             );
 
-            expect(result.success).toBe(true);
-            expect(result.originalText).toBe('  Hello World!  ');
-            expect(result.processedText).toBe('!dlroW olleH');
-            expect(result.operation).toBe('reverse');
-            expect(result.sessionId).toBe('text-session');
+            expect((result as any).success).toBe(true);
+            expect((result as any).originalText).toBe('  Hello World!  ');
+            expect((result as any).processedText).toBe('!dlroW olleH');
+            expect((result as any).operation).toBe('reverse');
+            expect((result as any).sessionId).toBe('text-session');
         });
     });
 

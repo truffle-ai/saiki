@@ -35,8 +35,6 @@ customTools:
     # Default execution timeout in milliseconds (default: 30000)
     timeout: 30000
 
-    # Whether to enable result caching (default: false)
-    enableCaching: false
 
 # System prompt configuration
 systemPrompt:

@@ -59,8 +59,6 @@ export interface ToolExecutionSettings {
     requiresConfirmation?: boolean | undefined;
     /** Execution timeout in milliseconds */
     timeout?: number | undefined;
-    /** Whether to cache results */
-    enableCaching?: boolean | undefined;
 }
 
 /**
@@ -93,16 +91,35 @@ export interface ToolDiscoveryResult {
 }
 
 /**
- * Unified tool set (for compatibility with MCP tools)
+ * Tool parameters interface for normalized tool definitions
  */
-export interface ToolSet {
+export interface ToolParameters {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required?: string[];
+    [key: string]: unknown; // Allow additional JSON Schema properties
+}
+
+/**
+ * Raw tool definition interface (before normalization)
+ */
+export interface RawToolDefinition {
+    description?: string;
+    parameters?: {
+        type?: string;
+        properties?: Record<string, unknown>;
+        required?: string[];
+    };
+}
+
+/**
+ * Tool manager's unified tool set (for compatibility with MCP tools and ai/types.ts)
+ */
+export interface ToolManagerToolSet {
     [toolName: string]: {
+        name?: string;
         description: string;
-        parameters?: {
-            type: 'object';
-            properties: Record<string, any>;
-            required?: string[];
-        };
+        parameters?: ToolParameters;
     };
 }
 

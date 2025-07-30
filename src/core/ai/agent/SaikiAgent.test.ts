@@ -127,6 +127,7 @@ describe('SaikiAgent.switchLLM', () => {
             agentEventBus: mockEventBus,
             stateManager: mockStateManager,
             sessionManager: mockSessionManager,
+            searchService: {} as any,
             storage: mockStorageManager,
             storageManager: mockStorageManager,
         };

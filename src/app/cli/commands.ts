@@ -837,9 +837,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                 try {
                     const allTools = await agent.getAllTools();
                     const mcpTools = await agent.getAllMcpTools();
-                    const customTools = Object.keys(allTools).filter(
-                        (name) => !Object.keys(mcpTools).includes(name)
-                    );
+                    const customTools = await agent.getCustomTools();
 
                     console.log(chalk.bold('\n🔧 Tools:'));
                     console.log(

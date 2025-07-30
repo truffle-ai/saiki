@@ -1,17 +1,23 @@
 import { ToolRegistry } from './tool-registry.js';
 import { ToolExecutor } from './tool-executor.js';
 import { ToolDiscovery } from './tool-discovery.js';
-import { ToolExecutionContext, ToolSet, Tool } from './types.js';
+import { ToolExecutionContext, ToolManagerToolSet, Tool } from './types.js';
 import { ValidatedCustomToolsConfig } from '../config/schemas.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
 import { logger } from '../logger/index.js';
 import { join } from 'path';
 
 /**
- * Provides custom tool functionality using dedicated service classes
+ * Manages custom tools with discovery, registration, and execution capabilities
  *
- * This provider follows the codebase pattern of being a thin orchestrator
- * that delegates to specialized service classes for custom tools
+ * This provider handles the complete lifecycle of custom tools:
+ * - Discovers tools from the file system (tools/ directory)
+ * - Loads tools registered via the global registry (createTool decorator)
+ * - Filters tools based on configuration (enabledTools, toolConfigs)
+ * - Provides execution interface with confirmation and timeout handling
+ * - Manages tool metadata, categories, and statistics
+ *
+ * Architecture: CustomToolsProvider → [ToolRegistry, ToolExecutor, ToolDiscovery]
  */
 export class CustomToolsProvider {
     private registry: ToolRegistry;
@@ -26,12 +32,10 @@ export class CustomToolsProvider {
         // Use defaults if config is incomplete
         this.config = {
             enabledTools: config.enabledTools ?? 'all',
-            enableToolDiscovery: config.enableToolDiscovery ?? true,
             toolConfigs: config.toolConfigs ?? {},
             globalSettings: config.globalSettings ?? {
                 requiresConfirmation: false,
                 timeout: 30000,
-                enableCaching: false,
             },
         };
 
@@ -44,8 +48,13 @@ export class CustomToolsProvider {
     }
 
     /**
-     * Initialize the tool provider
-     * Tools are automatically registered when createTool() is called, so this just loads them
+     * Initialize the custom tools provider
+     *
+     * This method:
+     * 1. Loads tools from the global registry (tools registered via createTool decorator)
+     * 2. Discovers tools from the tools/ directory (file system scanning)
+     * 3. Applies configuration-based filtering (enabledTools, toolConfigs)
+     * 4. Registers all valid tools in the local registry
      */
     async initialize(): Promise<void> {
         logger.info('Initializing CustomToolsProvider...');
@@ -54,10 +63,8 @@ export class CustomToolsProvider {
             // Load tools from the global registry (tools register themselves via createTool)
             await this.loadRegisteredTools();
 
-            // Discover tools from the tools/ directory (only if not disabled)
-            if (this.config.enableToolDiscovery !== false) {
-                await this.discoverToolsFromDirectory();
-            }
+            // Discover tools from the tools/ directory (always enabled)
+            await this.discoverToolsFromDirectory();
 
             const toolCount = this.registry.getToolIds().length;
             logger.info(`CustomToolsProvider initialized with ${toolCount} tools`);
@@ -70,7 +77,10 @@ export class CustomToolsProvider {
     }
 
     /**
-     * Load tools from the global registry (tools register themselves via createTool)
+     * Load tools from the global registry
+     *
+     * Tools register themselves via the createTool decorator and are stored in the global registry.
+     * This method loads them and applies configuration-based filtering.
      */
     private async loadRegisteredTools(): Promise<void> {
         // Import the global registry to ensure all tools are loaded
@@ -91,6 +101,9 @@ export class CustomToolsProvider {
 
     /**
      * Discover tools from the tools/ directory
+     *
+     * Scans the tools/ directory for .ts/.js files and attempts to load tools from them.
+     * This enables dynamic tool discovery without requiring code changes.
      */
     private async discoverToolsFromDirectory(): Promise<void> {
         try {
@@ -121,6 +134,11 @@ export class CustomToolsProvider {
 
     /**
      * Filter tools based on configuration settings
+     *
+     * Applies filtering logic based on:
+     * - enabledTools: 'all' or specific tool IDs array
+     * - Validates that all specified tool IDs exist
+     * - Returns filtered list of tools that match the configuration
      */
     private filterTools(tools: Tool[]): Tool[] {
         let filteredTools = [...tools];
@@ -128,6 +146,18 @@ export class CustomToolsProvider {
         // Filter by enabled tools
         if (this.config.enabledTools !== 'all') {
             const enabledSet = new Set(this.config.enabledTools);
+            const availableToolIds = new Set(tools.map((tool) => tool.id));
+
+            // Validate that all enabled tool IDs exist
+            const invalidToolIds = this.config.enabledTools.filter(
+                (toolId) => !availableToolIds.has(toolId)
+            );
+            if (invalidToolIds.length > 0) {
+                throw new Error(
+                    `Invalid tool IDs specified in enabledTools: ${invalidToolIds.join(', ')}. Available tools: ${Array.from(availableToolIds).join(', ')}`
+                );
+            }
+
             const beforeCount = filteredTools.length;
             filteredTools = filteredTools.filter((tool) => enabledSet.has(tool.id));
             logger.debug(
@@ -159,7 +189,7 @@ export class CustomToolsProvider {
     /**
      * Get all tools in ToolSet format (delegates to ToolExecutor)
      */
-    getAllTools(): ToolSet {
+    getAllTools(): ToolManagerToolSet {
         return this.executor.getAllTools();
     }
 
@@ -173,14 +203,14 @@ export class CustomToolsProvider {
     /**
      * Get tools by category (delegates to ToolExecutor)
      */
-    getToolsByCategory(category: string): ToolSet {
+    getToolsByCategory(category: string): ToolManagerToolSet {
         return this.executor.getToolsByCategory(category);
     }
 
     /**
      * Get tools by tags (delegates to ToolExecutor)
      */
-    getToolsByTags(tags: string[]): ToolSet {
+    getToolsByTags(tags: string[]): ToolManagerToolSet {
         return this.executor.getToolsByTags(tags);
     }
 

@@ -23,11 +23,13 @@
 
 import { MCPManager } from '../client/manager.js';
 import { ToolManager } from '../tools/tool-manager.js';
+import { InternalToolsProvider } from '../tools/internal-tools-provider.js';
 import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { ConfigManager } from '../config/config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager } from '../ai/session/session-manager.js';
+import { SearchService } from '../ai/search/search-service.js';
 import { dirname, resolve } from 'path';
 import { createStorageBackends, type StorageBackends, StorageManager } from '../storage/index.js';
 import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/factory.js';
@@ -45,6 +47,7 @@ export type AgentServices = {
     agentEventBus: AgentEventBus;
     stateManager: AgentStateManager;
     sessionManager: SessionManager;
+    searchService: SearchService;
     storage: StorageBackends;
     storageManager?: StorageManager;
 };
@@ -96,8 +99,23 @@ export async function createAgentServices(
     const mcpManager = new MCPManager(confirmationProvider);
     await mcpManager.initializeFromConfig(config.mcpServers);
 
-    // 5. Initialize unified tool manager
+    // 5. Initialize search service
+    const searchService = new SearchService(storage.database);
+
+    // 6. Initialize internal tools provider with services
+    const internalToolsProvider = new InternalToolsProvider(
+        {
+            searchService,
+            // Future services can be added here as needed
+        },
+        confirmationProvider
+    );
+
+    // 7. Initialize unified tool manager
     const toolManager = new ToolManager(mcpManager, confirmationProvider);
+
+    // Initialize internal tools
+    await toolManager.initializeInternalTools(internalToolsProvider);
 
     // Initialize custom tools if configured
     if (config.customTools) {
@@ -111,18 +129,18 @@ export async function createAgentServices(
         logger.debug(`Client manager initialized with ${mcpServerCount} MCP server(s)`);
     }
 
-    // 6. Initialize prompt manager
+    // 8. Initialize prompt manager
     const configDir = configPath ? dirname(resolve(configPath)) : process.cwd();
     logger.debug(
         `[ServiceInitializer] Creating PromptManager with configPath: ${configPath} → configDir: ${configDir}`
     );
     const promptManager = new PromptManager(config.systemPrompt, configDir);
 
-    // 7. Initialize state manager for runtime state tracking
+    // 9. Initialize state manager for runtime state tracking
     const stateManager = new AgentStateManager(config, agentEventBus);
     logger.debug('Agent state manager initialized');
 
-    // 8. Initialize session manager
+    // 10. Initialize session manager
     const sessionManager = new SessionManager(
         {
             stateManager,
@@ -142,7 +160,7 @@ export async function createAgentServices(
 
     logger.debug('Session manager initialized with storage support');
 
-    // 9. Return the core services
+    // 11. Return the core services
     return {
         mcpManager,
         toolManager,
@@ -150,6 +168,7 @@ export async function createAgentServices(
         agentEventBus,
         stateManager,
         sessionManager,
+        searchService,
         storage,
         storageManager,
     };

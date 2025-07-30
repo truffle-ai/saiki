@@ -595,15 +595,27 @@ export const CustomToolsConfigSchema = z
             .default('all')
             .describe('Enable all tools with "all" or specify array of tool IDs to enable'),
 
-        // Tool discovery options
-        enableToolDiscovery: z
-            .boolean()
-            .default(true)
-            .describe('Whether to automatically discover tools from the tools/ directory'),
-
         // Tool-specific configurations
         toolConfigs: z
-            .record(z.record(z.any()))
+            .record(
+                z
+                    .object({
+                        requiresConfirmation: z
+                            .boolean()
+                            .optional()
+                            .describe(
+                                'Whether this specific tool requires user confirmation before execution'
+                            ),
+                        timeout: z
+                            .number()
+                            .int()
+                            .positive()
+                            .optional()
+                            .describe('Execution timeout for this specific tool in milliseconds'),
+                    })
+                    .strict()
+                    .describe('Configuration overrides for a specific tool')
+            )
             .optional()
             .describe(
                 'Per-tool configuration overrides keyed by tool ID, allowing customization of individual tool settings'
@@ -622,24 +634,15 @@ export const CustomToolsConfigSchema = z
                     .positive()
                     .optional()
                     .describe('Default execution timeout for custom tools in milliseconds'),
-                enableCaching: z
-                    .boolean()
-                    .default(false)
-                    .describe('Whether to enable result caching for custom tools'),
             })
             .strict()
-            .default({
-                enableCaching: false,
-            })
+            .default({})
             .describe('Global settings that apply to all custom tools'),
     })
     .strict()
     .default({
         enabledTools: 'all',
-        enableToolDiscovery: true,
-        globalSettings: {
-            enableCaching: false,
-        },
+        globalSettings: {},
     })
     .describe('Configuration for custom tools system');
 

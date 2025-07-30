@@ -1,9 +1,14 @@
-import { ToolExecutionContext, ToolExecutionError, ToolSet, Tool } from './types.js';
+import {
+    ToolExecutionContext,
+    ToolExecutionError,
+    ToolManagerToolSet,
+    Tool,
+    ToolExecutionResult,
+} from './types.js';
 import { ToolRegistry } from './tool-registry.js';
 import { ValidatedCustomToolsConfig } from '../config/schemas.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
-import { IAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/types.js';
-import { InMemoryAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/in-memory.js';
+import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
 import { validateToolResult } from './tool-factory.js';
 import { SchemaConverter } from './schema-converter.js';
 import { logger } from '../logger/index.js';
@@ -17,44 +22,12 @@ export interface ToolExecutionArgs {
 }
 
 /**
- * Tool execution result interface
- * Represents the result returned by a tool execution
- */
-export interface ToolExecutionResult {
-    data?: unknown;
-    metadata?: Record<string, unknown>;
-    error?: string;
-}
-
-/**
  * Tool execution request interface
  */
 export interface ToolExecutionRequest {
     toolId: string;
     args: ToolExecutionArgs;
     context?: ToolExecutionContext;
-}
-
-/**
- * Tool execution response interface
- * Represents the standardized response format for tool execution
- */
-export interface ToolExecutionResponse {
-    success: boolean;
-    data?: unknown;
-    error?: string;
-    metadata?: Record<string, unknown> | undefined;
-}
-
-/**
- * No-op confirmation provider for testing
- */
-class NoOpConfirmationProvider implements ToolConfirmationProvider {
-    allowedToolsProvider: IAllowedToolsProvider = new InMemoryAllowedToolsProvider();
-
-    async requestConfirmation(): Promise<boolean> {
-        return true; // Auto-approve all tools
-    }
 }
 
 /**
@@ -77,12 +50,10 @@ export class ToolExecutor {
         // Use defaults if config is incomplete
         this.config = {
             enabledTools: config.enabledTools ?? 'all',
-            enableToolDiscovery: config.enableToolDiscovery ?? true,
             toolConfigs: config.toolConfigs || {},
             globalSettings: config.globalSettings || {
                 requiresConfirmation: false,
                 timeout: 30000,
-                enableCaching: false,
             },
         };
 
@@ -105,7 +76,7 @@ export class ToolExecutor {
         toolId: string,
         args: ToolExecutionArgs,
         context?: ToolExecutionContext
-    ): Promise<ToolExecutionResponse> {
+    ): Promise<ToolExecutionResult> {
         const tool = this.registry.get(toolId);
         if (!tool) {
             throw new ToolExecutionError(toolId, 'Tool not found');
@@ -197,8 +168,8 @@ export class ToolExecutor {
     /**
      * Convert tools array to ToolSet format
      */
-    private convertToolsToToolSet(tools: Tool[]): ToolSet {
-        const toolSet: ToolSet = {};
+    private convertToolsToToolSet(tools: Tool[]): ToolManagerToolSet {
+        const toolSet: ToolManagerToolSet = {};
 
         for (const tool of tools) {
             const jsonSchema = SchemaConverter.zodToJsonSchema(tool.inputSchema);
@@ -224,7 +195,7 @@ export class ToolExecutor {
     /**
      * Get all tools in ToolSet format (for compatibility with MCP)
      */
-    getAllTools(): ToolSet {
+    getAllTools(): ToolManagerToolSet {
         return this.convertToolsToToolSet(this.registry.getAll());
     }
 
@@ -238,14 +209,14 @@ export class ToolExecutor {
     /**
      * Get tools by category
      */
-    getToolsByCategory(category: string): ToolSet {
+    getToolsByCategory(category: string): ToolManagerToolSet {
         return this.convertToolsToToolSet(this.registry.getByCategory(category));
     }
 
     /**
      * Get tools by tags
      */
-    getToolsByTags(tags: string[]): ToolSet {
+    getToolsByTags(tags: string[]): ToolManagerToolSet {
         return this.convertToolsToToolSet(this.registry.getByTags(tags));
     }
 

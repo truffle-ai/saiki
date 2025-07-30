@@ -10,7 +10,7 @@ export type {
     Tool,
     ToolExecutionContext,
     ToolExecutionResult,
-    ToolSet,
+    ToolManagerToolSet,
     ToolDiscoveryResult,
     ToolDiscoveryMetadata,
     ToolExecutionSettings,
