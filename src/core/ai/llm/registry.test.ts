@@ -351,12 +351,9 @@ describe('File support functionality', () => {
 
             it('should throw UnknownProviderError and include available providers for case-sensitive provider names', () => {
                 const unknownProvider = 'OpenAI';
-                try {
+                const func = () =>
                     getSupportedFileTypesForModel(unknownProvider, 'gpt-4o-audio-preview');
-                    fail('Expected UnknownProviderError to be thrown');
-                } catch (error) {
-                    expect(error).toBeInstanceOf(UnknownProviderError);
-                }
+                expect(func).toThrow(UnknownProviderError);
             });
 
             it('should be case-insensitive for model names', () => {

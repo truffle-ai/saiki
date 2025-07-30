@@ -88,7 +88,7 @@ export function validateInputForLLM(
  * @param config The LLM configuration
  * @returns File validation result
  */
-function validateFileInput(
+export function validateFileInput(
     fileData: FileData,
     config: ValidationLLMConfig
 ): NonNullable<InputValidationResult['fileValidation']> {

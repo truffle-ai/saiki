@@ -6,8 +6,8 @@ import {
     ConfigFileNotFoundError,
     ConfigFileReadError,
     ConfigParseError,
+    ConfigEnvVarError,
 } from '@core/error/index.js';
-
 const tmpFile = path.resolve(process.cwd(), 'src/core/config/temp-config.yml');
 
 beforeEach(async () => {
@@ -93,5 +93,25 @@ mcpServers:
                 /Configuration file not found/
             );
         }
+    });
+
+    it('throws ConfigEnvVarError when a referenced environment variable is missing', async () => {
+        // Define YAML content with a placeholder for a variable that will NOT be set
+        const yamlContent = `
+llm:
+  provider: 'test-provider'
+  model: 'test-model'
+  api_key: \${UNDEFINED_API_KEY} # This variable is intentionally not set
+mcpServers:
+  testServer:
+    type: 'stdio'
+    command: 'echo'
+    args: ['hello']
+`;
+        await fs.writeFile(tmpFile, yamlContent);
+
+        delete process.env.UNDEFINED_API_KEY;
+
+        await expect(loadAgentConfig(tmpFile)).rejects.toThrow(ConfigEnvVarError);
     });
 });
