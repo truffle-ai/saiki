@@ -18,6 +18,18 @@ export interface InternalToolsServices {
 }
 
 /**
+ * Known internal tool names - update this when adding new internal tools
+ */
+export const KNOWN_INTERNAL_TOOLS = ['search_history'] as const;
+export type KnownInternalTool = (typeof KNOWN_INTERNAL_TOOLS)[number];
+
+/**
+ * Configuration for internal tools - simplified to just an array
+ * Empty array = no tools enabled, Non-empty array = specific tools enabled
+ */
+export type InternalToolsConfig = KnownInternalTool[];
+
+/**
  * Simple internal tool interface
  */
 interface InternalTool {
@@ -42,11 +54,17 @@ export class InternalToolsProvider {
     private services: InternalToolsServices;
     private tools: Map<string, InternalTool> = new Map();
     private confirmationProvider: ToolConfirmationProvider;
+    private config: InternalToolsConfig;
 
-    constructor(services: InternalToolsServices, confirmationProvider: ToolConfirmationProvider) {
+    constructor(
+        services: InternalToolsServices,
+        confirmationProvider: ToolConfirmationProvider,
+        config: InternalToolsConfig = []
+    ) {
         this.services = services;
         this.confirmationProvider = confirmationProvider;
-        logger.debug('InternalToolsProvider initialized');
+        this.config = config;
+        logger.debug('InternalToolsProvider initialized with config:', config);
     }
 
     /**
@@ -56,6 +74,12 @@ export class InternalToolsProvider {
         logger.info('Initializing InternalToolsProvider...');
 
         try {
+            // Check if any internal tools are enabled
+            if (this.config.length === 0) {
+                logger.info('No internal tools enabled by configuration');
+                return;
+            }
+
             this.registerInternalTools();
 
             const toolCount = this.tools.size;
@@ -69,11 +93,11 @@ export class InternalToolsProvider {
     }
 
     /**
-     * Register all available internal tools based on available services
+     * Register all available internal tools based on available services and configuration
      */
     private registerInternalTools(): void {
-        // Register search history tool if search service is available
-        if (this.services.searchService) {
+        // Register search history tool if search service is available and tool is enabled
+        if (this.services.searchService && this.isToolEnabled('search_history')) {
             const searchHistoryTool = createSearchHistoryTool(this.services.searchService);
             this.tools.set('search_history', {
                 name: 'search_history',
@@ -96,9 +120,14 @@ export class InternalToolsProvider {
             logger.debug('Registered search_history internal tool');
         }
 
-        // Future internal tools can be registered here based on available services
-        // if (this.services.sessionManager) { ... }
-        // if (this.services.storageManager) { ... }
+        // Future internal tools can be registered here based on available services and configuration
+    }
+
+    /**
+     * Check if a specific tool is enabled by configuration
+     */
+    private isToolEnabled(toolName: KnownInternalTool): boolean {
+        return this.config.includes(toolName);
     }
 
     /**

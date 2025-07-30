@@ -51,6 +51,7 @@ describe('CLI Overrides', () => {
                 type: 'in-memory' as const,
             },
         },
+        internalTools: [],
         sessions: {
             maxSessions: 100,
             sessionTTL: 3600000,

@@ -108,16 +108,19 @@ export async function createAgentServices(
             searchService,
             // Future services can be added here as needed
         },
-        confirmationProvider
+        confirmationProvider,
+        config.internalTools
     );
 
     // 7. Initialize unified tool manager
     const toolManager = new ToolManager(mcpManager, confirmationProvider);
 
-    // Initialize internal tools
-    await toolManager.initializeInternalTools(internalToolsProvider);
-
-    // Initialize custom tools if configured
+    // Initialize internal tools if any are configured
+    if (config.internalTools.length > 0) {
+        await toolManager.initializeInternalTools(internalToolsProvider);
+    } else {
+        logger.info('No internal tools enabled by configuration - skipping initialization');
+    }
 
     const mcpServerCount = Object.keys(config.mcpServers).length;
     if (mcpServerCount === 0) {
