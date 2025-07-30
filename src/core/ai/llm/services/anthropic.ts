@@ -159,7 +159,7 @@ export class AnthropicService implements ILLMService {
                 // Handle tool uses
                 for (const toolUse of toolUses) {
                     const toolName = toolUse.name;
-                    const args = toolUse.input;
+                    const args = toolUse.input as Record<string, unknown>;
                     const toolUseId = toolUse.id;
 
                     // Notify tool call

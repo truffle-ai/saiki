@@ -102,7 +102,7 @@ export async function createAgentServices(
     // 5. Initialize search service
     const searchService = new SearchService(storage.database);
 
-    // 6. Initialize internal tools provider with services
+    // 6. Initialize internal tools provider with services and confirmation support
     const internalToolsProvider = new InternalToolsProvider(
         {
             searchService,
@@ -118,9 +118,6 @@ export async function createAgentServices(
     await toolManager.initializeInternalTools(internalToolsProvider);
 
     // Initialize custom tools if configured
-    if (config.customTools) {
-        await toolManager.initializeCustomTools(config.customTools);
-    }
 
     const mcpServerCount = Object.keys(config.mcpServers).length;
     if (mcpServerCount === 0) {

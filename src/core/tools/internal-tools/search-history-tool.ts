@@ -59,15 +59,5 @@ export function createSearchHistoryTool(searchService: SearchService): Tool {
                 throw new Error(`Invalid search mode: ${mode}. Must be 'messages' or 'sessions'.`);
             }
         },
-        metadata: {
-            category: 'internal',
-            tags: ['search', 'history', 'conversation'],
-            version: '1.0.0',
-            author: 'Saiki Core',
-        },
-        settings: {
-            requiresConfirmation: false,
-            timeout: 10000,
-        },
     };
 }

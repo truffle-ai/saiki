@@ -1,14 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
-import type { ToolManagerToolSet, ToolExecutionContext } from './types.js';
+import type { ToolManagerToolSet } from './types.js';
 
 /**
  * Integration tests for ToolManager cross-source conflict resolution
- * and end-to-end tool execution flows
+ * and end-to-end tool execution flows between MCP and internal tools
  */
 
 // Mock implementations that provide realistic tool behavior
+// These mocks are essential for integration testing as they allow us to:
+// 1. Test ToolManager's conflict resolution logic without external dependencies
+// 2. Simulate realistic tool responses from both sources
+// 3. Test edge cases and error scenarios in a controlled environment
 class RealisticMCPManager {
     private tools: Record<string, any>;
 
@@ -20,24 +24,20 @@ class RealisticMCPManager {
         return this.tools;
     }
 
-    async executeTool(toolName: string, args: any, sessionId?: string): Promise<any> {
+    async executeTool(toolName: string, args: any, _sessionId?: string): Promise<any> {
         if (!this.tools[toolName]) {
             throw new Error(`No MCP tool found: ${toolName}`);
         }
 
-        // Simulate realistic MCP tool execution
+        // Simulate realistic MCP tool execution response format
         return {
             content: [
                 {
                     type: 'text',
-                    text: `MCP tool '${toolName}' executed with args: ${JSON.stringify(args)}`,
+                    text: `MCP tool '${toolName}' executed successfully with args: ${JSON.stringify(args)}`,
                 },
             ],
-            metadata: {
-                source: 'mcp',
-                sessionId,
-                timestamp: new Date().toISOString(),
-            },
+            isError: false,
         };
     }
 
@@ -46,56 +46,51 @@ class RealisticMCPManager {
     }
 }
 
-class RealisticCustomToolsProvider {
-    private tools: Record<string, any>;
-    private initialized = false;
+class RealisticInternalToolsProvider {
+    private tools: ToolManagerToolSet = {};
 
-    constructor(tools: Record<string, any> = {}) {
+    constructor(tools: ToolManagerToolSet = {}) {
         this.tools = tools;
     }
 
     async initialize(): Promise<void> {
-        this.initialized = true;
-    }
-
-    getAllTools(): ToolManagerToolSet {
-        if (!this.initialized) {
-            throw new Error('CustomToolsProvider not initialized');
-        }
-        return this.tools;
+        // Simulate initialization - in real implementation this would register tools
     }
 
     hasTool(toolName: string): boolean {
-        return this.initialized && toolName in this.tools;
+        return toolName in this.tools;
     }
 
-    async executeTool(toolName: string, args: any, context?: ToolExecutionContext): Promise<any> {
-        if (!this.initialized) {
-            throw new Error('CustomToolsProvider not initialized');
+    async executeTool(toolName: string, args: any, sessionId?: string): Promise<any> {
+        if (!this.hasTool(toolName)) {
+            throw new Error(`No internal tool found: ${toolName}`);
         }
 
-        if (!this.tools[toolName]) {
-            throw new Error(`Custom tool not found: ${toolName}`);
-        }
-
-        // Simulate realistic custom tool execution
+        // Simulate realistic internal tool execution response format
         return {
             success: true,
-            result: `Custom tool '${toolName}' processed successfully`,
-            data: args,
+            data: `Internal tool '${toolName}' executed with args: ${JSON.stringify(args)}`,
             metadata: {
-                source: 'custom',
-                sessionId: context?.sessionId,
-                executedAt: new Date().toISOString(),
+                sessionId: sessionId,
+                executionTime: Date.now(),
             },
         };
+    }
+
+    getAllTools(): ToolManagerToolSet {
+        return this.tools;
+    }
+
+    getToolNames(): string[] {
+        return Object.keys(this.tools);
+    }
+
+    getToolCount(): number {
+        return Object.keys(this.tools).length;
     }
 }
 
 describe('ToolManager Integration Tests', () => {
-    let toolManager: ToolManager;
-    let mcpManager: RealisticMCPManager;
-    let customToolProvider: RealisticCustomToolsProvider;
     let confirmationProvider: NoOpConfirmationProvider;
 
     beforeEach(() => {
@@ -106,395 +101,205 @@ describe('ToolManager Integration Tests', () => {
         vi.clearAllMocks();
     });
 
-    describe('Cross-Source Conflict Resolution', () => {
-        it('should handle simple conflict between MCP and custom tools', async () => {
-            // Setup: Both sources have a tool with the same name
-            mcpManager = new RealisticMCPManager({
+    describe('Cross-source conflict resolution', () => {
+        it('should handle complex conflict scenarios with internal tools taking precedence', async () => {
+            // Setup: Both MCP and internal tools have overlapping names
+            const mcpTools = {
+                search: {
+                    description: 'MCP search tool for external APIs',
+                    parameters: { type: 'object', properties: { query: { type: 'string' } } },
+                },
                 file_read: {
-                    description: 'Read files using MCP server',
+                    description: 'MCP file reading tool',
+                    parameters: { type: 'object', properties: { path: { type: 'string' } } },
+                },
+                mcp_specific: {
+                    description: 'MCP-only tool',
+                    parameters: { type: 'object', properties: { data: { type: 'string' } } },
+                },
+            };
+
+            const internalTools = {
+                search: {
+                    description: 'Internal search through agent history',
                     parameters: {
                         type: 'object',
-                        properties: {
-                            path: { type: 'string', description: 'File path' },
-                        },
-                        required: ['path'],
+                        properties: { query: { type: 'string' }, limit: { type: 'number' } },
                     },
                 },
-            });
-
-            customToolProvider = new RealisticCustomToolsProvider({
-                file_read: {
-                    description: 'Read files using custom implementation',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            filename: { type: 'string', description: 'File name' },
-                            encoding: { type: 'string', description: 'File encoding' },
-                        },
-                        required: ['filename'],
-                    },
+                session_info: {
+                    description: 'Internal session information tool',
+                    parameters: { type: 'object', properties: {} },
                 },
-            });
+            };
 
-            toolManager = new ToolManager(mcpManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = customToolProvider as any;
-            await customToolProvider.initialize();
+            const mcpManager = new RealisticMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+            const internalProvider = new RealisticInternalToolsProvider(internalTools as any);
 
-            // Act: Get all tools
-            const tools = await toolManager.getAllTools();
+            await toolManager.initializeInternalTools(internalProvider as any);
 
-            // Assert: Conflict should be resolved with qualified names
-            expect(tools).not.toHaveProperty('file_read'); // Unqualified should not exist
-            expect(tools).toHaveProperty('mcp--file_read');
-            expect(tools).toHaveProperty('custom--file_read');
+            const allTools = await toolManager.getAllTools();
 
-            // Check that descriptions indicate source
-            expect(tools['mcp--file_read']?.description).toContain('(via MCP servers)');
-            expect(tools['custom--file_read']?.description).toContain('(custom tool)');
+            // Verify conflict resolution
+            expect(allTools['search']).toBeDefined();
+            expect(allTools['search']?.description).toBe('Internal search through agent history');
+
+            // MCP version should be prefixed
+            expect(allTools['mcp--search']).toBeDefined();
+            expect(allTools['mcp--search']?.description).toContain('MCP search tool');
+
+            // Non-conflicting tools should be available directly
+            expect(allTools['file_read']).toBeDefined();
+            expect(allTools['file_read']?.description).toBe('MCP file reading tool');
+            expect(allTools['session_info']).toBeDefined();
+            expect(allTools['mcp_specific']).toBeDefined();
+
+            // Verify total count
+            expect(Object.keys(allTools)).toHaveLength(5); // 2 internal + 2 non-conflicting MCP + 1 prefixed conflict
         });
 
-        it('should handle multiple conflicts with different parameter schemas', async () => {
-            mcpManager = new RealisticMCPManager({
-                search: {
-                    description: 'Search using MCP',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            query: { type: 'string' },
-                            limit: { type: 'number' },
-                        },
-                        required: ['query'],
-                    },
-                },
-                format: {
-                    description: 'Format data using MCP',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            data: { type: 'string' },
-                            style: { type: 'string' },
-                        },
-                    },
-                },
-                unique_mcp: {
-                    description: 'Unique to MCP',
-                },
-            });
+        it('should execute tools correctly with conflict resolution', async () => {
+            const mcpTools = {
+                search: { description: 'MCP search tool' },
+            };
 
-            customToolProvider = new RealisticCustomToolsProvider({
-                search: {
-                    description: 'Search using custom logic',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            term: { type: 'string' },
-                            filters: { type: 'array' },
-                        },
-                        required: ['term'],
-                    },
-                },
-                format: {
-                    description: 'Format using custom formatter',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            input: { type: 'string' },
-                            template: { type: 'string' },
-                        },
-                    },
-                },
-                unique_custom: {
-                    description: 'Unique to custom',
-                },
-            });
+            const internalTools = {
+                search: { description: 'Internal search tool' },
+            };
 
-            toolManager = new ToolManager(mcpManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = customToolProvider as any;
-            await customToolProvider.initialize();
+            const mcpManager = new RealisticMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+            const internalProvider = new RealisticInternalToolsProvider(internalTools as any);
 
-            const tools = await toolManager.getAllTools();
+            await toolManager.initializeInternalTools(internalProvider as any);
 
-            // Conflicts should be qualified
-            expect(tools).toHaveProperty('mcp--search');
-            expect(tools).toHaveProperty('custom--search');
-            expect(tools).toHaveProperty('mcp--format');
-            expect(tools).toHaveProperty('custom--format');
+            // Execute unqualified tool name (should route to internal)
+            const internalResult = await toolManager.executeTool('search', { query: 'test' });
+            expect(internalResult.data).toContain('Internal tool');
 
-            // Non-conflicts should be direct
-            expect(tools).toHaveProperty('unique_mcp');
-            expect(tools).toHaveProperty('unique_custom');
-
-            // Should not have unqualified conflicted names
-            expect(tools).not.toHaveProperty('search');
-            expect(tools).not.toHaveProperty('format');
-        });
-
-        it('should dynamically update conflicts when tools change', async () => {
-            // Initial setup with conflict
-            mcpManager = new RealisticMCPManager({
-                dynamic_tool: { description: 'MCP version' },
-            });
-
-            customToolProvider = new RealisticCustomToolsProvider({
-                dynamic_tool: { description: 'Custom version' },
-            });
-
-            toolManager = new ToolManager(mcpManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = customToolProvider as any;
-            await customToolProvider.initialize();
-
-            // Check initial conflict state
-            let tools = await toolManager.getAllTools();
-            expect(tools).toHaveProperty('mcp--dynamic_tool');
-            expect(tools).toHaveProperty('custom--dynamic_tool');
-            expect(tools).not.toHaveProperty('dynamic_tool');
-
-            // Simulate removal of custom tool
-            customToolProvider = new RealisticCustomToolsProvider({
-                other_tool: { description: 'Different tool' },
-            });
-            toolManager['customToolProvider'] = customToolProvider as any;
-            await customToolProvider.initialize();
-
-            // Update conflicts and check resolution
-            await toolManager['updateCrossSourceConflicts']();
-            tools = await toolManager.getAllTools();
-
-            // Conflict should be resolved
-            expect(tools).toHaveProperty('dynamic_tool'); // Now available directly
-            expect(tools).not.toHaveProperty('mcp--dynamic_tool');
-            expect(tools).not.toHaveProperty('custom--dynamic_tool');
-            expect(tools).toHaveProperty('other_tool');
+            // Execute prefixed MCP tool
+            const mcpResult = await toolManager.executeTool('mcp--search', { query: 'test' });
+            expect(mcpResult.content[0].text).toContain('MCP tool');
         });
     });
 
-    describe('End-to-End Tool Execution', () => {
-        beforeEach(async () => {
-            mcpManager = new RealisticMCPManager({
-                mcp_calculator: {
-                    description: 'Calculate using MCP service',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            operation: { type: 'string' },
-                            a: { type: 'number' },
-                            b: { type: 'number' },
-                        },
-                        required: ['operation', 'a', 'b'],
-                    },
-                },
-                shared_utility: {
-                    description: 'Shared utility via MCP',
-                },
-            });
+    describe('End-to-end tool execution flows', () => {
+        it('should handle session context properly in internal tools', async () => {
+            const internalTools = {
+                session_tool: { description: 'Tool that uses session context' },
+            };
 
-            customToolProvider = new RealisticCustomToolsProvider({
-                custom_validator: {
-                    description: 'Validate input using custom logic',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            data: { type: 'string' },
-                            rules: { type: 'array' },
-                        },
-                        required: ['data'],
-                    },
-                },
-                shared_utility: {
-                    description: 'Shared utility via custom implementation',
-                },
-            });
+            const mcpManager = new RealisticMCPManager();
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+            const internalProvider = new RealisticInternalToolsProvider(internalTools as any);
 
-            toolManager = new ToolManager(mcpManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = customToolProvider as any;
-            await customToolProvider.initialize();
-        });
+            await toolManager.initializeInternalTools(internalProvider as any);
 
-        it('should execute MCP tools correctly', async () => {
             const result = await toolManager.executeTool(
-                'mcp_calculator',
-                {
-                    operation: 'add',
-                    a: 5,
-                    b: 3,
-                },
+                'session_tool',
+                { data: 'test' },
                 'session-123'
             );
 
-            expect(result.content[0].text).toContain('mcp_calculator');
-            expect(result.content[0].text).toContain('add');
-            expect(result.metadata.source).toBe('mcp');
+            expect(result.success).toBe(true);
             expect(result.metadata.sessionId).toBe('session-123');
         });
 
-        it('should execute custom tools correctly', async () => {
-            const result = await toolManager.executeTool(
-                'custom_validator',
-                {
-                    data: 'test@example.com',
-                    rules: ['email'],
-                },
-                'session-456'
-            );
+        it('should maintain tool caching behavior', async () => {
+            const mcpTools = {
+                cached_tool: { description: 'Tool for cache testing' },
+            };
 
-            expect(result.success).toBe(true);
-            expect(result.result).toContain('custom_validator');
-            expect(result.data.data).toBe('test@example.com');
-            expect(result.metadata.source).toBe('custom');
-            expect(result.metadata.sessionId).toBe('session-456');
+            const mcpManager = new RealisticMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+
+            // First call to build cache
+            const tools1 = await toolManager.getAllTools();
+            expect(Object.keys(tools1)).toHaveLength(1);
+
+            // Second call should use cache
+            const tools2 = await toolManager.getAllTools();
+            expect(tools2).toBe(tools1); // Should be same reference due to caching
         });
 
-        it('should execute qualified conflicted tools correctly', async () => {
-            // Execute MCP version of shared utility
-            const mcpResult = await toolManager.executeTool('mcp--shared_utility', {
-                param: 'mcp_test',
+        it('should refresh cache when refresh() is called', async () => {
+            const mcpManager = new RealisticMCPManager({
+                initial_tool: { description: 'Initial tool' },
             });
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
 
-            expect(mcpResult.content[0].text).toContain('shared_utility');
-            expect(mcpResult.metadata.source).toBe('mcp');
+            // Get initial tools
+            const initialTools = await toolManager.getAllTools();
+            expect(Object.keys(initialTools)).toHaveLength(1);
 
-            // Execute custom version of shared utility
-            const customResult = await toolManager.executeTool('custom--shared_utility', {
-                param: 'custom_test',
-            });
+            // Simulate MCP servers changing
+            (mcpManager as any).tools = {
+                initial_tool: { description: 'Initial tool' },
+                new_tool: { description: 'New tool' },
+            };
 
-            expect(customResult.success).toBe(true);
-            expect(customResult.result).toContain('shared_utility');
-            expect(customResult.metadata.source).toBe('custom');
+            // Refresh should invalidate cache
+            await toolManager.refresh();
+
+            const refreshedTools = await toolManager.getAllTools();
+            expect(Object.keys(refreshedTools)).toHaveLength(2);
+            expect(refreshedTools['new_tool']).toBeDefined();
         });
+    });
 
-        it('should handle tool execution errors appropriately', async () => {
-            // Test non-existent tool
+    describe('Error handling and edge cases', () => {
+        it('should handle tool execution errors gracefully', async () => {
+            const mcpManager = new RealisticMCPManager();
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+
             await expect(toolManager.executeTool('nonexistent_tool', {})).rejects.toThrow(
                 'Tool not found: nonexistent_tool'
             );
-
-            // Test unqualified conflicted tool - auto-detect should work
-            const autoDetectResult = await toolManager.executeTool('shared_utility', {});
-            expect(autoDetectResult.success).toBe(true);
         });
 
-        it('should propagate errors from underlying tool sources', async () => {
-            // Mock an error in MCP execution
-            const errorMCPManager = {
-                getAllTools: vi.fn().mockResolvedValue({
-                    error_tool: { description: 'Tool that will error' },
-                }),
-                executeTool: vi.fn().mockRejectedValue(new Error('MCP execution failed')),
-                getToolClient: vi.fn().mockReturnValue({}),
-            };
+        it('should handle internal tools provider errors during initialization', async () => {
+            const mcpManager = new RealisticMCPManager();
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
 
-            toolManager = new ToolManager(errorMCPManager as any, confirmationProvider);
-
-            await expect(toolManager.executeTool('error_tool', {})).rejects.toThrow(
-                'MCP execution failed'
-            );
-        });
-    });
-
-    describe('Tool Discovery and Existence Checks', () => {
-        beforeEach(async () => {
-            mcpManager = new RealisticMCPManager({
-                mcp_tool_1: { description: 'First MCP tool' },
-                mcp_tool_2: { description: 'Second MCP tool' },
-                common_name: { description: 'Common tool via MCP' },
-            });
-
-            customToolProvider = new RealisticCustomToolsProvider({
-                custom_tool_1: { description: 'First custom tool' },
-                custom_tool_2: { description: 'Second custom tool' },
-                common_name: { description: 'Common tool via custom' },
-            });
-
-            toolManager = new ToolManager(mcpManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = customToolProvider as any;
-            await customToolProvider.initialize();
-        });
-
-        it('should correctly identify tool existence across sources', async () => {
-            // MCP tools
-            expect(await toolManager.hasTool('mcp_tool_1')).toBe(true);
-            expect(await toolManager.hasTool('mcp_tool_2')).toBe(true);
-
-            // Custom tools
-            expect(await toolManager.hasTool('custom_tool_1')).toBe(true);
-            expect(await toolManager.hasTool('custom_tool_2')).toBe(true);
-
-            // Qualified conflicted tools
-            expect(await toolManager.hasTool('mcp--common_name')).toBe(true);
-            expect(await toolManager.hasTool('custom--common_name')).toBe(true);
-
-            // Auto-detect for conflicted tools
-            expect(await toolManager.hasTool('common_name')).toBe(true);
-
-            // Non-existent tools
-            expect(await toolManager.hasTool('nonexistent')).toBe(false);
-        });
-
-        it('should provide complete tool inventory', async () => {
-            const tools = await toolManager.getAllTools();
-
-            // Count tools
-            const toolCount = Object.keys(tools).length;
-            expect(toolCount).toBe(6); // 2 MCP + 2 Custom + 2 qualified conflicted
-
-            // Verify all expected tools are present
-            expect(tools).toHaveProperty('mcp_tool_1');
-            expect(tools).toHaveProperty('mcp_tool_2');
-            expect(tools).toHaveProperty('custom_tool_1');
-            expect(tools).toHaveProperty('custom_tool_2');
-            expect(tools).toHaveProperty('mcp--common_name');
-            expect(tools).toHaveProperty('custom--common_name');
-
-            // Verify conflicted tool is not available unqualified
-            expect(tools).not.toHaveProperty('common_name');
-        });
-    });
-
-    describe('Error Recovery and Resilience', () => {
-        it('should handle MCP manager failures gracefully', async () => {
-            const flakyMCPManager = {
-                getAllTools: vi.fn().mockRejectedValue(new Error('Network error')),
-                executeTool: vi.fn().mockRejectedValue(new Error('Connection lost')),
-                getToolClient: vi.fn().mockReturnValue(undefined),
-            };
-
-            customToolProvider = new RealisticCustomToolsProvider({
-                backup_tool: { description: 'Backup custom tool' },
-            });
-
-            toolManager = new ToolManager(flakyMCPManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = customToolProvider as any;
-            await customToolProvider.initialize();
-
-            // Tool aggregation should fail due to MCP error
-            await expect(toolManager.getAllTools()).rejects.toThrow('Network error');
-
-            // But custom tools should still be accessible if we can work around the error
-            expect(customToolProvider.hasTool('backup_tool')).toBe(true);
-        });
-
-        it('should handle custom tool provider failures gracefully', async () => {
-            mcpManager = new RealisticMCPManager({
-                primary_tool: { description: 'Primary MCP tool' },
-            });
-
-            // Create a failing custom tool provider
-            const flakyCustomProvider = {
-                initialize: vi.fn().mockRejectedValue(new Error('Initialization failed')),
-                getAllTools: vi.fn().mockImplementation(() => {
-                    throw new Error('Provider crashed');
-                }),
+            // Mock a failing internal tools provider
+            const failingProvider = {
+                initialize: vi.fn().mockRejectedValue(new Error('Internal tools failed')),
                 hasTool: vi.fn().mockReturnValue(false),
-                executeTool: vi.fn().mockRejectedValue(new Error('Execution failed')),
+                executeTool: vi.fn(),
+                getAllTools: vi.fn().mockReturnValue({}),
+                getToolNames: vi.fn().mockReturnValue([]),
             };
 
-            toolManager = new ToolManager(mcpManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = flakyCustomProvider as any;
+            await expect(
+                toolManager.initializeInternalTools(failingProvider as any)
+            ).rejects.toThrow('Internal tools failed');
+        });
 
-            // Should handle custom provider errors and continue with MCP tools
-            const tools = await toolManager.getAllTools();
-            expect(tools).toHaveProperty('primary_tool');
+        it('should provide accurate tool statistics even with complex scenarios', async () => {
+            const mcpTools = {
+                tool_a: { description: 'MCP tool A' },
+                tool_b: { description: 'MCP tool B' },
+                shared_tool: { description: 'MCP shared tool' },
+            };
+
+            const internalTools = {
+                tool_c: { description: 'Internal tool C' },
+                shared_tool: { description: 'Internal shared tool' },
+            };
+
+            const mcpManager = new RealisticMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+            const internalProvider = new RealisticInternalToolsProvider(internalTools as any);
+
+            await toolManager.initializeInternalTools(internalProvider as any);
+
+            const stats = await toolManager.getToolStats();
+
+            expect(stats.mcp).toBe(3);
+            expect(stats.internal).toBe(2);
+            expect(stats.conflicts).toBe(1); // shared_tool
+            expect(stats.total).toBe(5); // 3 MCP + 2 internal
         });
     });
 });

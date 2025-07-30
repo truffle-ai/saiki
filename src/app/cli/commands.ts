@@ -835,18 +835,17 @@ export const CLI_COMMANDS: CommandDefinition[] = [
 
                 // Tools
                 try {
-                    const allTools = await agent.getAllTools();
-                    const mcpTools = await agent.getAllMcpTools();
-                    const customTools = await agent.getCustomTools();
+                    const toolStats = await agent.toolManager.getToolStats();
 
                     console.log(chalk.bold('\n🔧 Tools:'));
-                    console.log(
-                        `  MCP Tools: ${chalk.cyan(Object.keys(mcpTools).length.toString())}`
-                    );
-                    console.log(`  Custom Tools: ${chalk.cyan(customTools.length.toString())}`);
-                    console.log(
-                        `  Total Tools: ${chalk.cyan(Object.keys(allTools).length.toString())}`
-                    );
+                    console.log(`  MCP Tools: ${chalk.cyan(toolStats.mcp.toString())}`);
+                    console.log(`  Internal Tools: ${chalk.cyan(toolStats.internal.toString())}`);
+                    if (toolStats.conflicts > 0) {
+                        console.log(
+                            `  Conflicts: ${chalk.yellow(toolStats.conflicts.toString())} (internal tools take precedence)`
+                        );
+                    }
+                    console.log(`  Total Tools: ${chalk.cyan(toolStats.total.toString())}`);
                 } catch {
                     console.log(chalk.bold('\n🔧 Tools:'));
                     console.log(`  Available Tools: ${chalk.dim('Unable to count')}`);
@@ -863,7 +862,7 @@ export const CLI_COMMANDS: CommandDefinition[] = [
     },
     {
         name: 'tools',
-        description: 'List all available tools (both MCP and custom tools)',
+        description: 'List all available tools (MCP and internal tools)',
         usage: '/tools',
         category: 'Tool Management',
         handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
@@ -883,14 +882,25 @@ export const CLI_COMMANDS: CommandDefinition[] = [
                 for (const [toolName, toolInfo] of toolEntries) {
                     const description = toolInfo.description || 'No description available';
                     const isMcpTool = Object.keys(mcpTools).includes(toolName);
-                    const source = isMcpTool ? chalk.blue('[MCP]') : chalk.magenta('[Custom]');
+
+                    // Determine tool source: internal tools take precedence over MCP tools
+                    let source: string;
+                    if (!isMcpTool && !toolName.startsWith('mcp--')) {
+                        // Non-MCP tool that doesn't have mcp prefix = internal tool
+                        source = chalk.magenta('[Internal]');
+                    } else if (isMcpTool || toolName.startsWith('mcp--')) {
+                        source = chalk.blue('[MCP]');
+                    } else {
+                        source = chalk.gray('[Unknown]');
+                    }
+
                     console.log(
                         `  ${chalk.yellow(toolName)} ${source} - ${chalk.dim(description)}`
                     );
                 }
 
                 console.log(
-                    chalk.dim('\n💡 Tools are provided by connected MCP servers and custom tools')
+                    chalk.dim('\n💡 Tools are provided by connected MCP servers and internal tools')
                 );
             } catch (error) {
                 logger.error(

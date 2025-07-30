@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
 import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
-import type { ToolManagerToolSet, ToolExecutionContext } from './types.js';
+import type { ToolManagerToolSet } from './types.js';
 
 // Mock MCPManager
 class MockMCPManager {
@@ -27,382 +27,217 @@ class MockMCPManager {
     }
 }
 
-// Mock CustomToolsProvider
-class MockCustomToolsProvider {
-    private tools: Record<string, any> = {};
+// Mock InternalToolsProvider
+class MockInternalToolsProvider {
+    private tools: ToolManagerToolSet = {};
 
-    constructor(tools: Record<string, any> = {}) {
+    constructor(tools: ToolManagerToolSet = {}) {
         this.tools = tools;
     }
 
-    getAllTools(): ToolManagerToolSet {
-        return this.tools;
+    async initialize(): Promise<void> {
+        // No-op for mocking
     }
 
     hasTool(toolName: string): boolean {
         return toolName in this.tools;
     }
 
-    async executeTool(toolName: string, args: any, context?: ToolExecutionContext): Promise<any> {
-        if (!this.tools[toolName]) {
-            throw new Error(`Custom tool not found: ${toolName}`);
+    async executeTool(toolName: string, args: any, sessionId?: string): Promise<any> {
+        if (!this.hasTool(toolName)) {
+            throw new Error(`No internal tool found: ${toolName}`);
         }
-        return { result: `Custom:${toolName}`, args, context };
+        return { result: `INTERNAL:${toolName}`, args, sessionId };
     }
 
-    async initialize(): Promise<void> {
-        // Mock initialization
+    getAllTools(): ToolManagerToolSet {
+        return this.tools;
+    }
+
+    getToolNames(): string[] {
+        return Object.keys(this.tools);
     }
 }
 
 describe('ToolManager', () => {
-    let toolManager: ToolManager;
-    let mockMCPManager: MockMCPManager;
-    let mockCustomToolProvider: MockCustomToolsProvider;
     let confirmationProvider: NoOpConfirmationProvider;
 
     beforeEach(() => {
         confirmationProvider = new NoOpConfirmationProvider();
-        mockMCPManager = new MockMCPManager();
-        toolManager = new ToolManager(mockMCPManager as any, confirmationProvider);
     });
 
     afterEach(() => {
         vi.clearAllMocks();
     });
 
-    describe('Basic Tool Aggregation', () => {
-        it('should aggregate tools from MCP manager only when no custom tools', async () => {
-            // Setup MCP tools
-            mockMCPManager = new MockMCPManager({
-                mcp_tool_1: { description: 'MCP Tool 1' },
-                mcp_tool_2: { description: 'MCP Tool 2' },
-            });
-            toolManager = new ToolManager(mockMCPManager as any, confirmationProvider);
+    describe('Basic functionality', () => {
+        it('should initialize with empty tools', async () => {
+            const mcpManager = new MockMCPManager();
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
 
             const tools = await toolManager.getAllTools();
-
-            expect(tools).toHaveProperty('mcp_tool_1');
-            expect(tools).toHaveProperty('mcp_tool_2');
-            expect(Object.keys(tools)).toHaveLength(2);
+            expect(tools).toEqual({});
         });
 
-        it('should aggregate tools from both MCP and custom sources without conflicts', async () => {
-            // Setup MCP tools
-            mockMCPManager = new MockMCPManager({
-                mcp_tool: { description: 'MCP Tool' },
-            });
-            toolManager = new ToolManager(mockMCPManager as any, confirmationProvider);
-
-            // Setup custom tools
-            mockCustomToolProvider = new MockCustomToolsProvider({
-                custom_tool: { description: 'Custom Tool' },
-            });
-
-            // Inject custom tool provider
-            toolManager['customToolProvider'] = mockCustomToolProvider as any;
+        it('should return MCP tools when only MCP tools exist', async () => {
+            const mcpTools = {
+                mcp_tool1: { description: 'MCP Tool 1' },
+                mcp_tool2: { description: 'MCP Tool 2' },
+            };
+            const mcpManager = new MockMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
 
             const tools = await toolManager.getAllTools();
-
-            expect(tools).toHaveProperty('mcp_tool');
-            expect(tools).toHaveProperty('custom_tool');
             expect(Object.keys(tools)).toHaveLength(2);
+            expect(tools['mcp_tool1']).toBeDefined();
+            expect(tools['mcp_tool2']).toBeDefined();
+        });
+
+        it('should return internal tools when only internal tools exist', async () => {
+            const internalTools = {
+                internal_tool1: { description: 'Internal Tool 1' },
+                internal_tool2: { description: 'Internal Tool 2' },
+            };
+            const mcpManager = new MockMCPManager();
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+            const internalProvider = new MockInternalToolsProvider(internalTools);
+
+            await toolManager.initializeInternalTools(internalProvider as any);
+
+            const tools = await toolManager.getAllTools();
+            expect(Object.keys(tools)).toHaveLength(2);
+            expect(tools['internal_tool1']).toBeDefined();
+            expect(tools['internal_tool2']).toBeDefined();
         });
     });
 
-    describe('Cross-Source Conflict Resolution', () => {
-        beforeEach(() => {
-            // Setup tools with conflicts
-            mockMCPManager = new MockMCPManager({
-                shared_tool: { description: 'MCP version of shared tool' },
-                unique_mcp: { description: 'Unique MCP tool' },
-            });
+    describe('Conflict resolution', () => {
+        it('should give precedence to internal tools over MCP tools with same name', async () => {
+            const mcpTools = {
+                common_tool: { description: 'MCP Common Tool' },
+                mcp_only: { description: 'MCP Only Tool' },
+            };
+            const internalTools = {
+                common_tool: { description: 'Internal Common Tool' },
+                internal_only: { description: 'Internal Only Tool' },
+            };
 
-            mockCustomToolProvider = new MockCustomToolsProvider({
-                shared_tool: { description: 'Custom version of shared tool' },
-                unique_custom: { description: 'Unique custom tool' },
-            });
+            const mcpManager = new MockMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+            const internalProvider = new MockInternalToolsProvider(internalTools);
 
-            toolManager = new ToolManager(mockMCPManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = mockCustomToolProvider as any;
-        });
+            await toolManager.initializeInternalTools(internalProvider as any);
 
-        it('should detect conflicts and use qualified names', async () => {
             const tools = await toolManager.getAllTools();
 
-            // Conflicted tool should be qualified
-            expect(tools).toHaveProperty('mcp--shared_tool');
-            expect(tools).toHaveProperty('custom--shared_tool');
-            expect(tools).not.toHaveProperty('shared_tool'); // Unqualified should not exist
-
-            // Non-conflicted tools should be available directly
-            expect(tools).toHaveProperty('unique_mcp');
-            expect(tools).toHaveProperty('unique_custom');
-        });
-
-        it('should add source information to conflicted tool descriptions', async () => {
-            const tools = await toolManager.getAllTools();
-
-            expect(tools['mcp--shared_tool']?.description).toContain('(via MCP servers)');
-            expect(tools['custom--shared_tool']?.description).toContain('(custom tool)');
-        });
-
-        it('should update conflicts when tools change', async () => {
-            // Initial state - conflict exists
-            let tools = await toolManager.getAllTools();
-            expect(tools).toHaveProperty('mcp--shared_tool');
-            expect(tools).toHaveProperty('custom--shared_tool');
-
-            // Remove custom tool (simulate provider change)
-            mockCustomToolProvider = new MockCustomToolsProvider({
-                unique_custom: { description: 'Unique custom tool' },
-            });
-            toolManager['customToolProvider'] = mockCustomToolProvider as any;
-
-            // Update conflicts
-            await toolManager['updateCrossSourceConflicts']();
-
-            tools = await toolManager.getAllTools();
-
-            // Conflict resolved - shared_tool should be available directly
-            expect(tools).toHaveProperty('shared_tool');
-            expect(tools).not.toHaveProperty('mcp--shared_tool');
-            expect(tools).not.toHaveProperty('custom--shared_tool');
+            // Should have internal version of common_tool and prefixed MCP version
+            expect(tools['common_tool']).toBeDefined();
+            expect(tools['common_tool']?.description).toBe('Internal Common Tool');
+            expect(tools['mcp--common_tool']).toBeDefined();
+            expect(tools['mcp--common_tool']?.description).toContain('MCP Common Tool');
+            expect(tools['mcp_only']).toBeDefined();
+            expect(tools['internal_only']).toBeDefined();
         });
     });
 
-    describe('Tool Execution Routing', () => {
-        beforeEach(() => {
-            mockMCPManager = new MockMCPManager({
-                mcp_tool: { description: 'MCP Tool' },
-                shared_tool: { description: 'MCP version' },
-            });
+    describe('Tool execution', () => {
+        it('should route to internal tools first', async () => {
+            const mcpTools = {
+                common_tool: { description: 'MCP Common Tool' },
+            };
+            const internalTools = {
+                common_tool: { description: 'Internal Common Tool' },
+            };
 
-            mockCustomToolProvider = new MockCustomToolsProvider({
-                custom_tool: { description: 'Custom Tool' },
-                shared_tool: { description: 'Custom version' },
-            });
+            const mcpManager = new MockMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+            const internalProvider = new MockInternalToolsProvider(internalTools);
 
-            toolManager = new ToolManager(mockMCPManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = mockCustomToolProvider as any;
+            await toolManager.initializeInternalTools(internalProvider as any);
+
+            const result = await toolManager.executeTool('common_tool', { test: 'args' });
+
+            expect(result.result).toBe('INTERNAL:common_tool');
         });
 
-        it('should route MCP tools to MCPManager', async () => {
-            const result = await toolManager.executeTool(
-                'mcp_tool',
-                { test: 'data' },
-                'session123'
-            );
+        it('should route to MCP tools when internal tool not available', async () => {
+            const mcpTools = {
+                mcp_tool: { description: 'MCP Tool' },
+            };
+
+            const mcpManager = new MockMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+
+            const result = await toolManager.executeTool('mcp_tool', { test: 'args' });
 
             expect(result.result).toBe('MCP:mcp_tool');
-            expect(result.args).toEqual({ test: 'data' });
-            expect(result.sessionId).toBe('session123');
         });
 
-        it('should route custom tools to CustomToolsProvider', async () => {
-            const result = await toolManager.executeTool(
-                'custom_tool',
-                { test: 'data' },
-                'session123'
-            );
+        it('should execute prefixed tools correctly', async () => {
+            const mcpTools = {
+                common_tool: { description: 'MCP Common Tool' },
+            };
+            const internalTools = {
+                common_tool: { description: 'Internal Common Tool' },
+            };
 
-            expect(result.result).toBe('Custom:custom_tool');
-            expect(result.args).toEqual({ test: 'data' });
-            expect(result.context).toEqual({ sessionId: 'session123' });
-        });
+            const mcpManager = new MockMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+            const internalProvider = new MockInternalToolsProvider(internalTools);
 
-        it('should route qualified conflicted tools correctly', async () => {
-            // Test MCP qualified tool
-            const mcpResult = await toolManager.executeTool('mcp--shared_tool', { test: 'mcp' });
-            expect(mcpResult.result).toBe('MCP:shared_tool');
+            await toolManager.initializeInternalTools(internalProvider as any);
 
-            // Test custom qualified tool
-            const customResult = await toolManager.executeTool('custom--shared_tool', {
-                test: 'custom',
-            });
-            expect(customResult.result).toBe('Custom:shared_tool');
+            // Execute the prefixed MCP version
+            const result = await toolManager.executeTool('mcp--common_tool', { test: 'args' });
+
+            expect(result.result).toBe('MCP:common_tool');
         });
 
         it('should throw error for non-existent tools', async () => {
-            await expect(toolManager.executeTool('nonexistent', {})).rejects.toThrow(
-                'Tool not found: nonexistent'
+            const mcpManager = new MockMCPManager();
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+
+            await expect(toolManager.executeTool('non_existent', {})).rejects.toThrow(
+                'Tool not found: non_existent'
             );
         });
+    });
 
-        it('should handle unqualified conflicted tools by auto-detecting source', async () => {
-            // In the current implementation, auto-detect will find the custom tool
-            const result = await toolManager.executeTool('shared_tool', {});
-            expect(result.result).toBe('Custom:shared_tool');
+    describe('Tool statistics', () => {
+        it('should return correct tool stats', async () => {
+            const mcpTools = {
+                mcp_tool1: { description: 'MCP Tool 1' },
+                mcp_tool2: { description: 'MCP Tool 2' },
+                common_tool: { description: 'MCP Common Tool' },
+            };
+            const internalTools = {
+                internal_tool1: { description: 'Internal Tool 1' },
+                common_tool: { description: 'Internal Common Tool' },
+            };
+
+            const mcpManager = new MockMCPManager(mcpTools);
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
+            const internalProvider = new MockInternalToolsProvider(internalTools);
+
+            await toolManager.initializeInternalTools(internalProvider as any);
+
+            const stats = await toolManager.getToolStats();
+
+            expect(stats.mcp).toBe(3);
+            expect(stats.internal).toBe(2);
+            expect(stats.conflicts).toBe(1); // common_tool conflicts
+            expect(stats.total).toBe(5); // 3 MCP + 2 internal
         });
     });
 
-    describe('Tool Name Parsing', () => {
-        it('should parse qualified tool names correctly', () => {
-            const parseMethod = toolManager['parseToolName'].bind(toolManager);
+    describe('Tool source detection', () => {
+        it('should detect tool sources correctly', () => {
+            const mcpManager = new MockMCPManager();
+            const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
 
-            // MCP qualified
-            const mcpResult = parseMethod('mcp--toolname');
-            expect(mcpResult).toEqual({
-                source: 'mcp',
-                actualToolName: 'toolname',
-            });
-
-            // Custom qualified
-            const customResult = parseMethod('custom--toolname');
-            expect(customResult).toEqual({
-                source: 'custom',
-                actualToolName: 'toolname',
-            });
-
-            // Auto-detect (non-qualified)
-            const autoResult = parseMethod('simpletool');
-            expect(autoResult).toEqual({
-                source: 'auto',
-                actualToolName: 'simpletool',
-            });
-        });
-
-        it('should handle complex tool names', () => {
-            const parseMethod = toolManager['parseToolName'].bind(toolManager);
-
-            // Tool name with underscores
-            const result = parseMethod('mcp--tool_with_underscores');
-            expect(result.actualToolName).toBe('tool_with_underscores');
-
-            // Tool name with hyphens
-            const result2 = parseMethod('custom--tool-with-hyphens');
-            expect(result2.actualToolName).toBe('tool-with-hyphens');
-        });
-    });
-
-    describe('Tool Existence Checks', () => {
-        beforeEach(() => {
-            mockMCPManager = new MockMCPManager({
-                mcp_tool: { description: 'MCP Tool' },
-            });
-
-            mockCustomToolProvider = new MockCustomToolsProvider({
-                custom_tool: { description: 'Custom Tool' },
-            });
-
-            toolManager = new ToolManager(mockMCPManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = mockCustomToolProvider as any;
-        });
-
-        it('should correctly identify existing tools from both sources', async () => {
-            expect(await toolManager.hasTool('mcp_tool')).toBe(true);
-            expect(await toolManager.hasTool('custom_tool')).toBe(true);
-            expect(await toolManager.hasTool('nonexistent')).toBe(false);
-        });
-
-        it('should handle qualified tool names in existence checks', async () => {
-            // Add conflicted tools
-            mockMCPManager = new MockMCPManager({
-                shared: { description: 'MCP version' },
-            });
-            mockCustomToolProvider = new MockCustomToolsProvider({
-                shared: { description: 'Custom version' },
-            });
-
-            toolManager = new ToolManager(mockMCPManager as any, confirmationProvider);
-            toolManager['customToolProvider'] = mockCustomToolProvider as any;
-
-            expect(await toolManager.hasTool('mcp--shared')).toBe(true);
-            expect(await toolManager.hasTool('custom--shared')).toBe(true);
-            expect(await toolManager.hasTool('shared')).toBe(true); // Auto-detect should find it
-        });
-    });
-
-    describe('Custom Tool Initialization', () => {
-        it('should initialize custom tools when configured', async () => {
-            const mockConfig = {
-                enabledTools: 'all' as const,
-                enableToolDiscovery: false, // Disable tool discovery for testing
-                toolConfigs: {},
-                globalSettings: {
-                    requiresConfirmation: true,
-                    timeout: 5000,
-                    enableCaching: true,
-                },
-            };
-
-            // Start with no custom tool provider
-            (toolManager as any)['customToolProvider'] = undefined;
-
-            // Mock the CustomToolsProvider constructor
-            const _mockProvider = {
-                initialize: vi.fn().mockResolvedValue(undefined),
-            };
-
-            // The initializeCustomTools method will create a new provider
-            await toolManager.initializeCustomTools(mockConfig);
-
-            // Check that a custom tool provider was created
-            expect(toolManager['customToolProvider']).toBeDefined();
-        });
-
-        it('should not reinitialize if custom tools already exist', async () => {
-            // Set up existing custom tool provider
-            const existingProvider = new MockCustomToolsProvider();
-            toolManager['customToolProvider'] = existingProvider as any;
-
-            const mockConfig = {
-                enabledTools: 'all' as const,
-                enableToolDiscovery: false, // Disable tool discovery for testing
-                toolConfigs: {},
-                globalSettings: {
-                    requiresConfirmation: false,
-                    timeout: 30000,
-                    enableCaching: false,
-                },
-            };
-
-            await toolManager.initializeCustomTools(mockConfig);
-
-            // Should still be the same provider
-            expect(toolManager['customToolProvider']).toBe(existingProvider);
-        });
-    });
-
-    describe('MCP Manager Access', () => {
-        it('should provide access to MCPManager for system prompt contributors', () => {
-            const mcpManager = toolManager.getMcpManager();
-            expect(mcpManager).toBe(mockMCPManager);
-        });
-    });
-
-    describe('Error Handling', () => {
-        it('should handle MCPManager errors gracefully', async () => {
-            const errorMCPManager = {
-                getAllTools: vi.fn().mockRejectedValue(new Error('MCP Error')),
-                executeTool: vi.fn().mockRejectedValue(new Error('MCP Execution Error')),
-                getToolClient: vi.fn().mockReturnValue(undefined),
-            };
-
-            toolManager = new ToolManager(errorMCPManager as any, confirmationProvider);
-
-            // getAllTools should propagate MCP errors since they're critical
-            await expect(toolManager.getAllTools()).rejects.toThrow('MCP Error');
-        });
-
-        it('should handle CustomToolsProvider errors gracefully', async () => {
-            const errorCustomProvider = {
-                getAllTools: vi.fn().mockImplementation(() => {
-                    throw new Error('Custom Provider Error');
-                }),
-                hasTool: vi.fn().mockReturnValue(false),
-                executeTool: vi.fn().mockRejectedValue(new Error('Custom Execution Error')),
-            };
-
-            toolManager['customToolProvider'] = errorCustomProvider as any;
-
-            // Should handle errors and continue with MCP tools only
-            const tools = await toolManager.getAllTools();
-            expect(Object.keys(tools)).toHaveLength(0); // No tools since MCP is empty too
-
-            await expect(toolManager.executeTool('custom--test', {})).rejects.toThrow(
-                'Custom Execution Error'
-            );
+            expect(toolManager.getToolSource('regular_tool')).toBe('auto');
+            expect(toolManager.getToolSource('mcp--prefixed_tool')).toBe('mcp');
+            expect(toolManager.getToolSource('internal--prefixed_tool')).toBe('internal');
         });
     });
 });

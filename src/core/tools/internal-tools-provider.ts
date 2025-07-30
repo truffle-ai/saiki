@@ -1,9 +1,8 @@
-import { ToolRegistry } from './tool-registry.js';
-import { ToolExecutor } from './tool-executor.js';
-import { ToolExecutionContext, ToolManagerToolSet } from './types.js';
-import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
+import { ToolExecutionContext, ToolManagerToolSet, RawToolDefinition } from './types.js';
 import { SearchService } from '../ai/search/search-service.js';
 import { createSearchHistoryTool } from './internal-tools/search-history-tool.js';
+import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
+import { ToolExecutionDeniedError } from '../client/tool-confirmation/errors.js';
 import { logger } from '../logger/index.js';
 
 /**
@@ -19,41 +18,34 @@ export interface InternalToolsServices {
 }
 
 /**
+ * Simple internal tool interface
+ */
+interface InternalTool {
+    name: string;
+    description: string;
+    parameters?: RawToolDefinition['parameters'];
+    execute: (args: Record<string, any>, context?: ToolExecutionContext) => Promise<any>;
+}
+
+/**
  * Provider for built-in internal tools that are part of the core system
  *
- * This provider follows the same pattern as CustomToolsProvider but is specifically
- * for internal tools that are shipped with the core system and need access to
- * core services like SearchService, SessionManager, etc.
+ * This provider manages internal tools that are shipped with the core system
+ * and need access to core services like SearchService, SessionManager, etc.
  *
  * Benefits:
  * - Clean separation: ToolManager doesn't need to know about specific services
  * - Easy to extend: Just add new tools and services as needed
- * - Follows existing patterns: Same architecture as CustomToolsProvider
- * - Service injection at the right level: Services come here, not to ToolManager
+ * - Lightweight: Direct tool management without complex infrastructure
  */
 export class InternalToolsProvider {
-    private registry: ToolRegistry;
-    private executor: ToolExecutor;
     private services: InternalToolsServices;
+    private tools: Map<string, InternalTool> = new Map();
+    private confirmationProvider: ToolConfirmationProvider;
 
-    constructor(services: InternalToolsServices, confirmationProvider?: ToolConfirmationProvider) {
+    constructor(services: InternalToolsServices, confirmationProvider: ToolConfirmationProvider) {
         this.services = services;
-
-        // Initialize service classes with minimal config for internal tools
-        this.registry = new ToolRegistry();
-        this.executor = new ToolExecutor(
-            this.registry,
-            {
-                enabledTools: 'all',
-                toolConfigs: {},
-                globalSettings: {
-                    requiresConfirmation: false,
-                    timeout: 30000,
-                },
-            },
-            confirmationProvider
-        );
-
+        this.confirmationProvider = confirmationProvider;
         logger.debug('InternalToolsProvider initialized');
     }
 
@@ -66,7 +58,7 @@ export class InternalToolsProvider {
         try {
             this.registerInternalTools();
 
-            const toolCount = this.registry.getToolIds().length;
+            const toolCount = this.tools.size;
             logger.info(`InternalToolsProvider initialized with ${toolCount} internal tools`);
         } catch (error) {
             logger.error(
@@ -80,81 +72,119 @@ export class InternalToolsProvider {
      * Register all available internal tools based on available services
      */
     private registerInternalTools(): void {
-        // Register search_history tool if SearchService is available
+        // Register search history tool if search service is available
         if (this.services.searchService) {
             const searchHistoryTool = createSearchHistoryTool(this.services.searchService);
-            this.registry.register(searchHistoryTool);
-            logger.debug('Registered internal search_history tool');
+            this.tools.set('search_history', {
+                name: 'search_history',
+                description: "Get search history from the agent's search service",
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        limit: {
+                            type: 'number',
+                            description: 'Maximum number of search results to return',
+                            default: 10,
+                        },
+                    },
+                },
+                execute: async (args: Record<string, any>, context?: ToolExecutionContext) => {
+                    return await searchHistoryTool.execute(args, context);
+                },
+            });
+
+            logger.debug('Registered search_history internal tool');
         }
 
-        // Future internal tools can be registered here:
-        // if (this.services.sessionManager) {
-        //     const sessionTool = createSessionManagementTool(this.services.sessionManager);
-        //     this.registry.register(sessionTool);
-        // }
+        // Future internal tools can be registered here based on available services
+        // if (this.services.sessionManager) { ... }
+        // if (this.services.storageManager) { ... }
     }
 
     /**
-     * Check if a tool exists (delegates to ToolExecutor)
+     * Check if a tool exists
      */
-    hasTool(toolId: string): boolean {
-        return this.executor.hasTool(toolId);
+    hasTool(toolName: string): boolean {
+        return this.tools.has(toolName);
     }
 
     /**
-     * Execute a tool (delegates to ToolExecutor)
+     * Execute a tool with confirmation support matching MCP tools behavior
      */
     async executeTool(
-        toolId: string,
+        toolName: string,
         args: Record<string, any>,
-        context?: ToolExecutionContext
+        sessionId?: string
     ): Promise<any> {
-        return await this.executor.executeTool(toolId, args, context);
+        logger.debug(`🔧 Internal tool execution requested: '${toolName}'`);
+        logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
+
+        const tool = this.tools.get(toolName);
+        if (!tool) {
+            logger.error(`❌ No internal tool found: ${toolName}`);
+            logger.debug(`Available internal tools: ${Array.from(this.tools.keys()).join(', ')}`);
+            throw new Error(`Internal tool not found: ${toolName}`);
+        }
+
+        // Request tool confirmation (same as MCP tools)
+        const approved = await this.confirmationProvider.requestConfirmation({
+            toolName,
+            args,
+        });
+
+        if (!approved) {
+            logger.debug(`🚫 Internal tool execution denied: ${toolName}`);
+            throw new ToolExecutionDeniedError(toolName, sessionId);
+        }
+
+        logger.debug(`✅ Internal tool execution approved: ${toolName}`);
+
+        try {
+            const context: ToolExecutionContext = { sessionId };
+            const result = await tool.execute(args, context);
+
+            logger.debug(`🎯 Internal tool execution completed: ${toolName}`);
+            return result;
+        } catch (error) {
+            logger.error(`❌ Internal tool execution failed: ${toolName}`, error);
+            throw error;
+        }
     }
 
     /**
-     * Get all tools in ToolSet format (delegates to ToolExecutor)
+     * Get all tools in ToolManagerToolSet format
      */
     getAllTools(): ToolManagerToolSet {
-        return this.executor.getAllTools();
+        const toolSet: ToolManagerToolSet = {};
+
+        for (const [name, tool] of this.tools) {
+            toolSet[name] = {
+                name: tool.name,
+                description: tool.description,
+                ...(tool.parameters && {
+                    parameters: {
+                        type: 'object',
+                        properties: tool.parameters.properties || {},
+                        ...(tool.parameters.required && { required: tool.parameters.required }),
+                    },
+                }),
+            };
+        }
+
+        return toolSet;
     }
 
     /**
-     * Get tool names (delegates to ToolExecutor)
+     * Get tool names
      */
     getToolNames(): string[] {
-        return this.executor.getToolNames();
+        return Array.from(this.tools.keys());
     }
 
     /**
-     * Get tools by category (delegates to ToolExecutor)
+     * Get tool count
      */
-    getToolsByCategory(category: string): ToolManagerToolSet {
-        return this.executor.getToolsByCategory(category);
-    }
-
-    /**
-     * Get tools by tags (delegates to ToolExecutor)
-     */
-    getToolsByTags(tags: string[]): ToolManagerToolSet {
-        return this.executor.getToolsByTags(tags);
-    }
-
-    /**
-     * Get execution statistics (delegates to ToolExecutor)
-     */
-    getStats(): {
-        totalTools: number;
-        categories: Record<string, number>;
-        tags: Record<string, number>;
-    } {
-        return this.executor.getStats();
-    }
-
-    /**
-     * Clear all tools (delegates to ToolRegistry)
-     */
-    clear(): void {
-        this.registry.clear();
+    getToolCount(): number {
+        return this.tools.size;
     }
 }

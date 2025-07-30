@@ -1,43 +1,33 @@
 import { MCPManager } from '../client/manager.js';
-import { CustomToolsProvider } from './custom-tools-provider.js';
 import { InternalToolsProvider } from './internal-tools-provider.js';
-import {
-    ToolManagerToolSet,
-    ToolExecutionContext,
-    ToolParameters,
-    RawToolDefinition,
-} from './types.js';
+import { ToolManagerToolSet, ToolParameters, RawToolDefinition } from './types.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
-import { ValidatedCustomToolsConfig } from '../config/schemas.js';
 import { logger } from '../logger/index.js';
 
 /**
  * Unified Tool Manager - Single interface for all tool operations
  *
  * This class acts as the single point of contact between the LLM and all tool sources.
- * It aggregates tools from multiple sources (MCP servers, custom tools, future plugins)
- * and provides a unified interface for tool discovery, aggregation, and execution.
+ * It aggregates tools from MCP servers and internal tools, providing a unified interface
+ * for tool discovery, aggregation, and execution.
  *
  * Responsibilities:
- * - Aggregate tools from multiple sources with conflict resolution
- * - Route tool execution to appropriate source (MCP vs Custom)
+ * - Aggregate tools from MCP servers and internal tools with conflict resolution
+ * - Route tool execution to appropriate source (MCP vs Internal)
  * - Provide unified tool interface to LLM
  * - Manage tool confirmation and security
- * - Handle cross-source naming conflicts
+ * - Handle cross-source naming conflicts (internal tools have precedence)
  *
  * Architecture:
- * LLMService → ToolManager → [MCPManager, CustomToolsProvider, InternalToolsProvider]
+ * LLMService → ToolManager → [MCPManager, InternalToolsProvider]
  */
 export class ToolManager {
     private mcpManager: MCPManager;
-    private customToolProvider?: CustomToolsProvider;
     private internalToolsProvider?: InternalToolsProvider;
     private confirmationProvider: ToolConfirmationProvider;
 
-    // Tool conflict resolution
-    private crossSourceConflicts: Set<string> = new Set();
+    // Tool conflict resolution - only internal vs MCP conflicts now
     private static readonly MCP_PREFIX = 'mcp';
-    private static readonly CUSTOM_PREFIX = 'custom';
     private static readonly INTERNAL_PREFIX = 'internal';
     private static readonly SOURCE_DELIMITER = '--';
 
@@ -75,37 +65,11 @@ export class ToolManager {
             this.internalToolsProvider = internalToolsProvider;
             await this.internalToolsProvider.initialize();
 
-            // Rebuild conflicts after internal tools are loaded
-            await this.rebuildCrossSourceConflicts();
-
             // Invalidate cache since tools have changed
             this.invalidateCache();
 
             logger.info(
                 `Internal tools initialized: ${this.internalToolsProvider.getToolNames().length} tools available`
-            );
-        }
-    }
-
-    /**
-     * Initialize custom tools if configured
-     */
-    async initializeCustomTools(customToolsConfig: ValidatedCustomToolsConfig): Promise<void> {
-        if (!this.customToolProvider) {
-            this.customToolProvider = new CustomToolsProvider(
-                customToolsConfig,
-                this.confirmationProvider
-            );
-            await this.customToolProvider.initialize();
-
-            // Rebuild conflicts after custom tools are loaded
-            await this.rebuildCrossSourceConflicts();
-
-            // Invalidate cache since tools have changed
-            this.invalidateCache();
-
-            logger.info(
-                `Custom tools initialized: ${this.customToolProvider.getToolNames().length} tools available`
             );
         }
     }
@@ -168,17 +132,7 @@ export class ToolManager {
 
         // Get tools from all sources
         const mcpTools = await this.mcpManager.getAllTools();
-        let customTools: ToolManagerToolSet = {};
         let internalTools: ToolManagerToolSet = {};
-
-        try {
-            customTools = this.customToolProvider?.getAllTools() || {};
-        } catch (error) {
-            logger.warn(
-                `Failed to get custom tools: ${error instanceof Error ? error.message : String(error)}`
-            );
-            customTools = {};
-        }
 
         try {
             internalTools = this.internalToolsProvider?.getAllTools() || {};
@@ -189,10 +143,7 @@ export class ToolManager {
             internalTools = {};
         }
 
-        // Rebuild conflicts before processing
-        await this.rebuildCrossSourceConflicts();
-
-        // Add internal tools first (they have highest precedence and shouldn't conflict)
+        // Add internal tools first (they have highest precedence)
         for (const [toolName, toolDef] of Object.entries(internalTools)) {
             allTools[toolName] = this.buildNormalizedToolDefinition(
                 toolName,
@@ -201,64 +152,33 @@ export class ToolManager {
             );
         }
 
-        // Add non-conflicted tools directly (skip if internal tool already exists)
+        // Add MCP tools, but prefix them if they conflict with internal tools
         for (const [toolName, toolDef] of Object.entries(mcpTools)) {
-            if (!this.crossSourceConflicts.has(toolName) && !internalTools[toolName]) {
-                allTools[toolName] = this.buildNormalizedToolDefinition(
-                    toolName,
-                    toolDef,
-                    toolDef.description
-                );
-            }
-        }
-
-        for (const [toolName, toolDef] of Object.entries(customTools)) {
-            if (!this.crossSourceConflicts.has(toolName) && !internalTools[toolName]) {
-                allTools[toolName] = this.buildNormalizedToolDefinition(
-                    toolName,
-                    toolDef,
-                    toolDef.description
-                );
-            }
-        }
-
-        // Add conflicted tools with source prefixes (internal tools don't conflict since they have precedence)
-        for (const toolName of this.crossSourceConflicts) {
-            // Skip if internal tool exists with this name (internal wins)
             if (internalTools[toolName]) {
-                continue;
-            }
-
-            // Add MCP version with prefix
-            if (mcpTools[toolName]) {
+                // Internal tool takes precedence, add MCP version with prefix
                 const qualifiedName = `${ToolManager.MCP_PREFIX}${ToolManager.SOURCE_DELIMITER}${toolName}`;
                 allTools[qualifiedName] = this.buildNormalizedToolDefinition(
                     qualifiedName,
-                    mcpTools[toolName],
-                    `${mcpTools[toolName].description || 'No description provided'} (via MCP servers)`
+                    toolDef,
+                    `${toolDef.description || 'No description provided'} (via MCP servers)`
                 );
-            }
-
-            // Add custom version with prefix
-            if (customTools[toolName]) {
-                const customTool = customTools[toolName];
-                const qualifiedName = `${ToolManager.CUSTOM_PREFIX}${ToolManager.SOURCE_DELIMITER}${toolName}`;
-                allTools[qualifiedName] = this.buildNormalizedToolDefinition(
-                    qualifiedName,
-                    customTool,
-                    `${customTool.description || 'Custom tool'} (custom tool)`
+            } else {
+                // No conflict, add directly
+                allTools[toolName] = this.buildNormalizedToolDefinition(
+                    toolName,
+                    toolDef,
+                    toolDef.description
                 );
             }
         }
 
         const totalTools = Object.keys(allTools).length;
         const mcpCount = Object.keys(mcpTools).length;
-        const customCount = Object.keys(customTools).length;
         const internalCount = Object.keys(internalTools).length;
-        const conflictCount = this.crossSourceConflicts.size;
+        const conflictCount = Object.keys(internalTools).filter((name) => mcpTools[name]).length;
 
         logger.debug(
-            `🔧 Unified tool discovery: ${totalTools} total tools (${mcpCount} MCP, ${customCount} custom, ${internalCount} internal, ${conflictCount} conflicts)`
+            `🔧 Unified tool discovery: ${totalTools} total tools (${mcpCount} MCP, ${internalCount} internal, ${conflictCount} conflicts)`
         );
 
         return allTools;
@@ -305,17 +225,11 @@ export class ToolManager {
                     throw new Error(`Internal tools not initialized, cannot execute: ${toolName}`);
                 }
 
-                const context: ToolExecutionContext = { sessionId };
-                return await this.internalToolsProvider.executeTool(actualToolName, args, context);
-            }
-
-            case 'custom': {
-                if (!this.customToolProvider) {
-                    throw new Error(`Custom tools not initialized, cannot execute: ${toolName}`);
-                }
-
-                const context: ToolExecutionContext = { sessionId };
-                return await this.customToolProvider.executeTool(actualToolName, args, context);
+                return await this.internalToolsProvider.executeTool(
+                    actualToolName,
+                    args,
+                    sessionId
+                );
             }
 
             case 'mcp':
@@ -339,16 +253,13 @@ export class ToolManager {
         switch (source) {
             case 'internal':
                 return this.internalToolsProvider?.hasTool(actualToolName) ?? false;
-            case 'custom':
-                return this.customToolProvider?.hasTool(actualToolName) ?? false;
             case 'mcp':
                 return this.mcpManager.getToolClient(actualToolName) !== undefined;
             case 'auto': {
                 // Check all sources for non-qualified names (internal has precedence)
                 const hasInternal = this.internalToolsProvider?.hasTool(actualToolName) ?? false;
-                const hasCustom = this.customToolProvider?.hasTool(actualToolName) ?? false;
                 const hasMcp = this.mcpManager.getToolClient(actualToolName) !== undefined;
-                return hasInternal || hasCustom || hasMcp;
+                return hasInternal || hasMcp;
             }
             default:
                 return false;
@@ -361,32 +272,27 @@ export class ToolManager {
     async getToolStats(): Promise<{
         total: number;
         mcp: number;
-        custom: number;
         internal: number;
         conflicts: number;
     }> {
         const mcpTools = await this.mcpManager.getAllTools();
-        const customTools = this.customToolProvider?.getAllTools() || {};
         const internalTools = this.internalToolsProvider?.getAllTools() || {};
+        const conflicts = Object.keys(internalTools).filter((name) => mcpTools[name]).length;
 
         return {
-            total:
-                Object.keys(mcpTools).length +
-                Object.keys(customTools).length +
-                Object.keys(internalTools).length,
+            total: Object.keys(mcpTools).length + Object.keys(internalTools).length,
             mcp: Object.keys(mcpTools).length,
-            custom: Object.keys(customTools).length,
             internal: Object.keys(internalTools).length,
-            conflicts: this.crossSourceConflicts.size,
+            conflicts,
         };
     }
 
     /**
-     * Get the source of a tool (mcp, custom, internal, or auto)
+     * Get the source of a tool (mcp, internal, or auto)
      * @param toolName The name of the tool to check
      * @returns The source of the tool
      */
-    getToolSource(toolName: string): 'mcp' | 'custom' | 'internal' | 'auto' {
+    getToolSource(toolName: string): 'mcp' | 'internal' | 'auto' {
         const { source } = this.parseToolName(toolName);
         return source;
     }
@@ -395,7 +301,7 @@ export class ToolManager {
      * Parse tool name to determine source and actual tool name
      */
     private parseToolName(toolName: string): {
-        source: 'mcp' | 'custom' | 'internal' | 'auto';
+        source: 'mcp' | 'internal' | 'auto';
         actualToolName: string;
     } {
         // Check for source prefix
@@ -404,15 +310,6 @@ export class ToolManager {
                 source: 'mcp',
                 actualToolName: toolName.substring(
                     `${ToolManager.MCP_PREFIX}${ToolManager.SOURCE_DELIMITER}`.length
-                ),
-            };
-        }
-
-        if (toolName.startsWith(`${ToolManager.CUSTOM_PREFIX}${ToolManager.SOURCE_DELIMITER}`)) {
-            return {
-                source: 'custom',
-                actualToolName: toolName.substring(
-                    `${ToolManager.CUSTOM_PREFIX}${ToolManager.SOURCE_DELIMITER}`.length
                 ),
             };
         }
@@ -444,15 +341,7 @@ export class ToolManager {
         // Check internal tools first (they have highest precedence)
         if (this.internalToolsProvider?.hasTool(toolName)) {
             logger.debug(`🎯 Auto-routing to internal tool: '${toolName}'`);
-            const context: ToolExecutionContext = { sessionId };
-            return await this.internalToolsProvider.executeTool(toolName, args, context);
-        }
-
-        // Check custom tools next
-        if (this.customToolProvider?.hasTool(toolName)) {
-            logger.debug(`🎯 Auto-routing to custom tool: '${toolName}'`);
-            const context: ToolExecutionContext = { sessionId };
-            return await this.customToolProvider.executeTool(toolName, args, context);
+            return await this.internalToolsProvider.executeTool(toolName, args, sessionId);
         }
 
         // Fall back to MCP tools
@@ -464,63 +353,15 @@ export class ToolManager {
         // Tool not found in any source
         const stats = await this.getToolStats();
         logger.error(`❌ Tool not found in any source: ${toolName}`);
-        logger.debug(
-            `Available sources: ${stats.mcp} MCP tools, ${stats.custom} custom tools, ${stats.internal} internal tools`
-        );
+        logger.debug(`Available sources: ${stats.mcp} MCP tools, ${stats.internal} internal tools`);
 
         throw new Error(`Tool not found: ${toolName}`);
-    }
-
-    /**
-     * Update cross-source conflict detection (for tests)
-     */
-    async updateCrossSourceConflicts(): Promise<void> {
-        await this.rebuildCrossSourceConflicts();
-        // Invalidate cache since conflicts may have changed tool names
-        this.invalidateCache();
-    }
-
-    /**
-     * Rebuild cross-source conflict detection
-     */
-    private async rebuildCrossSourceConflicts(): Promise<void> {
-        this.crossSourceConflicts.clear();
-
-        if (!this.customToolProvider) {
-            return; // No custom tools, no conflicts possible
-        }
-
-        const mcpTools = await this.mcpManager.getAllTools();
-        let customTools = {};
-
-        try {
-            customTools = this.customToolProvider?.getAllTools() || {};
-        } catch (error) {
-            logger.warn(
-                `Failed to get custom tools during conflict detection: ${error instanceof Error ? error.message : String(error)}`
-            );
-            customTools = {};
-        }
-
-        // Find tools that exist in both sources
-        for (const toolName of Object.keys(customTools)) {
-            if (mcpTools[toolName]) {
-                this.crossSourceConflicts.add(toolName);
-                logger.debug(`🔀 Cross-source conflict detected: '${toolName}'`);
-            }
-        }
-
-        logger.debug(
-            `Cross-source conflict resolution: ${this.crossSourceConflicts.size} conflicts`
-        );
     }
 
     /**
      * Refresh tool discovery (call when MCP servers change)
      */
     async refresh(): Promise<void> {
-        await this.rebuildCrossSourceConflicts();
-
         // Invalidate cache since MCP servers may have changed
         this.invalidateCache();
 

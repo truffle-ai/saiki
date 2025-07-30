@@ -984,35 +984,6 @@ export class SaikiAgent {
     }
 
     /**
-     * Gets only custom tools (excludes MCP and internal tools).
-     * Useful for filtering UI displays or analytics that need to distinguish tool sources.
-     * @returns Array of custom tool names
-     */
-    public async getCustomTools(): Promise<string[]> {
-        this.ensureStarted();
-
-        const allTools = await this.toolManager.getAllTools();
-        const toolNames = Object.keys(allTools);
-
-        // Filter tools by source using the tool manager's categorization
-        const customTools = toolNames.filter((toolName) => {
-            // Get the source of the tool using the tool manager's public method
-            const source = this.toolManager.getToolSource(toolName);
-
-            // Only include tools that are explicitly from the custom source
-            return source === 'custom';
-        });
-
-        // Strip any custom-- prefixes from conflict-resolved tools
-        return customTools.map((name) => {
-            if (name.startsWith('custom--')) {
-                return name.substring('custom--'.length);
-            }
-            return name;
-        });
-    }
-
-    /**
      * Gets all connected MCP clients.
      * Used by the API layer to inspect client status.
      * @returns Map of client names to client instances

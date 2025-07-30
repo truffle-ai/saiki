@@ -36,13 +36,6 @@ describe('CLI Overrides', () => {
                 connectionMode: 'lenient' as const,
             },
         },
-        customTools: {
-            enabledTools: 'all',
-            enableToolDiscovery: true,
-            globalSettings: {
-                enableCaching: false,
-            },
-        },
         llm: {
             provider: 'openai',
             model: 'gpt-4o',

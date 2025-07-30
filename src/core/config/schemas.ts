@@ -587,65 +587,6 @@ export const StorageSchema = z
 
 export type StorageConfig = z.infer<typeof StorageSchema>;
 
-export const CustomToolsConfigSchema = z
-    .object({
-        // Tool filtering options
-        enabledTools: z
-            .union([z.literal('all'), z.array(z.string())])
-            .default('all')
-            .describe('Enable all tools with "all" or specify array of tool IDs to enable'),
-
-        // Tool-specific configurations
-        toolConfigs: z
-            .record(
-                z
-                    .object({
-                        requiresConfirmation: z
-                            .boolean()
-                            .optional()
-                            .describe(
-                                'Whether this specific tool requires user confirmation before execution'
-                            ),
-                        timeout: z
-                            .number()
-                            .int()
-                            .positive()
-                            .optional()
-                            .describe('Execution timeout for this specific tool in milliseconds'),
-                    })
-                    .strict()
-                    .describe('Configuration overrides for a specific tool')
-            )
-            .optional()
-            .describe(
-                'Per-tool configuration overrides keyed by tool ID, allowing customization of individual tool settings'
-            ),
-
-        // Global settings
-        globalSettings: z
-            .object({
-                requiresConfirmation: z
-                    .boolean()
-                    .optional()
-                    .describe('Default confirmation requirement for all custom tools'),
-                timeout: z
-                    .number()
-                    .int()
-                    .positive()
-                    .optional()
-                    .describe('Default execution timeout for custom tools in milliseconds'),
-            })
-            .strict()
-            .default({})
-            .describe('Global settings that apply to all custom tools'),
-    })
-    .strict()
-    .default({
-        enabledTools: 'all',
-        globalSettings: {},
-    })
-    .describe('Configuration for custom tools system');
-
 export const AgentConfigSchema = z
     .object({
         agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
@@ -656,9 +597,6 @@ export const AgentConfigSchema = z
             ),
         mcpServers: ServerConfigsSchema.default({}).describe(
             'Configurations for MCP (Model Context Protocol) servers used by the agent'
-        ),
-        customTools: CustomToolsConfigSchema.describe(
-            'Configuration for custom tools that work alongside MCP servers'
         ),
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 
@@ -723,9 +661,6 @@ export const AgentConfigSchema = z
     })
     .strict()
     .describe('Main configuration for an agent, including its LLM and server connections');
-// Custom tools config types
-export type CustomToolsConfig = z.input<typeof CustomToolsConfigSchema>;
-export type ValidatedCustomToolsConfig = z.infer<typeof CustomToolsConfigSchema>;
 
 // Input type for user-facing API (pre-parsing) - makes fields with defaults optional
 export type AgentConfig = z.input<typeof AgentConfigSchema>;
