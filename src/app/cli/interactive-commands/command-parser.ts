@@ -19,6 +19,48 @@ export interface CommandDefinition {
 }
 
 /**
+ * Parse arguments respecting quotes and escape sequences
+ */
+function parseQuotedArguments(input: string): string[] {
+    const args: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    let quoteChar = '';
+    let i = 0;
+
+    while (i < input.length) {
+        const char = input[i];
+        const nextChar = input[i + 1];
+
+        if (!inQuotes && (char === '"' || char === "'")) {
+            inQuotes = true;
+            quoteChar = char;
+        } else if (inQuotes && char === quoteChar) {
+            inQuotes = false;
+            quoteChar = '';
+        } else if (!inQuotes && char === ' ') {
+            if (current) {
+                args.push(current);
+                current = '';
+            }
+        } else if (char === '\\' && nextChar) {
+            // Handle escape sequences
+            current += nextChar;
+            i++; // Skip next character
+        } else {
+            current += char;
+        }
+        i++;
+    }
+
+    if (current) {
+        args.push(current);
+    }
+
+    return args.filter((arg) => arg.length > 0);
+}
+
+/**
  * Parses user input to determine if it's a slash command or a regular prompt
  */
 export function parseInput(input: string): CommandResult {
@@ -26,17 +68,14 @@ export function parseInput(input: string): CommandResult {
 
     // Check if it's a slash command
     if (trimmed.startsWith('/')) {
-        const parts = trimmed
-            .slice(1)
-            .split(' ')
-            .filter((part) => part.length > 0);
-        const command = parts[0] || '';
-        const args = parts.slice(1);
+        const args = parseQuotedArguments(trimmed.slice(1));
+        const command = args[0] || '';
+        const commandArgs = args.slice(1);
 
         return {
             type: 'command',
             command,
-            args,
+            args: commandArgs,
             rawInput: trimmed,
         };
     }
@@ -108,6 +147,7 @@ export function displayAllCommands(commands: CommandDefinition[]): void {
         'General',
         'Session Management',
         'Model Management',
+        'MCP Management',
         'Tool Management',
         'Prompt Management',
         'System',
