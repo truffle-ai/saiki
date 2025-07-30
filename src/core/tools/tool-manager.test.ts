@@ -155,7 +155,7 @@ describe('ToolManager', () => {
 
             await toolManager.initializeInternalTools(internalProvider as any);
 
-            const result = await toolManager.executeTool('common_tool', { test: 'args' });
+            const result = (await toolManager.executeTool('common_tool', { test: 'args' })) as any;
 
             expect(result.result).toBe('INTERNAL:common_tool');
         });
@@ -168,7 +168,7 @@ describe('ToolManager', () => {
             const mcpManager = new MockMCPManager(mcpTools);
             const toolManager = new ToolManager(mcpManager as any, confirmationProvider);
 
-            const result = await toolManager.executeTool('mcp_tool', { test: 'args' });
+            const result = (await toolManager.executeTool('mcp_tool', { test: 'args' })) as any;
 
             expect(result.result).toBe('MCP:mcp_tool');
         });
@@ -188,7 +188,9 @@ describe('ToolManager', () => {
             await toolManager.initializeInternalTools(internalProvider as any);
 
             // Execute the prefixed MCP version
-            const result = await toolManager.executeTool('mcp--common_tool', { test: 'args' });
+            const result = (await toolManager.executeTool('mcp--common_tool', {
+                test: 'args',
+            })) as any;
 
             expect(result.result).toBe('MCP:common_tool');
         });
@@ -226,7 +228,7 @@ describe('ToolManager', () => {
             expect(stats.mcp).toBe(3);
             expect(stats.internal).toBe(2);
             expect(stats.conflicts).toBe(1); // common_tool conflicts
-            expect(stats.total).toBe(5); // 3 MCP + 2 internal
+            expect(stats.total).toBe(4); // 3 MCP + 2 internal - 1 conflict = 4 unique tools
         });
     });
 

@@ -58,6 +58,38 @@ export class ToolManager {
     }
 
     /**
+     * Get all MCP tools (delegates to mcpManager.getAllTools())
+     * This provides access to MCP tools while maintaining separation of concerns
+     */
+    async getMcpTools(): Promise<ToolManagerToolSet> {
+        const mcpTools = await this.mcpManager.getAllTools();
+
+        // Convert ToolSet to ToolManagerToolSet format
+        const convertedTools: ToolManagerToolSet = {};
+        for (const [toolName, toolDef] of Object.entries(mcpTools)) {
+            // Convert parameters if they exist and are object type
+            let convertedParameters: ToolParameters | undefined;
+            if (toolDef.parameters && toolDef.parameters.type === 'object') {
+                convertedParameters = {
+                    type: 'object',
+                    properties: toolDef.parameters.properties || {},
+                    ...(toolDef.parameters.required && {
+                        required: toolDef.parameters.required,
+                    }),
+                };
+            }
+
+            convertedTools[toolName] = {
+                name: toolName,
+                description: toolDef.description || 'No description provided',
+                ...(convertedParameters && { parameters: convertedParameters }),
+            };
+        }
+
+        return convertedTools;
+    }
+
+    /**
      * Initialize internal tools if configured
      */
     async initializeInternalTools(internalToolsProvider: InternalToolsProvider): Promise<void> {
@@ -82,19 +114,8 @@ export class ToolManager {
             return undefined;
         }
 
-        // Handle MCP tools with flexible parameter structure
+        // Handle object type parameters (both MCP and custom tools)
         if (toolDef.parameters.type === 'object' || !toolDef.parameters.type) {
-            return {
-                type: 'object',
-                properties: toolDef.parameters.properties || {},
-                ...(toolDef.parameters.required && {
-                    required: toolDef.parameters.required,
-                }),
-            };
-        }
-
-        // Handle custom tools with strict parameter structure
-        if (toolDef.parameters.type === 'object') {
             return {
                 type: 'object',
                 properties: toolDef.parameters.properties || {},
@@ -207,7 +228,7 @@ export class ToolManager {
         toolName: string,
         args: Record<string, unknown>,
         sessionId?: string
-    ): Promise<any> {
+    ): Promise<unknown> {
         logger.debug(`🔧 Unified tool execution requested: '${toolName}'`);
         logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
 
@@ -279,8 +300,11 @@ export class ToolManager {
         const internalTools = this.internalToolsProvider?.getAllTools() || {};
         const conflicts = Object.keys(internalTools).filter((name) => mcpTools[name]).length;
 
+        // Calculate total as unique tool keys to avoid double-counting
+        const allToolKeys = new Set([...Object.keys(mcpTools), ...Object.keys(internalTools)]);
+
         return {
-            total: Object.keys(mcpTools).length + Object.keys(internalTools).length,
+            total: allToolKeys.size,
             mcp: Object.keys(mcpTools).length,
             internal: Object.keys(internalTools).length,
             conflicts,
@@ -337,7 +361,7 @@ export class ToolManager {
         toolName: string,
         args: Record<string, unknown>,
         sessionId?: string
-    ): Promise<any> {
+    ): Promise<unknown> {
         // Check internal tools first (they have highest precedence)
         if (this.internalToolsProvider?.hasTool(toolName)) {
             logger.debug(`🎯 Auto-routing to internal tool: '${toolName}'`);

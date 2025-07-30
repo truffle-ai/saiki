@@ -126,7 +126,7 @@ export async function createAgentServices(
     if (mcpServerCount === 0) {
         logger.info('Agent initialized without MCP servers - only built-in capabilities available');
     } else {
-        logger.debug(`Client manager initialized with ${mcpServerCount} MCP server(s)`);
+        logger.debug(`MCPManager initialized with ${mcpServerCount} MCP server(s)`);
     }
 
     // 8. Initialize prompt manager

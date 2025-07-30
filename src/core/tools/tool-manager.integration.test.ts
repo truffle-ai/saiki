@@ -175,11 +175,15 @@ describe('ToolManager Integration Tests', () => {
             await toolManager.initializeInternalTools(internalProvider as any);
 
             // Execute unqualified tool name (should route to internal)
-            const internalResult = await toolManager.executeTool('search', { query: 'test' });
+            const internalResult = (await toolManager.executeTool('search', {
+                query: 'test',
+            })) as any;
             expect(internalResult.data).toContain('Internal tool');
 
             // Execute prefixed MCP tool
-            const mcpResult = await toolManager.executeTool('mcp--search', { query: 'test' });
+            const mcpResult = (await toolManager.executeTool('mcp--search', {
+                query: 'test',
+            })) as any;
             expect(mcpResult.content[0].text).toContain('MCP tool');
         });
     });
@@ -196,11 +200,11 @@ describe('ToolManager Integration Tests', () => {
 
             await toolManager.initializeInternalTools(internalProvider as any);
 
-            const result = await toolManager.executeTool(
+            const result = (await toolManager.executeTool(
                 'session_tool',
                 { data: 'test' },
                 'session-123'
-            );
+            )) as any;
 
             expect(result.success).toBe(true);
             expect(result.metadata.sessionId).toBe('session-123');
@@ -299,7 +303,7 @@ describe('ToolManager Integration Tests', () => {
             expect(stats.mcp).toBe(3);
             expect(stats.internal).toBe(2);
             expect(stats.conflicts).toBe(1); // shared_tool
-            expect(stats.total).toBe(5); // 3 MCP + 2 internal
+            expect(stats.total).toBe(4); // 3 MCP + 2 internal - 1 conflict = 4 unique tools
         });
     });
 });

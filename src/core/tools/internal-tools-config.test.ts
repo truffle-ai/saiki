@@ -174,11 +174,11 @@ describe('InternalToolsProvider Configuration', () => {
             await provider.initialize();
 
             // Should be able to execute the enabled tool with proper arguments
-            const result = await provider.executeTool('search_history', {
+            const result = (await provider.executeTool('search_history', {
                 query: 'test',
                 mode: 'messages',
                 limit: 5,
-            });
+            })) as any;
             expect(result).toBeDefined();
             expect(result.results).toBeDefined(); // Search results format
             expect(result.total).toBe(0); // Mock returns 0 results

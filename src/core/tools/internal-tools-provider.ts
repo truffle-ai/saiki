@@ -1,4 +1,4 @@
-import { ToolExecutionContext, ToolManagerToolSet, RawToolDefinition } from './types.js';
+import { ToolExecutionContext, ToolManagerToolSet, RawToolDefinition, Tool } from './types.js';
 import { SearchService } from '../ai/search/search-service.js';
 import { createSearchHistoryTool } from './internal-tools/search-history-tool.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
@@ -30,13 +30,37 @@ export type KnownInternalTool = (typeof KNOWN_INTERNAL_TOOLS)[number];
 export type InternalToolsConfig = KnownInternalTool[];
 
 /**
+ * Internal tool factory function type
+ */
+type InternalToolFactory = (services: InternalToolsServices) => Tool;
+
+/**
+ * Internal tool registry with service dependency checking
+ */
+const INTERNAL_TOOL_REGISTRY = new Map<
+    KnownInternalTool,
+    {
+        factory: InternalToolFactory;
+        requiredServices: (keyof InternalToolsServices)[];
+    }
+>([
+    [
+        'search_history',
+        {
+            factory: (services) => createSearchHistoryTool(services.searchService!),
+            requiredServices: ['searchService'],
+        },
+    ],
+]);
+
+/**
  * Simple internal tool interface
  */
 interface InternalTool {
     name: string;
     description: string;
     parameters?: RawToolDefinition['parameters'];
-    execute: (args: Record<string, any>, context?: ToolExecutionContext) => Promise<any>;
+    execute: (args: Record<string, unknown>, context?: ToolExecutionContext) => Promise<unknown>;
 }
 
 /**
@@ -96,31 +120,133 @@ export class InternalToolsProvider {
      * Register all available internal tools based on available services and configuration
      */
     private registerInternalTools(): void {
-        // Register search history tool if search service is available and tool is enabled
-        if (this.services.searchService && this.isToolEnabled('search_history')) {
-            const searchHistoryTool = createSearchHistoryTool(this.services.searchService);
-            this.tools.set('search_history', {
-                name: 'search_history',
-                description: "Get search history from the agent's search service",
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        limit: {
-                            type: 'number',
-                            description: 'Maximum number of search results to return',
-                            default: 10,
-                        },
+        for (const toolName of this.config) {
+            const toolInfo = INTERNAL_TOOL_REGISTRY.get(toolName);
+            if (!toolInfo) {
+                logger.warn(`No factory found for internal tool: ${toolName}`);
+                continue;
+            }
+
+            // Check if all required services are available
+            const missingServices = toolInfo.requiredServices.filter(
+                (serviceKey) => !this.services[serviceKey]
+            );
+
+            if (missingServices.length > 0) {
+                logger.debug(
+                    `Skipping ${toolName} internal tool - missing services: ${missingServices.join(', ')}`
+                );
+                continue;
+            }
+
+            try {
+                // Create the tool using its factory
+                const tool = toolInfo.factory(this.services);
+
+                // Convert the tool to our internal format
+                const internalTool: InternalTool = {
+                    name: tool.id,
+                    description: tool.description,
+                    // Convert Zod schema to JSON Schema format
+                    parameters: this.convertZodSchemaToJsonSchema(tool.inputSchema),
+                    execute: async (
+                        args: Record<string, unknown>,
+                        context?: ToolExecutionContext
+                    ) => {
+                        return await tool.execute(args, context);
                     },
-                },
-                execute: async (args: Record<string, any>, context?: ToolExecutionContext) => {
-                    return await searchHistoryTool.execute(args, context);
-                },
-            });
+                };
 
-            logger.debug('Registered search_history internal tool');
+                this.tools.set(toolName, internalTool);
+                logger.debug(`Registered ${toolName} internal tool`);
+            } catch (error) {
+                logger.error(
+                    `Failed to register ${toolName} internal tool: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
         }
+    }
 
-        // Future internal tools can be registered here based on available services and configuration
+    /**
+     * Convert Zod schema to JSON Schema format for tool parameters
+     */
+    private convertZodSchemaToJsonSchema(zodSchema: any): RawToolDefinition['parameters'] {
+        try {
+            // Use Zod's built-in JSON Schema conversion
+            const jsonSchema = zodSchema._def.openapi || zodSchema._def.jsonSchema;
+            if (jsonSchema) {
+                return jsonSchema;
+            }
+
+            // Fallback: try to extract basic schema information
+            const shape = zodSchema._def.shape();
+            if (shape) {
+                const properties: Record<string, unknown> = {};
+                const required: string[] = [];
+
+                for (const [key, schema] of Object.entries(shape)) {
+                    const fieldSchema = schema as any;
+
+                    // Extract basic type information
+                    if (fieldSchema._def.typeName === 'ZodString') {
+                        properties[key] = { type: 'string' };
+                    } else if (fieldSchema._def.typeName === 'ZodNumber') {
+                        properties[key] = { type: 'number' };
+                    } else if (fieldSchema._def.typeName === 'ZodBoolean') {
+                        properties[key] = { type: 'boolean' };
+                    } else if (fieldSchema._def.typeName === 'ZodEnum') {
+                        properties[key] = {
+                            type: 'string',
+                            enum: fieldSchema._def.values,
+                        };
+                    } else if (fieldSchema._def.typeName === 'ZodOptional') {
+                        // Optional fields don't go in required array
+                        const innerSchema = fieldSchema._def.innerType;
+                        if (innerSchema._def.typeName === 'ZodString') {
+                            properties[key] = { type: 'string' };
+                        } else if (innerSchema._def.typeName === 'ZodNumber') {
+                            properties[key] = { type: 'number' };
+                        } else if (innerSchema._def.typeName === 'ZodBoolean') {
+                            properties[key] = { type: 'boolean' };
+                        } else if (innerSchema._def.typeName === 'ZodEnum') {
+                            properties[key] = {
+                                type: 'string',
+                                enum: innerSchema._def.values,
+                            };
+                        }
+                    } else {
+                        // Default to string for unknown types
+                        properties[key] = { type: 'string' };
+                    }
+
+                    // Add to required array if not optional
+                    if (fieldSchema._def.typeName !== 'ZodOptional') {
+                        required.push(key);
+                    }
+                }
+
+                return {
+                    type: 'object',
+                    properties,
+                    ...(required.length > 0 && { required }),
+                };
+            }
+
+            // Final fallback: return basic object schema
+            return {
+                type: 'object',
+                properties: {},
+            };
+        } catch (error) {
+            logger.warn(
+                `Failed to convert Zod schema to JSON Schema: ${error instanceof Error ? error.message : String(error)}`
+            );
+            // Return basic object schema as fallback
+            return {
+                type: 'object',
+                properties: {},
+            };
+        }
     }
 
     /**
@@ -142,9 +268,9 @@ export class InternalToolsProvider {
      */
     async executeTool(
         toolName: string,
-        args: Record<string, any>,
+        args: Record<string, unknown>,
         sessionId?: string
-    ): Promise<any> {
+    ): Promise<unknown> {
         logger.debug(`🔧 Internal tool execution requested: '${toolName}'`);
         logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
 
