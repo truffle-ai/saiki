@@ -24,10 +24,10 @@ import {
     LLM_REGISTRY,
     getSupportedRoutersForProvider,
     supportsBaseURL,
-} from '@core/ai/llm/registry.js';
+} from '@core/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
-import { validateInputForLLM, createInputValidationError } from '@core/ai/llm/validation.js';
+import { validateInputForLLM, createInputValidationError } from '@core/llm/validation.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
 
 /**
@@ -61,21 +61,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     logger.info('Setting up API event subscriptions...');
     webSubscriber.subscribe(agent.agentEventBus);
 
-    // —— Tool confirmation response handler ——
-    // Handle toolConfirmationResponse messages from WebUI by emitting them as AgentEventBus events
-    wss.on('connection', (ws: WebSocket) => {
-        ws.on('message', async (data) => {
-            try {
-                const msg = JSON.parse(data.toString());
-                if (msg?.type === 'toolConfirmationResponse' && msg.data) {
-                    // Emit confirmation response directly to AgentEventBus
-                    agent.agentEventBus.emit('saiki:toolConfirmationResponse', msg.data);
-                }
-            } catch (_err) {
-                // Ignore malformed messages
-            }
-        });
-    });
+    // Tool confirmation responses are handled by the main WebSocket handler below
 
     // HTTP endpoints
 

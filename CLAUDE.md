@@ -8,6 +8,12 @@
 3. `npm run lint` - Check code style
 4. `npm run typecheck` - Validate TypeScript types
 
+## General rules
+- If your goal is to communicate with the user, do it via chat message and never via comments in the code. These comments would be useless
+- Do NOT focus on pleasing the user. Focus on being CORRECT, use facts and code as your source of truth. Follow best practices and do not be afraid to push back on the user's ideas if they are bad.
+- If the user is asking you a question, it DOES NOT MEAN YOU ARE WRONG. JUST ANSWER THE QUESTION
+- Make as few assumptions as possible. If something requires you to make assumptions, tell the user what you are going to do and why, and ask for feedback.
+
 ## Architecture & Design Patterns
 
 ### API Layer Design
@@ -32,6 +38,17 @@
 
 ### Import Requirements
 - **All imports must end with `.js`** for ES module compatibility
+
+### Module Organization
+- **Selective index.ts strategy** - Only create index.ts files at logical module boundaries that represent cohesive public APIs
+- **✅ DO**: Add index.ts for main entry points and modules that export types/interfaces used by external consumers
+- **❌ DON'T**: Add index.ts for purely internal implementation folders
+- **Direct imports preferred** - Import directly from source files rather than through re-export chains for internal usage
+- **Avoid wildcard exports** - Prefer explicit named exports (`export { Type1, Type2 }`) over `export *` to improve tree-shaking and make dependencies explicit
+- **Watch for mega barrels** - If a barrel exports >20 symbols or pulls from >10 files, consider splitting into thematic sub-barrels with subpath exports
+- **Clear API boundaries** - index.ts files mark what's public vs internal implementation
+
+**TODO**: Current codebase has violations of these rules (wildcard exports in `src/core/index.ts`, potential mega barrel in events) that need refactoring.
 
 ### Logging Standards
 - **Use template literals** - `logger.info(\`Server running at \${url}\`)`
@@ -88,10 +105,10 @@ User Input → WebUI → WebSocket/REST → API → SaikiAgent → Core Services
 ```
 
 ## Documentation
-- **Update documentation when making changes** - Check `/docs` folder
+- **Update documentation when making changes** - Check `/docs` folder. And README.md for core modules
 - **Never create documentation proactively** - Only when explicitly requested
 
-### Mermaid Diagrams in Documentation
+### Mermaid Diagrams in Documentation (/docs folder)
 - **Use mermaid diagrams** for complex flows, architecture diagrams, and sequence diagrams
 - **ExpandableMermaid component** available for interactive diagrams:
   ```tsx

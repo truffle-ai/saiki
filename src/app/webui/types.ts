@@ -2,7 +2,7 @@
  * Shared type definitions for Saiki - MCP tool testing playground
  */
 
-//TODO: Replace with MCP types from core
+//TODO: Replace with types from core
 export interface JsonSchemaProperty {
     type: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
     description?: string;

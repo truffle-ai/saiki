@@ -10,7 +10,7 @@ import {
     getDefaultModelForProvider,
     getEffectiveMaxInputTokens,
     acceptsAnyModel,
-} from '../ai/llm/registry.js';
+} from '../llm/registry.js';
 import type {
     ValidatedLLMConfig,
     ValidatedMcpServerConfig,
