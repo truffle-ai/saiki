@@ -23,7 +23,15 @@ function expandEnvVars(config: any): any {
         const expanded = config.replace(
             /\$([A-Z_][A-Z0-9_]*)|\${([A-Z_][A-Z0-9_]*)}/gi,
             (_, v1, v2) => {
-                return process.env[v1 || v2] || '';
+                const varName = v1 || v2;
+                const value = process.env[varName];
+
+                if (value === undefined || value === '') {
+                    throw new ConfigEnvVarError(config, varName, 'not defined');
+                }
+                logger.info(varName, value);
+
+                return value;
             }
         );
 

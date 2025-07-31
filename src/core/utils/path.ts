@@ -2,7 +2,8 @@ import * as path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { createRequire } from 'module';
-
+import { logger } from '../logger/index.js';
+import { ConfigFileNotFoundError } from '@core/error/index.js';
 /**
  * Default config file path (relative to package root)
  */
@@ -131,7 +132,9 @@ export function resolveConfigPath(configPath?: string, startPath?: string): stri
             }
         }
 
-        throw new Error(`No agent.yml found in project. Searched: ${configPaths.join(', ')}`);
+        throw new ConfigFileNotFoundError(
+            `No agent.yml found in project. Searched: ${configPaths.join(', ')}`
+        );
     } else {
         // Global CLI: Use bundled default config
         try {
@@ -143,7 +146,9 @@ export function resolveConfigPath(configPath?: string, startPath?: string): stri
             // Fallback if bundled script resolution fails
         }
 
-        throw new Error('Global CLI: No bundled config found and no explicit config provided');
+        throw new ConfigFileNotFoundError(
+            'Global CLI: No bundled config found and no explicit config provided'
+        );
     }
 }
 
