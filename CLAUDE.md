@@ -30,6 +30,9 @@
 
 ## Code Standards
 
+### General rules
+- If your goal is to communicate with the user, do it via chat message and never via comments in the code. These comments would be useless
+
 ### Import Requirements
 - **All imports must end with `.js`** for ES module compatibility
 
