@@ -1,5 +1,6 @@
 // src/ai/agent/SaikiAgent.ts
 import { MCPManager } from '../../client/manager.js';
+import { ToolManager } from '../../tools/tool-manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
 import { AgentStateManager } from '../../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
@@ -22,10 +23,12 @@ import type { IMCPClient } from '../../client/types.js';
 import type { ToolSet } from '../types.js';
 import { SearchService } from '../search/index.js';
 import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';
+import { getSaikiPath } from '../../utils/path.js';
 import type { SchedulerService } from '../../utils/scheduler.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
+    'toolManager',
     'promptManager',
     'agentEventBus',
     'stateManager',
@@ -94,6 +97,7 @@ export class SaikiAgent {
     public readonly agentEventBus!: AgentEventBus;
     public readonly stateManager!: AgentStateManager;
     public readonly sessionManager!: SessionManager;
+    public readonly toolManager!: ToolManager;
     public readonly scheduler!: SchedulerService;
     public readonly services!: AgentServices;
 
@@ -151,6 +155,7 @@ export class SaikiAgent {
             // Use Object.assign to set readonly properties
             Object.assign(this, {
                 mcpManager: services.mcpManager,
+                toolManager: services.toolManager,
                 promptManager: services.promptManager,
                 agentEventBus: services.agentEventBus,
                 stateManager: services.stateManager,
@@ -159,8 +164,8 @@ export class SaikiAgent {
                 scheduler: services.scheduler,
             });
 
-            // Initialize search service
-            this.searchService = new SearchService(services.storage.database);
+            // Initialize search service from services
+            this.searchService = services.searchService;
 
             // Set up input event listeners
             this.setupInputEventListeners();
@@ -170,6 +175,10 @@ export class SaikiAgent {
 
             this._isStarted = true;
             logger.info('SaikiAgent started successfully.');
+
+            // Show log location for SDK users
+            const logPath = getSaikiPath('logs', 'saiki.log');
+            console.log(`📋 Logs available at: ${logPath}`);
         } catch (error) {
             logger.error('Failed to start SaikiAgent', error);
             throw error;
@@ -486,15 +495,17 @@ export class SaikiAgent {
      * Main method for processing user input.
      * Processes user input through the agent's LLM service and returns the response.
      *
-     * @param userInput - The user's message or query to process
+     * @param textInput - The user's text message or query to process
      * @param imageDataInput - Optional image data and MIME type for multimodal input
+     * @param fileDataInput - Optional file data and MIME type for file input
      * @param sessionId - Optional session ID for multi-session scenarios
      * @returns Promise that resolves to the AI's response text, or null if no significant response
      * @throws Error if processing fails
      */
     public async run(
-        userInput: string,
+        textInput: string,
         imageDataInput?: { image: string; mimeType: string },
+        fileDataInput?: { data: string; mimeType: string; filename?: string },
         sessionId?: string,
         stream: boolean = false
     ): Promise<string | null> {
@@ -524,9 +535,9 @@ export class SaikiAgent {
             }
 
             logger.debug(
-                `SaikiAgent.run: userInput: ${userInput}, imageDataInput: ${imageDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
+                `SaikiAgent.run: textInput: ${textInput}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
             );
-            const response = await session.run(userInput, imageDataInput, stream);
+            const response = await session.run(textInput, imageDataInput, fileDataInput, stream);
 
             // Increment message count for this session (counts each)
             await this.sessionManager.incrementMessageCount(session.id);
@@ -1121,8 +1132,8 @@ export class SaikiAgent {
                 success: true,
             });
             this.agentEventBus.emit('saiki:availableToolsUpdated', {
-                tools: Object.keys(await this.mcpManager.getAllTools()),
-                source: 'mcp',
+                tools: Object.keys(await this.toolManager.getAllTools()),
+                source: 'mcp', // All tools are sent but source of updated tools is denoted in the event
             });
             logger.info(`SaikiAgent: Successfully added and connected to MCP server '${name}'.`);
         } catch (error) {
@@ -1155,15 +1166,15 @@ export class SaikiAgent {
     }
 
     /**
-     * Executes a tool on a connected MCP server.
-     * Useful for users to experiment with tools directly.
+     * Executes a tool from any source (MCP servers, custom tools, or internal tools).
+     * This is the unified interface for tool execution that can handle all tool types.
      * @param toolName The name of the tool to execute
      * @param args The arguments to pass to the tool
      * @returns The result of the tool execution
      */
-    public async executeMcpTool(toolName: string, args: any): Promise<any> {
+    public async executeTool(toolName: string, args: any): Promise<any> {
         this.ensureStarted();
-        return await this.mcpManager.executeTool(toolName, args);
+        return await this.toolManager.executeTool(toolName, args);
     }
 
     /**
@@ -1174,6 +1185,16 @@ export class SaikiAgent {
     public async getAllMcpTools(): Promise<ToolSet> {
         this.ensureStarted();
         return await this.mcpManager.getAllTools();
+    }
+
+    /**
+     * Gets all available tools from all sources (MCP servers and custom tools).
+     * This is the unified interface for tool discovery that includes both MCP and custom tools.
+     * @returns Promise resolving to a map of tool names to tool definitions
+     */
+    public async getAllTools(): Promise<ToolSet> {
+        this.ensureStarted();
+        return await this.toolManager.getAllTools();
     }
 
     /**

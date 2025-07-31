@@ -389,6 +389,7 @@ describe('ChatSession', () => {
             expect(mockLLMService.completeTask).toHaveBeenCalledWith(
                 userMessage,
                 undefined,
+                undefined,
                 undefined
             );
         });
@@ -426,7 +427,7 @@ describe('ChatSession', () => {
             expect(mockCreateLLMService).toHaveBeenCalledWith(
                 mockLLMConfig,
                 mockLLMConfig.router,
-                mockServices.mcpManager,
+                mockServices.toolManager,
                 chatSession.eventBus, // Session-specific event bus
                 mockContextManager,
                 sessionId

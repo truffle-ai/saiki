@@ -73,7 +73,7 @@ Configuration for Large Language Model providers.
 
 ```typescript
 interface LLMConfig {
-  provider: 'openai' | 'anthropic' | 'groq' | 'google';
+  provider: 'openai' | 'anthropic' | 'groq' | 'google' | 'cohere';
   model: string;
   apiKey?: string;
   baseURL?: string;
@@ -500,6 +500,37 @@ interface ImageData {
 }
 ```
 
+### `FileData`
+
+Type for file data in conversations.
+
+```typescript
+interface FileData {
+  data: string; // Base64 encoded file data
+  mimeType: string; // e.g., 'application/pdf', 'audio/wav'
+  filename?: string; // Optional filename
+}
+```
+
+**Supported File Types:**
+- **PDF files** (`application/pdf`) - Most widely supported
+- **Audio files** (`audio/mp3`, `audio/wav`) - With OpenAI `gpt-4o-audio-preview` and Google Gemini models
+
+**Unsupported File Types:**
+- Text files (`.txt`, `.md`)
+- CSV files (`.csv`)
+- Word documents (`.doc`, `.docx`)
+- Excel files (`.xls`, `.xlsx`)
+- PowerPoint files (`.ppt`, `.pptx`)
+- JSON files (`.json`)
+- XML files (`.xml`)
+- HTML files (`.html`)
+
+For unsupported file types, consider:
+1. Converting to text and sending as regular messages
+2. Using specialized MCP servers for file processing
+3. Using dedicated file processing tools
+
 ### `LoggerOptions`
 
 Configuration options for the Logger class.
@@ -541,5 +572,4 @@ Options for event emitter methods.
 ```typescript
 interface EventEmitterOptions {
   signal?: AbortSignal;
-}
-``` 
+} 

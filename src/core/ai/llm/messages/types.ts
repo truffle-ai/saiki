@@ -7,6 +7,12 @@ export interface ImageData {
     mimeType?: string;
 }
 
+export interface FileData {
+    data: string | Uint8Array | Buffer | ArrayBuffer | URL;
+    mimeType: string;
+    filename?: string;
+}
+
 export interface TextPart {
     type: 'text';
     text: string;
@@ -14,6 +20,10 @@ export interface TextPart {
 
 export interface ImagePart extends ImageData {
     type: 'image';
+}
+
+export interface FilePart extends FileData {
+    type: 'file';
 }
 
 export interface InternalMessage {
@@ -27,12 +37,19 @@ export interface InternalMessage {
     role: 'system' | 'user' | 'assistant' | 'tool';
 
     /**
+     * Timestamp when the message was created (Unix timestamp in milliseconds).
+     * TODO: Populate this field when messages are created. Currently not implemented.
+     * @see https://github.com/truffle-ai/saiki/issues/XXX
+     */
+    timestamp?: number;
+
+    /**
      * The content of the message.
      * - String for system, assistant (text only), and tool messages.
-     * - Array of parts for user messages (can include text and images).
+     * - Array of parts for user messages (can include text, images, and files).
      * - null if an assistant message only contains tool calls.
      */
-    content: string | null | Array<TextPart | ImagePart>;
+    content: string | null | Array<TextPart | ImagePart | FilePart>;
 
     /**
      * Tool calls made by the assistant.

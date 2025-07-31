@@ -26,6 +26,9 @@ export ANTHROPIC_API_KEY="your_key"
 
 # For Google (e.g., gemini-1.5-pro)
 export GOOGLE_GENERATIVE_AI_API_KEY="your_key"
+
+# For Cohere (e.g., command-r-plus)
+export COHERE_API_KEY="your_key"
 ```
 
 ### Agent Configuration (`agent.yml`)
@@ -181,8 +184,11 @@ npm install @truffle-ai/saiki
 import 'dotenv/config';
 import { SaikiAgent, loadAgentConfig } from '@truffle-ai/saiki';
 
-// Load configuration from a file
-const config = await loadAgentConfig('./agents/agent.yml');
+// Load configuration from default location (auto-discovery)
+const config = await loadAgentConfig();
+
+// Or load from a specific file
+// const config = await loadAgentConfig('./agents/agent.yml');
 
 // Create and start the agent
 const agent = new SaikiAgent(config);

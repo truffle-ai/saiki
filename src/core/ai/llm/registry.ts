@@ -11,88 +11,202 @@ export interface ModelInfo {
     name: string;
     maxInputTokens: number;
     default?: boolean;
+    supportedFileTypes: SupportedFileType[]; // Required - every model must explicitly specify file support
     // Add other relevant metadata if needed, e.g., supported features, cost tier
+}
+
+export type SupportedFileType = 'audio' | 'pdf';
+
+// Central MIME type to file type mapping
+export const MIME_TYPE_TO_FILE_TYPE: Record<string, SupportedFileType> = {
+    'application/pdf': 'pdf',
+    'audio/mp3': 'audio',
+    'audio/mpeg': 'audio',
+    'audio/wav': 'audio',
+    'audio/x-wav': 'audio',
+    'audio/wave': 'audio',
+    'audio/webm': 'audio',
+    'audio/ogg': 'audio',
+    'audio/m4a': 'audio',
+    'audio/aac': 'audio',
+};
+
+// Helper function to get array of allowed MIME types
+export function getAllowedMimeTypes(): string[] {
+    return Object.keys(MIME_TYPE_TO_FILE_TYPE);
 }
 
 export interface ProviderInfo {
     models: ModelInfo[];
     supportedRouters: string[];
     baseURLSupport: 'none' | 'optional' | 'required'; // Cleaner single field
+    supportedFileTypes: SupportedFileType[]; // Provider-level default, used when model doesn't specify
     // Add other provider-specific metadata if needed
 }
 
 /** Fallback when we cannot determine the model's input-token limit */
 export const DEFAULT_MAX_INPUT_TOKENS = 128000;
 
-export type LLMProvider = 'openai' | 'openai-compatible' | 'anthropic' | 'google' | 'groq' | 'xai';
+export type LLMProvider =
+    | 'openai'
+    | 'openai-compatible'
+    | 'anthropic'
+    | 'google'
+    | 'groq'
+    | 'xai'
+    | 'cohere';
 
 // Central registry of supported LLM providers and their models
 export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     openai: {
         models: [
-            { name: 'gpt-4.1', maxInputTokens: 1047576 },
-            { name: 'gpt-4.1-mini', maxInputTokens: 1047576, default: true },
-            { name: 'gpt-4.1-nano', maxInputTokens: 1047576 },
-            { name: 'gpt-4o', maxInputTokens: 128000 },
-            { name: 'gpt-4o-mini', maxInputTokens: 128000 },
-            { name: 'o4-mini', maxInputTokens: 200000 },
-            { name: 'o3', maxInputTokens: 200000 },
-            { name: 'o3-mini', maxInputTokens: 200000 },
-            { name: 'o1', maxInputTokens: 200000 },
+            { name: 'gpt-4.1', maxInputTokens: 1047576, supportedFileTypes: ['pdf'] },
+            {
+                name: 'gpt-4.1-mini',
+                maxInputTokens: 1047576,
+                default: true,
+                supportedFileTypes: ['pdf'],
+            },
+            { name: 'gpt-4.1-nano', maxInputTokens: 1047576, supportedFileTypes: ['pdf'] },
+            { name: 'gpt-4o', maxInputTokens: 128000, supportedFileTypes: ['pdf'] },
+            { name: 'gpt-4o-mini', maxInputTokens: 128000, supportedFileTypes: ['pdf'] },
+            {
+                name: 'gpt-4o-audio-preview',
+                maxInputTokens: 128000,
+                supportedFileTypes: ['pdf', 'audio'],
+            },
+            { name: 'o4-mini', maxInputTokens: 200000, supportedFileTypes: ['pdf'] },
+            { name: 'o3', maxInputTokens: 200000, supportedFileTypes: ['pdf'] },
+            { name: 'o3-mini', maxInputTokens: 200000, supportedFileTypes: ['pdf'] },
+            { name: 'o1', maxInputTokens: 200000, supportedFileTypes: ['pdf'] },
         ],
         supportedRouters: ['vercel', 'in-built'],
         baseURLSupport: 'none',
+        supportedFileTypes: [], // No defaults - models must explicitly specify support
     },
     'openai-compatible': {
         models: [], // Empty - accepts any model name for custom endpoints
         supportedRouters: ['vercel', 'in-built'],
         baseURLSupport: 'required',
+        supportedFileTypes: [], // Unknown capabilities for custom endpoints
     },
     anthropic: {
         models: [
-            { name: 'claude-4-opus-20250514', maxInputTokens: 200000 },
-            { name: 'claude-4-sonnet-20250514', maxInputTokens: 200000, default: true },
-            { name: 'claude-3-7-sonnet-20250219', maxInputTokens: 200000 },
-            { name: 'claude-3-5-sonnet-20240620', maxInputTokens: 200000 },
-            { name: 'claude-3-haiku-20240307', maxInputTokens: 200000 },
-            { name: 'claude-3-opus-20240229', maxInputTokens: 200000 },
-            { name: 'claude-3-sonnet-20240229', maxInputTokens: 200000 },
+            { name: 'claude-4-opus-20250514', maxInputTokens: 200000, supportedFileTypes: ['pdf'] },
+            {
+                name: 'claude-4-sonnet-20250514',
+                maxInputTokens: 200000,
+                default: true,
+                supportedFileTypes: ['pdf'],
+            },
+            {
+                name: 'claude-3-7-sonnet-20250219',
+                maxInputTokens: 200000,
+                supportedFileTypes: ['pdf'],
+            },
+            {
+                name: 'claude-3-5-sonnet-20240620',
+                maxInputTokens: 200000,
+                supportedFileTypes: ['pdf'],
+            },
+            {
+                name: 'claude-3-haiku-20240307',
+                maxInputTokens: 200000,
+                supportedFileTypes: ['pdf'],
+            },
+            { name: 'claude-3-opus-20240229', maxInputTokens: 200000, supportedFileTypes: ['pdf'] },
+            {
+                name: 'claude-3-sonnet-20240229',
+                maxInputTokens: 200000,
+                supportedFileTypes: ['pdf'],
+            },
         ],
         supportedRouters: ['vercel', 'in-built'],
         baseURLSupport: 'none',
+        supportedFileTypes: [], // No defaults - models must explicitly specify support
     },
     google: {
         models: [
-            { name: 'gemini-2.5-pro', maxInputTokens: 1048576, default: true },
-            { name: 'gemini-2.5-flash', maxInputTokens: 1048576 },
-            { name: 'gemini-2.0-flash', maxInputTokens: 1048576 },
-            { name: 'gemini-2.0-flash-lite', maxInputTokens: 1048576 },
-            { name: 'gemini-1.5-pro-latest', maxInputTokens: 1048576 },
-            { name: 'gemini-1.5-flash-latest', maxInputTokens: 1048576 },
+            {
+                name: 'gemini-2.5-pro',
+                maxInputTokens: 1048576,
+                default: true,
+                supportedFileTypes: ['pdf', 'audio'],
+            },
+            {
+                name: 'gemini-2.5-flash',
+                maxInputTokens: 1048576,
+                supportedFileTypes: ['pdf', 'audio'],
+            },
+            {
+                name: 'gemini-2.0-flash',
+                maxInputTokens: 1048576,
+                supportedFileTypes: ['pdf', 'audio'],
+            },
+            {
+                name: 'gemini-2.0-flash-lite',
+                maxInputTokens: 1048576,
+                supportedFileTypes: ['pdf', 'audio'],
+            },
+            {
+                name: 'gemini-1.5-pro-latest',
+                maxInputTokens: 1048576,
+                supportedFileTypes: ['pdf', 'audio'],
+            },
+            {
+                name: 'gemini-1.5-flash-latest',
+                maxInputTokens: 1048576,
+                supportedFileTypes: ['pdf', 'audio'],
+            },
         ],
         supportedRouters: ['vercel'],
         baseURLSupport: 'none',
+        supportedFileTypes: [], // No defaults - models must explicitly specify support
     },
     // https://console.groq.com/docs/models
     groq: {
         models: [
-            { name: 'gemma-2-9b-it', maxInputTokens: 8192 },
-            { name: 'llama-3.3-70b-versatile', maxInputTokens: 128000, default: true },
+            { name: 'gemma-2-9b-it', maxInputTokens: 8192, supportedFileTypes: [] },
+            {
+                name: 'llama-3.3-70b-versatile',
+                maxInputTokens: 128000,
+                default: true,
+                supportedFileTypes: [],
+            },
         ],
         supportedRouters: ['vercel'],
         baseURLSupport: 'none',
+        supportedFileTypes: [], // Groq currently doesn't support file uploads
     },
     // https://docs.x.ai/docs/models
     xai: {
         models: [
-            { name: 'grok-4', maxInputTokens: 256000, default: true },
-            { name: 'grok-3', maxInputTokens: 131072 },
-            { name: 'grok-3-mini', maxInputTokens: 131072 },
+            { name: 'grok-4', maxInputTokens: 256000, default: true, supportedFileTypes: [] },
+            { name: 'grok-3', maxInputTokens: 131072, supportedFileTypes: [] },
+            { name: 'grok-3-mini', maxInputTokens: 131072, supportedFileTypes: [] },
         ],
         supportedRouters: ['vercel'],
         baseURLSupport: 'none',
+        supportedFileTypes: [], // XAI currently doesn't support file uploads
     },
-    // Add other providers like Cohere, etc., as needed
+    // https://docs.cohere.com/reference/models
+    cohere: {
+        models: [
+            {
+                name: 'command-a-03-2025',
+                maxInputTokens: 256000,
+                default: true,
+                supportedFileTypes: [],
+            },
+            { name: 'command-r-plus', maxInputTokens: 128000, supportedFileTypes: [] },
+            { name: 'command-r', maxInputTokens: 128000, supportedFileTypes: [] },
+            { name: 'command', maxInputTokens: 4000, supportedFileTypes: [] },
+            { name: 'command-light', maxInputTokens: 4000, supportedFileTypes: [] },
+        ],
+        supportedRouters: ['vercel'],
+        baseURLSupport: 'none',
+        supportedFileTypes: [], // Cohere currently doesn't support file uploads
+    },
 };
 
 /**
@@ -260,6 +374,106 @@ export function isValidRouter(router: string): boolean {
  */
 export function isValidProvider(provider: string): boolean {
     return provider.toLowerCase() in LLM_REGISTRY;
+}
+
+/**
+ * Gets the supported file types for a specific model.
+ * @param provider The name of the provider.
+ * @param model The name of the model.
+ * @returns Array of supported file types for the model.
+ * @throws {Error} If the provider or model is not found in the registry.
+ */
+export function getSupportedFileTypesForModel(
+    provider: string,
+    model: string
+): SupportedFileType[] {
+    const providerInfo = LLM_REGISTRY[provider as LLMProvider];
+    if (!providerInfo) {
+        throw new Error(
+            `Provider '${provider}' not found in LLM registry. Available providers: ${Object.keys(LLM_REGISTRY).join(', ')}`
+        );
+    }
+
+    // Special case: providers that accept any model name (e.g., openai-compatible)
+    if (acceptsAnyModel(provider)) {
+        return []; // Unknown capabilities for custom models - assume no file support for security
+    }
+
+    // Find the specific model
+    const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === model.toLowerCase());
+    if (!modelInfo) {
+        const availableModels = providerInfo.models.map((m) => m.name).join(', ');
+        throw new Error(
+            `Model '${model}' not found in provider '${provider}'. Available models: ${availableModels || 'none'}`
+        );
+    }
+
+    return modelInfo.supportedFileTypes;
+}
+
+/**
+ * Checks if a specific model supports a specific file type.
+ * @param provider The name of the provider.
+ * @param model The name of the model.
+ * @param fileType The file type to check support for.
+ * @returns True if the model supports the file type, false otherwise.
+ */
+export function modelSupportsFileType(
+    provider: string,
+    model: string,
+    fileType: SupportedFileType
+): boolean {
+    const supportedTypes = getSupportedFileTypesForModel(provider, model);
+    return supportedTypes.includes(fileType);
+}
+
+/**
+ * Validates if file data is supported by a specific model.
+ * @param provider The LLM provider name.
+ * @param model The model name.
+ * @param mimeType The MIME type of the file to validate.
+ * @returns Object containing validation result and details.
+ */
+export function validateModelFileSupport(
+    provider: string,
+    model: string,
+    mimeType: string
+): {
+    isSupported: boolean;
+    fileType?: SupportedFileType;
+    error?: string;
+} {
+    const fileType = MIME_TYPE_TO_FILE_TYPE[mimeType.toLowerCase()];
+    if (!fileType) {
+        return {
+            isSupported: false,
+            error: `Unsupported file type: ${mimeType}`,
+        };
+    }
+
+    try {
+        if (!modelSupportsFileType(provider, model, fileType)) {
+            return {
+                isSupported: false,
+                fileType,
+                error: `Model '${model}' (${provider}) does not support ${fileType} files`,
+            };
+        }
+
+        return {
+            isSupported: true,
+            fileType,
+        };
+    } catch (error) {
+        return {
+            isSupported: false,
+            fileType,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : 'Unknown error validating model file support',
+        };
+    }
 }
 
 /**

@@ -1,23 +1,8 @@
-# Music Creator Agent (Experimental)
+# Music Creator Agent
 
-A comprehensive AI agent for music creation, editing, and audio processing using advanced music libraries and AI-powered analysis.
-
-## 🎥 Demo Video
-
-Watch the Music Creator Agent in action:
-
-<iframe
-  width="100%"
-  height="400"
-  src="https://www.youtube.com/embed/FGg0nIOZUig"
-  title="Music Creator Agent Demo"
-  frameborder="0"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-  allowfullscreen="true"
-></iframe>
+A comprehensive AI agent for music creation, editing, and audio processing using the [Music Creator MCP Server](https://github.com/truffle-ai/mcp-servers/tree/main/src/music).
 
 > **⚠️ Experimental Status**: This agent is currently in experimental development. The tools have not been extensively tested in production environments and may have limitations or bugs. We're actively seeking feedback and improvements from users.
-
 ## 🧪 Experimental Features
 
 - **Limited Testing**: Tools have been tested in controlled environments but may behave differently with various audio formats, file sizes, or system configurations
@@ -27,7 +12,7 @@ Watch the Music Creator Agent in action:
 
 ## Overview
 
-The Music Creator Agent provides a complete suite of tools for music production, from basic audio editing to advanced music generation and analysis. Built with industry-standard libraries like librosa, pydub, and music21, it offers professional-grade audio processing capabilities.
+This agent provides access to professional-grade music production tools through a clean conversational interface. Built with industry-standard libraries like librosa, pydub, and music21, it offers comprehensive audio processing capabilities using the published `truffle-ai-music-creator-mcp` package.
 
 ## Features
 
@@ -58,19 +43,13 @@ The Music Creator Agent provides a complete suite of tools for music production,
 ## Quick Start
 
 ### Prerequisites
-- **Python 3.10+**: For the MCP server
-- **uv**: Python package manager (recommended) or pip
 - **Node.js 18+**: For the Saiki framework
+- **Python 3.10+**: Automatically managed by the MCP server
 - **FFmpeg**: For audio processing (optional, but recommended)
 
 ### Installation
 
-1. **Install uv** (if not already installed):
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-2. **Install FFmpeg** (recommended):
+1. **Install FFmpeg** (recommended):
    ```bash
    # macOS
    brew install ffmpeg
@@ -79,22 +58,13 @@ The Music Creator Agent provides a complete suite of tools for music production,
    sudo apt update && sudo apt install ffmpeg
    ```
 
-3. **Setup the Python Server**:
-   ```bash
-   cd agents/music-agent/python-server
-   ./setup-python-server.sh
-   ```
-
-4. **Test the Installation**:
-   ```bash
-   uv run python test-setup.py
-   ```
-
-5. **Run the Agent**:
+2. **Run the Agent**:
    ```bash
    # From the project root
-   saiki run agents/music-agent/music-agent.yml
+   saiki --agent agents/music-agent/music-agent.yml
    ```
+
+That's it! The MCP server will be automatically downloaded and installed via `uvx` on first run.
 
 ## Usage Examples
 
@@ -188,7 +158,7 @@ The Music Creator Agent provides a complete suite of tools for music production,
 ## Configuration
 
 ### Agent Configuration
-The agent is configured in `music-agent.yml`:
+The agent is configured to use the published MCP server:
 
 ```yaml
 systemPrompt: |
@@ -197,13 +167,9 @@ systemPrompt: |
 mcpServers:
   music_creator:
     type: stdio
-    command: uv
+    command: uvx
     args:
-      - run
-      - --project
-      - agents/music-agent/python-server
-      - python
-      - agents/music-agent/python-server/main.py
+      - truffle-ai-music-creator-mcp
     connectionMode: strict
 
 llm:
@@ -224,76 +190,6 @@ Or create a `.env` file in the project root:
 ```bash
 OPENAI_API_KEY=your-api-key-here
 ```
-
-## Troubleshooting
-
-### Common Issues
-
-#### 1. "uv command not found"
-```bash
-# Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Restart your terminal or reload shell
-source ~/.bashrc  # or ~/.zshrc
-```
-
-#### 2. "FFmpeg not found" warnings
-These warnings can be safely ignored. The agent includes fallback methods using librosa and soundfile for audio processing when FFmpeg is not available.
-
-```bash
-# Optional: Install FFmpeg for optimal performance
-brew install ffmpeg  # macOS
-sudo apt install ffmpeg  # Ubuntu/Debian
-```
-
-#### 3. "Permission denied" on setup script
-```bash
-chmod +x setup-python-server.sh
-```
-
-#### 4. Dependency Issues
-If you encounter dependency problems:
-```bash
-cd agents/music-agent/python-server
-rm -rf .venv
-uv sync
-uv run python test-setup.py
-```
-
-#### 5. JSON Serialization Errors
-These have been fixed in the current version. If you encounter them, ensure you're using the latest code.
-
-### Performance Tips
-
-1. **Large Audio Files**: Consider trimming or converting to smaller formats for faster processing
-2. **Memory Usage**: Monitor system memory during heavy audio operations
-3. **Batch Processing**: Use batch operations for multiple files to improve efficiency
-4. **FFmpeg**: Install FFmpeg for optimal audio processing performance (optional - fallback methods available)
-
-## Technical Details
-
-### Dependencies
-- **librosa**: Audio analysis and music information retrieval
-- **pydub**: Audio file manipulation and processing
-- **music21**: Music notation and analysis
-- **pretty_midi**: MIDI file handling
-- **numpy**: Numerical computing
-- **scipy**: Scientific computing
-- **matplotlib**: Plotting and visualization
-
-### Architecture
-The agent uses a Python-based MCP server that provides:
-- Fast audio processing with optimized libraries
-- Memory-efficient handling of large audio files
-- Thread-safe operations for concurrent processing
-- Comprehensive error handling and validation
-
-### Performance
-- Supports audio files up to several hours in length
-- Efficient processing of multiple file formats
-- Optimized algorithms for real-time analysis
-- Minimal memory footprint for batch operations
 
 ## Use Cases
 
@@ -321,60 +217,78 @@ The agent uses a Python-based MCP server that provides:
 - Experiment with composition techniques
 - Understand audio processing concepts
 
-## Feedback and Testing
+## MCP Server
 
-### 🧪 Experimental Status
-This agent is in active development and we value your feedback! Here's how you can help:
+This agent uses the **Music Creator MCP Server**, which is maintained separately at:
 
-#### Known Limitations
-- **Audio Quality**: Some audio processing operations may produce artifacts with certain file formats
-- **Performance**: Large files (>100MB) may take longer to process
-- **Format Support**: Some exotic audio formats may not be fully supported
-- **System Compatibility**: Performance may vary across different operating systems
+**🔗 [https://github.com/truffle-ai/mcp-servers/tree/main/src/music](https://github.com/truffle-ai/mcp-servers/tree/main/src/music)**
 
-#### Testing Scenarios
-We're particularly interested in feedback on:
-- **Real-world audio files**: How does it handle your actual music files?
-- **Different genres**: Does it work well with various musical styles?
-- **File sizes**: Performance with very small or very large files
-- **System configurations**: Different OS, hardware, and dependency setups
+The MCP server repository provides:
+- Complete technical documentation
+- Development and contribution guidelines  
+- Server implementation details
+- Advanced configuration options
 
-#### Reporting Issues
-When reporting issues, please include:
-- **File format and size**: What type of audio file were you processing?
-- **Error messages**: Full error output if available
-- **System info**: OS, Python version, installed dependencies
-- **Steps to reproduce**: Exact commands or operations that caused the issue
+## Troubleshooting
 
-#### Feature Requests
-We welcome suggestions for:
-- **New audio effects**: What effects would be most useful?
-- **Additional formats**: What audio formats do you need?
-- **Performance improvements**: What operations are too slow?
-- **User experience**: How can we make the tools easier to use?
+### Common Issues
 
-### Contributing
-See the [Development](#development) section below for technical contribution guidelines.
+#### 1. Server Installation
+The MCP server will be automatically installed via `uvx` on first run. No manual setup required.
 
-## Development
+#### 2. "FFmpeg not found" warnings
+These warnings can be safely ignored. The agent includes fallback methods using librosa and soundfile for audio processing when FFmpeg is not available.
+
 ```bash
-cd agents/music-agent/python-server
-uv run python test-setup.py
-uv run python test_functions.py
+# Optional: Install FFmpeg for optimal performance
+brew install ffmpeg  # macOS
+sudo apt install ffmpeg  # Ubuntu/Debian
 ```
 
-### Code Formatting
-```bash
-uv run black main.py
-uv run ruff check main.py
-```
+#### 3. Large Audio Files
+Consider trimming or converting to smaller formats for faster processing.
 
-### Adding New Tools
-1. Add new tools to `main.py` using the `@mcp.tool()` decorator
-2. Update the system prompt in `music-agent.yml` to describe new capabilities
-3. Add appropriate error handling and validation
-4. Include comprehensive documentation and examples
+#### 4. Memory Usage
+Monitor system memory during heavy audio operations.
+
+### Performance Tips
+
+1. **Large Audio Files**: Consider trimming or converting to smaller formats for faster processing
+2. **Memory Usage**: Monitor system memory during heavy audio operations
+3. **Batch Processing**: Use batch operations for multiple files to improve efficiency
+4. **FFmpeg**: Install FFmpeg for optimal audio processing performance (optional - fallback methods available)
+
+## Technical Details
+
+### Dependencies
+The MCP server uses industry-standard libraries:
+- **librosa**: Audio analysis and music information retrieval
+- **pydub**: Audio file manipulation and processing
+- **music21**: Music notation and analysis
+- **pretty_midi**: MIDI file handling
+- **numpy**: Numerical computing
+- **scipy**: Scientific computing
+- **matplotlib**: Plotting and visualization
+
+### Architecture
+The agent uses a Python-based MCP server that provides:
+- Fast audio processing with optimized libraries
+- Memory-efficient handling of large audio files
+- Thread-safe operations for concurrent processing
+- Comprehensive error handling and validation
+
+### Performance
+- Supports audio files up to several hours in length
+- Efficient processing of multiple file formats
+- Optimized algorithms for real-time analysis
+- Minimal memory footprint for batch operations
+
+## Getting Help
+
+- **MCP Server Issues**: Report at the [mcp-servers repository](https://github.com/truffle-ai/mcp-servers/issues)
+- **Agent Configuration**: Report at the main Saiki repository
+- **Feature Requests**: Use the mcp-servers repository for tool-related requests
 
 ## License
 
-This project is part of the Saiki AI Agent framework and follows the same licensing terms. 
+This agent configuration is part of the Saiki AI Agent framework. The MCP server is distributed under the MIT license.

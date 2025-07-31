@@ -1,7 +1,13 @@
-import { IMessageFormatter } from './types.js';
+import { IMessageFormatter, FormatterContext } from './types.js';
 import { InternalMessage } from '../types.js';
-import type { GenerateTextResult, StreamTextResult } from 'ai';
-import { getImageData } from '../utils.js';
+import type { GenerateTextResult, StreamTextResult, ToolSet as VercelToolSet } from 'ai';
+import {
+    getImageData,
+    getFileData,
+    filterMessagesByLLMCapabilities,
+    FilteringConfig,
+} from '../utils.js';
+import { logger } from '../../../../logger/index.js';
 // import Core SDK types if/when needed
 
 /**
@@ -23,8 +29,32 @@ export class VercelMessageFormatter implements IMessageFormatter {
      * @param systemPrompt System prompt to include at the beginning of messages
      * @returns Array of messages formatted for Vercel's API
      */
-    format(history: Readonly<InternalMessage[]>, systemPrompt: string | null): any[] {
+    format(
+        history: Readonly<InternalMessage[]>,
+        systemPrompt: string | null,
+        context?: FormatterContext
+    ): unknown[] {
         const formatted = [];
+
+        // Apply model-aware capability filtering for Vercel
+        let filteredHistory: InternalMessage[];
+        try {
+            if (!context?.provider) {
+                throw new Error('Provider is required for Vercel formatter context');
+            }
+
+            const config: FilteringConfig = {
+                provider: context.provider,
+                model: context.model,
+            };
+            filteredHistory = filterMessagesByLLMCapabilities([...history], config);
+
+            const modelInfo = `${config.provider}/${config.model}`;
+            logger.debug(`Applied Vercel filtering for ${modelInfo}`);
+        } catch (error) {
+            logger.warn(`Failed to apply capability filtering, using original history: ${error}`);
+            filteredHistory = [...history];
+        }
 
         // Add system message if present
         if (systemPrompt) {
@@ -34,7 +64,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
             });
         }
 
-        for (const msg of history) {
+        for (const msg of filteredHistory) {
             switch (msg.role) {
                 case 'user':
                 case 'system':
@@ -74,7 +104,9 @@ export class VercelMessageFormatter implements IMessageFormatter {
      * Parses raw Vercel SDK stream response into internal message objects.
      * This handles StreamTextResult which has different structure than GenerateTextResult
      */
-    async parseStreamResponse(response: StreamTextResult<any, any>): Promise<InternalMessage[]> {
+    async parseStreamResponse(
+        response: StreamTextResult<VercelToolSet, unknown>
+    ): Promise<InternalMessage[]> {
         // For streaming, we need to wait for the response to complete
         // and then access the messages from the resolved promise
         const resolvedResponse = await response.response;
@@ -87,14 +119,14 @@ export class VercelMessageFormatter implements IMessageFormatter {
         };
 
         // Reuse the existing parseResponse logic
-        return this.parseResponse(adaptedResponse as GenerateTextResult<any, any>);
+        return this.parseResponse(adaptedResponse as GenerateTextResult<VercelToolSet, unknown>);
     }
 
     /**
      * Parses raw Vercel SDK response into internal message objects.
      * TODO: Break this into smaller functions
      */
-    parseResponse(response: GenerateTextResult<any, any>): InternalMessage[] {
+    parseResponse(response: GenerateTextResult<VercelToolSet, unknown>): InternalMessage[] {
         const internal: InternalMessage[] = [];
         if (!response.response.messages) return internal;
         for (const msg of response.response.messages) {
@@ -134,7 +166,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
                         }
                         text = combined || null;
                     }
-                    const assistantMessage: any = {
+                    const assistantMessage: InternalMessage = {
                         role: 'assistant',
                         content: text,
                     };
@@ -150,11 +182,14 @@ export class VercelMessageFormatter implements IMessageFormatter {
                             if (part.type === 'tool-result') {
                                 let content: InternalMessage['content'];
                                 if (Array.isArray(part.experimental_content)) {
-                                    content = part.experimental_content.map((img: any) => ({
-                                        type: 'image',
-                                        image: img.data,
-                                        mimeType: img.mimeType,
-                                    }));
+                                    content = part.experimental_content.map((img: unknown) => {
+                                        const imgData = img as { data?: string; mimeType?: string };
+                                        return {
+                                            type: 'image',
+                                            image: imgData.data || '',
+                                            mimeType: imgData.mimeType || 'image/jpeg',
+                                        };
+                                    });
                                 } else {
                                     // Ensure result is a string for InternalMessage.content
                                     const raw = part.result;
@@ -181,11 +216,11 @@ export class VercelMessageFormatter implements IMessageFormatter {
 
     // Helper to format Assistant messages (with optional tool calls)
     private formatAssistantMessage(msg: InternalMessage): {
-        content: any;
+        content: unknown;
         function_call?: { name: string; arguments: string };
     } {
         if (msg.toolCalls && msg.toolCalls.length > 0) {
-            const contentParts: any[] = [];
+            const contentParts: unknown[] = [];
             if (msg.content) {
                 contentParts.push({ type: 'text', text: msg.content });
             }
@@ -218,20 +253,46 @@ export class VercelMessageFormatter implements IMessageFormatter {
     }
 
     // Helper to format Tool result messages
-    private formatToolMessage(msg: InternalMessage): { content: any[] } {
-        let toolResultPart: any;
-        if (Array.isArray(msg.content) && msg.content[0]?.type === 'image') {
-            const imagePart = msg.content[0];
-            const imageDataBase64 = getImageData(imagePart);
-            toolResultPart = {
-                type: 'tool-result',
-                toolCallId: msg.toolCallId!,
-                toolName: msg.name!,
-                result: null,
-                experimental_content: [
-                    { type: 'image', data: imageDataBase64, mimeType: imagePart.mimeType },
-                ],
-            };
+    private formatToolMessage(msg: InternalMessage): { content: unknown[] } {
+        let toolResultPart: unknown;
+        if (Array.isArray(msg.content)) {
+            if (msg.content[0]?.type === 'image') {
+                const imagePart = msg.content[0];
+                const imageDataBase64 = getImageData(imagePart);
+                toolResultPart = {
+                    type: 'tool-result',
+                    toolCallId: msg.toolCallId!,
+                    toolName: msg.name!,
+                    result: null,
+                    experimental_content: [
+                        { type: 'image', data: imageDataBase64, mimeType: imagePart.mimeType },
+                    ],
+                };
+            } else if (msg.content[0]?.type === 'file') {
+                const filePart = msg.content[0];
+                const fileDataBase64 = getFileData(filePart);
+                toolResultPart = {
+                    type: 'tool-result',
+                    toolCallId: msg.toolCallId!,
+                    toolName: msg.name!,
+                    result: null,
+                    experimental_content: [
+                        {
+                            type: 'file',
+                            data: fileDataBase64,
+                            mimeType: filePart.mimeType,
+                            filename: filePart.filename,
+                        },
+                    ],
+                };
+            } else {
+                toolResultPart = {
+                    type: 'tool-result',
+                    toolCallId: msg.toolCallId!,
+                    toolName: msg.name!,
+                    result: msg.content,
+                };
+            }
         } else {
             toolResultPart = {
                 type: 'tool-result',

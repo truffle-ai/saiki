@@ -5,7 +5,11 @@ import { useChat, Message } from './useChat';
 
 interface ChatContextType {
   messages: Message[];
-  sendMessage: (content: string, imageData?: { base64: string; mimeType: string }) => void;
+  sendMessage: (
+    content: string,
+    imageData?: { base64: string; mimeType: string },
+    fileData?: { base64: string; mimeType: string; filename?: string }
+  ) => void;
   status: 'connecting' | 'open' | 'closed';
   reset: () => void;
   currentSessionId: string | null;
@@ -64,7 +68,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Enhanced sendMessage with auto-session creation
-  const sendMessage = useCallback(async (content: string, imageData?: { base64: string; mimeType: string }) => {
+  const sendMessage = useCallback(async (
+    content: string,
+    imageData?: { base64: string; mimeType: string },
+    fileData?: { base64: string; mimeType: string; filename?: string }
+  ) => {
     let sessionId = currentSessionId;
     
     // Auto-create session on first message
@@ -86,7 +94,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     
     if (sessionId) {
-      originalSendMessage(content, imageData, sessionId, isStreaming);
+      originalSendMessage(content, imageData, fileData, sessionId, isStreaming);
     } else {
       console.error('No session available for sending message');
     }

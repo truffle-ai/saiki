@@ -11,6 +11,10 @@ import {
     supportsBaseURL,
     requiresBaseURL,
     acceptsAnyModel,
+    getDefaultModelForProvider,
+    getSupportedFileTypesForModel,
+    modelSupportsFileType,
+    validateModelFileSupport,
 } from './registry.js';
 import { ModelNotFoundError } from './errors.js';
 import { EffectiveMaxInputTokensError } from './errors.js';
@@ -187,6 +191,230 @@ describe('LLM Registry', () => {
 
         it('returns false for unknown provider', () => {
             expect(acceptsAnyModel('unknown')).toBe(false);
+        });
+    });
+
+    describe('Cohere registry entry', () => {
+        const cohereModels = [
+            'command-a-03-2025',
+            'command-r-plus',
+            'command-r',
+            'command',
+            'command-light',
+        ];
+
+        it('is registered as a provider', () => {
+            expect(getSupportedProviders()).toContain('cohere');
+        });
+
+        it('returns all supported models for cohere', () => {
+            expect(getSupportedModels('cohere')).toEqual(cohereModels);
+        });
+
+        it('returns the correct default model', () => {
+            expect(getDefaultModelForProvider('cohere')).toBe('command-a-03-2025');
+        });
+
+        it('validates model/provider combos correctly', () => {
+            for (const model of cohereModels) {
+                expect(isValidProviderModel('cohere', model)).toBe(true);
+            }
+            expect(isValidProviderModel('cohere', 'non-existent')).toBe(false);
+        });
+
+        it('returns correct maxInputTokens for its models', () => {
+            expect(getMaxInputTokensForModel('cohere', 'command-a-03-2025')).toBe(256000);
+            expect(getMaxInputTokensForModel('cohere', 'command-r-plus')).toBe(128000);
+            expect(getMaxInputTokensForModel('cohere', 'command-r')).toBe(128000);
+            expect(getMaxInputTokensForModel('cohere', 'command')).toBe(4000);
+            expect(getMaxInputTokensForModel('cohere', 'command-light')).toBe(4000);
+        });
+
+        it('returns correct provider for its models', () => {
+            expect(getProviderFromModel('command-a-03-2025')).toBe('cohere');
+            expect(getProviderFromModel('command-r-plus')).toBe('cohere');
+            expect(getProviderFromModel('command-r')).toBe('cohere');
+            expect(getProviderFromModel('command')).toBe('cohere');
+            expect(getProviderFromModel('command-light')).toBe('cohere');
+        });
+
+        it('has correct baseURL support flags', () => {
+            expect(supportsBaseURL('cohere')).toBe(false);
+            expect(requiresBaseURL('cohere')).toBe(false);
+        });
+
+        it('does not accept any model', () => {
+            expect(acceptsAnyModel('cohere')).toBe(false);
+        });
+    });
+});
+
+describe('File support functionality', () => {
+    describe('getSupportedFileTypesForModel with default models', () => {
+        it('should return provider-level default file types for OpenAI default model', () => {
+            expect(getSupportedFileTypesForModel('openai', 'gpt-4.1-mini')).toEqual(['pdf']);
+        });
+
+        it('should return correct file types for Anthropic default model', () => {
+            expect(getSupportedFileTypesForModel('anthropic', 'claude-4-sonnet-20250514')).toEqual([
+                'pdf',
+            ]);
+        });
+
+        it('should return correct file types for Google default model', () => {
+            expect(getSupportedFileTypesForModel('google', 'gemini-2.5-pro')).toEqual([
+                'pdf',
+                'audio',
+            ]);
+        });
+
+        it('should return empty array for providers without file support', () => {
+            expect(getSupportedFileTypesForModel('groq', 'gemma-2-9b-it')).toEqual([]);
+            expect(getSupportedFileTypesForModel('xai', 'grok-3')).toEqual([]);
+            expect(getSupportedFileTypesForModel('cohere', 'command-r')).toEqual([]);
+        });
+
+        it('should throw error for unknown provider', () => {
+            expect(() => getSupportedFileTypesForModel('unknown-provider', 'any-model')).toThrow(
+                "Provider 'unknown-provider' not found in LLM registry"
+            );
+        });
+
+        it('should be case-sensitive for provider names but case-insensitive for model names', () => {
+            expect(() => getSupportedFileTypesForModel('OpenAI', 'gpt-4o')).toThrow(
+                "Provider 'OpenAI' not found in LLM registry"
+            );
+            expect(getSupportedFileTypesForModel('openai', 'GPT-4O')).toEqual(['pdf']);
+        });
+    });
+
+    describe('Model-aware file support', () => {
+        describe('getSupportedFileTypesForModel', () => {
+            it('should return model-specific file types when available', () => {
+                expect(getSupportedFileTypesForModel('openai', 'gpt-4o-audio-preview')).toEqual([
+                    'pdf',
+                    'audio',
+                ]);
+                expect(getSupportedFileTypesForModel('openai', 'gpt-4o')).toEqual(['pdf']);
+            });
+
+            it('should throw error for unknown models', () => {
+                expect(() => getSupportedFileTypesForModel('openai', 'unknown-model')).toThrow(
+                    "Model 'unknown-model' not found in provider 'openai'"
+                );
+            });
+
+            it('should throw error for unknown provider', () => {
+                expect(() =>
+                    getSupportedFileTypesForModel('unknown-provider', 'any-model')
+                ).toThrow("Provider 'unknown-provider' not found in LLM registry");
+            });
+
+            it('should return empty array for openai-compatible provider with any model (custom endpoints)', () => {
+                expect(getSupportedFileTypesForModel('openai-compatible', 'custom-model')).toEqual(
+                    []
+                );
+                expect(getSupportedFileTypesForModel('openai-compatible', 'gpt-4-custom')).toEqual(
+                    []
+                );
+                expect(
+                    getSupportedFileTypesForModel('openai-compatible', 'any-random-name')
+                ).toEqual([]);
+            });
+
+            it('should be case-sensitive for provider names but case-insensitive for model names', () => {
+                expect(() =>
+                    getSupportedFileTypesForModel('OpenAI', 'gpt-4o-audio-preview')
+                ).toThrow("Provider 'OpenAI' not found in LLM registry");
+                expect(getSupportedFileTypesForModel('openai', 'GPT-4O-AUDIO-PREVIEW')).toEqual([
+                    'pdf',
+                    'audio',
+                ]);
+            });
+        });
+
+        describe('modelSupportsFileType', () => {
+            it('should return true for supported model file types', () => {
+                expect(modelSupportsFileType('openai', 'gpt-4o-audio-preview', 'audio')).toBe(true);
+                expect(modelSupportsFileType('openai', 'gpt-4o-audio-preview', 'pdf')).toBe(true);
+                expect(modelSupportsFileType('openai', 'gpt-4o', 'pdf')).toBe(true);
+            });
+
+            it('should return false for unsupported model file types', () => {
+                expect(modelSupportsFileType('openai', 'gpt-4o', 'audio')).toBe(false);
+                expect(
+                    modelSupportsFileType('anthropic', 'claude-4-sonnet-20250514', 'audio')
+                ).toBe(false);
+            });
+
+            it('should return false for openai-compatible provider with any model (no file support assumed)', () => {
+                expect(modelSupportsFileType('openai-compatible', 'custom-model', 'pdf')).toBe(
+                    false
+                );
+                expect(modelSupportsFileType('openai-compatible', 'gpt-4-custom', 'audio')).toBe(
+                    false
+                );
+                expect(modelSupportsFileType('openai-compatible', 'any-model', 'pdf')).toBe(false);
+            });
+
+            it('should throw error for unknown model or provider', () => {
+                expect(() => modelSupportsFileType('unknown-provider', 'any-model', 'pdf')).toThrow(
+                    "Provider 'unknown-provider' not found in LLM registry"
+                );
+                expect(() => modelSupportsFileType('openai', 'unknown-model', 'pdf')).toThrow(
+                    "Model 'unknown-model' not found in provider 'openai'"
+                );
+            });
+        });
+
+        describe('validateModelFileSupport', () => {
+            it('should validate supported files for specific models', () => {
+                const result = validateModelFileSupport(
+                    'openai',
+                    'gpt-4o-audio-preview',
+                    'audio/mp3'
+                );
+                expect(result.isSupported).toBe(true);
+                expect(result.fileType).toBe('audio');
+                expect(result.error).toBeUndefined();
+            });
+
+            it('should reject unsupported files for specific models', () => {
+                const result = validateModelFileSupport('openai', 'gpt-4o', 'audio/mp3');
+                expect(result.isSupported).toBe(false);
+                expect(result.fileType).toBe('audio');
+                expect(result.error).toBe("Model 'gpt-4o' (openai) does not support audio files");
+            });
+
+            it('should handle unknown MIME types', () => {
+                const result = validateModelFileSupport('openai', 'gpt-4o', 'application/unknown');
+                expect(result.isSupported).toBe(false);
+                expect(result.fileType).toBeUndefined();
+                expect(result.error).toBe('Unsupported file type: application/unknown');
+            });
+
+            it('should reject files for openai-compatible provider (unknown capabilities)', () => {
+                const result = validateModelFileSupport(
+                    'openai-compatible',
+                    'custom-model',
+                    'application/pdf'
+                );
+                expect(result.isSupported).toBe(false);
+                expect(result.fileType).toBe('pdf');
+                expect(result.error).toBe(
+                    "Model 'custom-model' (openai-compatible) does not support pdf files"
+                );
+            });
+
+            it('should be case-insensitive for model names', () => {
+                const result = validateModelFileSupport(
+                    'openai',
+                    'GPT-4O-AUDIO-PREVIEW',
+                    'audio/mp3'
+                );
+                expect(result.isSupported).toBe(true);
+                expect(result.fileType).toBe('audio');
+            });
         });
     });
 });

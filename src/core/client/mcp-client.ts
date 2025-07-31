@@ -12,7 +12,7 @@ import type {
 } from '../config/schemas.js';
 import { ToolSet } from '../ai/types.js';
 import { IMCPClient } from './types.js';
-import { resolvePackagePath } from '../utils/path.js';
+import { resolveBundledScript } from '../utils/path.js';
 import { GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
 import { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
 
@@ -86,7 +86,7 @@ export class MCPClient implements IMCPClient {
         ) {
             try {
                 const scriptRelativePath = this.resolvedArgs[0]!;
-                this.resolvedArgs[0] = resolvePackagePath(scriptRelativePath, true);
+                this.resolvedArgs[0] = resolveBundledScript(scriptRelativePath);
                 logger.debug(
                     `Resolved bundled script path: ${scriptRelativePath} -> ${this.resolvedArgs[0]}`
                 );

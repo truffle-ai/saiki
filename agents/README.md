@@ -230,6 +230,26 @@ Saiki supports several command-line options:
 | `--verbose` | Enable verbose logging |
 | `--help` | Show help |
 
+## Available Agent Examples
+
+### Database Agent
+An AI agent that provides natural language access to database operations and analytics. This approach simplifies database interaction - instead of building forms, queries, and reporting dashboards, users can simply ask for what they need in plain language.
+
+**Quick Start:**
+```bash
+cd database-agent
+./setup-database.sh
+npm start -- --agent database-agent.yml
+```
+
+**Example Interactions:**
+- "Show me all users"
+- "Create a new user named John Doe with email john@example.com"
+- "Find products under $100"
+- "Generate a sales report by category"
+
+This agent demonstrates intelligent database interaction through conversation.
+
 ## Complete Example
 
 Here's a comprehensive configuration example using multiple tool servers:

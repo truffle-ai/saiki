@@ -299,12 +299,12 @@ async removeMcpServer(name: string): Promise<void>
 | :--- | :--- | :--- |
 | `name` | `string` | Server name to remove |
 
-### `executeMcpTool`
+### `executeTool`
 
-Directly executes a tool from any connected MCP server.
+Executes a tool from any source (MCP servers, custom tools, or internal tools). This is the unified interface for tool execution.
 
 ```typescript
-async executeMcpTool(toolName: string, args: any): Promise<any>
+async executeTool(toolName: string, args: any): Promise<any>
 ```
 
 | Parameter | Type | Description |
@@ -323,6 +323,26 @@ async getAllMcpTools(): Promise<Record<string, ToolDefinition>>
 ```
 
 **Returns:** `Promise<Record<string, ToolDefinition>>`
+
+### `getAllTools`
+
+Returns a map of all available tools from all sources (MCP servers, custom tools, and internal tools). This is the unified interface for tool discovery.
+
+```typescript
+async getAllTools(): Promise<Record<string, ToolDefinition>>
+```
+
+**Returns:** `Promise<Record<string, ToolDefinition>>`
+
+### `getCustomTools`
+
+Returns an array of custom tool names only (excludes MCP and internal tools). Useful for filtering UI displays or analytics.
+
+```typescript
+async getCustomTools(): Promise<string[]>
+```
+
+**Returns:** `Promise<string[]>` - Array of custom tool names
 
 ### `getMcpClients`
 

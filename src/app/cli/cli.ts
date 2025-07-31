@@ -3,8 +3,10 @@ import chalk from 'chalk';
 import { logger } from '@core/index.js';
 import { CLISubscriber } from './cli-subscriber.js';
 import { SaikiAgent } from '@core/index.js';
-import { parseInput } from './command-parser.js';
-import { executeCommand } from './commands.js';
+import { parseInput } from './interactive-commands/command-parser.js';
+import { executeCommand } from './interactive-commands/commands.js';
+import { getSaikiPath } from '@core/utils/path.js';
+import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
 
 /**
  * Find and load the most recent session based on lastActivity.
@@ -52,7 +54,7 @@ async function loadMostRecentSession(agent: SaikiAgent): Promise<void> {
  */
 async function _initCli(agent: SaikiAgent): Promise<void> {
     await loadMostRecentSession(agent);
-
+    registerGracefulShutdown(agent);
     // Log connection info
     logger.debug(`Log level: ${logger.getLevel()}`);
     logger.info(`Connected servers: ${agent.mcpManager.getClients().size}`, null, 'green');
@@ -72,11 +74,10 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
     // Load available tools
     logger.info('Loading available tools...');
     try {
-        const tools = await agent.mcpManager.getAllTools(); // tools variable is not used currently but kept for potential future use
+        const toolStats = await agent.toolManager.getToolStats();
+
         logger.info(
-            `Loaded ${Object.keys(tools).length} tools from ${
-                agent.mcpManager.getClients().size
-            } MCP servers`
+            `Loaded ${toolStats.total} total tools: ${toolStats.mcp} MCP, ${toolStats.internal} internal`
         );
     } catch (error) {
         logger.error(
@@ -91,9 +92,8 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
     console.log(chalk.dim('• Type your message normally to chat with the AI'));
     console.log(chalk.dim('• Use /command for system commands (e.g., /help, /session, /model)'));
     console.log(chalk.dim('• Type /help to see all available commands'));
-    console.log(
-        chalk.dim('• Logs available in .saiki/logs/saiki.log or ~/.saiki/logs/saiki.log\n')
-    );
+    const logPath = getSaikiPath('logs', 'saiki.log');
+    console.log(chalk.dim(`• Logs available in ${logPath}\n`));
 }
 
 /**

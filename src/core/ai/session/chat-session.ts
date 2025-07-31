@@ -7,7 +7,7 @@ import { getEffectiveMaxInputTokens } from '../llm/registry.js';
 import type { ContextManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
-import type { MCPManager } from '../../client/manager.js';
+import type { ToolManager } from '../../tools/tool-manager.js';
 import type { ValidatedLLMConfig } from '../../config/schemas.js';
 import type { AgentStateManager } from '../../config/agent-state-manager.js';
 import type { StorageBackends } from '../../storage/backend/types.js';
@@ -18,6 +18,7 @@ import {
     SessionEventName,
 } from '../../events/index.js';
 import { logger } from '../../logger/index.js';
+import { validateInputForLLM, createInputValidationError } from '../llm/validation.js';
 
 /**
  * Represents an isolated conversation session within a Saiki agent.
@@ -114,7 +115,7 @@ export class ChatSession {
         private services: {
             stateManager: AgentStateManager;
             promptManager: PromptManager;
-            mcpManager: MCPManager;
+            toolManager: ToolManager;
             agentEventBus: AgentEventBus;
             storage: StorageBackends;
         },
@@ -199,7 +200,7 @@ export class ChatSession {
         this.llmService = createLLMService(
             llmConfig,
             llmConfig.router,
-            this.services.mcpManager,
+            this.services.toolManager,
             this.eventBus, // Use session event bus
             this.contextManager,
             this.id
@@ -209,23 +210,21 @@ export class ChatSession {
     }
 
     /**
-     * Processes a single conversation turn with the AI model.
+     * Processes user input through the session's LLM service and returns the response.
      *
      * This method:
-     * 1. Adds the user input to the session's conversation history
-     * 2. Sends the conversation context to the AI model
-     * 3. Handles any tool calls requested by the model
-     * 4. Returns the final response from the model
+     * 1. Takes user input (text, optionally with image or file data)
+     * 2. Passes it to the LLM service for processing
+     * 3. Returns the AI's response text
      *
-     * Events are emitted throughout the process to provide real-time feedback:
-     * - `llmservice:thinking` when processing begins
-     * - `llmservice:toolCall` for each tool execution
-     * - `llmservice:response` when the final response is ready
+     * The method handles both text-only and multimodal input (text + images/files).
+     * Tool calls and conversation management are handled internally by the LLM service.
      *
-     * @param input - The user's message or query to process
-     * @returns Promise that resolves to the AI model's response text
-     *
-     * @throws {Error} If the LLM service encounters an error during processing
+     * @param input - The user's text input
+     * @param imageDataInput - Optional image data for multimodal input
+     * @param fileDataInput - Optional file data for file input
+     * @param stream - Optional flag to enable streaming responses
+     * @returns Promise that resolves to the AI's response text
      *
      * @example
      * ```typescript
@@ -236,12 +235,51 @@ export class ChatSession {
     public async run(
         input: string,
         imageDataInput?: { image: string; mimeType: string },
+        fileDataInput?: { data: string; mimeType: string; filename?: string },
         stream?: boolean
     ): Promise<string> {
         logger.debug(
-            `Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput}`
+            `Running session ${this.id} with input: ${input}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}`
         );
-        const response = await this.llmService.completeTask(input, imageDataInput, stream);
+
+        // Validate input at session level
+        const currentConfig = this.services.stateManager.getLLMConfig(this.id);
+        const validation = validateInputForLLM(
+            {
+                text: input,
+                ...(imageDataInput && { imageData: imageDataInput }),
+                ...(fileDataInput && { fileData: fileDataInput }),
+            },
+            {
+                provider: currentConfig.provider,
+                model: currentConfig.model,
+            }
+        );
+
+        if (!validation.isValid) {
+            // Emit unsupported input event
+            const errorDetails = createInputValidationError(validation, {
+                provider: currentConfig.provider,
+                model: currentConfig.model,
+            });
+
+            this.eventBus.emit('llmservice:unsupportedInput', {
+                errors: validation.errors,
+                provider: currentConfig.provider,
+                model: currentConfig.model,
+                fileType: errorDetails.fileType,
+                details: errorDetails.details,
+            });
+
+            throw new Error(`Input validation failed: ${validation.errors.join('; ')}`);
+        }
+
+        const response = await this.llmService.completeTask(
+            input,
+            imageDataInput,
+            fileDataInput,
+            stream
+        );
         return response;
     }
 
@@ -373,7 +411,7 @@ export class ChatSession {
             const newLLMService = createLLMService(
                 newLLMConfig,
                 router,
-                this.services.mcpManager,
+                this.services.toolManager,
                 this.eventBus, // Use session event bus
                 this.contextManager,
                 this.id

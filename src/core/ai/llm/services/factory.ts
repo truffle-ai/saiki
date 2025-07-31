@@ -1,4 +1,4 @@
-import { MCPManager } from '../../../client/manager.js';
+import { ToolManager } from '../../../tools/tool-manager.js';
 import { ILLMService } from './types.js';
 import { ValidatedLLMConfig } from '../../../config/schemas.js';
 import { logger } from '../../../logger/index.js';
@@ -14,6 +14,7 @@ import { LanguageModelV1 } from 'ai';
 import { SessionEventBus } from '../../../events/index.js';
 import { LLMRouter } from '../types.js';
 import { ContextManager } from '../messages/manager.js';
+import { createCohere } from '@ai-sdk/cohere';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -42,7 +43,7 @@ function extractApiKey(config: ValidatedLLMConfig): string {
 /**
  * Create an instance of one of our in-built LLM services
  * @param config LLM configuration from the config file
- * @param mcpManager Client manager instance
+ * @param toolManager Unified tool manager instance
  * @param sessionEventBus Session-level event bus for emitting LLM events
  * @param contextManager Message manager instance
  * @param sessionId Session ID
@@ -50,7 +51,7 @@ function extractApiKey(config: ValidatedLLMConfig): string {
  */
 function _createInBuiltLLMService(
     config: ValidatedLLMConfig,
-    mcpManager: MCPManager,
+    toolManager: ToolManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager,
     sessionId: string
@@ -63,7 +64,7 @@ function _createInBuiltLLMService(
             // Regular OpenAI - no baseURL support
             const openai = new OpenAI({ apiKey });
             return new OpenAIService(
-                mcpManager,
+                toolManager,
                 openai,
                 sessionEventBus,
                 contextManager,
@@ -77,7 +78,7 @@ function _createInBuiltLLMService(
             const baseURL = getOpenAICompatibleBaseURL(config);
             const openai = new OpenAI({ apiKey, baseURL });
             return new OpenAIService(
-                mcpManager,
+                toolManager,
                 openai,
                 sessionEventBus,
                 contextManager,
@@ -89,7 +90,7 @@ function _createInBuiltLLMService(
         case 'anthropic': {
             const anthropic = new Anthropic({ apiKey });
             return new AnthropicService(
-                mcpManager,
+                toolManager,
                 anthropic,
                 sessionEventBus,
                 contextManager,
@@ -126,6 +127,8 @@ function _createVercelModel(llmConfig: ValidatedLLMConfig): LanguageModelV1 {
             return createGroq({ apiKey })(model);
         case 'xai':
             return createXai({ apiKey })(model);
+        case 'cohere':
+            return createCohere({ apiKey })(model);
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);
     }
@@ -151,7 +154,7 @@ function getOpenAICompatibleBaseURL(llmConfig: ValidatedLLMConfig): string {
 
 function _createVercelLLMService(
     config: ValidatedLLMConfig,
-    mcpManager: MCPManager,
+    toolManager: ToolManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager,
     sessionId: string
@@ -159,7 +162,7 @@ function _createVercelLLMService(
     const model = _createVercelModel(config);
 
     return new VercelLLMService(
-        mcpManager,
+        toolManager,
         model,
         config.provider,
         sessionEventBus,
@@ -178,7 +181,7 @@ function _createVercelLLMService(
 export function createLLMService(
     config: ValidatedLLMConfig,
     router: LLMRouter,
-    mcpManager: MCPManager,
+    toolManager: ToolManager,
     sessionEventBus: SessionEventBus,
     contextManager: ContextManager,
     sessionId: string
@@ -186,7 +189,7 @@ export function createLLMService(
     if (router === 'vercel') {
         return _createVercelLLMService(
             config,
-            mcpManager,
+            toolManager,
             sessionEventBus,
             contextManager,
             sessionId
@@ -194,7 +197,7 @@ export function createLLMService(
     } else {
         return _createInBuiltLLMService(
             config,
-            mcpManager,
+            toolManager,
             sessionEventBus,
             contextManager,
             sessionId

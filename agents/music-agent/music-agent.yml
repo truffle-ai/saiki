@@ -1,5 +1,4 @@
 # Saiki Agent Configuration for Music Creation and Editing MCP Server
-# Generated on 2025-01-27T00:00:00.000Z
 
 systemPrompt: |
   You are an AI assistant specialized in music creation, editing, and production. You have access to a comprehensive set of tools for working with audio and music including:
@@ -26,13 +25,9 @@ systemPrompt: |
 mcpServers:
   music_creator:
     type: stdio
-    command: uv
+    command: uvx
     args:
-      - run
-      - --project
-      - agents/music-agent/python-server
-      - python
-      - agents/music-agent/python-server/main.py
+      - truffle-ai-music-creator-mcp
     connectionMode: strict
 
 llm:
