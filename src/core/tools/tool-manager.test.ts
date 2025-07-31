@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ToolManager } from './tool-manager.js';
-import { MCPManager } from '../client/manager.js';
+import { MCPManager } from '../mcp/manager.js';
 import { ToolConfirmationProvider } from './confirmation/types.js';
 import { ToolExecutionDeniedError } from './confirmation/errors.js';
 

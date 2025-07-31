@@ -1,5 +1,5 @@
 // src/ai/agent/SaikiAgent.ts
-import { MCPManager } from '../../client/manager.js';
+import { MCPManager } from '../../mcp/manager.js';
 import { ToolManager } from '../../tools/tool-manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
 import { AgentStateManager } from '../../config/agent-state-manager.js';
@@ -19,7 +19,7 @@ import { createAgentServices } from '../../utils/service-initializer.js';
 import type { AgentConfig } from '../../config/schemas.js';
 import { AgentEventBus } from '../../events/index.js';
 import { buildLLMConfig } from '../../config/validation-utils.js';
-import type { IMCPClient } from '../../client/types.js';
+import type { IMCPClient } from '../../mcp/types.js';
 import type { ToolSet } from '../../tools/types.js';
 import { SearchService } from '../search/index.js';
 import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';

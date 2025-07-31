@@ -21,7 +21,7 @@
  * This pattern ensures a clean, scalable, and maintainable architecture, balancing flexibility with simplicity.
  */
 
-import { MCPManager } from '../client/manager.js';
+import { MCPManager } from '../mcp/manager.js';
 import { ToolManager } from '../tools/tool-manager.js';
 import { createToolConfirmationProvider } from '../tools/confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
