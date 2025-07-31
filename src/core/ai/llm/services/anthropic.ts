@@ -4,7 +4,7 @@ import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../../tools/types.js';
 import { logger } from '../../../logger/index.js';
 import { ContextManager } from '../messages/manager.js';
-import { getMaxInputTokensForModel } from '../registry.js';
+import { getMaxInputTokensForModel, LLMProvider } from '../registry.js';
 import { ImageData, FileData } from '../messages/types.js';
 import type { SessionEventBus } from '../../../events/index.js';
 
@@ -72,20 +72,28 @@ export class AnthropicService implements ILLMService {
 
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
                 // For system prompt generation, we need to pass the mcpManager as the context expects
-                const context = {
+
+                const contributorContext = {
                     mcpManager: this.toolManager.getMcpManager(),
-                    provider: 'anthropic',
+                };
+
+                const formatterContext = {
+                    provider: 'anthropic' as LLMProvider,
                     model: this.model,
                 };
+
                 const {
                     formattedMessages,
                     systemPrompt: _systemPrompt,
                     tokensUsed,
-                } = await this.contextManager.getFormattedMessagesWithCompression(context);
+                } = await this.contextManager.getFormattedMessagesWithCompression(
+                    contributorContext,
+                    formatterContext
+                );
 
                 // For Anthropic, we need to get the formatted system prompt separately
                 const formattedSystemPrompt =
-                    await this.contextManager.getFormattedSystemPrompt(context);
+                    await this.contextManager.getFormattedSystemPrompt(contributorContext);
 
                 logger.debug(`Messages: ${JSON.stringify(formattedMessages, null, 2)}`);
                 logger.debug(`Estimated tokens being sent to Anthropic: ${tokensUsed}`);

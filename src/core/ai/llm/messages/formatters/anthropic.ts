@@ -1,12 +1,7 @@
 import { IMessageFormatter, FormatterContext } from './types.js';
 import { InternalMessage } from '../types.js';
 import { logger } from '../../../../logger/index.js';
-import {
-    getImageData,
-    getFileData,
-    filterMessagesByLLMCapabilities,
-    FilteringConfig,
-} from '../utils.js';
+import { getImageData, getFileData, filterMessagesByLLMCapabilities } from '../utils.js';
 
 /**
  * Message formatter for Anthropic's Claude API.
@@ -31,8 +26,8 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
      */
     format(
         history: Readonly<InternalMessage[]>,
-        systemPrompt?: string | null,
-        context?: FormatterContext
+        context: FormatterContext,
+        systemPrompt?: string | null
     ): unknown[] {
         const formatted = [];
 
@@ -43,11 +38,7 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
                 throw new Error('Provider is required for Anthropic formatter context');
             }
 
-            const config: FilteringConfig = {
-                provider: context.provider,
-                model: context.model,
-            };
-            filteredHistory = filterMessagesByLLMCapabilities([...history], config);
+            filteredHistory = filterMessagesByLLMCapabilities([...history], context);
         } catch (error) {
             logger.warn('Failed to apply capability filtering, using original history:', error);
             filteredHistory = [...history];

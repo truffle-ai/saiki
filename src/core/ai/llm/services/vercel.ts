@@ -5,7 +5,7 @@ import { logger } from '../../../logger/index.js';
 import { ToolSet } from '../../../tools/types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { ContextManager } from '../messages/manager.js';
-import { getMaxInputTokensForModel } from '../registry.js';
+import { getMaxInputTokensForModel, LLMProvider } from '../registry.js';
 import { ImageData, FileData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
@@ -17,7 +17,7 @@ import { ToolExecutionDeniedError } from '../../../tools/confirmation/errors.js'
  */
 export class VercelLLMService implements ILLMService {
     private model: LanguageModelV1;
-    private provider: string;
+    private provider: LLMProvider;
     private toolManager: ToolManager;
     private contextManager: ContextManager;
     private sessionEventBus: SessionEventBus;
@@ -31,7 +31,7 @@ export class VercelLLMService implements ILLMService {
     constructor(
         toolManager: ToolManager,
         model: LanguageModelV1,
-        provider: string,
+        provider: LLMProvider,
         sessionEventBus: SessionEventBus,
         contextManager: ContextManager,
         maxIterations: number = 10,
@@ -182,18 +182,14 @@ export class VercelLLMService implements ILLMService {
                 this.sessionEventBus.emit('llmservice:thinking');
                 iterationCount++;
                 logger.debug(`Iteration ${iterationCount}`);
-
-                // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = {
-                    mcpManager: this.toolManager.getMcpManager(),
-                    provider: this.provider, // Use our internal provider name, not SDK's provider name
-                    model: this.model.modelId,
-                };
                 const {
                     formattedMessages,
                     systemPrompt: _systemPrompt,
                     tokensUsed,
-                } = await this.contextManager.getFormattedMessagesWithCompression(context);
+                } = await this.contextManager.getFormattedMessagesWithCompression(
+                    { mcpManager: this.toolManager.getMcpManager() },
+                    { provider: this.provider, model: this.model.modelId }
+                );
 
                 logger.silly(
                     `Messages (potentially compressed): ${JSON.stringify(formattedMessages, null, 2)}`

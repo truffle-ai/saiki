@@ -498,15 +498,16 @@ export class ContextManager {
      * and a `tokenizer`, and the current token count exceeds the limit. Compression happens *before* formatting.
      * Uses the injected formatter to convert internal messages (potentially compressed) to the provider's format.
      *
-     * @param context The DynamicContributorContext for system prompt contributors and formatting
+     * @param contributorContext The DynamicContributorContext for system prompt contributors and formatting
      * @param systemPrompt (Optional) Precomputed system prompt string. If provided, it will be used instead of recomputing the system prompt. Useful for avoiding duplicate computation when both the formatted messages and the raw system prompt are needed in the same request.
      * @param history (Optional) Pre-fetched and potentially compressed history. If not provided, will fetch from history provider.
      * @returns Formatted messages ready to send to the LLM provider API
      * @throws Error if formatting or compression fails critically
      */
     async getFormattedMessages(
-        context: DynamicContributorContext,
-        systemPrompt?: string,
+        contributorContext: DynamicContributorContext,
+        formatterContext: FormatterContext,
+        systemPrompt?: string | undefined,
         history?: InternalMessage[]
     ): Promise<any[]> {
         // Use provided history or fetch from provider
@@ -524,18 +525,11 @@ export class ContextManager {
 
         try {
             // Use pre-computed system prompt if provided
-            const prompt = systemPrompt ?? (await this.getSystemPrompt(context));
+            const prompt = systemPrompt ?? (await this.getSystemPrompt(contributorContext));
 
-            // Map DynamicContributorContext to FormatterContext
-            const formatterContext: FormatterContext | undefined = context.llmProvider
-                ? {
-                      mcpManager: context.mcpManager,
-                      provider: context.llmProvider,
-                      model: context.llmModel || '',
-                  }
-                : undefined;
+            // generate FormatterContext
 
-            return this.formatter.format([...messageHistory], prompt, formatterContext);
+            return this.formatter.format([...messageHistory], formatterContext, prompt);
         } catch (error) {
             logger.error(
                 `Error formatting messages: ${error instanceof Error ? error.message : String(error)}`
@@ -553,17 +547,22 @@ export class ContextManager {
      * 3. Format messages
      * This method implements the correct ordering to avoid circular dependencies.
      *
-     * @param context The DynamicContributorContext for system prompt contributors and formatting
+     * @param contributorContext The DynamicContributorContext for system prompt contributors and formatting
+     * @param formatterContext The FormatterContext for the formatter to decide which messages to include based on the model's capabilities
      * @returns Object containing formatted messages and system prompt
      */
-    async getFormattedMessagesWithCompression(context: DynamicContributorContext): Promise<{
+    async getFormattedMessagesWithCompression(
+        contributorContext: DynamicContributorContext,
+        formatterContext: FormatterContext
+    ): Promise<{
+        // TODO: fix this type
         formattedMessages: any[];
         systemPrompt: string;
         tokensUsed: number;
     }> {
         try {
             // Step 1: Get system prompt
-            const systemPrompt = await this.getSystemPrompt(context);
+            const systemPrompt = await this.getSystemPrompt(contributorContext);
             const systemPromptTokens = this.tokenizer.countTokens(systemPrompt);
 
             // Step 2: Get history and compress if needed
@@ -572,7 +571,8 @@ export class ContextManager {
 
             // Step 3: Format messages with compressed history
             const formattedMessages = await this.getFormattedMessages(
-                context,
+                contributorContext,
+                formatterContext,
                 systemPrompt,
                 history
             );

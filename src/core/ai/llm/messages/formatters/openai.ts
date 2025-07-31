@@ -1,11 +1,6 @@
 import { IMessageFormatter, FormatterContext } from './types.js';
 import { InternalMessage } from '../types.js';
-import {
-    getImageData,
-    getFileData,
-    filterMessagesByLLMCapabilities,
-    FilteringConfig,
-} from '../utils.js';
+import { getImageData, getFileData, filterMessagesByLLMCapabilities } from '../utils.js';
 import { logger } from '../../../../logger/index.js';
 
 /**
@@ -26,8 +21,8 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
      */
     format(
         history: Readonly<InternalMessage[]>,
-        systemPrompt: string | null,
-        context?: FormatterContext
+        context: FormatterContext,
+        systemPrompt: string | null
     ): unknown[] {
         const formatted = [];
 
@@ -38,11 +33,7 @@ export class OpenAIMessageFormatter implements IMessageFormatter {
                 throw new Error('Provider is required for OpenAI formatter context');
             }
 
-            const config: FilteringConfig = {
-                provider: context.provider,
-                model: context.model,
-            };
-            filteredHistory = filterMessagesByLLMCapabilities([...history], config);
+            filteredHistory = filterMessagesByLLMCapabilities([...history], context);
         } catch (error) {
             logger.warn(`Failed to apply capability filtering, using original history: ${error}`);
             filteredHistory = [...history];

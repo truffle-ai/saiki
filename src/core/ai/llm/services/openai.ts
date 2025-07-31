@@ -4,7 +4,7 @@ import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../../tools/types.js';
 import { logger } from '../../../logger/index.js';
 import { ContextManager } from '../messages/manager.js';
-import { getMaxInputTokensForModel } from '../registry.js';
+import { getMaxInputTokensForModel, LLMProvider } from '../registry.js';
 import { ImageData, FileData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
@@ -256,16 +256,14 @@ export class OpenAIService implements ILLMService {
 
             try {
                 // Use the new method that implements proper flow: get system prompt, compress history, format messages
-                const context = {
-                    mcpManager: this.toolManager.getMcpManager(),
-                    provider: 'openai',
-                    model: this.model,
-                };
                 const {
                     formattedMessages,
                     systemPrompt: _systemPrompt,
                     tokensUsed,
-                } = await this.contextManager.getFormattedMessagesWithCompression(context);
+                } = await this.contextManager.getFormattedMessagesWithCompression(
+                    { mcpManager: this.toolManager.getMcpManager() },
+                    { provider: 'openai' as LLMProvider, model: this.model }
+                );
 
                 logger.silly(
                     `Message history (potentially compressed) in getAIResponseWithRetries: ${JSON.stringify(formattedMessages, null, 2)}`

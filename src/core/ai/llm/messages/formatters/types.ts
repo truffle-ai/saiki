@@ -1,16 +1,13 @@
-import { MCPManager } from '@core/client/manager.js';
 import { InternalMessage } from '../types.js';
+import { LLMProvider } from '../../../llm/registry.js';
 
 /**
  * Context interface for message formatters.
  * Provides runtime information for model-aware processing.
  */
 export interface FormatterContext {
-    /** MCP manager for tool handling */
-    mcpManager?: MCPManager;
-
     /** LLM provider name (e.g., 'google.generative-ai', 'openai') */
-    provider: string;
+    provider: LLMProvider;
 
     /** Specific LLM model name (e.g., 'gemini-2.5-flash', 'gpt-4') */
     model: string;
@@ -34,8 +31,8 @@ export interface IMessageFormatter {
      */
     format(
         history: Readonly<InternalMessage[]>,
-        systemPrompt?: string | null,
-        context?: FormatterContext
+        context: FormatterContext,
+        systemPrompt?: string | null
     ): unknown[];
 
     /**

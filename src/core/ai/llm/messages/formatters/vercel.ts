@@ -1,12 +1,7 @@
 import { IMessageFormatter, FormatterContext } from './types.js';
 import { InternalMessage } from '../types.js';
 import type { GenerateTextResult, StreamTextResult, ToolSet as VercelToolSet } from 'ai';
-import {
-    getImageData,
-    getFileData,
-    filterMessagesByLLMCapabilities,
-    FilteringConfig,
-} from '../utils.js';
+import { getImageData, getFileData, filterMessagesByLLMCapabilities } from '../utils.js';
 import { logger } from '../../../../logger/index.js';
 // import Core SDK types if/when needed
 
@@ -31,8 +26,8 @@ export class VercelMessageFormatter implements IMessageFormatter {
      */
     format(
         history: Readonly<InternalMessage[]>,
-        systemPrompt: string | null,
-        context?: FormatterContext
+        context: FormatterContext,
+        systemPrompt: string | null
     ): unknown[] {
         const formatted = [];
 
@@ -40,16 +35,13 @@ export class VercelMessageFormatter implements IMessageFormatter {
         let filteredHistory: InternalMessage[];
         try {
             if (!context?.provider) {
+                logger.error(`Context: ${JSON.stringify(context)}`);
                 throw new Error('Provider is required for Vercel formatter context');
             }
 
-            const config: FilteringConfig = {
-                provider: context.provider,
-                model: context.model,
-            };
-            filteredHistory = filterMessagesByLLMCapabilities([...history], config);
+            filteredHistory = filterMessagesByLLMCapabilities([...history], context);
 
-            const modelInfo = `${config.provider}/${config.model}`;
+            const modelInfo = `${context.provider}/${context.model}`;
             logger.debug(`Applied Vercel filtering for ${modelInfo}`);
         } catch (error) {
             logger.warn(`Failed to apply capability filtering, using original history: ${error}`);

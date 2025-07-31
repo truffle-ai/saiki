@@ -2,6 +2,7 @@ import { InternalMessage } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { logger } from '../../../logger/index.js';
 import { validateModelFileSupport } from '../registry.js';
+import { FormatterContext } from './formatters/types.js';
 
 // Approximation for message format overhead
 const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
@@ -151,11 +152,6 @@ export function getFileData(filePart: {
     return '';
 }
 
-export interface FilteringConfig {
-    provider: string;
-    model: string;
-}
-
 /**
  * Filters message content based on LLM capabilities.
  * Removes unsupported file attachments while preserving supported content.
@@ -166,7 +162,7 @@ export interface FilteringConfig {
  */
 export function filterMessagesByLLMCapabilities(
     messages: InternalMessage[],
-    config: FilteringConfig
+    config: FormatterContext
 ): InternalMessage[] {
     // Validate that both provider and model are provided
     if (!config.provider || !config.model) {
