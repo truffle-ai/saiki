@@ -2,7 +2,6 @@ import * as path from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { createRequire } from 'module';
-import { logger } from '../logger/index.js';
 import { ConfigFileNotFoundError } from '@core/error/index.js';
 /**
  * Default config file path (relative to package root)
