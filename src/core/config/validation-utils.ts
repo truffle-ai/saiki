@@ -1,5 +1,4 @@
 import {
-    isValidProvider,
     isValidProviderModel,
     isValidRouter,
     getSupportedModels,
@@ -69,95 +68,9 @@ export interface LLMConfigResult extends ValidationResult {
     config: ValidatedLLMConfig;
 }
 
-/**
- * Core validation for LLM configuration parameters.
- * Used by all other LLM validation functions.
- */
-function validateLLMCore(config: {
-    provider?: string;
-    model?: string;
-    router?: string;
-    baseURL?: string;
-}): ValidationError[] {
-    const errors: ValidationError[] = [];
-    const { provider, model, router, baseURL } = config;
+// validateLLMCore function removed - basic validation now handled by Zod schemas at API boundary
 
-    // Validate provider
-    if (provider && !isValidProvider(provider)) {
-        errors.push({
-            type: 'invalid_provider',
-            message: `Unknown provider: ${provider}`,
-            provider,
-        });
-        return errors; // Return early if provider doesn't exist
-    }
-
-    // Validate router
-    if (router && !isValidRouter(router)) {
-        errors.push({
-            type: 'unsupported_router',
-            message: 'Router must be either "vercel" or "in-built"',
-            router,
-        });
-    }
-
-    // Validate provider/model combination if both provided (skip for providers that accept any model)
-    if (provider && model && !acceptsAnyModel(provider) && !isValidProviderModel(provider, model)) {
-        const supportedModels = getSupportedModels(provider);
-        errors.push({
-            type: 'incompatible_model_provider',
-            message: `Model '${model}' is not supported for provider '${provider}'. Supported models: ${supportedModels.join(', ')}`,
-            provider,
-            model,
-        });
-    }
-
-    // Validate provider/router combination if both provided
-    if (provider && router && !isRouterSupportedForProvider(provider, router)) {
-        const supportedRouters = getSupportedRoutersForProvider(provider);
-        errors.push({
-            type: 'unsupported_router',
-            message: `Provider '${provider}' does not support '${router}' router. Supported routers: ${supportedRouters.join(', ')}`,
-            provider,
-            router,
-        });
-    }
-
-    // Validate baseURL usage
-    if (baseURL && provider && !supportsBaseURL(provider)) {
-        errors.push({
-            type: 'invalid_base_url',
-            message: `Custom baseURL is not supported for ${provider} provider`,
-            provider,
-        });
-    }
-
-    return errors;
-}
-
-/**
- * Validates an LLM switch request.
- */
-export function validateLLMSwitchRequest(request: {
-    provider?: string;
-    model?: string;
-    router?: string;
-    baseURL?: string;
-}): ValidationError[] {
-    const { provider, model } = request;
-
-    // Check required fields
-    if (!provider || !model) {
-        return [
-            {
-                type: 'general',
-                message: 'Provider and model are required',
-            },
-        ];
-    }
-
-    return validateLLMCore(request);
-}
+// validateLLMSwitchRequest function removed - request validation now handled by Zod schemas at API boundary
 
 /**
  * Builds a complete LLM configuration from partial updates, handling all the complex
@@ -310,19 +223,10 @@ export async function buildLLMConfig(
 function resolveModel(
     updates: LLMSwitchInput,
     currentConfig: LLMConfig,
-    errors: ValidationError[]
+    _errors: ValidationError[]
 ): string {
-    if (updates.model !== undefined) {
-        if (typeof updates.model !== 'string' || updates.model.trim() === '') {
-            errors.push({
-                type: 'invalid_model',
-                message: 'Model must be a non-empty string',
-            });
-            return '';
-        }
-        return updates.model.trim();
-    }
-    return currentConfig.model;
+    // Basic validation (non-empty string) now handled by Zod schemas
+    return updates.model !== undefined ? updates.model : currentConfig.model;
 }
 
 function resolveProvider(

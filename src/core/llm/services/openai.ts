@@ -4,7 +4,7 @@ import { ILLMService, LLMServiceConfig } from './types.js';
 import { ToolSet } from '../../tools/types.js';
 import { logger } from '../../logger/index.js';
 import { ContextManager } from '../messages/manager.js';
-import { getMaxInputTokensForModel, LLMProvider } from '../registry.js';
+import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData, FileData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../events/index.js';

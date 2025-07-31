@@ -1,9 +1,5 @@
 import { describe, test, it, expect, vi, beforeEach } from 'vitest';
-import {
-    buildLLMConfig,
-    validateLLMSwitchRequest,
-    validateMcpServerConfig,
-} from './validation-utils.js';
+import { buildLLMConfig, validateMcpServerConfig } from './validation-utils.js';
 import type { LLMConfig, McpServerConfig } from './schemas.js';
 
 // Only mock logger since it has side effects
@@ -205,34 +201,8 @@ describe('buildLLMConfig', () => {
         expect(result.config.maxInputTokens).toBe(2000);
     });
 
-    it('should validate empty model', async () => {
-        const result = await buildLLMConfig({ model: '' }, baseLLMConfig);
-
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors?.[0]?.type).toBe('invalid_model');
-        expect(result.errors?.[0]?.message).toBe('Model must be a non-empty string');
-    });
-
-    it('should validate empty provider', async () => {
-        // @ts-expect-error - we want to test the error case
-        const result = await buildLLMConfig({ provider: '' }, baseLLMConfig);
-
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors?.[0]?.type).toBe('invalid_provider');
-        expect(result.errors?.[0]?.message).toBe('Provider must be a non-empty string');
-    });
-
-    it('should validate unknown provider', async () => {
-        // @ts-expect-error - Testing invalid provider input
-        const result = await buildLLMConfig({ provider: 'unknown' }, baseLLMConfig);
-
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors?.[0]?.type).toBe('invalid_provider');
-        expect(result.errors?.[0]?.message).toBe('Unknown provider: unknown');
-    });
+    // Tests for empty model, empty provider, and unknown provider removed
+    // These scenarios are now impossible due to Zod validation at API boundary
 
     it('should validate negative maxInputTokens', async () => {
         const result = await buildLLMConfig({ maxInputTokens: -100 }, baseLLMConfig);
@@ -330,40 +300,7 @@ describe('buildLLMConfig', () => {
     });
 });
 
-// Keep the other test suites that don't use the registry as much
-describe('validateLLMSwitchRequest', () => {
-    test('should validate valid request', () => {
-        const errors = validateLLMSwitchRequest({
-            provider: 'openai',
-            model: 'gpt-4o',
-            router: 'vercel',
-        });
-
-        expect(errors).toEqual([]);
-    });
-
-    test('should require provider and model', () => {
-        const errors = validateLLMSwitchRequest({});
-
-        expect(errors).toHaveLength(1);
-        expect(errors?.[0]?.type).toBe('general');
-        expect(errors?.[0]?.message).toBe('Provider and model are required');
-    });
-
-    test('should validate router', () => {
-        const errors = validateLLMSwitchRequest({
-            provider: 'openai',
-            model: 'gpt-4o',
-            router: 'invalid',
-        });
-
-        // Should have 1 error for the invalid router
-        expect(errors.length).toBeGreaterThan(0);
-        const routerError = errors.find((e) => e.type === 'unsupported_router');
-        expect(routerError).toBeDefined();
-        expect(routerError?.message).toBe('Router must be either "vercel" or "in-built"');
-    });
-});
+// validateLLMSwitchRequest tests removed - validation now handled by Zod schemas at API boundary
 
 describe('validateMcpServerConfig', () => {
     describe('valid configurations', () => {

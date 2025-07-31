@@ -25,8 +25,7 @@ import {
     getSupportedRoutersForProvider,
     supportsBaseURL,
 } from '@core/llm/registry.js';
-import type { LLMConfig } from '@core/index.js';
-import { LLMSwitchRequestSchema, type LLMSwitchInput } from '@core/index.js';
+import { LLMSwitchRequestSchema } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
 import { validateInputForLLM, createInputValidationError } from '@core/llm/validation.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
