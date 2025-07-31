@@ -47,14 +47,17 @@ export interface ProviderInfo {
 /** Fallback when we cannot determine the model's input-token limit */
 export const DEFAULT_MAX_INPUT_TOKENS = 128000;
 
-export type LLMProvider =
-    | 'openai'
-    | 'openai-compatible'
-    | 'anthropic'
-    | 'google'
-    | 'groq'
-    | 'xai'
-    | 'cohere';
+export const LLM_PROVIDERS = [
+    'openai',
+    'openai-compatible',
+    'anthropic',
+    'google',
+    'groq',
+    'xai',
+    'cohere',
+] as const;
+
+export type LLMProvider = (typeof LLM_PROVIDERS)[number];
 
 // Central registry of supported LLM providers and their models
 export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {

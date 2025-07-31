@@ -8,6 +8,7 @@ import {
     supportsBaseURL,
     requiresBaseURL,
     acceptsAnyModel,
+    LLM_PROVIDERS,
 } from '../llm/registry.js';
 
 // (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
@@ -197,8 +198,7 @@ export type SystemPromptConfig = z.infer<typeof SystemPromptConfigSchema>;
 export const LLMConfigSchema = z
     .object({
         provider: z
-            .string()
-            .nonempty()
+            .enum(LLM_PROVIDERS)
             .describe("The LLM provider (e.g., 'openai', 'anthropic', 'google', 'groq')"),
         model: z.string().nonempty().describe('The specific model name for the selected provider'),
         apiKey: z

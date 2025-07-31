@@ -165,7 +165,7 @@ function _createVercelLLMService(
     return new VercelLLMService(
         toolManager,
         model,
-        config.provider as LLMProvider,
+        config.provider,
         sessionEventBus,
         contextManager,
         config.maxIterations,

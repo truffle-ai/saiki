@@ -262,7 +262,7 @@ export class OpenAIService implements ILLMService {
                     tokensUsed,
                 } = await this.contextManager.getFormattedMessagesWithCompression(
                     { mcpManager: this.toolManager.getMcpManager() },
-                    { provider: 'openai' as LLMProvider, model: this.model }
+                    { provider: 'openai' as const, model: this.model }
                 );
 
                 logger.silly(
