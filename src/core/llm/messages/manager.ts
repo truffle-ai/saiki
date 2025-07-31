@@ -500,6 +500,7 @@ export class ContextManager {
      * Uses the injected formatter to convert internal messages (potentially compressed) to the provider's format.
      *
      * @param contributorContext The DynamicContributorContext for system prompt contributors and formatting
+     * @param llmContext The llmContext for the formatter to decide which messages to include based on the model's capabilities
      * @param systemPrompt (Optional) Precomputed system prompt string. If provided, it will be used instead of recomputing the system prompt. Useful for avoiding duplicate computation when both the formatted messages and the raw system prompt are needed in the same request.
      * @param history (Optional) Pre-fetched and potentially compressed history. If not provided, will fetch from history provider.
      * @returns Formatted messages ready to send to the LLM provider API
