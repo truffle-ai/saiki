@@ -1,6 +1,6 @@
 # Adding a New LLM Service
 
-This guide explains how to add support for a new Large Language Model (LLM) provider to Saiki. The LLM service architecture is designed to be extensible, allowing you to integrate with different AI providers while maintaining consistent behavior.
+This guide explains how to add support for a new Large Language Model (LLM) provider to Saiki. For an architectural overview of the LLM system see `../README.md`. The LLM service architecture is designed to be extensible, allowing you to integrate with different AI providers while maintaining consistent behavior.
 
 ## LLM Architecture Overview
 
@@ -388,3 +388,9 @@ The factory (`src/core/llm/services/factory.ts`) creates the correct LLM service
     *   Check for expected events from the `EventEmitter` if applicable.
 
 By following these steps, you should be able to successfully integrate a new LLM provider into Saiki's extensible architecture. Remember to adapt the provider-specific logic (`formatToolsForProvider`, `parseProviderResponse`, API calls) based on the chosen provider's SDK and API documentation. 
+
+## Related Modules
+
+- [`llm`](../README.md) - Core LLM system
+- [`config`](../config/README.md) - Configuration
+- [`tools`](../../tools/README.md) - Tool management 

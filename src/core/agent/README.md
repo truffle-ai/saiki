@@ -84,16 +84,17 @@ agent.getCurrentSessionId()           // Get active session ID
 - **Multi-Session support with single session default**: Default session management for simple use cases
 
 ### 2. Service Coordination
-All core services are initialized and coordinated through SaikiAgent:
-```typescript
-public readonly mcpManager: MCPManager;        // MCP server management
-public readonly promptManager: PromptManager;  // System prompt building
-public readonly agentEventBus: AgentEventBus;  // Event coordination
-public readonly stateManager: AgentStateManager; // Configuration state
-public readonly sessionManager: SessionManager; // Session lifecycle
-public readonly toolManager: ToolManager;      // Tool execution
-public readonly services: AgentServices;       // All services aggregated
-```
+SaikiAgent provides access to all core services through public readonly properties. Each service handles a specific domain:
+
+- **mcpManager** - MCP server connections and tool aggregation
+- **promptManager** - System prompt composition
+- **sessionManager** - Chat session lifecycle and storage  
+- **stateManager** - Runtime configuration management
+- **toolManager** - Tool execution and confirmation
+- **agentEventBus** - Cross-service event coordination
+- **services** - Lower-level service access (LLM, storage, etc.)
+
+*See [`SaikiAgent.ts`](./SaikiAgent.ts) for complete service API*
 
 ### 3. State Management
 - **Startup State**: Prevents usage before initialization
@@ -147,12 +148,12 @@ await agent.start();
 // Start with Claude
 await agent.run("Analyze this code");
 
-// Switch to GPT-4 while preserving conversation
+// Switch to GPT-4.1 while preserving conversation
 await agent.switchLLM({ model: 'gpt-4o' });
 await agent.run("Continue the analysis");
 
 // Switch providers entirely
-await agent.switchLLM({ provider: 'openai', model: 'gpt-4' });
+await agent.switchLLM({ provider: 'openai', model: 'gpt-4.1' });
 ```
 
 ### Advanced Service Access
@@ -181,7 +182,7 @@ systemPrompt: |
 
 llm:
   provider: anthropic
-  model: claude-3-5-sonnet-20241022
+  model: claude-4-sonnet-20250514
   apiKey: $ANTHROPIC_API_KEY
 
 mcpServers:
@@ -227,22 +228,15 @@ SaikiAgent requires these services to be available:
 - **Service Failures**: Graceful degradation and error propagation
 - **Resource Management**: Proper cleanup even during errors
 
-## Testing
 
-The agent module has comprehensive test coverage across lifecycle and functionality:
+## Related Modules
 
-### Lifecycle Tests (`SaikiAgent.lifecycle.test.ts`) - 33 tests
-- **Startup/Shutdown**: Proper service initialization and cleanup
-- **State Management**: Pre-start and post-stop error handling
-- **Resource Management**: Service disposal and memory cleanup
-- **Error Recovery**: Partial failure handling during lifecycle operations
+- [`session`](../session/README.md) - Session management
+- [`config`](../config/README.md) - Configuration handling
+- [`events`](../events/README.md) - Event system
+- [`llm`](../llm/README.md) - LLM integration
 
-### Functionality Tests (`SaikiAgent.test.ts`) - 25 tests  
-- **LLM Switching**: Dynamic model changes with validation
-- **Parameter Handling**: Config validation and transformation
-- **Session Management**: Multi-session coordination
-- **Warning Collection**: User feedback and error messaging
-- **Integration**: Cross-service coordination and data flow
+See `docs/architecture/agent.md` for extended lifecycle details and additional examples
 
 ## Future Architecture
 

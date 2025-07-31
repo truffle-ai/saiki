@@ -71,28 +71,20 @@ graph TB
 
 **Core Operations:**
 ```typescript
-class MCPManager {
-    // Client lifecycle
-    registerClient(name: string, client: IMCPClient): void
-    connectClient(serverName: string, config: McpServerConfig): Promise<void>
-    disconnectClient(serverName: string): Promise<void>
-    
-    // Tool operations
-    getAllTools(): Promise<ToolSet>
-    executeTool(toolName: string, args: Record<string, unknown>): Promise<unknown>
-    
-    // Prompt operations
-    listAllPrompts(): Promise<string[]>
-    getPrompt(name: string, args?: Record<string, unknown>): Promise<GetPromptResult>
-    
-    // Resource operations
-    listAllResources(): Promise<string[]>
-    readResource(uri: string): Promise<ReadResourceResult>
-    
-    // Initialization
-    initializeFromConfig(configs: ServerConfigs, strictMode?: boolean): Promise<void>
-}
+// Initialize MCP servers from configuration
+await mcpManager.initializeFromConfig(serverConfigs, strictMode);
+
+// Access aggregated capabilities from all servers
+const tools = await mcpManager.getAllTools();
+const prompts = await mcpManager.listAllPrompts();
+const resources = await mcpManager.listAllResources();
+
+// Dynamic server management
+await mcpManager.connectClient('git-server', gitConfig);
+await mcpManager.disconnectClient('git-server');
 ```
+
+*See [`manager.ts`](./manager.ts) for complete API*
 
 ### MCPClient (`mcp-client.ts`)
 Individual server connection handler implementing the IMCPClient interface.
@@ -136,22 +128,9 @@ graph LR
 Type definitions for MCP client contracts and capability interfaces.
 
 **Core Interfaces:**
-```typescript
-interface IMCPClient extends ToolProvider {
-    // Connection Management
-    connect(config: McpServerConfig, serverName: string): Promise<Client>
-    disconnect?(): Promise<void>
-    
-    // Capability Access
-    listPrompts(): Promise<string[]>
-    getPrompt(name: string, args?: Record<string, unknown>): Promise<GetPromptResult>
-    listResources(): Promise<string[]>
-    readResource(uri: string): Promise<ReadResourceResult>
-    
-    // Client Access
-    getConnectedClient(): Promise<Client>
-}
-```
+Individual MCP clients implement a standard interface for connection management and capability access.
+
+*See [`types.ts`](./types.ts) for complete interface definitions*
 
 ## Key Design Principles
 
@@ -231,7 +210,9 @@ mcpServers:
 ```
 
 ### Transport Types
-```mermaid
+
+See `docs/architecture/mcp/transports.md` for diagrams and details.
+
 graph LR
     subgraph "STDIO Transport"
         SC[Server Command]
@@ -403,6 +384,9 @@ const tools = await mcpManager.getAllTools();
 ```
 
 ### Connection State Management
+
+See `docs/architecture/mcp/transports.md` for details.
+
 ```typescript
 interface ConnectionState {
     connected: boolean;
@@ -439,6 +423,12 @@ class CustomMCPClient implements IMCPClient {
     // ... implement other methods
 }
 ```
+
+## Related Modules
+
+- [`tools`](../tools/README.md) - Tool execution
+- [`config`](../config/README.md) - MCP configuration
+- [`events`](../events/README.md) - Event integration
 
 ## Testing
 

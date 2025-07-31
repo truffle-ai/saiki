@@ -446,29 +446,16 @@ async listSessions(): Promise<SessionMetadata[]> {
 }
 ```
 
+## Related Modules
+
+- [`agent`](../agent/README.md) - Agent orchestration
+- [`storage`](../storage/README.md) - Session persistence
+- [`events`](../events/README.md) - Event handling
+- [`llm`](../llm/README.md) - LLM integration
+
 ## Testing
 
-The session system has comprehensive test coverage:
-
-### Session Manager Tests (`session-manager.test.ts`) - 53 tests
-- **Session Creation**: Unique ID generation and session instantiation
-- **Session Retrieval**: Get and list session operations
-- **Session Cleanup**: TTL-based and manual cleanup
-- **Storage Integration**: Session persistence and restoration
-- **Concurrency Control**: Concurrent session operations
-- **Resource Management**: Session limits and memory management
-
-### Chat Session Tests (`chat-session.test.ts`) - 19 tests
-- **Conversation Processing**: Message handling and AI responses
-- **History Management**: Conversation history and reset operations
-- **LLM Integration**: Service initialization and configuration
-- **Event Management**: Session event handling and forwarding
-- **Error Handling**: Input validation and error recovery
-
-### Integration Tests (`session-manager.integration.test.ts`) - 3 tests
-- **End-to-End Workflows**: Complete session lifecycle testing
-- **Storage Integration**: Real database persistence testing
-- **Multi-Session Scenarios**: Concurrent session management
+Key unit and integration tests are co-located with source (`*.test.ts`). See `docs/architecture/session.md` for guidance on testing strategies.
 
 ## Future Architecture
 

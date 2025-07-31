@@ -38,14 +38,18 @@ graph LR
 - **Immutability Protection**: Freeze configuration to prevent mutations
 - **Type Safety**: Ensure configuration conforms to expected types
 
-**API:**
+**Usage Pattern:**
 ```typescript
-class ConfigManager {
-    constructor(config: AgentConfig)
-    getConfig(): ValidatedAgentConfig
-    // Access nested config: getConfig().llm, getConfig().mcpServers, etc.
-}
+// Create and use configuration manager
+const configManager = new ConfigManager(rawConfig);
+const validatedConfig = configManager.getConfig();
+
+// Access nested configurations
+const llmConfig = validatedConfig.llm;
+const mcpServers = validatedConfig.mcpServers;
 ```
+
+*See [`config-manager.ts`](./config-manager.ts) for complete API*
 
 ### AgentStateManager (`agent-state-manager.ts`)
 **Runtime configuration management** that handles dynamic changes during agent execution.
@@ -57,26 +61,25 @@ class ConfigManager {
 - **Change Validation**: Validate runtime modifications
 - **State Export**: Export modified state back to config format
 
-**API:**
+**Usage Patterns:**
 ```typescript
-class AgentStateManager {
-    // LLM configuration management
-    updateLLM(newConfig: Partial<ValidatedLLMConfig>, sessionId?: string): ValidationResult
-    getLLMConfig(sessionId?: string): ValidatedLLMConfig
-    
-    // Session override management
-    clearSessionOverride(sessionId: string): void
-    
-    // Dynamic MCP server management
-    addMcpServer(name: string, config: McpServerConfig)
-    removeMcpServer(name: string)
-    
-    // State export and inspection
-    getRuntimeConfig(sessionId?: string): ValidatedAgentConfig
-    exportAsConfig(): ValidatedAgentConfig
-    resetToBaseline(): void
-}
+// Runtime LLM configuration changes
+const result = stateManager.updateLLM({
+    provider: 'openai',
+    model: 'gpt-4o'
+}, 'session-123');
+
+// Dynamic MCP server management  
+stateManager.addMcpServer('git', {
+    command: 'mcp-git',
+    args: ['--repo', '/path/to/repo']
+});
+
+// Export current state as config
+const currentConfig = stateManager.exportAsConfig();
 ```
+
+*See [`agent-state-manager.ts`](./agent-state-manager.ts) for complete API*
 
 ### Schemas (`schemas.ts`)
 **Zod schema definitions** providing type-safe configuration validation.
@@ -132,59 +135,12 @@ getLLMConfig(sessionId) → Baseline + Runtime + Session overrides
 ## Configuration Schema Structure
 
 ### Agent Configuration
-```yaml
-# agent.yml
-systemPrompt: |
-  You are a helpful AI assistant.
 
-llm:
-  provider: anthropic                    # anthropic, openai, etc.
-  model: claude-3-5-sonnet-20241022     # Model identifier
-  apiKey: $ANTHROPIC_API_KEY            # Environment variable reference
-  router: in-built                      # Message formatting strategy
-  maxInputTokens: 100000               # Token limit override
-
-mcpServers:
-  filesystem:
-    command: mcp-filesystem             # Command to start server
-    args: ["/tmp"]                     # Optional arguments
-    env:                               # Optional environment variables
-      DEBUG: "1"
-
-internalTools:
-  - search_history                     # Built-in tools to enable
-
-storage:
-  database:
-    type: sqlite                       # sqlite, postgres, memory
-    path: .saiki/saiki.db             # Database path/connection
-
-agentCard:
-  name: "My Saiki Agent"
-  description: "Custom AI assistant"
-  url: "https://localhost:3000"
-  version: "1.0.0"
-```
+See `docs/guides/configuring-saiki/agent-yml.md` for the full annotated sample.
 
 ### Dynamic Configuration Changes
-```typescript
-// Session-specific LLM override
-stateManager.updateLLM({
-    provider: 'openai',
-    model: 'gpt-4o',
-    maxInputTokens: 50000
-}, 'user-123');
 
-// Add MCP server at runtime
-stateManager.addMcpServer('git', {
-    command: 'mcp-git',
-    args: ['--repo', '/path/to/repo']
-});
-
-// Get effective config for session
-const effectiveConfig = stateManager.getLLMConfig('user-123');
-// Returns: { provider: 'openai', model: 'gpt-4o', ... }
-```
+See `docs/guides/configuring-saiki/dynamic-changes.md` for examples.
 
 ## Configuration Loading and Processing
 
@@ -212,27 +168,27 @@ const effectiveConfig = stateManager.getLLMConfig('user-123');
 
 ### Error Reporting
 ```typescript
-interface ValidationError {
-    type: ValidationErrorType;
-    path: string[];
-    message: string;
-    details?: Record<string, unknown>;
-}
-
-// User-friendly error messages
+// User-friendly error messages from validation
 const errors = validationErrorsToStrings(validationResult.errors);
 // ["LLM model 'invalid-model' is not supported for provider 'openai'"]
 ```
 
+*See [`validation-utils.ts`](./validation-utils.ts) for error types and utilities*
+
 ## Session Override System
 
 ### Override Types
+Session overrides allow per-session configuration changes, primarily for LLM switching:
+
 ```typescript
-interface SessionOverride {
-    llm?: Partial<ValidatedLLMConfig>;  // LLM configuration override
-    // Future: tools?, systemPrompt?, etc.
-}
+// Override LLM for specific session
+stateManager.updateLLM({
+    provider: 'openai',
+    model: 'gpt-4o'
+}, 'session-123');
 ```
+
+*See [`agent-state-manager.ts`](./agent-state-manager.ts) for override type definitions*
 
 ### Override Resolution
 1. **Global Baseline**: Start with global LLM configuration
@@ -246,6 +202,12 @@ interface SessionOverride {
 - **A/B Testing**: Test different models within same agent
 - **User Preferences**: Per-user model selection
 - **Resource Management**: Different token limits per session
+
+## Related Modules
+
+- [`agent`](../agent/README.md) - Agent configuration
+- [`storage`](../storage/README.md) - Persistent storage
+- [`llm`](../llm/README.md) - LLM config validation
 
 ## Testing
 

@@ -59,48 +59,28 @@ Centralized search orchestration providing unified search capabilities across co
 
 **Core Operations:**
 ```typescript
-class SearchService {
-    // Message search across sessions
-    searchMessages(query: string, options?: SearchOptions): Promise<SearchResponse>
-    
-    // Session-level search with aggregated results
-    searchSessions(query: string): Promise<SessionSearchResponse>
-    
-    // Internal search operations
-    searchInSession(query: string, sessionId: string, role?: string): Promise<SearchResult[]>
-    sortResults(results: SearchResult[], query: string): SearchResult[]
-    getContext(text: string, query: string, maxLength: number): string
-}
+// Search messages across all sessions
+const response = await searchService.searchMessages('authentication', {
+    limit: 10,
+    role: 'user'
+});
+
+// Search for sessions containing content
+const sessions = await searchService.searchSessions('error handling');
+
+// Search within specific session
+const results = await searchService.searchInSession('auth', 'session-123');
 ```
+
+*See [`search-service.ts`](./search-service.ts) for complete API*
 
 ### Search Types (`types.ts`)
 Type definitions for search operations, results, and configuration.
 
 **Key Interfaces:**
-```typescript
-interface SearchOptions {
-    sessionId?: string;           // Limit to specific session
-    role?: MessageRole;           // Filter by message role
-    limit?: number;              // Results per page
-    offset?: number;             // Pagination offset
-}
+Search operations use structured options and return detailed results with context and pagination support.
 
-interface SearchResult {
-    sessionId: string;           // Session containing the match
-    message: InternalMessage;    // The matching message
-    matchedText: string;         // Specific matched content
-    context: string;            // Context around match
-    messageIndex: number;       // Position in session
-}
-
-interface SearchResponse {
-    results: SearchResult[];     // Array of search results
-    total: number;              // Total available results
-    hasMore: boolean;           // Pagination indicator
-    query: string;              // Original query
-    options: SearchOptions;     // Search parameters used
-}
-```
+*See [`types.ts`](./types.ts) for complete type definitions*
 
 ## Key Design Principles
 
@@ -148,6 +128,7 @@ Scalable result handling with offset-based pagination and accurate result counti
 ## Search Capabilities
 
 ### Message Search
+**Full-text search across all conversation messages**
 
 ```typescript
 // Search all messages
@@ -170,6 +151,7 @@ const page2 = await searchService.searchMessages("API call", {
 ```
 
 ### Session Search
+**Search for sessions containing specific content**
 
 ```typescript
 // Find sessions with deployment discussions
@@ -184,6 +166,7 @@ sessions.results.forEach(session => {
 ```
 
 ### Advanced Search Options
+**Flexible search configuration for different use cases**
 
 ```typescript
 interface SearchOptions {
@@ -411,6 +394,14 @@ private async searchInSession(
     return results.map(row => this.formatSearchResult(row, query));
 }
 ```
+
+## Related Modules
+
+- [`session`](../session/README.md) - Session management
+- [`storage`](../storage/README.md) - Data persistence
+- [`tools`](../tools/README.md) - Search tools
+
+See `docs/architecture/search/advanced.md` for SQL and performance-tuning examples.
 
 ## Future Architecture
 

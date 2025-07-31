@@ -68,21 +68,9 @@ graph TB
 - **Validation**: Validate provider/model combinations
 
 **Provider Information:**
-```typescript
-interface ProviderInfo {
-    models: ModelInfo[];                    // Supported models
-    supportedRouters: string[];             // Compatible message routers
-    baseURLSupport: 'none' | 'optional' | 'required';  // Custom endpoint support
-    supportedFileTypes: SupportedFileType[]; // Provider-level file support
-}
+Each provider defines supported models, compatible routers, endpoint requirements, and file type support.
 
-interface ModelInfo {
-    name: string;                          // Model identifier
-    maxInputTokens: number;                // Token limit
-    default?: boolean;                     // Default model for provider
-    supportedFileTypes: SupportedFileType[]; // Model-specific file support
-}
-```
+*See [`registry.ts`](./registry.ts) for complete provider and model definitions*
 
 ### LLM Services (`services/`)
 **Provider-specific implementations** of the LLMService interface.
@@ -95,12 +83,20 @@ interface ModelInfo {
 
 **Common Service Pattern:**
 ```typescript
-interface ILLMService {
-    completeTask(text: string, image?: ImageData, file?: FileData, stream?: boolean): Promise<string>;
-    getAllTools(): Promise<ToolSet>;
-    getConfig(): LLMServiceConfig;
-}
+// Basic LLM service usage
+const llmService = createLLMService(config);
+const response = await llmService.completeTask("Hello world");
+
+// With multi-modal input
+const response = await llmService.completeTask(
+    "Analyze this", 
+    imageData, 
+    fileData, 
+    true // streaming
+);
 ```
+
+*See [`services/types.ts`](./services/types.ts) for complete interface definitions*
 
 ### Context Manager (`messages/manager.ts`)
 **Conversation and context management** for LLM interactions.
@@ -245,7 +241,7 @@ sequenceDiagram
 ```yaml
 llm:
   provider: anthropic                    # Provider name
-  model: claude-3-5-sonnet-20241022     # Model identifier
+  model: claude-4-sonnet-20250514     # Model identifier
   router: in-built                      # Message routing strategy
   apiKey: $ANTHROPIC_API_KEY            # API credentials
   baseURL: https://api.custom.com       # Custom endpoint (if supported)
@@ -329,11 +325,13 @@ const response = await session.run(
 - **Custom Providers**: Implement image handling as needed
 
 ### Custom Provider Integration
-```typescript
+
+See `src/core/llm/services/README.md` for provider integration steps.
+
 // 1. Add to registry (in registry.ts)
 // Note: LLM_REGISTRY is const, so this requires modifying the source
 // Add your provider to the LLM_REGISTRY object:
-'custom-provider': {
+<!-- provider integration block removed -->
     models: [
         { name: 'custom-model', maxInputTokens: 50000, supportedFileTypes: ['pdf'] }
     ],
@@ -486,3 +484,9 @@ This design supports future enhancements:
 - **Multi-Agent Coordination**: LLM service coordination
 - **Performance Optimization**: Caching and optimization strategies
 - **Advanced Routing**: Content-aware routing strategies
+
+## Related Modules
+
+- [`config`](../config/README.md) - LLM configuration
+- [`session`](../session/README.md) - Conversation management
+- [`tools`](../tools/README.md) - Tool integration

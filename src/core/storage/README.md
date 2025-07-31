@@ -85,59 +85,13 @@ class StorageManager {
 }
 ```
 
-### Backend Interfaces (`backend/types.ts`)
-**Standardized interfaces** for cache and database operations.
+### Backend Interfaces
 
-**Cache Backend Interface:**
-```typescript
-interface CacheBackend {
-    // Connection management
-    connect(): Promise<void>
-    disconnect(): Promise<void>
-    
-    // Basic operations
-    get(key: string): Promise<unknown | null>
-    set(key: string, value: unknown, ttl?: number): Promise<void>
-    delete(key: string): Promise<boolean>
-    
-    // Batch operations
-    mget(keys: string[]): Promise<(unknown | null)[]>
-    mset(keyValues: Array<[string, unknown, number?]>): Promise<void>
-    
-    // Utility operations
-    exists(key: string): Promise<boolean>
-    clear(): Promise<void>
-    keys(pattern?: string): Promise<string[]>
-}
-```
+See `src/core/storage/backend/types.ts` for full interfaces.
 
-**Database Backend Interface:**
-```typescript
-interface DatabaseBackend {
-    // Connection management
-    connect(): Promise<void>
-    disconnect(): Promise<void>
-    
-    // Basic operations
-    get(key: string): Promise<unknown | null>
-    set(key: string, value: unknown): Promise<void>
-    delete(key: string): Promise<boolean>
-    
-    // List operations (for message history)
-    append(key: string, value: unknown): Promise<void>
-    getRange(key: string, start: number, end: number): Promise<unknown[]>
-    getLength(key: string): Promise<number>
-    
-    // Batch operations
-    mget(keys: string[]): Promise<(unknown | null)[]>
-    mset(keyValues: Array<[string, unknown]>): Promise<void>
-    
-    // Utility operations
-    exists(key: string): Promise<boolean>
-    clear(): Promise<void>
-    keys(pattern?: string): Promise<string[]>
-}
-```
+
+
+
 
 ### Backend Implementations
 **Multiple storage engine implementations** for different deployment scenarios.
@@ -529,6 +483,12 @@ async connectWithRetry(backend: DatabaseBackend, maxRetries = 3): Promise<void> 
     }
 }
 ```
+
+## Related Modules
+
+- [`session`](../session/README.md) - Session storage
+- [`config`](../config/README.md) - Storage configuration
+- [`search`](../search/README.md) - Search integration
 
 ## Future Architecture
 

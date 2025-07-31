@@ -6,24 +6,13 @@ The unified tool management system for Saiki that handles both MCP (Model Contex
 
 ## Architecture Overview
 
-```
-┌─────────────────┐    ┌──────────────────────────────────┐    ┌─────────────────┐
-│   LLM Service   │───▶│          ToolManager             │───▶│  Tool Sources   │  
-└─────────────────┘    │    (Centralized Orchestration)   │    │                 │
-                       │                                  │    │ • MCPManager    │
-                       │ • Universal Prefixing            │    │ • InternalTools │
-                       │ • Centralized Confirmation       │    │   Provider      │
-                       │ • Unified Logging & Timing       │    └─────────────────┘
-                       │ • Route to Source Managers       │             
-                       └──────────────────────────────────┘             
-                                        ▲                               
-                                        │                               
-                                        ▼                               
-                       ┌──────────────────────────────────┐             
-                       │       ToolConfirmation           │             
-                       │         Provider                 │             
-                       │  (Security & Approval)           │             
-                       └──────────────────────────────────┘             
+```mermaid
+graph TD
+    TM[ToolManager] --> CP[ConfirmationProvider]
+    TM --> SRC1[MCPManager]
+    TM --> SRC2[InternalToolsProvider]
+    SRC1 -->|exec| MCP[Connected MCP Servers]
+    SRC2 -->|exec| IT[Internal Tool Implementations]
 ```
 
 ## Core Components
@@ -197,6 +186,12 @@ This design prepares for:
 - **Custom Tools**: User-defined tools discovered at build time
 - **Tools Redesign**: Unified `tools` config with `internal`/`custom` sections
 - **Schema Evolution**: Config types can evolve independently of business logic
+
+## Related Modules
+
+- [`mcp`](../mcp/README.md) - MCP tool integration
+- [`llm`](../llm/README.md) - LLM tool calling
+- [`events`](../events/README.md) - Event system for tool monitoring
 
 ## Testing
 

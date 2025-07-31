@@ -6,17 +6,25 @@ The comprehensive event system for Saiki that provides type-safe, hierarchical e
 
 ## Architecture Overview
 
-```
-┌─────────────────┐    ┌──────────────────────────────────┐    ┌─────────────────┐
-│  Event Sources  │───▶│         Event System             │───▶│  Event Consumers│
-│                 │    │      (Type-Safe Events)          │    │                 │
-│ • LLM Services  │    │                                  │    │ • WebUI         │
-│ • Tool Manager  │    │ • AgentEventBus (Global)         │    │ • CLI           │
-│ • Session Mgr   │    │ • SessionEventBus (Per-Session)  │    │ • External APIs │
-│ • State Manager │    │ • Event Forwarding               │    │ • Webhooks      │
-│ • MCP Manager   │    │ • AbortController Support        │    │ • Integrations  │
-└─────────────────┘    │ • Compile-time Type Safety       │    └─────────────────┘
-                       └──────────────────────────────────┘
+```mermaid
+graph TD
+    A[Event Sources] --> B[Event System]
+    B --> C[Event Consumers]
+    A1[LLM Services] --> A
+    A2[Tool Manager] --> A
+    A3[Session Mgr] --> A
+    A4[State Manager] --> A
+    A5[MCP Manager] --> A
+    B1[AgentEventBus Global] --> B
+    B2[SessionEventBus Per-Session] --> B
+    B3[Event Forwarding] --> B
+    B4[AbortController Support] --> B
+    B5[Compile-time Type Safety] --> B
+    C1[WebUI] --> C
+    C2[CLI] --> C
+    C3[External APIs] --> C
+    C4[Webhooks] --> C
+    C5[Integrations] --> C
 ```
 
 ## Core Components
@@ -359,16 +367,15 @@ class SessionManager {
 }
 ```
 
+## Related Modules
+
+- [`agent`](../agent/README.md) - Global event coordination
+- [`session`](../session/README.md) - Session event handling
+- [`llm`](../llm/README.md) - LLM response events
+
 ## Testing
 
-The event system has comprehensive test coverage:
-
-### Event System Tests (`index.test.ts`) - 5 tests
-- **Type Safety**: Event name and payload type validation
-- **Event Forwarding**: Session to agent event forwarding with context
-- **AbortController**: Automatic listener cleanup on abort
-- **Memory Management**: WeakMap cleanup and leak prevention
-- **Backward Compatibility**: Support for untyped events
+Unit and integration tests live beside the source files. See `docs/api/events.md` for listener examples.
 
 ## Future Architecture
 
