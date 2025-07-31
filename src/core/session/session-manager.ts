@@ -195,7 +195,7 @@ export class SessionManager {
             const session = new ChatSession(this.services, id);
             await session.init();
             this.sessions.set(id, session);
-            logger.debug(`Restored session from storage: ${id}`);
+            logger.info(`Restored session from storage: ${id}`, null, 'cyan');
             return session;
         }
 
@@ -234,7 +234,7 @@ export class SessionManager {
             // Also store in cache with TTL for faster access
             await this.services.storage.cache.set(sessionKey, sessionData, this.sessionTTL / 1000);
 
-            logger.debug(`Created new session: ${id}`);
+            logger.info(`Created new session: ${id}`, null, 'green');
             return session;
         } catch (error) {
             // If session creation fails after we've claimed the slot, clean up the metadata
