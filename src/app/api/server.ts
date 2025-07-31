@@ -147,58 +147,52 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         if (!req.body || !req.body.message) {
             return res.status(400).send({ error: 'Missing message content' });
         }
-        // Extract optional image and file data
-        const imageDataInput = req.body.imageData
-            ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
-            : undefined;
+        try {
+            // Extract optional image and file data
+            const imageDataInput = req.body.imageData
+                ? { image: req.body.imageData.base64, mimeType: req.body.imageData.mimeType }
+                : undefined;
 
-        // Process file data
-        const fileDataInput = req.body.fileData
-            ? {
-                  data: req.body.fileData.base64,
-                  mimeType: req.body.fileData.mimeType,
-                  filename: req.body.fileData.filename,
-              }
-            : undefined;
+            // Process file data
+            const fileDataInput = req.body.fileData
+                ? {
+                      data: req.body.fileData.base64,
+                      mimeType: req.body.fileData.mimeType,
+                      filename: req.body.fileData.filename,
+                  }
+                : undefined;
 
-        const sessionId = req.body.sessionId as string | undefined;
-        const stream = req.body.stream === true; // Extract stream preference, default to false
-        if (imageDataInput) logger.info('Image data included in message.');
-        if (fileDataInput) logger.info('File data included in message.');
-        if (sessionId) logger.info(`Message for session: ${sessionId}`);
+            const sessionId = req.body.sessionId as string | undefined;
+            const stream = req.body.stream === true; // Extract stream preference, default to false
+            if (imageDataInput) logger.info('Image data included in message.');
+            if (fileDataInput) logger.info('File data included in message.');
+            if (sessionId) logger.info(`Message for session: ${sessionId}`);
 
-        // Comprehensive input validation
-        const currentConfig = agent.getEffectiveConfig(sessionId);
-        const validation = validateInputForLLM(
-            {
-                text: req.body.message,
-                ...(imageDataInput && { imageData: imageDataInput }),
-                ...(fileDataInput && { fileData: fileDataInput }),
-            },
-            {
-                provider: currentConfig.llm.provider,
-                model: currentConfig.llm.model,
-            }
-        );
-
-        if (!validation.isValid) {
-            return res.status(400).send(
-                createInputValidationError(validation, {
+            // Comprehensive input validation
+            const currentConfig = agent.getEffectiveConfig(sessionId);
+            const validation = validateInputForLLM(
+                {
+                    text: req.body.message,
+                    ...(imageDataInput && { imageData: imageDataInput }),
+                    ...(fileDataInput && { fileData: fileDataInput }),
+                },
+                {
                     provider: currentConfig.llm.provider,
                     model: currentConfig.llm.model,
-                })
+                }
             );
-        }
 
-        try {
-            const responseText = await agent.run(
-                req.body.message,
-                imageDataInput,
-                fileDataInput,
-                sessionId,
-                stream
-            );
-            return res.status(200).send({ response: responseText, sessionId });
+            if (!validation.isValid) {
+                return res.status(400).send(
+                    createInputValidationError(validation, {
+                        provider: currentConfig.llm.provider,
+                        model: currentConfig.llm.model,
+                    })
+                );
+            }
+
+            await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);
+            return res.status(202).send({ status: 'processing', sessionId });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Error handling POST /api/message-sync: ${errorMessage}`);

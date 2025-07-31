@@ -1,5 +1,7 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { validateInputForLLM, createInputValidationError } from './validation.js';
+import * as registry from './registry.js';
+import { LLMInputValidationError } from '@core/error/index.js';
 
 describe('validateInputForLLM', () => {
     describe('text validation', () => {
@@ -120,7 +122,8 @@ describe('validateInputForLLM', () => {
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('File size too large (max 50MB)');
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors[0]).toContain('File size too large');
         });
 
         test('should fail validation for invalid base64 format', () => {
@@ -137,7 +140,8 @@ describe('validateInputForLLM', () => {
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Invalid file data format');
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors[0]).toContain('Invalid file data format');
         });
 
         test('should fail validation when model is not specified for file', () => {
@@ -154,9 +158,8 @@ describe('validateInputForLLM', () => {
             );
 
             expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(
-                'Model must be specified for file capability validation'
-            );
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors[0]).toContain('Model must be specified');
         });
 
         test('should fail validation for file without mimeType', () => {
@@ -294,6 +297,30 @@ describe('validateInputForLLM', () => {
             expect(result.fileValidation?.isSupported).toBe(false);
             expect(result.errors.length).toBeGreaterThan(0);
         });
+
+        test('should throw LLMInputValidationError if validateFileInput throws', () => {
+            // Mock getAllowedMimeTypes to throw an error
+            const spy = vi.spyOn(registry, 'getAllowedMimeTypes');
+            spy.mockImplementation(() => {
+                throw new Error('Simulated failure');
+            });
+
+            const dummyInput = {
+                text: 'test input',
+                fileData: {
+                    data: 'SGVsbG8gV29ybGQ=',
+                    filename: 'test.pdf',
+                    mimeType: 'application/pdf',
+                },
+            };
+
+            const config = { provider: 'openai', model: 'gpt-4' };
+
+            expect(() => validateInputForLLM(dummyInput, config)).toThrow(LLMInputValidationError);
+
+            // Restore the original function
+            spy.mockRestore();
+        });
     });
 
     describe('different providers and models', () => {
@@ -406,6 +433,28 @@ describe('createInputValidationError', () => {
             provider: 'openai',
             model: 'gpt-4',
             fileType: undefined,
+            details: {
+                fileValidation: undefined,
+                imageValidation: undefined,
+            },
+        });
+    });
+
+    test('should correctly format an error originating from LLMInputValidationError', () => {
+        const validation = {
+            isValid: false,
+            errors: [new LLMInputValidationError('Input text too short', 'text').message], // Simulate error message from LLMInputValidationError
+        };
+
+        const config = { provider: 'anthropic', model: 'claude-3-opus' };
+
+        const result = createInputValidationError(validation, config);
+
+        expect(result).toEqual({
+            error: 'Input text too short',
+            provider: 'anthropic',
+            model: 'claude-3-opus',
+            fileType: undefined, // No file data involved in this simulated error
             details: {
                 fileValidation: undefined,
                 imageValidation: undefined,

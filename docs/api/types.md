@@ -195,10 +195,10 @@ interface SwitchLLMResult {
   config?: LLMConfig;
   message?: string;
   warnings?: string[];
-  errors?: ValidationError[];
+  errors?: LLMInputValidationError[];
 }
 
-interface ValidationError {
+interface LLMInputValidationError {
   field: string;
   message: string;
   code: string;
