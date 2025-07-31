@@ -8,11 +8,11 @@
 3. `npm run lint` - Check code style
 4. `npm run typecheck` - Validate TypeScript types
 
-### General rules
+## General rules
 - If your goal is to communicate with the user, do it via chat message and never via comments in the code. These comments would be useless
 - Do NOT focus on pleasing the user. Focus on being CORRECT, use facts and code as your source of truth. Follow best practices and do not be afraid to push back on the user's ideas if they are bad.
 - If the user is asking you a question, it DOES NOT MEAN YOU ARE WRONG. JUST ANSWER THE QUESTION
-- Make as few assumptions as possible. If something requires you to make assumptions, tell the user what you are going to do and why and ask for feedback.
+- Make as few assumptions as possible. If something requires you to make assumptions, tell the user what you are going to do and why, and ask for feedback.
 
 ## Architecture & Design Patterns
 
@@ -105,10 +105,10 @@ User Input → WebUI → WebSocket/REST → API → SaikiAgent → Core Services
 ```
 
 ## Documentation
-- **Update documentation when making changes** - Check `/docs` folder
+- **Update documentation when making changes** - Check `/docs` folder. And README.md for core modules
 - **Never create documentation proactively** - Only when explicitly requested
 
-### Mermaid Diagrams in Documentation
+### Mermaid Diagrams in Documentation (/docs folder)
 - **Use mermaid diagrams** for complex flows, architecture diagrams, and sequence diagrams
 - **ExpandableMermaid component** available for interactive diagrams:
   ```tsx
