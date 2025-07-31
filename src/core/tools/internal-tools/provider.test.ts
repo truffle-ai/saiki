@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InternalToolsProvider, type InternalToolsConfig } from './internal-tools-provider.js';
-import { NoOpConfirmationProvider } from './confirmation/noop-confirmation-provider.js';
-import { SearchService } from '../ai/search/search-service.js';
+import { InternalToolsProvider } from './provider.js';
+import type { KnownInternalTool } from './registry.js';
+import { NoOpConfirmationProvider } from '../confirmation/noop-confirmation-provider.js';
+import { SearchService } from '../../ai/search/search-service.js';
 
 /**
  * Tests for internal tools configuration functionality
@@ -34,7 +35,7 @@ describe('InternalToolsProvider Configuration', () => {
         });
 
         it('should disable all internal tools when config is empty array', async () => {
-            const config: InternalToolsConfig = [];
+            const config: KnownInternalTool[] = [];
 
             const provider = new InternalToolsProvider(
                 { searchService: mockSearchService },
@@ -49,7 +50,7 @@ describe('InternalToolsProvider Configuration', () => {
         });
 
         it('should disable all tools when config is empty array', async () => {
-            const config: InternalToolsConfig = [];
+            const config: KnownInternalTool[] = [];
 
             const provider = new InternalToolsProvider(
                 { searchService: mockSearchService },
@@ -64,7 +65,7 @@ describe('InternalToolsProvider Configuration', () => {
         });
 
         it('should enable specified tools when config contains them', async () => {
-            const config: InternalToolsConfig = ['search_history'];
+            const config: KnownInternalTool[] = ['search_history'];
 
             const provider = new InternalToolsProvider(
                 { searchService: mockSearchService },
@@ -80,7 +81,7 @@ describe('InternalToolsProvider Configuration', () => {
 
         it('should require explicit opt-in for internal tools', async () => {
             // Must specify tools explicitly in array
-            const config: InternalToolsConfig = []; // No tools specified
+            const config: KnownInternalTool[] = []; // No tools specified
 
             const provider = new InternalToolsProvider(
                 { searchService: mockSearchService },
@@ -95,7 +96,7 @@ describe('InternalToolsProvider Configuration', () => {
         });
 
         it('should enable only specified tools when config contains them', async () => {
-            const config: InternalToolsConfig = ['search_history'];
+            const config: KnownInternalTool[] = ['search_history'];
 
             const provider = new InternalToolsProvider(
                 { searchService: mockSearchService },
@@ -111,7 +112,7 @@ describe('InternalToolsProvider Configuration', () => {
         });
 
         it('should not register tools not in config array', async () => {
-            const config: InternalToolsConfig = []; // search_history not included
+            const config: KnownInternalTool[] = []; // search_history not included
 
             const provider = new InternalToolsProvider(
                 { searchService: mockSearchService },
@@ -129,7 +130,7 @@ describe('InternalToolsProvider Configuration', () => {
 
     describe('Service dependency handling with configuration', () => {
         it('should not register search_history when searchService is not available', async () => {
-            const config: InternalToolsConfig = ['search_history'];
+            const config: KnownInternalTool[] = ['search_history'];
 
             const provider = new InternalToolsProvider(
                 {}, // No services provided
@@ -145,7 +146,7 @@ describe('InternalToolsProvider Configuration', () => {
         });
 
         it('should register search_history only when both service and config allow it', async () => {
-            const config: InternalToolsConfig = ['search_history'];
+            const config: KnownInternalTool[] = ['search_history'];
 
             const provider = new InternalToolsProvider(
                 { searchService: mockSearchService },
@@ -163,7 +164,7 @@ describe('InternalToolsProvider Configuration', () => {
 
     describe('Tool execution with configuration', () => {
         it('should allow tool execution when tool is enabled', async () => {
-            const config: InternalToolsConfig = ['search_history'];
+            const config: KnownInternalTool[] = ['search_history'];
 
             const provider = new InternalToolsProvider(
                 { searchService: mockSearchService },
@@ -185,7 +186,7 @@ describe('InternalToolsProvider Configuration', () => {
         });
 
         it('should throw error when trying to execute disabled tool', async () => {
-            const config: InternalToolsConfig = []; // search_history not enabled
+            const config: KnownInternalTool[] = []; // search_history not enabled
 
             const provider = new InternalToolsProvider(
                 { searchService: mockSearchService },

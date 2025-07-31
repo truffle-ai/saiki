@@ -1,62 +1,10 @@
-import { ToolExecutionContext, ToolSet, InternalTool } from './types.js';
-import { ToolConfirmationProvider } from './confirmation/types.js';
-import { SearchService } from '../ai/search/search-service.js';
-import { createSearchHistoryTool } from './internal-tools/search-history-tool.js';
-import { ToolExecutionDeniedError } from './confirmation/errors.js';
-import { logger } from '../logger/index.js';
+import { ToolExecutionContext, ToolSet, InternalTool } from '../types.js';
+import { ToolConfirmationProvider } from '../confirmation/types.js';
+import { ToolExecutionDeniedError } from '../confirmation/errors.js';
+import { logger } from '../../logger/index.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-
-/**
- * Services available to internal tools
- * Add new services here as needed for internal tools
- */
-export interface InternalToolsServices {
-    searchService?: SearchService;
-    // Future services can be added here:
-    // sessionManager?: SessionManager;
-    // storageManager?: StorageManager;
-    // eventBus?: AgentEventBus;
-}
-
-/**
- * Internal tool factory function type
- */
-type InternalToolFactory = (services: InternalToolsServices) => InternalTool;
-
-/**
- * Internal tool registry - Single source of truth
- * Define registry ONCE with proper typing, all types derived from here
- */
-const INTERNAL_TOOL_REGISTRY = {
-    search_history: {
-        factory: (services: InternalToolsServices) =>
-            createSearchHistoryTool(services.searchService!),
-        requiredServices: ['searchService'] as const,
-    },
-    // Add new tools here...
-} as const;
-
-// Derive ALL types from registry - impossible to get out of sync
-export type KnownInternalTool = keyof typeof INTERNAL_TOOL_REGISTRY;
-export type InternalToolsConfig = KnownInternalTool[];
-export const KNOWN_INTERNAL_TOOLS = Object.keys(INTERNAL_TOOL_REGISTRY) as KnownInternalTool[];
-
-/**
- * Type-safe registry access
- */
-export function getInternalToolInfo(toolName: KnownInternalTool) {
-    return INTERNAL_TOOL_REGISTRY[toolName];
-}
-
-/**
- * Internal tool after processing by the provider (includes converted parameters)
- */
-interface ProcessedInternalTool {
-    name: string;
-    description: string;
-    parameters?: any;
-    execute: (args: Record<string, unknown>, context?: ToolExecutionContext) => Promise<unknown>;
-}
+import { InternalToolsServices, KnownInternalTool, getInternalToolInfo } from './registry.js';
+import type { InternalToolsConfig } from '../../config/schemas.js';
 
 /**
  * Provider for built-in internal tools that are part of the core system
@@ -68,10 +16,11 @@ interface ProcessedInternalTool {
  * - Clean separation: ToolManager doesn't need to know about specific services
  * - Easy to extend: Just add new tools and services as needed
  * - Lightweight: Direct tool management without complex infrastructure
+ * - No unnecessary ProcessedInternalTool wrapper - uses InternalTool directly
  */
 export class InternalToolsProvider {
     private services: InternalToolsServices;
-    private tools: Map<string, ProcessedInternalTool> = new Map();
+    private tools: Map<string, InternalTool> = new Map(); // ← Store original InternalTool
     private confirmationProvider: ToolConfirmationProvider;
     private config: InternalToolsConfig;
 
@@ -131,24 +80,9 @@ export class InternalToolsProvider {
             }
 
             try {
-                // Create the tool using its factory
+                // Create the tool using its factory and store directly
                 const tool = toolInfo.factory(this.services);
-
-                // Convert the tool to our internal format
-                const internalTool: ProcessedInternalTool = {
-                    name: tool.id,
-                    description: tool.description,
-                    // Convert Zod schema to JSON Schema format
-                    parameters: this.convertZodSchemaToJsonSchema(tool.inputSchema),
-                    execute: async (
-                        args: Record<string, unknown>,
-                        context?: ToolExecutionContext
-                    ) => {
-                        return await tool.execute(args, context);
-                    },
-                };
-
-                this.tools.set(toolName, internalTool);
+                this.tools.set(toolName, tool); // ← Store original InternalTool directly
                 logger.debug(`Registered ${toolName} internal tool`);
             } catch (error) {
                 logger.error(
@@ -224,7 +158,7 @@ export class InternalToolsProvider {
 
         try {
             const context: ToolExecutionContext = { sessionId };
-            const result = await tool.execute(args, context);
+            const result = await tool.execute(args, context); // ← Execute original tool directly
 
             logger.debug(`🎯 Internal tool execution completed: ${toolName}`);
             return result;
@@ -235,16 +169,16 @@ export class InternalToolsProvider {
     }
 
     /**
-     * Get all tools in ToolSet format - NO normalization needed
+     * Get all tools in ToolSet format with on-demand JSON Schema conversion
      */
     getAllTools(): ToolSet {
         const toolSet: ToolSet = {};
 
         for (const [name, tool] of this.tools) {
             toolSet[name] = {
-                name: tool.name,
+                name: tool.id,
                 description: tool.description,
-                parameters: tool.parameters, // ← Already final JSON Schema format
+                parameters: this.convertZodSchemaToJsonSchema(tool.inputSchema), // ← Convert on-demand
             };
         }
 

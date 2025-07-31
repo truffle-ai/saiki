@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { INTERNAL_TOOL_NAMES } from '../tools/internal-tools/registry.js';
 import {
     getSupportedProviders,
     getSupportedModels,
@@ -587,6 +588,17 @@ export const StorageSchema = z
 
 export type StorageConfig = z.infer<typeof StorageSchema>;
 
+// Internal tools schema - separate for type derivation
+export const InternalToolsSchema = z
+    .array(z.enum(INTERNAL_TOOL_NAMES).describe('Available internal tool names'))
+    .default([])
+    .describe(
+        `Array of internal tool names to enable. Empty array = disabled. Available tools: ${INTERNAL_TOOL_NAMES.join(', ')}`
+    );
+
+// Derive type from schema
+export type InternalToolsConfig = z.infer<typeof InternalToolsSchema>;
+
 export const AgentConfigSchema = z
     .object({
         agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
@@ -599,12 +611,7 @@ export const AgentConfigSchema = z
             'Configurations for MCP (Model Context Protocol) servers used by the agent'
         ),
 
-        internalTools: z
-            .array(z.enum(['search_history']).describe('Available internal tool names'))
-            .default([])
-            .describe(
-                'Array of internal tool names to enable. Empty array = disabled. Available tools: search_history'
-            ),
+        internalTools: InternalToolsSchema,
 
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { InternalTool, ToolExecutionContext } from '../types.js';
-import { SearchService } from '../../ai/search/search-service.js';
-import type { SearchOptions } from '../../ai/search/types.js';
+import { InternalTool, ToolExecutionContext } from '../../types.js';
+import { SearchService } from '../../../ai/search/search-service.js';
+import type { SearchOptions } from '../../../ai/search/types.js';
 
 /**
  * Internal tool for searching conversation history

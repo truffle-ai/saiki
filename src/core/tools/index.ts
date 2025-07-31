@@ -16,11 +16,9 @@ export type {
 } from './types.js';
 
 // Internal tools provider
-export {
-    InternalToolsProvider,
-    type InternalToolsServices,
-    type InternalToolsConfig,
-} from './internal-tools-provider.js';
+export { InternalToolsProvider } from './internal-tools/provider.js';
+export type { InternalToolsServices } from './internal-tools/registry.js';
+export type { InternalToolsConfig } from '../config/schemas.js';
 
 // Unified tool manager (main interface for LLM)
 export { ToolManager, type InternalToolsOptions } from './tool-manager.js';
