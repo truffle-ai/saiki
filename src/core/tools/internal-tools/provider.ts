@@ -1,7 +1,7 @@
 import { ToolExecutionContext, ToolSet, InternalTool } from '../types.js';
 import { ToolConfirmationProvider } from '../confirmation/types.js';
 import { logger } from '../../logger/index.js';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { convertZodSchemaToJsonSchema } from '../../utils/schema.js';
 import { InternalToolsServices, KnownInternalTool, getInternalToolInfo } from './registry.js';
 import type { InternalToolsConfig } from '../../config/schemas.js';
 
@@ -92,25 +92,6 @@ export class InternalToolsProvider {
     }
 
     /**
-     * Convert Zod schema to JSON Schema format for tool parameters
-     */
-    private convertZodSchemaToJsonSchema(zodSchema: any): any {
-        try {
-            // Use proper library for Zod to JSON Schema conversion
-            return zodToJsonSchema(zodSchema);
-        } catch (error) {
-            logger.warn(
-                `Failed to convert Zod schema to JSON Schema: ${error instanceof Error ? error.message : String(error)}`
-            );
-            // Return basic object schema as fallback
-            return {
-                type: 'object',
-                properties: {},
-            };
-        }
-    }
-
-    /**
      * Check if a specific tool is enabled by configuration
      */
     private isToolEnabled(toolName: KnownInternalTool): boolean {
@@ -159,7 +140,7 @@ export class InternalToolsProvider {
             toolSet[name] = {
                 name: tool.id,
                 description: tool.description,
-                parameters: this.convertZodSchemaToJsonSchema(tool.inputSchema), // ← Convert on-demand
+                parameters: convertZodSchemaToJsonSchema(tool.inputSchema), // ← Convert on-demand
             };
         }
 
