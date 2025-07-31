@@ -2,6 +2,8 @@
 // SIMPLIFIED TOOL TYPES - Essential interfaces only
 // ============================================================================
 
+import type { JSONSchema7 } from 'json-schema';
+
 /**
  * Context passed to tool execution
  */
@@ -39,7 +41,7 @@ export interface ToolSet {
     [key: string]: {
         name?: string;
         description?: string;
-        parameters?: any; // JSON Schema - using any for flexibility
+        parameters: JSONSchema7; // JSON Schema v7 specification
     };
 }
 

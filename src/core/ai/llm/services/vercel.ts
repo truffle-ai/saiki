@@ -66,7 +66,7 @@ export class VercelLLMService implements ILLMService {
             const tool = tools[toolName];
             if (tool) {
                 acc[toolName] = {
-                    parameters: jsonSchema(tool.parameters as any), // JSONSchema7 type assertion needed
+                    parameters: jsonSchema(tool.parameters),
                     execute: async (args: unknown) => {
                         try {
                             return await this.toolManager.executeTool(
