@@ -77,7 +77,7 @@ export class AnthropicService implements ILLMService {
                     mcpManager: this.toolManager.getMcpManager(),
                 };
 
-                const formatterContext = {
+                const llmContext = {
                     provider: 'anthropic' as LLMProvider,
                     model: this.model,
                 };
@@ -88,7 +88,7 @@ export class AnthropicService implements ILLMService {
                     tokensUsed,
                 } = await this.contextManager.getFormattedMessagesWithCompression(
                     contributorContext,
-                    formatterContext
+                    llmContext
                 );
 
                 // For Anthropic, we need to get the formatted system prompt separately

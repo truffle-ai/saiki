@@ -2,7 +2,7 @@ import { InternalMessage } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { logger } from '../../../logger/index.js';
 import { validateModelFileSupport } from '../registry.js';
-import { FormatterContext } from './formatters/types.js';
+import { LLMContext } from '../types.js';
 
 // Approximation for message format overhead
 const DEFAULT_OVERHEAD_PER_MESSAGE = 4;
@@ -162,7 +162,7 @@ export function getFileData(filePart: {
  */
 export function filterMessagesByLLMCapabilities(
     messages: InternalMessage[],
-    config: FormatterContext
+    config: LLMContext
 ): InternalMessage[] {
     // Validate that both provider and model are provided
     if (!config.provider || !config.model) {

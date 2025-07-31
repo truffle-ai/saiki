@@ -1,4 +1,5 @@
-import { IMessageFormatter, FormatterContext } from './formatters/types.js';
+import { IMessageFormatter } from './formatters/types.js';
+import { LLMContext } from '../types.js';
 import { InternalMessage, ImageData, FileData } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
 import { ICompressionStrategy } from './compression/types.js';
@@ -506,7 +507,7 @@ export class ContextManager {
      */
     async getFormattedMessages(
         contributorContext: DynamicContributorContext,
-        formatterContext: FormatterContext,
+        llmContext: LLMContext,
         systemPrompt?: string | undefined,
         history?: InternalMessage[]
     ): Promise<any[]> {
@@ -526,10 +527,7 @@ export class ContextManager {
         try {
             // Use pre-computed system prompt if provided
             const prompt = systemPrompt ?? (await this.getSystemPrompt(contributorContext));
-
-            // generate FormatterContext
-
-            return this.formatter.format([...messageHistory], formatterContext, prompt);
+            return this.formatter.format([...messageHistory], llmContext, prompt);
         } catch (error) {
             logger.error(
                 `Error formatting messages: ${error instanceof Error ? error.message : String(error)}`
@@ -548,12 +546,12 @@ export class ContextManager {
      * This method implements the correct ordering to avoid circular dependencies.
      *
      * @param contributorContext The DynamicContributorContext for system prompt contributors and formatting
-     * @param formatterContext The FormatterContext for the formatter to decide which messages to include based on the model's capabilities
+     * @param llmContext The llmContext for the formatter to decide which messages to include based on the model's capabilities
      * @returns Object containing formatted messages and system prompt
      */
     async getFormattedMessagesWithCompression(
         contributorContext: DynamicContributorContext,
-        formatterContext: FormatterContext
+        llmContext: LLMContext
     ): Promise<{
         // TODO: fix this type
         formattedMessages: any[];
@@ -572,7 +570,7 @@ export class ContextManager {
             // Step 3: Format messages with compressed history
             const formattedMessages = await this.getFormattedMessages(
                 contributorContext,
-                formatterContext,
+                llmContext,
                 systemPrompt,
                 history
             );

@@ -1,4 +1,5 @@
-import { IMessageFormatter, FormatterContext } from './types.js';
+import { IMessageFormatter } from './types.js';
+import { LLMContext } from '../../types.js';
 import { InternalMessage } from '../types.js';
 import type { GenerateTextResult, StreamTextResult, ToolSet as VercelToolSet } from 'ai';
 import { getImageData, getFileData, filterMessagesByLLMCapabilities } from '../utils.js';
@@ -26,7 +27,7 @@ export class VercelMessageFormatter implements IMessageFormatter {
      */
     format(
         history: Readonly<InternalMessage[]>,
-        context: FormatterContext,
+        context: LLMContext,
         systemPrompt: string | null
     ): unknown[] {
         const formatted = [];
