@@ -45,11 +45,6 @@ export interface ExternalTool {
     parameters?: ToolParameters;
 }
 
-/**
- * Unified tool interface - can represent any tool type
- */
-export type Tool = InternalTool | ExternalTool;
-
 // ============================================================================
 // TOOL PARAMETERS AND SCHEMAS
 // ============================================================================
@@ -107,16 +102,6 @@ export interface RawToolDefinition {
  */
 export interface ToolSet {
     [key: string]: ExternalTool;
-}
-
-/**
- * MCP Tool interface for WebUI compatibility
- */
-export interface McpTool {
-    id: string;
-    name: string;
-    description?: string;
-    inputSchema?: JsonSchema | null;
 }
 
 // ============================================================================
