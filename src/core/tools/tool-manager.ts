@@ -203,13 +203,25 @@ export class ToolManager {
 
             // Route to MCP tools
             if (toolName.startsWith(ToolManager.MCP_TOOL_PREFIX)) {
+                logger.debug(`🔧 Detected MCP tool: '${toolName}'`);
                 const actualToolName = toolName.substring(ToolManager.MCP_TOOL_PREFIX.length);
+                if (actualToolName.length === 0) {
+                    throw new Error(
+                        `Invalid tool name: '${toolName}' - tool name cannot be empty after prefix`
+                    );
+                }
                 logger.debug(`🎯 MCP routing: '${toolName}' -> '${actualToolName}'`);
                 result = await this.mcpManager.executeTool(actualToolName, args, sessionId);
             }
             // Route to internal tools
             else if (toolName.startsWith(ToolManager.INTERNAL_TOOL_PREFIX)) {
+                logger.debug(`🔧 Detected internal tool: '${toolName}'`);
                 const actualToolName = toolName.substring(ToolManager.INTERNAL_TOOL_PREFIX.length);
+                if (actualToolName.length === 0) {
+                    throw new Error(
+                        `Invalid tool name: '${toolName}' - tool name cannot be empty after prefix`
+                    );
+                }
                 if (!this.internalToolsProvider) {
                     throw new Error(`Internal tools not initialized, cannot execute: ${toolName}`);
                 }
@@ -221,7 +233,9 @@ export class ToolManager {
                 );
             }
             // Tool doesn't have proper prefix
+            // TODO: will update for custom tools
             else {
+                logger.debug(`🔧 Detected tool without proper prefix: '${toolName}'`);
                 const stats = await this.getToolStats();
                 logger.error(
                     `❌ Tool missing source prefix: '${toolName}' (expected '${ToolManager.MCP_TOOL_PREFIX}*' or '${ToolManager.INTERNAL_TOOL_PREFIX}*')`

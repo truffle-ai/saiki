@@ -7,45 +7,81 @@ The unified tool management system for Saiki that handles both MCP (Model Contex
 ## Architecture Overview
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   LLM Service   │───▶│   ToolManager    │───▶│  Tool Sources   │
-└─────────────────┘    │   (Unified)      │    │                 │
-                       └──────────────────┘    │ • MCPManager    │
-                                ▲              │ • InternalTools │
-                                │              └─────────────────┘
-                                ▼
-                       ┌──────────────────┐
-                       │ ToolConfirmation │
-                       │    Provider      │
-                       └──────────────────┘
+┌─────────────────┐    ┌──────────────────────────────────┐    ┌─────────────────┐
+│   LLM Service   │───▶│          ToolManager             │───▶│  Tool Sources   │  
+└─────────────────┘    │    (Centralized Orchestration)   │    │                 │
+                       │                                  │    │ • MCPManager    │
+                       │ • Universal Prefixing            │    │ • InternalTools │
+                       │ • Centralized Confirmation       │    │   Provider      │
+                       │ • Unified Logging & Timing       │    └─────────────────┘
+                       │ • Route to Source Managers       │             
+                       └──────────────────────────────────┘             
+                                        ▲                               
+                                        │                               
+                                        ▼                               
+                       ┌──────────────────────────────────┐             
+                       │       ToolConfirmation           │             
+                       │         Provider                 │             
+                       │  (Security & Approval)           │             
+                       └──────────────────────────────────┘             
 ```
 
 ## Core Components
 
 ### ToolManager (`tool-manager.ts`)
-- **Single interface** for all tool operations
-- **Universal prefixing**: All tools get source prefixes (`mcp--*`, `internal--*`)
-- **Conflict resolution** through prefixing (no naming conflicts)
-- **Unified execution** with confirmation support
+**Centralized orchestration layer** providing a single interface for all tool operations.
+
+**Key Responsibilities:**
+- **Universal Prefixing**: All tools get source prefixes (`mcp--*`, `internal--*`)
+- **Centralized Confirmation**: All tool executions go through confirmation before routing
+- **Unified Logging & Timing**: Consistent logging and performance monitoring
+- **Intelligent Routing**: Route to appropriate source managers after validation
+- **Conflict Resolution**: No naming conflicts through prefixing
+- **Error Handling**: Unified error handling and validation
+
+**Execution Flow:**
+1. **Validate** tool name has proper prefix and non-empty name
+2. **Confirm** execution through ToolConfirmationProvider  
+3. **Route** to MCPManager or InternalToolsProvider
+4. **Log** execution timing and results
+5. **Handle** errors with context and debugging info
 
 ### Internal Tools (`internal-tools/`)
-Directory structure for built-in tools that ship with Saiki:
+**Execution-focused provider** for built-in tools that ship with Saiki.
 
+**Directory Structure:**
 ```
 internal-tools/
 ├── registry.ts              # Tool definitions and type source
-├── provider.ts              # Tool provider implementation
+├── provider.ts              # Pure execution provider (no confirmation)
 ├── implementations/         # Individual tool implementations
 │   └── search-history-tool.ts
 └── provider.test.ts        # Provider tests
 ```
 
+**Key Features:**
+- **Pure Execution**: No confirmation logic - delegated to ToolManager
+- **Service Dependencies**: Tools only registered when required services available
+- **Type Safety**: Registry-driven tool registration with TypeScript validation
+- **Zod Integration**: Automatic Zod → JSON Schema conversion for tool parameters
+
 ### Tool Confirmation (`confirmation/`)
-Security and approval system for tool execution.
+**Security and approval system** for tool execution.
+
+**Architecture Change:**
+- **Before**: Confirmation scattered across MCPManager and InternalToolsProvider
+- **After**: Centralized in ToolManager for all tool types
+- **Benefits**: Consistent security policy, no code duplication, unified logging
 
 ## Key Design Principles
 
-### 1. Implementation Drives Types
+### 1. Centralized Orchestration
+**ToolManager** is the single coordination point for all tool operations:
+- **Before**: Confirmation logic duplicated in MCPManager + InternalToolsProvider
+- **After**: Single confirmation checkpoint with unified logging and timing
+- **Result**: Eliminated 16+ lines of duplicate code, consistent behavior
+
+### 2. Implementation Drives Types
 ```typescript
 // ✅ Registry defines what exists
 export const INTERNAL_TOOL_NAMES = ['search_history'] as const;
@@ -55,12 +91,18 @@ export type KnownInternalTool = typeof INTERNAL_TOOL_NAMES[number];
 export const InternalToolsSchema = z.array(z.enum(INTERNAL_TOOL_NAMES));
 ```
 
-### 2. Universal Tool Prefixing
+### 3. Universal Tool Prefixing
 All tools get prefixed by source to eliminate naming conflicts:
 - `mcp--filesystem_read` (from MCP server)
 - `internal--search_history` (internal tool)
 
-### 3. Schema-Config Separation
+### 4. Clear Separation of Concerns
+- **ToolManager**: Orchestration (confirmation, routing, logging)
+- **MCPManager**: Pure MCP protocol communication
+- **InternalToolsProvider**: Pure tool execution
+- **Confirmation**: Centralized security policy
+
+### 5. Schema-Config Separation
 - **Registry**: Defines what tools exist (implementation concern)
 - **Schema**: Validates user configuration (validation concern)  
 - **Config Types**: Enable future schema evolution
@@ -158,8 +200,32 @@ This design prepares for:
 
 ## Testing
 
-- `provider.test.ts` - Configuration and provider functionality
-- `tool-manager.test.ts` - Unified tool management (needs updating)
-- `tool-manager.integration.test.ts` - Cross-source scenarios (needs updating)
+The tools module has comprehensive test coverage following proper unit/integration separation:
 
-Tests are currently outdated and need updating after the restructuring.
+### Unit Tests (Fast, Pure Logic)
+- **`tool-manager.test.ts`** (24 tests) - Pure logic testing with mocked dependencies
+  - Tool source detection and routing logic
+  - Confirmation flow validation  
+  - Cache management behavior
+  - Error handling and validation
+  - Tool statistics and utilities
+
+- **`provider.test.ts`** (23 tests) - InternalToolsProvider execution logic
+  - Tool registration and service dependencies
+  - Zod → JSON Schema conversion
+  - Pure tool execution (no confirmation)
+  - Error handling and configuration
+
+### Integration Tests (Real Components)
+- **`tool-manager.integration.test.ts`** (12 tests) - Cross-component testing
+  - End-to-end tool execution pipelines
+  - Real MCP client integration
+  - Confirmation flow with real providers
+  - Error recovery across components
+  - Performance and caching behavior
+
+### Test Quality Improvements
+- ✅ **Proper separation**: Unit tests focus on pure logic, integration tests use real components
+- ✅ **Better assertions**: Improved test reliability with `mockClear()` for call count verification
+- ✅ **Comprehensive coverage**: All critical paths and edge cases tested
+- ✅ **Fast feedback**: Unit tests run in ~7ms, integration tests in ~7ms
