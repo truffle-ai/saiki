@@ -73,55 +73,6 @@ export interface LLMConfigResult extends ValidationResult {
 // validateLLMSwitchRequest function removed - request validation now handled by Zod schemas at API boundary
 
 /**
- * Builds a complete LLM configuration from partial updates, handling all the complex
- * logic for provider inference, API key resolution, compatibility checks, and validation.
- */
-export async function buildValidatedLLMConfig(
-    updates: LLMSwitchInput,
-    currentConfig: LLMConfig,
-    stateManager: AgentStateManager,
-    sessionId?: string
-): Promise<{
-    config: ValidatedLLMConfig;
-    configWarnings: string[];
-    isValid: boolean;
-    errors: ValidationError[];
-}> {
-    const result = await buildLLMConfig(updates, currentConfig);
-
-    if (!result.isValid) {
-        // Parse currentConfig through schema to get validated type
-        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
-        return {
-            config: validatedCurrentConfig,
-            configWarnings: result.warnings,
-            isValid: false,
-            errors: result.errors,
-        };
-    }
-
-    // Update state manager with the validated config
-    const stateValidation = stateManager.updateLLM(result.config, sessionId);
-    if (!stateValidation.isValid) {
-        // Parse currentConfig through schema to get validated type
-        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
-        return {
-            config: validatedCurrentConfig,
-            configWarnings: [...result.warnings, ...stateValidation.warnings],
-            isValid: false,
-            errors: stateValidation.errors,
-        };
-    }
-
-    return {
-        config: result.config,
-        configWarnings: [...result.warnings, ...stateValidation.warnings],
-        isValid: true,
-        errors: [],
-    };
-}
-
-/**
  * Helper function to convert ValidationError array to string array for backward compatibility
  */
 export function validationErrorsToStrings(errors: ValidationError[]): string[] {
@@ -134,24 +85,26 @@ export function validationErrorsToStrings(errors: ValidationError[]): string[] {
  */
 export async function buildLLMConfig(
     updates: LLMSwitchInput,
-    currentConfig: LLMConfig
+    currentConfig: ValidatedLLMConfig
 ): Promise<LLMConfigResult> {
     const errors: ValidationError[] = [];
     const warnings: string[] = [];
 
+    // Helper for early returns - currentConfig is already validated
+    const returnError = () => ({
+        config: currentConfig,
+        isValid: false,
+        errors,
+        warnings,
+    });
+
     // Step 1: Determine model
     const model = resolveModel(updates, currentConfig, errors);
-    if (errors.length > 0) {
-        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
-        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
-    }
+    if (errors.length > 0) return returnError();
 
     // Step 2: Determine provider
     const provider = resolveProvider(updates, currentConfig, model, errors, warnings);
-    if (errors.length > 0) {
-        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
-        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
-    }
+    if (errors.length > 0) return returnError();
 
     // Step 3: Validate model/provider compatibility and fix if needed
     const { finalModel, finalProvider } = resolveModelProviderCompatibility(
@@ -162,24 +115,15 @@ export async function buildLLMConfig(
         errors,
         warnings
     );
-    if (errors.length > 0) {
-        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
-        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
-    }
+    if (errors.length > 0) return returnError();
 
     // Step 4: Determine router
     const router = resolveRouter(updates, currentConfig, finalProvider, errors, warnings);
-    if (errors.length > 0) {
-        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
-        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
-    }
+    if (errors.length > 0) return returnError();
 
     // Step 5: Determine API key
     const apiKey = await resolveApiKey(updates, currentConfig, finalProvider, errors, warnings);
-    if (errors.length > 0) {
-        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
-        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
-    }
+    if (errors.length > 0) return returnError();
 
     // Step 6: Build remaining fields
     const config = buildFinalConfig(
@@ -189,10 +133,7 @@ export async function buildLLMConfig(
         errors,
         warnings
     );
-    if (errors.length > 0) {
-        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
-        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
-    }
+    if (errors.length > 0) return returnError();
 
     // Step 7: Final schema validation
     const schemaValidation = LLMConfigSchema.safeParse(config);
@@ -202,8 +143,7 @@ export async function buildLLMConfig(
             message: `${err.path.join('.')}: ${err.message}`,
         }));
         errors.push(...schemaErrors);
-        const validatedCurrentConfig = LLMConfigSchema.parse(currentConfig);
-        return { config: validatedCurrentConfig, isValid: false, errors, warnings };
+        return returnError();
     }
 
     logger.debug(
@@ -222,7 +162,7 @@ export async function buildLLMConfig(
 
 function resolveModel(
     updates: LLMSwitchInput,
-    currentConfig: LLMConfig,
+    currentConfig: ValidatedLLMConfig,
     _errors: ValidationError[]
 ): string {
     // Basic validation (non-empty string) now handled by Zod schemas
@@ -231,7 +171,7 @@ function resolveModel(
 
 function resolveProvider(
     updates: LLMSwitchInput,
-    currentConfig: LLMConfig,
+    currentConfig: ValidatedLLMConfig,
     model: string,
     errors: ValidationError[],
     _warnings: string[]
@@ -303,8 +243,8 @@ function resolveModelProviderCompatibility(
 
 function resolveRouter(
     updates: LLMSwitchInput,
-    currentConfig: LLMConfig,
-    provider: string,
+    currentConfig: ValidatedLLMConfig,
+    provider: LLMProvider,
     errors: ValidationError[],
     warnings: string[]
 ): 'vercel' | 'in-built' {

@@ -217,9 +217,9 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
  * @param provider The name of the provider.
  * @returns The default model for the provider, or null if no default model is found.
  */
-export function getDefaultModelForProvider(provider: string): string | null {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
-    return providerInfo ? providerInfo.models.find((m) => m.default)?.name || null : null;
+export function getDefaultModelForProvider(provider: LLMProvider): string | null {
+    const providerInfo = LLM_REGISTRY[provider];
+    return providerInfo.models.find((m) => m.default)?.name || null;
 }
 
 /**
@@ -233,37 +233,26 @@ export function getSupportedProviders(): string[] {
 /**
  * Gets the list of supported models for a given provider.
  * @param provider The name of the provider.
- * @returns An array of supported model names for the provider, or an empty array if the provider is not found.
+ * @returns An array of supported model names for the provider.
  */
-export function getSupportedModels(provider: string): string[] {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
-    return providerInfo ? providerInfo.models.map((m) => m.name) : [];
+export function getSupportedModels(provider: LLMProvider): string[] {
+    const providerInfo = LLM_REGISTRY[provider];
+    return providerInfo.models.map((m) => m.name);
 }
 
 /**
  * Retrieves the maximum input token limit for a given provider and model from the registry.
- * Throws an error if the provider or model is not found.
  * @param provider The name of the provider (e.g., 'openai', 'anthropic', 'google').
  * @param model The specific model name.
  * @returns The maximum input token limit for the model.
- * @throws {Error} If the provider or model is not found in the registry.
+ * @throws {ModelNotFoundError} If the model is not found in the registry.
  */
-export function getMaxInputTokensForModel(provider: string, model: string): number {
-    const lowerProvider = provider?.toLowerCase();
-    const lowerModel = model?.toLowerCase();
+export function getMaxInputTokensForModel(provider: LLMProvider, model: string): number {
+    const providerInfo = LLM_REGISTRY[provider];
 
-    const providerInfo = LLM_REGISTRY[lowerProvider as LLMProvider];
-    if (!providerInfo) {
-        const supportedProviders = getSupportedProviders().join(', ');
-        logger.error(
-            `Provider '${provider}' not found in LLM registry. Supported: ${supportedProviders}`
-        );
-        throw new ProviderNotFoundError(provider);
-    }
-
-    const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === lowerModel);
+    const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === model.toLowerCase());
     if (!modelInfo) {
-        const supportedModels = getSupportedModels(lowerProvider).join(', ');
+        const supportedModels = getSupportedModels(provider).join(', ');
         logger.error(
             `Model '${model}' not found for provider '${provider}' in LLM registry. Supported models: ${supportedModels}`
         );
@@ -280,19 +269,14 @@ export function getMaxInputTokensForModel(provider: string, model: string): numb
  * @param model The model name.
  * @returns True if the combination is valid, false otherwise.
  */
-export function isValidProviderModel(provider?: string, model?: string): boolean {
+export function isValidProviderModel(provider?: LLMProvider, model?: string): boolean {
     if (!provider || !model) {
         // If either is missing, we consider it valid at this level
         // (the refine function in Zod handles the both-or-neither case)
         return true;
     }
-    const lowerProvider = provider.toLowerCase();
-    const lowerModel = model.toLowerCase();
-    const providerInfo = LLM_REGISTRY[lowerProvider as LLMProvider];
-    if (!providerInfo) {
-        return false;
-    }
-    return providerInfo.models.some((m) => m.name.toLowerCase() === lowerModel);
+    const providerInfo = LLM_REGISTRY[provider];
+    return providerInfo.models.some((m) => m.name.toLowerCase() === model.toLowerCase());
 }
 
 /**
@@ -326,9 +310,9 @@ export function getAllSupportedModels(): string[] {
  * @param provider The name of the provider.
  * @returns An array of supported router names for the provider
  */
-export function getSupportedRoutersForProvider(provider: string): string[] {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
-    return providerInfo ? providerInfo.supportedRouters : [];
+export function getSupportedRoutersForProvider(provider: LLMProvider): string[] {
+    const providerInfo = LLM_REGISTRY[provider];
+    return providerInfo.supportedRouters;
 }
 
 /**
@@ -336,9 +320,9 @@ export function getSupportedRoutersForProvider(provider: string): string[] {
  * @param provider The name of the provider.
  * @returns True if the provider supports custom baseURL, false otherwise.
  */
-export function supportsBaseURL(provider: string): boolean {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
-    return providerInfo ? providerInfo.baseURLSupport !== 'none' : false; // Default to false for unknown providers
+export function supportsBaseURL(provider: LLMProvider): boolean {
+    const providerInfo = LLM_REGISTRY[provider];
+    return providerInfo.baseURLSupport !== 'none';
 }
 
 /**
@@ -346,9 +330,9 @@ export function supportsBaseURL(provider: string): boolean {
  * @param provider The name of the provider.
  * @returns True if the provider requires a custom baseURL, false otherwise.
  */
-export function requiresBaseURL(provider: string): boolean {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
-    return providerInfo ? providerInfo.baseURLSupport === 'required' : false;
+export function requiresBaseURL(provider: LLMProvider): boolean {
+    const providerInfo = LLM_REGISTRY[provider];
+    return providerInfo.baseURLSupport === 'required';
 }
 
 /**
@@ -356,9 +340,9 @@ export function requiresBaseURL(provider: string): boolean {
  * @param provider The name of the provider.
  * @returns True if the provider accepts any model name, false otherwise.
  */
-export function acceptsAnyModel(provider: string): boolean {
-    const providerInfo = LLM_REGISTRY[provider.toLowerCase() as LLMProvider];
-    return providerInfo ? providerInfo.models.length === 0 : false;
+export function acceptsAnyModel(provider: LLMProvider): boolean {
+    const providerInfo = LLM_REGISTRY[provider];
+    return providerInfo.models.length === 0;
 }
 
 /**
@@ -385,18 +369,13 @@ export function isValidProvider(provider: string): boolean {
  * @param provider The name of the provider.
  * @param model The name of the model.
  * @returns Array of supported file types for the model.
- * @throws {Error} If the provider or model is not found in the registry.
+ * @throws {Error} If the model is not found in the registry.
  */
 export function getSupportedFileTypesForModel(
-    provider: string,
+    provider: LLMProvider,
     model: string
 ): SupportedFileType[] {
-    const providerInfo = LLM_REGISTRY[provider as LLMProvider];
-    if (!providerInfo) {
-        throw new Error(
-            `Provider '${provider}' not found in LLM registry. Available providers: ${Object.keys(LLM_REGISTRY).join(', ')}`
-        );
-    }
+    const providerInfo = LLM_REGISTRY[provider];
 
     // Special case: providers that accept any model name (e.g., openai-compatible)
     if (acceptsAnyModel(provider)) {
@@ -423,7 +402,7 @@ export function getSupportedFileTypesForModel(
  * @returns True if the model supports the file type, false otherwise.
  */
 export function modelSupportsFileType(
-    provider: string,
+    provider: LLMProvider,
     model: string,
     fileType: SupportedFileType
 ): boolean {
@@ -439,7 +418,7 @@ export function modelSupportsFileType(
  * @returns Object containing validation result and details.
  */
 export function validateModelFileSupport(
-    provider: string,
+    provider: LLMProvider,
     model: string,
     mimeType: string
 ): {
@@ -486,7 +465,7 @@ export function validateModelFileSupport(
  * @param router The router name to check.
  * @returns True if the provider supports the router, false otherwise.
  */
-export function isRouterSupportedForProvider(provider: string, router: string): boolean {
+export function isRouterSupportedForProvider(provider: LLMProvider, router: string): boolean {
     const supportedRouters = getSupportedRoutersForProvider(provider);
     return supportedRouters.includes(router);
 }

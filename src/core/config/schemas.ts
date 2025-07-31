@@ -256,24 +256,13 @@ export const LLMConfigBaseSchema = z
 
 // Full LLM config schema with business logic validation
 export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
-    const providerLower = data.provider?.toLowerCase();
     const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
     const maxInputTokensIsSet = data.maxInputTokens != null;
-
-    // Provider must be one of the supported list
-    const supportedProvidersList = getSupportedProviders();
-    if (!supportedProvidersList.includes(providerLower)) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['provider'],
-            message: `Provider '${data.provider}' is not supported. Supported: ${supportedProvidersList.join(', ')}`,
-        });
-    }
 
     // When user provides a custom baseURL
     if (baseURLIsSet) {
         // 1. Check if provider supports baseURL using registry
-        if (!supportsBaseURL(providerLower)) {
+        if (!supportsBaseURL(data.provider)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['provider'],
@@ -282,7 +271,7 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
         }
     }
     // Check if provider requires baseURL but none is provided
-    else if (requiresBaseURL(providerLower)) {
+    else if (requiresBaseURL(data.provider)) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['baseURL'],
@@ -292,9 +281,9 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
     // If no base URL
     else {
         // 1. Model must be valid for the provider (skip for providers that accept any model)
-        if (supportedProvidersList.includes(providerLower) && !acceptsAnyModel(providerLower)) {
-            const supportedModelsList = getSupportedModels(providerLower);
-            if (!isValidProviderModel(providerLower, data.model)) {
+        if (!acceptsAnyModel(data.provider)) {
+            const supportedModelsList = getSupportedModels(data.provider);
+            if (!isValidProviderModel(data.provider, data.model)) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     path: ['model'],
@@ -303,9 +292,9 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
             }
         }
         // 2. maxInputTokens must be within the model's limit (skip for providers that accept any model)
-        if (maxInputTokensIsSet && !acceptsAnyModel(providerLower)) {
+        if (maxInputTokensIsSet && !acceptsAnyModel(data.provider)) {
             try {
-                const registryMaxInputTokens = getMaxInputTokensForModel(providerLower, data.model);
+                const registryMaxInputTokens = getMaxInputTokensForModel(data.provider, data.model);
                 // Check maxInputTokens field
                 if (data.maxInputTokens != null && data.maxInputTokens > registryMaxInputTokens) {
                     ctx.addIssue({

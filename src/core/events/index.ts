@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { LLMProvider } from '../llm/registry.js';
 
 /**
  * Agent-level event names - events that occur at the agent/global level
@@ -130,7 +131,7 @@ export interface AgentEventMap {
     /** LLM service unsupported input */
     'llmservice:unsupportedInput': {
         errors: string[];
-        provider: string;
+        provider: LLMProvider;
         model?: string;
         fileType?: string;
         details?: any;
@@ -257,7 +258,7 @@ export interface SessionEventMap {
     /** LLM service unsupported input */
     'llmservice:unsupportedInput': {
         errors: string[];
-        provider: string;
+        provider: LLMProvider;
         model?: string;
         fileType?: string;
         details?: any;

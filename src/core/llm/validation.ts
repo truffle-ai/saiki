@@ -1,4 +1,4 @@
-import { validateModelFileSupport, getAllowedMimeTypes } from './registry.js';
+import { validateModelFileSupport, getAllowedMimeTypes, LLMProvider } from './registry.js';
 import { logger } from '../logger/index.js';
 import type { ImageData, FileData } from './messages/types.js';
 
@@ -17,7 +17,7 @@ export interface InputValidationResult {
 }
 
 export interface ValidationLLMConfig {
-    provider: string;
+    provider: LLMProvider;
     model?: string;
 }
 
