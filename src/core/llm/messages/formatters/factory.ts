@@ -2,7 +2,7 @@ import { IMessageFormatter } from './types.js';
 import { VercelMessageFormatter } from './vercel.js';
 import { OpenAIMessageFormatter } from './openai.js';
 import { AnthropicMessageFormatter } from './anthropic.js';
-import { logger } from '../../../../logger/index.js';
+import { logger } from '../../../logger/index.js';
 
 export function createMessageFormatter(provider: string, router: string): IMessageFormatter {
     if (router === 'vercel') {

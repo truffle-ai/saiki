@@ -1,4 +1,4 @@
-import type { LLMConfigSchema } from '../../config/schemas.js';
+import type { LLMConfigSchema } from '../config/schemas.js';
 import { z } from 'zod';
 import { LLMProvider } from './registry.js';
 

@@ -3,7 +3,7 @@ import { LLMContext } from '../../types.js';
 import { InternalMessage } from '../types.js';
 import type { GenerateTextResult, StreamTextResult, ToolSet as VercelToolSet } from 'ai';
 import { getImageData, getFileData, filterMessagesByLLMCapabilities } from '../utils.js';
-import { logger } from '../../../../logger/index.js';
+import { logger } from '../../../logger/index.js';
 // import Core SDK types if/when needed
 
 /**

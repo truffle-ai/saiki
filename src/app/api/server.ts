@@ -24,10 +24,10 @@ import {
     LLM_REGISTRY,
     getSupportedRoutersForProvider,
     supportsBaseURL,
-} from '@core/ai/llm/registry.js';
+} from '@core/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
-import { validateInputForLLM, createInputValidationError } from '@core/ai/llm/validation.js';
+import { validateInputForLLM, createInputValidationError } from '@core/llm/validation.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
 
 /**

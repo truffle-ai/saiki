@@ -31,12 +31,12 @@ vi.mock('../../logger/index.js', () => ({
     },
 }));
 
-import { createDatabaseHistoryProvider } from '../llm/messages/history/factory.js';
-import { createContextManager } from '../llm/messages/factory.js';
-import { createLLMService } from '../llm/services/factory.js';
-import { createTokenizer } from '../llm/tokenizer/factory.js';
-import { createMessageFormatter } from '../llm/messages/formatters/factory.js';
-import { getEffectiveMaxInputTokens } from '../llm/registry.js';
+import { createDatabaseHistoryProvider } from '../../llm/messages/history/factory.js';
+import { createContextManager } from '../../llm/messages/factory.js';
+import { createLLMService } from '../../llm/services/factory.js';
+import { createTokenizer } from '../../llm/tokenizer/factory.js';
+import { createMessageFormatter } from '../../llm/messages/formatters/factory.js';
+import { getEffectiveMaxInputTokens } from '../../llm/registry.js';
 
 const mockCreateDatabaseHistoryProvider = vi.mocked(createDatabaseHistoryProvider);
 const mockCreateContextManager = vi.mocked(createContextManager);

@@ -2,7 +2,7 @@ import { IMessageFormatter } from './types.js';
 import { LLMContext } from '../../types.js';
 import { InternalMessage } from '../types.js';
 import { getImageData, getFileData, filterMessagesByLLMCapabilities } from '../utils.js';
-import { logger } from '../../../../logger/index.js';
+import { logger } from '../../../logger/index.js';
 
 /**
  * Message formatter for OpenAI's Chat Completion API.

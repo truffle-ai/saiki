@@ -1,5 +1,5 @@
 import { validateModelFileSupport, getAllowedMimeTypes } from './registry.js';
-import { logger } from '../../logger/index.js';
+import { logger } from '../logger/index.js';
 import type { ImageData, FileData } from './messages/types.js';
 
 export interface InputValidationResult {

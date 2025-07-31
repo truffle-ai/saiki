@@ -1,12 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ToolManager } from '../../../tools/tool-manager.js';
+import { ToolManager } from '../../tools/tool-manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
-import { ToolSet } from '../../../tools/types.js';
-import { logger } from '../../../logger/index.js';
+import { ToolSet } from '../../tools/types.js';
+import { logger } from '../../logger/index.js';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel, LLMProvider } from '../registry.js';
 import { ImageData, FileData } from '../messages/types.js';
-import type { SessionEventBus } from '../../../events/index.js';
+import type { SessionEventBus } from '../../events/index.js';
 
 /**
  * Anthropic implementation of LLMService

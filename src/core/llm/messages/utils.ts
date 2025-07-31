@@ -1,6 +1,6 @@
 import { InternalMessage } from './types.js';
 import { ITokenizer } from '../tokenizer/types.js';
-import { logger } from '../../../logger/index.js';
+import { logger } from '../../logger/index.js';
 import { validateModelFileSupport } from '../registry.js';
 import { LLMContext } from '../types.js';
 

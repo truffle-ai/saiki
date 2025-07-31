@@ -8,7 +8,7 @@ import {
     supportsBaseURL,
     requiresBaseURL,
     acceptsAnyModel,
-} from '../ai/llm/registry.js';
+} from '../llm/registry.js';
 
 // (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
 
