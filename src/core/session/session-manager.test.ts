@@ -1,11 +1,11 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SessionManager } from './session-manager.js';
 import { ChatSession } from './chat-session.js';
-import type { ValidatedLLMConfig } from '../../config/schemas.js';
+import type { ValidatedLLMConfig } from '../config/schemas.js';
 
 // Mock dependencies
 vi.mock('./chat-session.js');
-vi.mock('../../logger/index.js');
+vi.mock('../logger/index.js');
 vi.mock('crypto', () => ({
     randomUUID: vi.fn(() => 'mock-uuid-123'),
 }));
@@ -960,7 +960,7 @@ describe('SessionManager', () => {
 
         beforeEach(async () => {
             // Create real storage backends for end-to-end testing
-            const { createStorageBackends } = await import('../../storage/index.js');
+            const { createStorageBackends } = await import('../storage/index.js');
 
             const storageConfig = {
                 cache: { type: 'in-memory' as const },

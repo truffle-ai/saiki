@@ -1,14 +1,14 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { LLMConfig, AgentConfig } from '../../config/schemas.js';
-import * as validationUtils from '../../config/validation-utils.js';
+import type { LLMConfig, AgentConfig } from '../config/schemas.js';
+import * as validationUtils from '../config/validation-utils.js';
 
 // Mock the dependencies
-vi.mock('../../config/validation-utils.js');
-vi.mock('../../logger/index.js');
-vi.mock('../../utils/service-initializer.js');
+vi.mock('../config/validation-utils.js');
+vi.mock('../logger/index.js');
+vi.mock('../utils/service-initializer.js');
 
-import { createAgentServices } from '../../utils/service-initializer.js';
+import { createAgentServices } from '../utils/service-initializer.js';
 const mockCreateAgentServices = vi.mocked(createAgentServices);
 
 const mockValidationUtils = vi.mocked(validationUtils);

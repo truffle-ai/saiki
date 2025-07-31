@@ -1,5 +1,5 @@
 import { InternalTool } from '../types.js';
-import { SearchService } from '../../ai/search/search-service.js';
+import { SearchService } from '../../search/index.js';
 import { createSearchHistoryTool } from './implementations/search-history-tool.js';
 
 /**

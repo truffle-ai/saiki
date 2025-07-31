@@ -1,12 +1,12 @@
 import { randomUUID } from 'crypto';
 import { ChatSession } from './chat-session.js';
 import { PromptManager } from '../systemPrompt/manager.js';
-import { ToolManager } from '../../tools/tool-manager.js';
-import { AgentEventBus } from '../../events/index.js';
-import { logger } from '../../logger/index.js';
-import type { AgentStateManager } from '../../config/agent-state-manager.js';
-import type { ValidatedLLMConfig } from '../../config/schemas.js';
-import type { StorageBackends } from '../../storage/index.js';
+import { ToolManager } from '../tools/tool-manager.js';
+import { AgentEventBus } from '../events/index.js';
+import { logger } from '../logger/index.js';
+import type { AgentStateManager } from '../config/agent-state-manager.js';
+import type { ValidatedLLMConfig } from '../config/schemas.js';
+import type { StorageBackends } from '../storage/index.js';
 
 export interface SessionMetadata {
     createdAt: number;

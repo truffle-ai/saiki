@@ -1,4 +1,4 @@
-import { MCPManager } from '../../mcp/manager.js';
+import { MCPManager } from '../mcp/manager.js';
 
 // Context passed to dynamic contributors
 export interface DynamicContributorContext {

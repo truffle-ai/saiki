@@ -1,12 +1,12 @@
-// src/ai/agent/SaikiAgent.ts
-import { MCPManager } from '../../mcp/manager.js';
-import { ToolManager } from '../../tools/tool-manager.js';
+// src/agent/SaikiAgent.ts
+import { MCPManager } from '../mcp/manager.js';
+import { ToolManager } from '../tools/tool-manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
-import { AgentStateManager } from '../../config/agent-state-manager.js';
+import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
-import { AgentServices } from '../../utils/service-initializer.js';
-import { logger } from '../../logger/index.js';
-import { ValidatedLLMConfig, LLMConfig, McpServerConfig } from '../../config/schemas.js';
+import { AgentServices } from '../utils/service-initializer.js';
+import { logger } from '../logger/index.js';
+import { ValidatedLLMConfig, LLMConfig, McpServerConfig } from '../config/schemas.js';
 import {
     getSupportedProviders,
     getDefaultModelForProvider,
@@ -15,15 +15,15 @@ import {
     LLM_REGISTRY,
     ModelInfo,
 } from '../llm/registry.js';
-import { createAgentServices } from '../../utils/service-initializer.js';
-import type { AgentConfig } from '../../config/schemas.js';
-import { AgentEventBus } from '../../events/index.js';
-import { buildLLMConfig } from '../../config/validation-utils.js';
-import type { IMCPClient } from '../../mcp/types.js';
-import type { ToolSet } from '../../tools/types.js';
+import { createAgentServices } from '../utils/service-initializer.js';
+import type { AgentConfig } from '../config/schemas.js';
+import { AgentEventBus } from '../events/index.js';
+import { buildLLMConfig } from '../config/validation-utils.js';
+import type { IMCPClient } from '../mcp/types.js';
+import type { ToolSet } from '../tools/types.js';
 import { SearchService } from '../search/index.js';
 import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';
-import { getSaikiPath } from '../../utils/path.js';
+import { getSaikiPath } from '../utils/path.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',

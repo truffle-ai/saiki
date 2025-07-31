@@ -24,11 +24,11 @@
 import { MCPManager } from '../mcp/manager.js';
 import { ToolManager } from '../tools/tool-manager.js';
 import { createToolConfirmationProvider } from '../tools/confirmation/factory.js';
-import { PromptManager } from '../ai/systemPrompt/manager.js';
+import { PromptManager } from '../systemPrompt/manager.js';
 import { ConfigManager } from '../config/config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
-import { SessionManager } from '../ai/session/session-manager.js';
-import { SearchService } from '../ai/search/search-service.js';
+import { SessionManager } from '../session/index.js';
+import { SearchService } from '../search/index.js';
 import { dirname, resolve } from 'path';
 import { createStorageBackends, type StorageBackends, StorageManager } from '../storage/index.js';
 import { createAllowedToolsProvider } from '../tools/confirmation/allowed-tools-provider/factory.js';

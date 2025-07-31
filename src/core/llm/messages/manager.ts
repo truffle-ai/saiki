@@ -7,8 +7,8 @@ import { MiddleRemovalStrategy } from './compression/middle-removal.js';
 import { OldestRemovalStrategy } from './compression/oldest-removal.js';
 import { logger } from '../../logger/index.js';
 import { getImageData, countMessagesTokens } from './utils.js';
-import { DynamicContributorContext } from '../../ai/systemPrompt/types.js';
-import { PromptManager } from '../../ai/systemPrompt/manager.js';
+import { DynamicContributorContext } from '../../systemPrompt/types.js';
+import { PromptManager } from '../../systemPrompt/manager.js';
 import { IConversationHistoryProvider } from './history/types.js';
 import { SessionEventBus } from '../../events/index.js';
 /**

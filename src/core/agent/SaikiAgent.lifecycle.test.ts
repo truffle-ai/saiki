@@ -1,14 +1,14 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { AgentConfig } from '../../config/schemas.js';
-import type { AgentServices } from '../../utils/service-initializer.js';
+import type { AgentConfig } from '../config/schemas.js';
+import type { AgentServices } from '../utils/service-initializer.js';
 
 // Mock the createAgentServices function
-vi.mock('../../utils/service-initializer.js', () => ({
+vi.mock('../utils/service-initializer.js', () => ({
     createAgentServices: vi.fn(),
 }));
 
-import { createAgentServices } from '../../utils/service-initializer.js';
+import { createAgentServices } from '../utils/service-initializer.js';
 const mockCreateAgentServices = vi.mocked(createAgentServices);
 
 describe('SaikiAgent Lifecycle Management', () => {

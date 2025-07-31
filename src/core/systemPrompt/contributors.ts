@@ -1,7 +1,7 @@
 import { SystemPromptContributor, DynamicContributorContext } from './types.js';
 import { readFile, stat } from 'fs/promises';
 import { resolve, extname } from 'path';
-import { logger } from '../../logger/index.js';
+import { logger } from '../logger/index.js';
 
 export class StaticContributor implements SystemPromptContributor {
     constructor(
