@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { INTERNAL_TOOL_NAMES } from '../tools/internal-tools/registry.js';
 import {
-    getSupportedProviders,
     getSupportedModels,
     isValidProviderModel,
     getMaxInputTokensForModel,

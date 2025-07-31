@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     LLM_REGISTRY,
+    LLM_PROVIDERS,
     getSupportedProviders,
     getSupportedModels,
     getMaxInputTokensForModel,
@@ -18,9 +19,38 @@ import {
 } from './registry.js';
 import { ModelNotFoundError } from './errors.js';
 import { EffectiveMaxInputTokensError } from './errors.js';
-import { ProviderNotFoundError } from './errors.js';
 
 describe('LLM Registry', () => {
+    describe('Strict Type Validation', () => {
+        it('should handle all valid LLMProvider enum values', () => {
+            // Test that all enum values work correctly with our functions
+            LLM_PROVIDERS.forEach((provider) => {
+                expect(() => getSupportedModels(provider)).not.toThrow();
+                expect(Array.isArray(getSupportedModels(provider))).toBe(true);
+                expect(typeof supportsBaseURL(provider)).toBe('boolean');
+                expect(typeof requiresBaseURL(provider)).toBe('boolean');
+                expect(typeof acceptsAnyModel(provider)).toBe('boolean');
+            });
+        });
+
+        it('should maintain consistency between LLM_PROVIDERS and LLM_REGISTRY', () => {
+            // Verify that our const array and registry have the same keys
+            const registryKeys = Object.keys(LLM_REGISTRY).sort();
+            const providersArray = [...LLM_PROVIDERS].sort();
+            expect(registryKeys).toEqual(providersArray);
+        });
+    });
+
+    describe('Model Case Handling', () => {
+        it('should handle model names case-insensitively while keeping provider names strict', () => {
+            // Models can be case-insensitive, but providers must be exact
+            expect(getMaxInputTokensForModel('openai', 'O4-MINI')).toBe(200000);
+            expect(getMaxInputTokensForModel('openai', 'o4-mini')).toBe(200000);
+            expect(isValidProviderModel('openai', 'O4-MINI')).toBe(true);
+            expect(isValidProviderModel('openai', 'o4-mini')).toBe(true);
+        });
+    });
+
     it('should return all provider keys', () => {
         const providers = getSupportedProviders();
         expect(providers).toEqual(Object.keys(LLM_REGISTRY));
@@ -31,45 +61,20 @@ describe('LLM Registry', () => {
         expect(getSupportedModels('openai')).toEqual(expected);
     });
 
-    it('should be case-insensitive for getSupportedModels', () => {
-        expect(getSupportedModels('OpenAI')).toEqual(getSupportedModels('openai'));
-    });
-
-    it('should return empty array for unknown provider', () => {
-        expect(getSupportedModels('foo')).toEqual([]);
-    });
-
     it('should return correct maxInputTokens for valid provider and model', () => {
         expect(getMaxInputTokensForModel('openai', 'o4-mini')).toBe(200000);
-    });
-
-    it('should be case-insensitive for getMaxInputTokensForModel', () => {
-        expect(getMaxInputTokensForModel('OpenAI', 'O4-MINI')).toBe(200000);
-    });
-
-    it('should throw ProviderNotFoundError for unknown provider in getMaxInputTokensForModel', () => {
-        expect(() => getMaxInputTokensForModel('foo', 'o4-mini')).toThrow(ProviderNotFoundError);
     });
 
     it('should throw ModelNotFoundError for unknown model in getMaxInputTokensForModel', () => {
         expect(() => getMaxInputTokensForModel('openai', 'foo')).toThrow(ModelNotFoundError);
     });
 
-    it('should return true if provider or model is missing in isValidProviderModel', () => {
-        expect(isValidProviderModel(undefined, 'some')).toBe(true);
-        expect(isValidProviderModel('some', undefined)).toBe(true);
+    it('should return true if model is missing in isValidProviderModel', () => {
+        expect(isValidProviderModel('openai', undefined)).toBe(true);
     });
 
     it('should return true for valid provider-model combinations', () => {
         expect(isValidProviderModel('openai', 'o4-mini')).toBe(true);
-    });
-
-    it('should be case-insensitive for isValidProviderModel', () => {
-        expect(isValidProviderModel('OpenAI', 'O4-MINI')).toBe(true);
-    });
-
-    it('should return false for invalid provider in isValidProviderModel', () => {
-        expect(isValidProviderModel('foo', 'o4-mini')).toBe(false);
     });
 
     it('should return false for invalid model in isValidProviderModel', () => {
@@ -160,10 +165,6 @@ describe('LLM Registry', () => {
         it('returns false for anthropic provider', () => {
             expect(supportsBaseURL('anthropic')).toBe(false);
         });
-
-        it('returns false for unknown provider', () => {
-            expect(supportsBaseURL('unknown')).toBe(false);
-        });
     });
 
     describe('requiresBaseURL', () => {
@@ -174,10 +175,6 @@ describe('LLM Registry', () => {
         it('returns false for openai provider', () => {
             expect(requiresBaseURL('openai')).toBe(false);
         });
-
-        it('returns false for unknown provider', () => {
-            expect(requiresBaseURL('unknown')).toBe(false);
-        });
     });
 
     describe('acceptsAnyModel', () => {
@@ -187,10 +184,6 @@ describe('LLM Registry', () => {
 
         it('returns false for openai provider', () => {
             expect(acceptsAnyModel('openai')).toBe(false);
-        });
-
-        it('returns false for unknown provider', () => {
-            expect(acceptsAnyModel('unknown')).toBe(false);
         });
     });
 
@@ -273,19 +266,6 @@ describe('File support functionality', () => {
             expect(getSupportedFileTypesForModel('xai', 'grok-3')).toEqual([]);
             expect(getSupportedFileTypesForModel('cohere', 'command-r')).toEqual([]);
         });
-
-        it('should throw error for unknown provider', () => {
-            expect(() => getSupportedFileTypesForModel('unknown-provider', 'any-model')).toThrow(
-                "Provider 'unknown-provider' not found in LLM registry"
-            );
-        });
-
-        it('should be case-sensitive for provider names but case-insensitive for model names', () => {
-            expect(() => getSupportedFileTypesForModel('OpenAI', 'gpt-4o')).toThrow(
-                "Provider 'OpenAI' not found in LLM registry"
-            );
-            expect(getSupportedFileTypesForModel('openai', 'GPT-4O')).toEqual(['pdf']);
-        });
     });
 
     describe('Model-aware file support', () => {
@@ -304,12 +284,6 @@ describe('File support functionality', () => {
                 );
             });
 
-            it('should throw error for unknown provider', () => {
-                expect(() =>
-                    getSupportedFileTypesForModel('unknown-provider', 'any-model')
-                ).toThrow("Provider 'unknown-provider' not found in LLM registry");
-            });
-
             it('should return empty array for openai-compatible provider with any model (custom endpoints)', () => {
                 expect(getSupportedFileTypesForModel('openai-compatible', 'custom-model')).toEqual(
                     []
@@ -320,16 +294,6 @@ describe('File support functionality', () => {
                 expect(
                     getSupportedFileTypesForModel('openai-compatible', 'any-random-name')
                 ).toEqual([]);
-            });
-
-            it('should be case-sensitive for provider names but case-insensitive for model names', () => {
-                expect(() =>
-                    getSupportedFileTypesForModel('OpenAI', 'gpt-4o-audio-preview')
-                ).toThrow("Provider 'OpenAI' not found in LLM registry");
-                expect(getSupportedFileTypesForModel('openai', 'GPT-4O-AUDIO-PREVIEW')).toEqual([
-                    'pdf',
-                    'audio',
-                ]);
             });
         });
 
@@ -357,10 +321,7 @@ describe('File support functionality', () => {
                 expect(modelSupportsFileType('openai-compatible', 'any-model', 'pdf')).toBe(false);
             });
 
-            it('should throw error for unknown model or provider', () => {
-                expect(() => modelSupportsFileType('unknown-provider', 'any-model', 'pdf')).toThrow(
-                    "Provider 'unknown-provider' not found in LLM registry"
-                );
+            it('should throw error for unknown model', () => {
                 expect(() => modelSupportsFileType('openai', 'unknown-model', 'pdf')).toThrow(
                     "Model 'unknown-model' not found in provider 'openai'"
                 );

@@ -1,12 +1,12 @@
 import { describe, test, it, expect, vi, beforeEach } from 'vitest';
 import { buildLLMConfig, validateMcpServerConfig } from './validation-utils.js';
-import type { LLMConfig, McpServerConfig } from './schemas.js';
+import type { ValidatedLLMConfig, McpServerConfig } from './schemas.js';
 
 // Only mock logger since it has side effects
 vi.mock('../logger/index.js');
 
 describe('buildLLMConfig', () => {
-    const baseLLMConfig: LLMConfig = {
+    const baseLLMConfig: ValidatedLLMConfig = {
         provider: 'openai',
         model: 'gpt-4o',
         apiKey: 'sk-1234567890abcdef',

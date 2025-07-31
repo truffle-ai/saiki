@@ -22,6 +22,7 @@ import os from 'os';
 import { resolveBundledScript } from '@core/index.js';
 import {
     LLM_REGISTRY,
+    LLM_PROVIDERS,
     getSupportedRoutersForProvider,
     supportsBaseURL,
 } from '@core/llm/registry.js';
@@ -586,15 +587,16 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 }
             > = {};
 
-            for (const [providerKey, providerInfo] of Object.entries(LLM_REGISTRY)) {
+            for (const provider of LLM_PROVIDERS) {
+                const providerInfo = LLM_REGISTRY[provider];
                 // Convert provider key to display name
-                const displayName = providerKey.charAt(0).toUpperCase() + providerKey.slice(1);
+                const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
 
-                providers[providerKey] = {
+                providers[provider] = {
                     name: displayName,
                     models: providerInfo.models.map((model) => model.name),
-                    supportedRouters: getSupportedRoutersForProvider(providerKey),
-                    supportsBaseURL: supportsBaseURL(providerKey),
+                    supportedRouters: getSupportedRoutersForProvider(provider),
+                    supportsBaseURL: supportsBaseURL(provider),
                 };
             }
 

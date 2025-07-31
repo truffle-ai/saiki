@@ -19,7 +19,6 @@ import type {
     LLMSwitchInput,
 } from './schemas.js';
 import { LLMConfigSchema, McpServerConfigSchema } from './schemas.js';
-import type { AgentStateManager } from './agent-state-manager.js';
 import { resolveApiKeyForProvider } from '../utils/api-key-resolver.js';
 import { logger } from '../logger/index.js';
 import { ZodError } from 'zod';

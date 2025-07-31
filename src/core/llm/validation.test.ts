@@ -269,7 +269,7 @@ describe('validateInputForLLM', () => {
                         filename: 'document.pdf',
                     },
                 },
-                { provider: 'unknown-provider', model: 'unknown-model' }
+                { provider: 'openai', model: 'unknown-model' }
             );
 
             expect(result.isValid).toBe(false);
@@ -368,7 +368,7 @@ describe('createInputValidationError', () => {
             },
         };
 
-        const config = { provider: 'openai', model: 'gpt-3.5-turbo' };
+        const config = { provider: 'openai' as const, model: 'gpt-3.5-turbo' };
 
         const result = createInputValidationError(validation, config);
 
@@ -397,7 +397,7 @@ describe('createInputValidationError', () => {
             errors: ['Text input cannot be empty'],
         };
 
-        const config = { provider: 'openai', model: 'gpt-4' };
+        const config = { provider: 'openai' as const, model: 'gpt-4' };
 
         const result = createInputValidationError(validation, config);
 
