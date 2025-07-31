@@ -9,9 +9,9 @@ import { ToolConfirmationProvider } from './confirmation/types.js';
 import { logger } from '../logger/index.js';
 
 /**
- * Options for ToolManager configuration
+ * Options for internal tools configuration in ToolManager
  */
-export interface ToolManagerOptions {
+export interface InternalToolsOptions {
     internalToolsServices?: InternalToolsServices;
     internalToolsConfig?: InternalToolsConfig;
 }
@@ -38,10 +38,9 @@ export class ToolManager {
     private internalToolsProvider?: InternalToolsProvider;
     private confirmationProvider: ToolConfirmationProvider;
 
-    // Tool conflict resolution - only internal vs MCP conflicts now
-    private static readonly MCP_PREFIX = 'mcp';
-    private static readonly INTERNAL_PREFIX = 'internal';
-    private static readonly SOURCE_DELIMITER = '--';
+    // Tool source prefixing - ALL tools get prefixed by source
+    private static readonly MCP_TOOL_PREFIX = 'mcp--';
+    private static readonly INTERNAL_TOOL_PREFIX = 'internal--';
 
     // Tool caching for performance
     private toolsCache: ToolSet = {};
@@ -50,7 +49,7 @@ export class ToolManager {
     constructor(
         mcpManager: MCPManager,
         confirmationProvider: ToolConfirmationProvider,
-        options?: ToolManagerOptions
+        options?: InternalToolsOptions
     ) {
         this.mcpManager = mcpManager;
         this.confirmationProvider = confirmationProvider;
@@ -98,7 +97,8 @@ export class ToolManager {
     }
 
     /**
-     * Build all tools from sources with conflict resolution - NO normalization
+     * Build all tools from sources with universal prefixing
+     * ALL tools get prefixed by their source - no exceptions
      */
     private async buildAllTools(): Promise<ToolSet> {
         const allTools: ToolSet = {};
@@ -116,32 +116,32 @@ export class ToolManager {
             internalTools = {};
         }
 
-        // Add internal tools first (highest precedence)
-        Object.assign(allTools, internalTools);
+        // Add ALL internal tools with prefix
+        for (const [toolName, toolDef] of Object.entries(internalTools)) {
+            const qualifiedName = `${ToolManager.INTERNAL_TOOL_PREFIX}${toolName}`;
+            allTools[qualifiedName] = {
+                ...toolDef,
+                name: qualifiedName,
+                description: `${toolDef.description || 'No description provided'} (internal tool)`,
+            };
+        }
 
-        // Add MCP tools with conflict resolution
+        // Add ALL MCP tools with prefix
         for (const [toolName, toolDef] of Object.entries(mcpTools)) {
-            if (internalTools[toolName]) {
-                // Conflict: prefix MCP tool
-                const qualifiedName = `${ToolManager.MCP_PREFIX}${ToolManager.SOURCE_DELIMITER}${toolName}`;
-                allTools[qualifiedName] = {
-                    ...toolDef,
-                    name: qualifiedName,
-                    description: `${toolDef.description || 'No description provided'} (via MCP servers)`,
-                };
-            } else {
-                // No conflict: add directly
-                allTools[toolName] = toolDef;
-            }
+            const qualifiedName = `${ToolManager.MCP_TOOL_PREFIX}${toolName}`;
+            allTools[qualifiedName] = {
+                ...toolDef,
+                name: qualifiedName,
+                description: `${toolDef.description || 'No description provided'} (via MCP servers)`,
+            };
         }
 
         const totalTools = Object.keys(allTools).length;
         const mcpCount = Object.keys(mcpTools).length;
         const internalCount = Object.keys(internalTools).length;
-        const conflictCount = Object.keys(internalTools).filter((name) => mcpTools[name]).length;
 
         logger.debug(
-            `🔧 Unified tool discovery: ${totalTools} total tools (${mcpCount} MCP, ${internalCount} internal, ${conflictCount} conflicts)`
+            `🔧 Unified tool discovery: ${totalTools} total tools (${mcpCount} MCP → ${ToolManager.MCP_TOOL_PREFIX}*, ${internalCount} internal → ${ToolManager.INTERNAL_TOOL_PREFIX}*)`
         );
 
         return allTools;
@@ -163,8 +163,8 @@ export class ToolManager {
     }
 
     /**
-     * Execute a tool by routing to the appropriate source
-     * This is the single interface the LLM uses to execute tools
+     * Execute a tool by routing based on universal prefix
+     * ALL tools must have source prefix - no exceptions
      */
     async executeTool(
         toolName: string,
@@ -174,62 +174,51 @@ export class ToolManager {
         logger.debug(`🔧 Tool execution: '${toolName}'`);
         logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
 
-        // Handle explicit MCP prefix (for conflicts)
-        if (toolName.startsWith('mcp--')) {
-            const actualToolName = toolName.substring(5); // Remove 'mcp--'
-            logger.debug(`🎯 Explicit MCP routing: '${toolName}' -> '${actualToolName}'`);
+        // Route to MCP tools
+        if (toolName.startsWith(ToolManager.MCP_TOOL_PREFIX)) {
+            const actualToolName = toolName.substring(ToolManager.MCP_TOOL_PREFIX.length);
+            logger.debug(`🎯 MCP routing: '${toolName}' -> '${actualToolName}'`);
             return await this.mcpManager.executeTool(actualToolName, args, sessionId);
         }
 
-        // Handle explicit internal prefix (for completeness)
-        if (toolName.startsWith('internal--')) {
-            const actualToolName = toolName.substring(10); // Remove 'internal--'
+        // Route to internal tools
+        if (toolName.startsWith(ToolManager.INTERNAL_TOOL_PREFIX)) {
+            const actualToolName = toolName.substring(ToolManager.INTERNAL_TOOL_PREFIX.length);
             if (!this.internalToolsProvider) {
                 throw new Error(`Internal tools not initialized, cannot execute: ${toolName}`);
             }
-            logger.debug(`🎯 Explicit internal routing: '${toolName}' -> '${actualToolName}'`);
+            logger.debug(`🎯 Internal routing: '${toolName}' -> '${actualToolName}'`);
             return await this.internalToolsProvider.executeTool(actualToolName, args, sessionId);
         }
 
-        // Auto-detection priority: Internal → MCP
-        if (this.internalToolsProvider?.hasTool(toolName)) {
-            logger.debug(`🎯 Auto-routing to internal: '${toolName}'`);
-            return await this.internalToolsProvider.executeTool(toolName, args, sessionId);
-        }
-
-        if (this.mcpManager.getToolClient(toolName)) {
-            logger.debug(`🎯 Auto-routing to MCP: '${toolName}'`);
-            return await this.mcpManager.executeTool(toolName, args, sessionId);
-        }
-
-        // Tool not found in any source
+        // Tool doesn't have proper prefix
         const stats = await this.getToolStats();
-        logger.error(`❌ Tool not found in any source: ${toolName}`);
-        logger.debug(`Available sources: ${stats.mcp} MCP tools, ${stats.internal} internal tools`);
+        logger.error(
+            `❌ Tool missing source prefix: '${toolName}' (expected '${ToolManager.MCP_TOOL_PREFIX}*' or '${ToolManager.INTERNAL_TOOL_PREFIX}*')`
+        );
+        logger.debug(`Available: ${stats.mcp} MCP tools, ${stats.internal} internal tools`);
 
-        throw new Error(`Tool not found: ${toolName}`);
+        throw new Error(`Tool not found or missing source prefix: ${toolName}`);
     }
 
     /**
-     * Check if a tool exists across all sources
+     * Check if a tool exists (must have proper source prefix)
      */
     async hasTool(toolName: string): Promise<boolean> {
-        // Handle explicit MCP prefix
-        if (toolName.startsWith('mcp--')) {
-            const actualToolName = toolName.substring(5);
+        // Check MCP tools
+        if (toolName.startsWith(ToolManager.MCP_TOOL_PREFIX)) {
+            const actualToolName = toolName.substring(ToolManager.MCP_TOOL_PREFIX.length);
             return this.mcpManager.getToolClient(actualToolName) !== undefined;
         }
 
-        // Handle explicit internal prefix
-        if (toolName.startsWith('internal--')) {
-            const actualToolName = toolName.substring(10);
+        // Check internal tools
+        if (toolName.startsWith(ToolManager.INTERNAL_TOOL_PREFIX)) {
+            const actualToolName = toolName.substring(ToolManager.INTERNAL_TOOL_PREFIX.length);
             return this.internalToolsProvider?.hasTool(actualToolName) ?? false;
         }
 
-        // Auto-detection: check both sources
-        const hasInternal = this.internalToolsProvider?.hasTool(toolName) ?? false;
-        const hasMcp = this.mcpManager.getToolClient(toolName) !== undefined;
-        return hasInternal || hasMcp;
+        // Tool without proper prefix doesn't exist
+        return false;
     }
 
     /**
@@ -239,36 +228,33 @@ export class ToolManager {
         total: number;
         mcp: number;
         internal: number;
-        conflicts: number;
     }> {
         const mcpTools = await this.mcpManager.getAllTools();
         const internalTools = this.internalToolsProvider?.getAllTools() || {};
-        const conflicts = Object.keys(internalTools).filter((name) => mcpTools[name]).length;
 
-        // Calculate total as unique tool keys to avoid double-counting
-        const allToolKeys = new Set([...Object.keys(mcpTools), ...Object.keys(internalTools)]);
+        const mcpCount = Object.keys(mcpTools).length;
+        const internalCount = Object.keys(internalTools).length;
 
         return {
-            total: allToolKeys.size,
-            mcp: Object.keys(mcpTools).length,
-            internal: Object.keys(internalTools).length,
-            conflicts,
+            total: mcpCount + internalCount, // No conflicts with universal prefixing
+            mcp: mcpCount,
+            internal: internalCount,
         };
     }
 
     /**
-     * Get the source of a tool (mcp, internal, or auto)
+     * Get the source of a tool (mcp, internal, or unknown)
      * @param toolName The name of the tool to check
      * @returns The source of the tool
      */
-    getToolSource(toolName: string): 'mcp' | 'internal' | 'auto' {
-        if (toolName.startsWith('mcp--')) {
+    getToolSource(toolName: string): 'mcp' | 'internal' | 'unknown' {
+        if (toolName.startsWith(ToolManager.MCP_TOOL_PREFIX)) {
             return 'mcp';
         }
-        if (toolName.startsWith('internal--')) {
+        if (toolName.startsWith(ToolManager.INTERNAL_TOOL_PREFIX)) {
             return 'internal';
         }
-        return 'auto';
+        return 'unknown';
     }
 
     /**

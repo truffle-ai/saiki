@@ -23,4 +23,4 @@ export {
 } from './internal-tools-provider.js';
 
 // Unified tool manager (main interface for LLM)
-export { ToolManager, type ToolManagerOptions } from './tool-manager.js';
+export { ToolManager, type InternalToolsOptions } from './tool-manager.js';

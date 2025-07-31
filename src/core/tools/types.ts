@@ -3,6 +3,7 @@
 // ============================================================================
 
 import type { JSONSchema7 } from 'json-schema';
+import type { ZodSchema } from 'zod';
 
 /**
  * Context passed to tool execution
@@ -27,7 +28,7 @@ export interface InternalTool {
     description: string;
 
     /** Zod schema defining the input parameters */
-    inputSchema: any; // Using any for flexibility since we don't import zod here
+    inputSchema: ZodSchema; // Proper Zod schema typing
 
     /** The actual function that executes the tool */
     execute: (input: any, context?: ToolExecutionContext) => Promise<any> | any;
