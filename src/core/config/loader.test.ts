@@ -8,8 +8,6 @@ import {
     ConfigFileReadError,
     ConfigParseError,
 } from '@core/error/index.js';
-import dotenv from 'dotenv';
-dotenv.config();
 
 const tmpFile = path.resolve(process.cwd(), 'src/core/config/temp-config.yml');
 
