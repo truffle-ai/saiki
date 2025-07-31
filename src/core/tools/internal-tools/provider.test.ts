@@ -165,7 +165,7 @@ describe('InternalToolsProvider', () => {
             const toolSet = provider.getAllTools();
 
             // Should return fallback schema
-            expect(toolSet.search_history.parameters).toEqual({
+            expect(toolSet.search_history?.parameters).toEqual({
                 type: 'object',
                 properties: {},
             });
@@ -274,7 +274,7 @@ describe('InternalToolsProvider', () => {
         it('should only register tools when all required services are available', async () => {
             const partialServices: InternalToolsServices = {
                 // Only has searchService, no other services
-                searchService: mockServices.searchService,
+                searchService: mockServices.searchService!,
             };
 
             const provider = new InternalToolsProvider(
@@ -347,8 +347,6 @@ describe('InternalToolsProvider', () => {
 
     describe('Error Handling', () => {
         it('should handle initialization failures gracefully', async () => {
-            const { logger } = await import('../../logger/index.js');
-
             // Test with empty services to ensure error handling works
             const emptyServices: InternalToolsServices = {};
             const provider = new InternalToolsProvider(emptyServices, confirmationProvider, config);

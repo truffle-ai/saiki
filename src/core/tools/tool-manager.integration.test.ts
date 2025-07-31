@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ToolManager } from './tool-manager.js';
 import { MCPManager } from '../client/manager.js';
-import { InternalToolsProvider } from './internal-tools/provider.js';
 import { NoOpConfirmationProvider } from './confirmation/noop-confirmation-provider.js';
 import { ToolExecutionDeniedError } from './confirmation/errors.js';
-import { SearchService } from '../ai/search/search-service.js';
 import type { InternalToolsServices } from './internal-tools/registry.js';
 import type { InternalToolsConfig } from '../config/schemas.js';
 import type { IMCPClient } from '../client/types.js';
@@ -135,8 +133,8 @@ describe('ToolManager Integration Tests', () => {
 
             expect(allTools['mcp--file_read']).toBeDefined();
             expect(allTools['internal--search_history']).toBeDefined();
-            expect(allTools['mcp--file_read'].description).toContain('(via MCP servers)');
-            expect(allTools['internal--search_history'].description).toContain('(internal tool)');
+            expect(allTools['mcp--file_read']?.description).toContain('(via MCP servers)');
+            expect(allTools['internal--search_history']?.description).toContain('(internal tool)');
 
             // Execute both types
             const mcpResult = await toolManager.executeTool('mcp--file_read', { path: '/test' });
