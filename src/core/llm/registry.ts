@@ -356,15 +356,6 @@ export function isValidRouter(router: string): boolean {
 }
 
 /**
- * Validates if a provider exists in the registry.
- * @param provider The provider name to validate.
- * @returns True if the provider exists, false otherwise.
- */
-export function isValidProvider(provider: string): boolean {
-    return provider.toLowerCase() in LLM_REGISTRY;
-}
-
-/**
  * Gets the supported file types for a specific model.
  * @param provider The name of the provider.
  * @param model The name of the model.

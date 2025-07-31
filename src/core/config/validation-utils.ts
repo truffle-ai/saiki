@@ -304,7 +304,7 @@ function resolveRouter(
 async function resolveApiKey(
     updates: LLMSwitchInput,
     currentConfig: LLMConfig,
-    provider: string,
+    provider: LLMProvider,
     errors: ValidationError[],
     warnings: string[]
 ): Promise<string> {

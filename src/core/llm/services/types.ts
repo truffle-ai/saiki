@@ -1,6 +1,7 @@
 import { LanguageModelV1 } from 'ai';
 import { ToolSet } from '../../tools/types.js';
 import { ImageData, FileData } from '../messages/types.js';
+import { LLMProvider } from '../registry.js';
 
 /**
  * Core interface for LLM service implementations
@@ -35,7 +36,7 @@ export interface ILLMService {
  */
 export type LLMServiceConfig = {
     router: string;
-    provider: string;
+    provider: LLMProvider;
     model: string | LanguageModelV1;
     configuredMaxInputTokens?: number | null;
     modelMaxInputTokens?: number | null;

@@ -380,8 +380,8 @@ export class ChatSession {
     public async switchLLM(newLLMConfig: ValidatedLLMConfig): Promise<void> {
         try {
             // Update ContextManager configuration first
-            const provider = newLLMConfig.provider.toLowerCase();
-            const model = newLLMConfig.model.toLowerCase();
+            const provider = newLLMConfig.provider;
+            const model = newLLMConfig.model;
             const router = newLLMConfig.router;
 
             // Create new tokenizer and formatter if provider/router changed

@@ -3,8 +3,9 @@ import { VercelMessageFormatter } from './vercel.js';
 import { OpenAIMessageFormatter } from './openai.js';
 import { AnthropicMessageFormatter } from './anthropic.js';
 import { logger } from '../../../logger/index.js';
+import { LLMProvider } from '../../registry.js';
 
-export function createMessageFormatter(provider: string, router: string): IMessageFormatter {
+export function createMessageFormatter(provider: LLMProvider, router: string): IMessageFormatter {
     if (router === 'vercel') {
         return new VercelMessageFormatter();
     } else if (router === 'in-built') {

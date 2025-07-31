@@ -3,6 +3,7 @@ import { OpenAITokenizer } from './openai.js';
 import { AnthropicTokenizer } from './anthropic.js';
 import { GoogleTokenizer } from './google.js';
 import { DefaultTokenizer } from './default.js';
+import { LLMProvider } from '../registry.js';
 
 /**
  * Creates the appropriate tokenizer for the specified provider and model
@@ -10,8 +11,8 @@ import { DefaultTokenizer } from './default.js';
  * @param model The specific model name (used by some tokenizers)
  * @returns An appropriate tokenizer implementation, or DefaultTokenizer if no specific implementation exists
  */
-export function createTokenizer(provider: string, model: string): ITokenizer {
-    switch (provider.toLowerCase()) {
+export function createTokenizer(provider: LLMProvider, model: string): ITokenizer {
+    switch (provider) {
         case 'openai':
             // OpenAI tokenizer might depend on the specific model
             return new OpenAITokenizer(model);

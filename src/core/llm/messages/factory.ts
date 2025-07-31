@@ -30,16 +30,13 @@ export function createContextManager(
     historyProvider: IConversationHistoryProvider,
     sessionId: string
 ): ContextManager {
-    const provider = config.provider.toLowerCase();
-    const model = config.model.toLowerCase();
+    const tokenizer = createTokenizer(config.provider, config.model);
+    logger.debug(`Tokenizer created for ${config.provider}/${config.model}`);
 
-    const tokenizer = createTokenizer(provider, model);
-    logger.debug(`Tokenizer created for ${provider}/${model}`);
-
-    const formatter = createMessageFormatter(provider, router);
+    const formatter = createMessageFormatter(config.provider, router);
     const effectiveMaxInputTokens = getEffectiveMaxInputTokens(config);
     logger.debug(
-        `Creating ContextManager for ${provider}/${model} using ${router} router with maxInputTokens: ${effectiveMaxInputTokens}`
+        `Creating ContextManager for ${config.provider}/${config.model} using ${router} router with maxInputTokens: ${effectiveMaxInputTokens}`
     );
     return new ContextManager(
         formatter,
