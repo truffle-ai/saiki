@@ -78,7 +78,7 @@ export class AnthropicService implements ILLMService {
                 };
 
                 const llmContext = {
-                    provider: 'anthropic' as LLMProvider,
+                    provider: 'anthropic' as const,
                     model: this.model,
                 };
 
