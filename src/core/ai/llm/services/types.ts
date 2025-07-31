@@ -1,5 +1,5 @@
 import { LanguageModelV1 } from 'ai';
-import { ToolSet } from '../../types.js';
+import { ToolSet } from '../../../tools/types.js';
 import { ImageData, FileData } from '../messages/types.js';
 
 /**

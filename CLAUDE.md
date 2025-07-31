@@ -33,6 +33,17 @@
 ### Import Requirements
 - **All imports must end with `.js`** for ES module compatibility
 
+### Module Organization
+- **Selective index.ts strategy** - Only create index.ts files at logical module boundaries that represent cohesive public APIs
+- **✅ DO**: Add index.ts for main entry points and modules that export types/interfaces used by external consumers
+- **❌ DON'T**: Add index.ts for purely internal implementation folders
+- **Direct imports preferred** - Import directly from source files rather than through re-export chains for internal usage
+- **Avoid wildcard exports** - Prefer explicit named exports (`export { Type1, Type2 }`) over `export *` to improve tree-shaking and make dependencies explicit
+- **Watch for mega barrels** - If a barrel exports >20 symbols or pulls from >10 files, consider splitting into thematic sub-barrels with subpath exports
+- **Clear API boundaries** - index.ts files mark what's public vs internal implementation
+
+**TODO**: Current codebase has violations of these rules (wildcard exports in `src/core/index.ts`, potential mega barrel in events) that need refactoring.
+
 ### Logging Standards
 - **Use template literals** - `logger.info(\`Server running at \${url}\`)`
 - **No comma separation** - Never use `logger.error('Failed:', error)`

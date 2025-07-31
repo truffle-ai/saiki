@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InternalToolsProvider, type InternalToolsConfig } from './internal-tools-provider.js';
-import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
+import { NoOpConfirmationProvider } from './confirmation/noop-confirmation-provider.js';
 import { SearchService } from '../ai/search/search-service.js';
 
 /**

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ToolManager } from '../../../tools/tool-manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
-import { ToolSet } from '../../types.js';
+import { ToolSet } from '../../../tools/types.js';
 import { logger } from '../../../logger/index.js';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';

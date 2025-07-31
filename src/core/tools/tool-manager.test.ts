@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToolManager } from './tool-manager.js';
-import { NoOpConfirmationProvider } from '../client/tool-confirmation/noop-confirmation-provider.js';
-import type { ToolManagerToolSet } from './types.js';
+import { NoOpConfirmationProvider } from './confirmation/noop-confirmation-provider.js';
+import type { ToolSet } from './types.js';
 
 // Mock MCPManager
 class MockMCPManager {
@@ -11,7 +11,7 @@ class MockMCPManager {
         this.tools = tools;
     }
 
-    async getAllTools(): Promise<ToolManagerToolSet> {
+    async getAllTools(): Promise<ToolSet> {
         return this.tools;
     }
 
@@ -29,9 +29,9 @@ class MockMCPManager {
 
 // Mock InternalToolsProvider
 class MockInternalToolsProvider {
-    private tools: ToolManagerToolSet = {};
+    private tools: ToolSet = {};
 
-    constructor(tools: ToolManagerToolSet = {}) {
+    constructor(tools: ToolSet = {}) {
         this.tools = tools;
     }
 
@@ -50,7 +50,7 @@ class MockInternalToolsProvider {
         return { result: `INTERNAL:${toolName}`, args, sessionId };
     }
 
-    getAllTools(): ToolManagerToolSet {
+    getAllTools(): ToolSet {
         return this.tools;
     }
 

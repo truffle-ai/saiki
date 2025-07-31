@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MCPManager } from './manager.js';
 import { IMCPClient } from './types.js';
-import { NoOpConfirmationProvider } from './tool-confirmation/noop-confirmation-provider.js';
+import { NoOpConfirmationProvider } from '../tools/confirmation/noop-confirmation-provider.js';
 
 // Mock client for testing
 class MockMCPClient implements IMCPClient {

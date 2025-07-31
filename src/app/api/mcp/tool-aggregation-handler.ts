@@ -3,7 +3,7 @@ import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { MCPManager } from '@core/client/manager.js';
 import { logger } from '@core/index.js';
 import { ServerConfigs } from '@core/config/schemas.js';
-import { NoOpConfirmationProvider } from '@core/client/tool-confirmation/noop-confirmation-provider.js';
+import { NoOpConfirmationProvider } from '@core/tools/confirmation/noop-confirmation-provider.js';
 import { jsonSchemaToZodShape } from '@core/utils/index.js';
 
 /**

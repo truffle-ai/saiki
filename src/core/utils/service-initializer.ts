@@ -24,7 +24,7 @@
 import { MCPManager } from '../client/manager.js';
 import { ToolManager } from '../tools/tool-manager.js';
 import { InternalToolsProvider } from '../tools/internal-tools-provider.js';
-import { createToolConfirmationProvider } from '../client/tool-confirmation/factory.js';
+import { createToolConfirmationProvider } from '../tools/confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { ConfigManager } from '../config/config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
@@ -32,7 +32,7 @@ import { SessionManager } from '../ai/session/session-manager.js';
 import { SearchService } from '../ai/search/search-service.js';
 import { dirname, resolve } from 'path';
 import { createStorageBackends, type StorageBackends, StorageManager } from '../storage/index.js';
-import { createAllowedToolsProvider } from '../client/tool-confirmation/allowed-tools-provider/factory.js';
+import { createAllowedToolsProvider } from '../tools/confirmation/allowed-tools-provider/factory.js';
 import { logger } from '../logger/index.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { AgentEventBus } from '../events/index.js';

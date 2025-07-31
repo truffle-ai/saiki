@@ -2,14 +2,14 @@ import { generateText, LanguageModelV1, streamText } from 'ai';
 import { ToolManager } from '../../../tools/tool-manager.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../logger/index.js';
-import { ToolSet } from '../../types.js';
+import { ToolSet } from '../../../tools/types.js';
 import { ToolSet as VercelToolSet, jsonSchema } from 'ai';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData, FileData } from '../messages/types.js';
 import { ModelNotFoundError } from '../errors.js';
 import type { SessionEventBus } from '../../../events/index.js';
-import { ToolExecutionDeniedError } from '../../../client/tool-confirmation/errors.js';
+import { ToolExecutionDeniedError } from '../../../tools/confirmation/errors.js';
 
 /**
  * Vercel AI SDK implementation of LLMService

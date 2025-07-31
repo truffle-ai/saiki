@@ -2,11 +2,11 @@ import { MCPClient } from './mcp-client.js';
 import { ServerConfigs, McpServerConfig } from '../config/schemas.js';
 import { logger } from '../logger/index.js';
 import { IMCPClient } from './types.js';
-import { ToolConfirmationProvider } from './tool-confirmation/types.js';
-import { NoOpConfirmationProvider } from './tool-confirmation/noop-confirmation-provider.js';
-import { ToolSet } from '../ai/types.js';
+import { ToolSet } from '../tools/types.js';
+import { ToolConfirmationProvider } from '../tools/confirmation/types.js';
+import { NoOpConfirmationProvider } from '../tools/confirmation/noop-confirmation-provider.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
-import { ToolExecutionDeniedError } from './tool-confirmation/errors.js';
+import { ToolExecutionDeniedError } from '../tools/confirmation/errors.js';
 
 /**
  * Centralized manager for Multiple Model Context Protocol (MCP) servers.

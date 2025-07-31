@@ -1,15 +1,7 @@
 import { McpServerConfig } from '../config/schemas.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { ToolSet } from '../ai/types.js';
+import { ToolSet, ToolProvider } from '../tools/types.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
-
-/**
- * Interface for any provider of tools
- */
-export interface ToolProvider {
-    getTools(): Promise<ToolSet>;
-    callTool(toolName: string, args: Record<string, unknown>): Promise<unknown>;
-}
 
 /**
  * Interface for MCP clients specifically, that can provide tools

@@ -1,7 +1,7 @@
 import { MCPManager } from '../client/manager.js';
 import { InternalToolsProvider } from './internal-tools-provider.js';
-import { ToolManagerToolSet, ToolParameters, RawToolDefinition } from './types.js';
-import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
+import { ToolSet, ToolParameters, RawToolDefinition } from './types.js';
+import { ToolConfirmationProvider } from './confirmation/types.js';
 import { logger } from '../logger/index.js';
 
 /**
@@ -32,7 +32,7 @@ export class ToolManager {
     private static readonly SOURCE_DELIMITER = '--';
 
     // Tool caching for performance
-    private toolsCache: ToolManagerToolSet = {};
+    private toolsCache: ToolSet = {};
     private cacheValid: boolean = false;
 
     constructor(mcpManager: MCPManager, confirmationProvider: ToolConfirmationProvider) {
@@ -50,9 +50,6 @@ export class ToolManager {
         this.toolsCache = {};
     }
 
-    /**
-     * Get the MCPManager for system prompt contributors
-     */
     getMcpManager(): MCPManager {
         return this.mcpManager;
     }
@@ -61,32 +58,8 @@ export class ToolManager {
      * Get all MCP tools (delegates to mcpManager.getAllTools())
      * This provides access to MCP tools while maintaining separation of concerns
      */
-    async getMcpTools(): Promise<ToolManagerToolSet> {
-        const mcpTools = await this.mcpManager.getAllTools();
-
-        // Convert ToolSet to ToolManagerToolSet format
-        const convertedTools: ToolManagerToolSet = {};
-        for (const [toolName, toolDef] of Object.entries(mcpTools)) {
-            // Convert parameters if they exist and are object type
-            let convertedParameters: ToolParameters | undefined;
-            if (toolDef.parameters && toolDef.parameters.type === 'object') {
-                convertedParameters = {
-                    type: 'object',
-                    properties: toolDef.parameters.properties || {},
-                    ...(toolDef.parameters.required && {
-                        required: toolDef.parameters.required,
-                    }),
-                };
-            }
-
-            convertedTools[toolName] = {
-                name: toolName,
-                description: toolDef.description || 'No description provided',
-                ...(convertedParameters && { parameters: convertedParameters }),
-            };
-        }
-
-        return convertedTools;
+    async getMcpTools(): Promise<ToolSet> {
+        return await this.mcpManager.getAllTools();
     }
 
     /**
@@ -135,7 +108,7 @@ export class ToolManager {
         toolName: string,
         toolDef: RawToolDefinition,
         description: string | undefined
-    ): ToolManagerToolSet[string] {
+    ): ToolSet[string] {
         const normalizedParams = this.normalizeToolParameters(toolDef);
 
         return {
@@ -148,12 +121,12 @@ export class ToolManager {
     /**
      * Build all tools from sources with conflict resolution
      */
-    private async buildAllTools(): Promise<ToolManagerToolSet> {
-        const allTools: ToolManagerToolSet = {};
+    private async buildAllTools(): Promise<ToolSet> {
+        const allTools: ToolSet = {};
 
         // Get tools from all sources
         const mcpTools = await this.mcpManager.getAllTools();
-        let internalTools: ToolManagerToolSet = {};
+        let internalTools: ToolSet = {};
 
         try {
             internalTools = this.internalToolsProvider?.getAllTools() || {};
@@ -210,7 +183,7 @@ export class ToolManager {
      * This is the single interface the LLM uses to discover tools
      * Uses caching to avoid rebuilding on every call
      */
-    async getAllTools(): Promise<ToolManagerToolSet> {
+    async getAllTools(): Promise<ToolSet> {
         if (this.cacheValid) {
             return this.toolsCache;
         }

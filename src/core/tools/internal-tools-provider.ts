@@ -1,8 +1,8 @@
-import { ToolExecutionContext, ToolManagerToolSet, RawToolDefinition, Tool } from './types.js';
+import { ToolExecutionContext, ToolSet, RawToolDefinition, InternalTool } from './types.js';
+import { ToolConfirmationProvider } from './confirmation/types.js';
 import { SearchService } from '../ai/search/search-service.js';
 import { createSearchHistoryTool } from './internal-tools/search-history-tool.js';
-import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
-import { ToolExecutionDeniedError } from '../client/tool-confirmation/errors.js';
+import { ToolExecutionDeniedError } from './confirmation/errors.js';
 import { logger } from '../logger/index.js';
 
 /**
@@ -32,7 +32,7 @@ export type InternalToolsConfig = KnownInternalTool[];
 /**
  * Internal tool factory function type
  */
-type InternalToolFactory = (services: InternalToolsServices) => Tool;
+type InternalToolFactory = (services: InternalToolsServices) => InternalTool;
 
 /**
  * Internal tool registry with service dependency checking
@@ -54,9 +54,9 @@ const INTERNAL_TOOL_REGISTRY = new Map<
 ]);
 
 /**
- * Simple internal tool interface
+ * Internal tool after processing by the provider (includes converted parameters)
  */
-interface InternalTool {
+interface ProcessedInternalTool {
     name: string;
     description: string;
     parameters?: RawToolDefinition['parameters'];
@@ -76,7 +76,7 @@ interface InternalTool {
  */
 export class InternalToolsProvider {
     private services: InternalToolsServices;
-    private tools: Map<string, InternalTool> = new Map();
+    private tools: Map<string, ProcessedInternalTool> = new Map();
     private confirmationProvider: ToolConfirmationProvider;
     private config: InternalToolsConfig;
 
@@ -144,7 +144,7 @@ export class InternalToolsProvider {
                 const tool = toolInfo.factory(this.services);
 
                 // Convert the tool to our internal format
-                const internalTool: InternalTool = {
+                const internalTool: ProcessedInternalTool = {
                     name: tool.id,
                     description: tool.description,
                     // Convert Zod schema to JSON Schema format
@@ -307,10 +307,10 @@ export class InternalToolsProvider {
     }
 
     /**
-     * Get all tools in ToolManagerToolSet format
+     * Get all tools in ToolSet format
      */
-    getAllTools(): ToolManagerToolSet {
-        const toolSet: ToolManagerToolSet = {};
+    getAllTools(): ToolSet {
+        const toolSet: ToolSet = {};
 
         for (const [name, tool] of this.tools) {
             toolSet[name] = {

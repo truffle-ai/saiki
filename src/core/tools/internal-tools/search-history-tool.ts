@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { Tool, ToolExecutionContext } from '../types.js';
+import { InternalTool, ToolExecutionContext } from '../types.js';
 import { SearchService } from '../../ai/search/search-service.js';
 import type { SearchOptions } from '../../ai/search/types.js';
 
 /**
  * Internal tool for searching conversation history
  */
-export function createSearchHistoryTool(searchService: SearchService): Tool {
+export function createSearchHistoryTool(searchService: SearchService): InternalTool {
     return {
         id: 'search_history',
         description:

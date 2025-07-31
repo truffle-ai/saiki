@@ -1,3 +1,7 @@
+// ============================================================================
+// CONSOLIDATED TOOL TYPES - Single source of truth for all tool-related types
+// ============================================================================
+
 /**
  * Context passed to tool execution
  */
@@ -6,10 +10,14 @@ export interface ToolExecutionContext {
     sessionId?: string | undefined;
 }
 
+// ============================================================================
+// CORE TOOL INTERFACES
+// ============================================================================
+
 /**
- * Simple tool interface for internal tools
+ * Internal tool interface - for tools implemented within Saiki
  */
-export interface Tool {
+export interface InternalTool {
     /** Unique identifier for the tool */
     id: string;
 
@@ -24,12 +32,57 @@ export interface Tool {
 }
 
 /**
- * Tool parameters interface for normalized tool definitions
+ * External/MCP tool interface - for tools from external providers
+ */
+export interface ExternalTool {
+    /** Tool name */
+    name?: string;
+
+    /** Human-readable description */
+    description?: string;
+
+    /** JSON Schema parameters */
+    parameters?: ToolParameters;
+}
+
+/**
+ * Unified tool interface - can represent any tool type
+ */
+export type Tool = InternalTool | ExternalTool;
+
+// ============================================================================
+// TOOL PARAMETERS AND SCHEMAS
+// ============================================================================
+
+/**
+ * JSON Schema property definition
+ */
+export interface JsonSchemaProperty {
+    type: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
+    description?: string;
+    default?: any;
+    enum?: Array<string | number | boolean>;
+    format?: string;
+}
+
+/**
+ * JSON Schema for tool parameters
+ */
+export interface JsonSchema {
+    type?: 'object';
+    properties?: Record<string, JsonSchemaProperty>;
+    required?: string[];
+}
+
+/**
+ * Tool parameters interface - comprehensive JSON Schema support
  */
 export interface ToolParameters {
-    type: 'object';
-    properties: Record<string, unknown>;
+    type?: 'object' | 'string' | 'number' | 'integer' | 'boolean' | 'array';
+    properties?: Record<string, unknown>;
     required?: string[];
+    description?: string;
+    default?: unknown;
     [key: string]: unknown; // Allow additional JSON Schema properties
 }
 
@@ -45,13 +98,64 @@ export interface RawToolDefinition {
     };
 }
 
+// ============================================================================
+// TOOL COLLECTIONS AND SETS
+// ============================================================================
+
 /**
- * Tool manager's unified tool set (for compatibility with MCP tools and ai/types.ts)
+ * Standard tool set interface - used by AI/LLM services
  */
-export interface ToolManagerToolSet {
-    [toolName: string]: {
-        name?: string;
-        description: string;
-        parameters?: ToolParameters;
+export interface ToolSet {
+    [key: string]: ExternalTool;
+}
+
+/**
+ * MCP Tool interface for WebUI compatibility
+ */
+export interface McpTool {
+    id: string;
+    name: string;
+    description?: string;
+    inputSchema?: JsonSchema | null;
+}
+
+// ============================================================================
+// TOOL EXECUTION AND RESULTS
+// ============================================================================
+
+/**
+ * Tool execution result
+ */
+export interface ToolResult {
+    success: boolean;
+    data?: any;
+    error?: string;
+    metadata?: {
+        type: string;
+        mimeType?: string;
     };
+}
+
+/**
+ * Tool call representation
+ */
+export interface ToolCall {
+    id: string;
+    toolName: string;
+    input: any;
+    output?: any;
+    error?: string;
+    duration?: number;
+}
+
+// ============================================================================
+// TOOL PROVIDER INTERFACES
+// ============================================================================
+
+/**
+ * Interface for any provider of tools
+ */
+export interface ToolProvider {
+    getTools(): Promise<ToolSet>;
+    callTool(toolName: string, args: Record<string, unknown>): Promise<unknown>;
 }

@@ -8,8 +8,10 @@
 // Core types and interfaces
 export type {
     Tool,
+    InternalTool,
+    ExternalTool,
     ToolExecutionContext,
-    ToolManagerToolSet,
+    ToolSet,
     ToolParameters,
     RawToolDefinition,
 } from './types.js';
