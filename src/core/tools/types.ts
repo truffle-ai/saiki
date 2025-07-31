@@ -1,5 +1,5 @@
 // ============================================================================
-// CONSOLIDATED TOOL TYPES - Single source of truth for all tool-related types
+// SIMPLIFIED TOOL TYPES - Essential interfaces only
 // ============================================================================
 
 /**
@@ -32,76 +32,15 @@ export interface InternalTool {
 }
 
 /**
- * External/MCP tool interface - for tools from external providers
- */
-export interface ExternalTool {
-    /** Tool name */
-    name?: string;
-
-    /** Human-readable description */
-    description?: string;
-
-    /** JSON Schema parameters */
-    parameters?: ToolParameters;
-}
-
-// ============================================================================
-// TOOL PARAMETERS AND SCHEMAS
-// ============================================================================
-
-/**
- * JSON Schema property definition
- */
-export interface JsonSchemaProperty {
-    type: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
-    description?: string;
-    default?: any;
-    enum?: Array<string | number | boolean>;
-    format?: string;
-}
-
-/**
- * JSON Schema for tool parameters
- */
-export interface JsonSchema {
-    type?: 'object';
-    properties?: Record<string, JsonSchemaProperty>;
-    required?: string[];
-}
-
-/**
- * Tool parameters interface - comprehensive JSON Schema support
- */
-export interface ToolParameters {
-    type?: 'object' | 'string' | 'number' | 'integer' | 'boolean' | 'array';
-    properties?: Record<string, unknown>;
-    required?: string[];
-    description?: string;
-    default?: unknown;
-    [key: string]: unknown; // Allow additional JSON Schema properties
-}
-
-/**
- * Raw tool definition interface (before normalization)
- */
-export interface RawToolDefinition {
-    description?: string;
-    parameters?: {
-        type?: string;
-        properties?: Record<string, unknown>;
-        required?: string[];
-    };
-}
-
-// ============================================================================
-// TOOL COLLECTIONS AND SETS
-// ============================================================================
-
-/**
  * Standard tool set interface - used by AI/LLM services
+ * Each tool entry contains JSON Schema parameters
  */
 export interface ToolSet {
-    [key: string]: ExternalTool;
+    [key: string]: {
+        name?: string;
+        description?: string;
+        parameters?: any; // JSON Schema - using any for flexibility
+    };
 }
 
 // ============================================================================
@@ -132,10 +71,6 @@ export interface ToolCall {
     error?: string;
     duration?: number;
 }
-
-// ============================================================================
-// TOOL PROVIDER INTERFACES
-// ============================================================================
 
 /**
  * Interface for any provider of tools

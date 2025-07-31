@@ -102,25 +102,14 @@ export async function createAgentServices(
     // 5. Initialize search service
     const searchService = new SearchService(storage.database);
 
-    // 6. Initialize internal tools provider with services and confirmation support
-    const internalToolsProvider = new InternalToolsProvider(
-        {
-            searchService,
-            // Future services can be added here as needed
-        },
-        confirmationProvider,
-        config.internalTools
-    );
+    // 6. Initialize unified tool manager with internal tools options
+    const toolManager = new ToolManager(mcpManager, confirmationProvider, {
+        internalToolsServices: { searchService },
+        internalToolsConfig: config.internalTools,
+    });
 
-    // 7. Initialize unified tool manager
-    const toolManager = new ToolManager(mcpManager, confirmationProvider);
-
-    // Initialize internal tools if any are configured
-    if (config.internalTools.length > 0) {
-        await toolManager.initializeInternalTools(internalToolsProvider);
-    } else {
-        logger.info('No internal tools enabled by configuration - skipping initialization');
-    }
+    // Initialize the tool manager
+    await toolManager.initialize();
 
     const mcpServerCount = Object.keys(config.mcpServers).length;
     if (mcpServerCount === 0) {
@@ -129,18 +118,24 @@ export async function createAgentServices(
         logger.debug(`MCPManager initialized with ${mcpServerCount} MCP server(s)`);
     }
 
-    // 8. Initialize prompt manager
+    if (config.internalTools.length === 0) {
+        logger.info('No internal tools enabled by configuration');
+    } else {
+        logger.info(`Internal tools enabled: ${config.internalTools.join(', ')}`);
+    }
+
+    // 7. Initialize prompt manager
     const configDir = configPath ? dirname(resolve(configPath)) : process.cwd();
     logger.debug(
         `[ServiceInitializer] Creating PromptManager with configPath: ${configPath} → configDir: ${configDir}`
     );
     const promptManager = new PromptManager(config.systemPrompt, configDir);
 
-    // 9. Initialize state manager for runtime state tracking
+    // 8. Initialize state manager for runtime state tracking
     const stateManager = new AgentStateManager(config, agentEventBus);
     logger.debug('Agent state manager initialized');
 
-    // 10. Initialize session manager
+    // 9. Initialize session manager
     const sessionManager = new SessionManager(
         {
             stateManager,
@@ -160,7 +155,7 @@ export async function createAgentServices(
 
     logger.debug('Session manager initialized with storage support');
 
-    // 11. Return the core services
+    // 10. Return the core services
     return {
         mcpManager,
         toolManager,

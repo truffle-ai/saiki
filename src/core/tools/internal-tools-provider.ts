@@ -1,9 +1,10 @@
-import { ToolExecutionContext, ToolSet, RawToolDefinition, InternalTool } from './types.js';
+import { ToolExecutionContext, ToolSet, InternalTool } from './types.js';
 import { ToolConfirmationProvider } from './confirmation/types.js';
 import { SearchService } from '../ai/search/search-service.js';
 import { createSearchHistoryTool } from './internal-tools/search-history-tool.js';
 import { ToolExecutionDeniedError } from './confirmation/errors.js';
 import { logger } from '../logger/index.js';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 /**
  * Services available to internal tools
@@ -18,40 +19,34 @@ export interface InternalToolsServices {
 }
 
 /**
- * Known internal tool names - update this when adding new internal tools
- */
-export const KNOWN_INTERNAL_TOOLS = ['search_history'] as const;
-export type KnownInternalTool = (typeof KNOWN_INTERNAL_TOOLS)[number];
-
-/**
- * Configuration for internal tools - simplified to just an array
- * Empty array = no tools enabled, Non-empty array = specific tools enabled
- */
-export type InternalToolsConfig = KnownInternalTool[];
-
-/**
  * Internal tool factory function type
  */
 type InternalToolFactory = (services: InternalToolsServices) => InternalTool;
 
 /**
- * Internal tool registry with service dependency checking
+ * Internal tool registry - Single source of truth
+ * Define registry ONCE with proper typing, all types derived from here
  */
-const INTERNAL_TOOL_REGISTRY = new Map<
-    KnownInternalTool,
-    {
-        factory: InternalToolFactory;
-        requiredServices: (keyof InternalToolsServices)[];
-    }
->([
-    [
-        'search_history',
-        {
-            factory: (services) => createSearchHistoryTool(services.searchService!),
-            requiredServices: ['searchService'],
-        },
-    ],
-]);
+const INTERNAL_TOOL_REGISTRY = {
+    search_history: {
+        factory: (services: InternalToolsServices) =>
+            createSearchHistoryTool(services.searchService!),
+        requiredServices: ['searchService'] as const,
+    },
+    // Add new tools here...
+} as const;
+
+// Derive ALL types from registry - impossible to get out of sync
+export type KnownInternalTool = keyof typeof INTERNAL_TOOL_REGISTRY;
+export type InternalToolsConfig = KnownInternalTool[];
+export const KNOWN_INTERNAL_TOOLS = Object.keys(INTERNAL_TOOL_REGISTRY) as KnownInternalTool[];
+
+/**
+ * Type-safe registry access
+ */
+export function getInternalToolInfo(toolName: KnownInternalTool) {
+    return INTERNAL_TOOL_REGISTRY[toolName];
+}
 
 /**
  * Internal tool after processing by the provider (includes converted parameters)
@@ -59,7 +54,7 @@ const INTERNAL_TOOL_REGISTRY = new Map<
 interface ProcessedInternalTool {
     name: string;
     description: string;
-    parameters?: RawToolDefinition['parameters'];
+    parameters?: any;
     execute: (args: Record<string, unknown>, context?: ToolExecutionContext) => Promise<unknown>;
 }
 
@@ -121,11 +116,7 @@ export class InternalToolsProvider {
      */
     private registerInternalTools(): void {
         for (const toolName of this.config) {
-            const toolInfo = INTERNAL_TOOL_REGISTRY.get(toolName);
-            if (!toolInfo) {
-                logger.warn(`No factory found for internal tool: ${toolName}`);
-                continue;
-            }
+            const toolInfo = getInternalToolInfo(toolName);
 
             // Check if all required services are available
             const missingServices = toolInfo.requiredServices.filter(
@@ -170,73 +161,10 @@ export class InternalToolsProvider {
     /**
      * Convert Zod schema to JSON Schema format for tool parameters
      */
-    private convertZodSchemaToJsonSchema(zodSchema: any): RawToolDefinition['parameters'] {
+    private convertZodSchemaToJsonSchema(zodSchema: any): any {
         try {
-            // Use Zod's built-in JSON Schema conversion
-            const jsonSchema = zodSchema._def.openapi || zodSchema._def.jsonSchema;
-            if (jsonSchema) {
-                return jsonSchema;
-            }
-
-            // Fallback: try to extract basic schema information
-            const shape = zodSchema._def.shape();
-            if (shape) {
-                const properties: Record<string, unknown> = {};
-                const required: string[] = [];
-
-                for (const [key, schema] of Object.entries(shape)) {
-                    const fieldSchema = schema as any;
-
-                    // Extract basic type information
-                    if (fieldSchema._def.typeName === 'ZodString') {
-                        properties[key] = { type: 'string' };
-                    } else if (fieldSchema._def.typeName === 'ZodNumber') {
-                        properties[key] = { type: 'number' };
-                    } else if (fieldSchema._def.typeName === 'ZodBoolean') {
-                        properties[key] = { type: 'boolean' };
-                    } else if (fieldSchema._def.typeName === 'ZodEnum') {
-                        properties[key] = {
-                            type: 'string',
-                            enum: fieldSchema._def.values,
-                        };
-                    } else if (fieldSchema._def.typeName === 'ZodOptional') {
-                        // Optional fields don't go in required array
-                        const innerSchema = fieldSchema._def.innerType;
-                        if (innerSchema._def.typeName === 'ZodString') {
-                            properties[key] = { type: 'string' };
-                        } else if (innerSchema._def.typeName === 'ZodNumber') {
-                            properties[key] = { type: 'number' };
-                        } else if (innerSchema._def.typeName === 'ZodBoolean') {
-                            properties[key] = { type: 'boolean' };
-                        } else if (innerSchema._def.typeName === 'ZodEnum') {
-                            properties[key] = {
-                                type: 'string',
-                                enum: innerSchema._def.values,
-                            };
-                        }
-                    } else {
-                        // Default to string for unknown types
-                        properties[key] = { type: 'string' };
-                    }
-
-                    // Add to required array if not optional
-                    if (fieldSchema._def.typeName !== 'ZodOptional') {
-                        required.push(key);
-                    }
-                }
-
-                return {
-                    type: 'object',
-                    properties,
-                    ...(required.length > 0 && { required }),
-                };
-            }
-
-            // Final fallback: return basic object schema
-            return {
-                type: 'object',
-                properties: {},
-            };
+            // Use proper library for Zod to JSON Schema conversion
+            return zodToJsonSchema(zodSchema);
         } catch (error) {
             logger.warn(
                 `Failed to convert Zod schema to JSON Schema: ${error instanceof Error ? error.message : String(error)}`
@@ -307,7 +235,7 @@ export class InternalToolsProvider {
     }
 
     /**
-     * Get all tools in ToolSet format
+     * Get all tools in ToolSet format - NO normalization needed
      */
     getAllTools(): ToolSet {
         const toolSet: ToolSet = {};
@@ -316,13 +244,7 @@ export class InternalToolsProvider {
             toolSet[name] = {
                 name: tool.name,
                 description: tool.description,
-                ...(tool.parameters && {
-                    parameters: {
-                        type: 'object',
-                        properties: tool.parameters.properties || {},
-                        ...(tool.parameters.required && { required: tool.parameters.required }),
-                    },
-                }),
+                parameters: tool.parameters, // ← Already final JSON Schema format
             };
         }
 
