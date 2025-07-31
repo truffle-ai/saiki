@@ -104,17 +104,22 @@ export async function createAgentServices(
     // 5. Initialize search service
     const searchService = new SearchService(storage.database);
 
-    // 6. Initialize internal tools provider with services and confirmation support
+    // 6. Initialize scheduler service
+    const scheduler = new SchedulerService(agentEventBus);
+    logger.debug('Scheduler service initialized');
+
+    // 7. Initialize internal tools provider with services and confirmation support
     const internalToolsProvider = new InternalToolsProvider(
         {
             searchService,
+            scheduler,
             // Future services can be added here as needed
         },
         confirmationProvider,
         config.internalTools
     );
 
-    // 7. Initialize unified tool manager
+    // 8. Initialize unified tool manager
     const toolManager = new ToolManager(mcpManager, confirmationProvider);
 
     // Initialize internal tools if any are configured
@@ -131,18 +136,18 @@ export async function createAgentServices(
         logger.debug(`MCPManager initialized with ${mcpServerCount} MCP server(s)`);
     }
 
-    // 8. Initialize prompt manager
+    // 9. Initialize prompt manager
     const configDir = configPath ? dirname(resolve(configPath)) : process.cwd();
     logger.debug(
         `[ServiceInitializer] Creating PromptManager with configPath: ${configPath} → configDir: ${configDir}`
     );
     const promptManager = new PromptManager(config.systemPrompt, configDir);
 
-    // 9. Initialize state manager for runtime state tracking
+    // 10. Initialize state manager for runtime state tracking
     const stateManager = new AgentStateManager(config, agentEventBus);
     logger.debug('Agent state manager initialized');
 
-    // 10. Initialize session manager
+    // 11. Initialize session manager
     const sessionManager = new SessionManager(
         {
             stateManager,
@@ -161,10 +166,6 @@ export async function createAgentServices(
     await sessionManager.init();
 
     logger.debug('Session manager initialized with storage support');
-
-    // 11. Initialize scheduler service
-    const scheduler = new SchedulerService(agentEventBus);
-    logger.debug('Scheduler service initialized');
 
     // 12. Return the core services
     return {

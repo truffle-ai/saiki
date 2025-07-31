@@ -281,6 +281,7 @@ export class SaikiAgent {
                 const response = await this.run(
                     data.message,
                     data.imageData,
+                    undefined, // fileDataInput
                     data.sessionId,
                     false // Don't stream triggered conversations by default
                 );
@@ -310,7 +311,13 @@ export class SaikiAgent {
 
                 logger.info(`Processing webhook trigger from ${data.source}: ${data.webhookId}`);
 
-                const response = await this.run(message, undefined, data.sessionId, false);
+                const response = await this.run(
+                    message,
+                    undefined,
+                    undefined,
+                    data.sessionId,
+                    false
+                );
 
                 if (response) {
                     logger.info(
@@ -337,7 +344,13 @@ export class SaikiAgent {
 
                 logger.info(`Processing external trigger from ${data.source}: ${data.triggerId}`);
 
-                const response = await this.run(message, undefined, data.sessionId, false);
+                const response = await this.run(
+                    message,
+                    undefined,
+                    undefined,
+                    data.sessionId,
+                    false
+                );
 
                 if (response) {
                     logger.info(

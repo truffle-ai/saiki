@@ -600,10 +600,24 @@ export const AgentConfigSchema = z
         ),
 
         internalTools: z
-            .array(z.enum(['search_history']).describe('Available internal tool names'))
+            .array(
+                z
+                    .enum([
+                        'search_history',
+                        'schedule_task',
+                        'scheduler_create_task',
+                        'scheduler_list_tasks',
+                        'scheduler_get_task',
+                        'scheduler_update_task',
+                        'scheduler_toggle_task',
+                        'scheduler_delete_task',
+                        'scheduler_get_stats',
+                    ])
+                    .describe('Available internal tool names')
+            )
             .default([])
             .describe(
-                'Array of internal tool names to enable. Empty array = disabled. Available tools: search_history'
+                'Array of internal tool names to enable. Empty array = disabled. Available tools: search_history, schedule_task, scheduler_create_task, scheduler_list_tasks, scheduler_get_task, scheduler_update_task, scheduler_toggle_task, scheduler_delete_task, scheduler_get_stats'
             ),
 
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),

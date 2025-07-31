@@ -287,11 +287,19 @@ export class Logger {
                 displayText += '\n';
             });
         } else if (result?.message) {
-            // Error message format
-            displayText = result.message;
-            isError = true;
-            borderColor = 'red';
-            title = '❌ Tool Error';
+            // Check if this is a success message or error message
+            if (result?.success === true || result?.action) {
+                // Success message format (e.g., from internal tools)
+                displayText = result.message;
+                borderColor = 'green';
+                title = '✅ Tool Result';
+            } else {
+                // Error message format
+                displayText = result.message;
+                isError = true;
+                borderColor = 'red';
+                title = '❌ Tool Error';
+            }
         } else if (typeof result === 'string') {
             // Plain string response
             displayText = result;

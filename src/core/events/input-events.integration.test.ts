@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SaikiAgent } from '../ai/agent/SaikiAgent.js';
 import type { AgentConfig } from '../config/schemas.js';
-import { SchedulerService } from '../utils/scheduler.js';
 import { logger } from '../logger/index.js';
 
 describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing', () => {
@@ -66,6 +65,7 @@ describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing
             expect(runSpy).toHaveBeenCalledWith(
                 'Hello from scheduler!',
                 undefined,
+                undefined,
                 'test-session',
                 false
             );
@@ -89,6 +89,7 @@ describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing
 
             expect(runSpy).toHaveBeenCalledWith(
                 'GitHub webhook received with test data',
+                undefined,
                 undefined,
                 'webhook-session',
                 false
@@ -114,6 +115,7 @@ describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing
             expect(runSpy).toHaveBeenCalledWith(
                 'Daily report generation completed',
                 undefined,
+                undefined,
                 'cron-session',
                 false
             );
@@ -135,6 +137,7 @@ describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing
 
             expect(runSpy).toHaveBeenCalledWith(
                 expect.stringContaining('External trigger from monitoring-system:'),
+                undefined,
                 undefined,
                 'monitoring-session',
                 false
@@ -162,6 +165,7 @@ describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing
 
             expect(runSpy).toHaveBeenCalledWith(
                 'Scheduled reminder: Check system status',
+                undefined,
                 undefined,
                 'scheduled-session',
                 false
@@ -195,6 +199,7 @@ describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing
             expect(runSpy).toHaveBeenCalledTimes(2);
             expect(runSpy).toHaveBeenCalledWith(
                 'Recurring health check',
+                undefined,
                 undefined,
                 'health-check-session',
                 false
@@ -372,6 +377,7 @@ describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing
                 1,
                 'Automated system check initiated',
                 undefined,
+                undefined,
                 'automation-session',
                 false
             );
@@ -380,6 +386,7 @@ describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing
                 2,
                 'Production deployment completed for commit abc123',
                 undefined,
+                undefined,
                 'deployment-session',
                 false
             );
@@ -387,6 +394,7 @@ describe('Input Events Integration: Scheduled Triggers & Event-Driven Processing
             expect(runSpy).toHaveBeenNthCalledWith(
                 3,
                 'CPU usage alert: 95% (threshold: 90%)',
+                undefined,
                 undefined,
                 'monitoring-session',
                 false

@@ -1,9 +1,20 @@
 import { ToolExecutionContext, ToolManagerToolSet, RawToolDefinition, Tool } from './types.js';
 import { SearchService } from '../ai/search/search-service.js';
 import { createSearchHistoryTool } from './internal-tools/search-history-tool.js';
+import {
+    createSchedulerTool,
+    createSchedulerCreateTool,
+    createSchedulerListTool,
+    createSchedulerGetTool,
+    createSchedulerUpdateTool,
+    createSchedulerToggleTool,
+    createSchedulerDeleteTool,
+    createSchedulerStatsTool,
+} from './internal-tools/scheduler-tool.js';
 import { ToolConfirmationProvider } from '../client/tool-confirmation/types.js';
 import { ToolExecutionDeniedError } from '../client/tool-confirmation/errors.js';
 import { logger } from '../logger/index.js';
+import type { SchedulerService } from '../utils/scheduler.js';
 
 /**
  * Services available to internal tools
@@ -11,6 +22,7 @@ import { logger } from '../logger/index.js';
  */
 export interface InternalToolsServices {
     searchService?: SearchService;
+    scheduler?: SchedulerService;
     // Future services can be added here:
     // sessionManager?: SessionManager;
     // storageManager?: StorageManager;
@@ -20,7 +32,17 @@ export interface InternalToolsServices {
 /**
  * Known internal tool names - update this when adding new internal tools
  */
-export const KNOWN_INTERNAL_TOOLS = ['search_history'] as const;
+export const KNOWN_INTERNAL_TOOLS = [
+    'search_history',
+    'schedule_task',
+    'scheduler_create_task',
+    'scheduler_list_tasks',
+    'scheduler_get_task',
+    'scheduler_update_task',
+    'scheduler_toggle_task',
+    'scheduler_delete_task',
+    'scheduler_get_stats',
+] as const;
 export type KnownInternalTool = (typeof KNOWN_INTERNAL_TOOLS)[number];
 
 /**
@@ -49,6 +71,62 @@ const INTERNAL_TOOL_REGISTRY = new Map<
         {
             factory: (services) => createSearchHistoryTool(services.searchService!),
             requiredServices: ['searchService'],
+        },
+    ],
+    [
+        'schedule_task',
+        {
+            factory: (services) => createSchedulerTool(services.scheduler!),
+            requiredServices: ['scheduler'],
+        },
+    ],
+    [
+        'scheduler_create_task',
+        {
+            factory: (services) => createSchedulerCreateTool(services.scheduler!),
+            requiredServices: ['scheduler'],
+        },
+    ],
+    [
+        'scheduler_list_tasks',
+        {
+            factory: (services) => createSchedulerListTool(services.scheduler!),
+            requiredServices: ['scheduler'],
+        },
+    ],
+    [
+        'scheduler_get_task',
+        {
+            factory: (services) => createSchedulerGetTool(services.scheduler!),
+            requiredServices: ['scheduler'],
+        },
+    ],
+    [
+        'scheduler_update_task',
+        {
+            factory: (services) => createSchedulerUpdateTool(services.scheduler!),
+            requiredServices: ['scheduler'],
+        },
+    ],
+    [
+        'scheduler_toggle_task',
+        {
+            factory: (services) => createSchedulerToggleTool(services.scheduler!),
+            requiredServices: ['scheduler'],
+        },
+    ],
+    [
+        'scheduler_delete_task',
+        {
+            factory: (services) => createSchedulerDeleteTool(services.scheduler!),
+            requiredServices: ['scheduler'],
+        },
+    ],
+    [
+        'scheduler_get_stats',
+        {
+            factory: (services) => createSchedulerStatsTool(services.scheduler!),
+            requiredServices: ['scheduler'],
         },
     ],
 ]);

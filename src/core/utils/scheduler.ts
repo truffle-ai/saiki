@@ -127,6 +127,17 @@ export class SchedulerService extends EventEmitter {
     createTask(options: CreateScheduledTaskOptions): string {
         const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+        // Validate recurring pattern if provided
+        if (options.recurring) {
+            const validPatterns = ['daily', 'weekly', 'monthly', 'custom'];
+            if (!validPatterns.includes(options.recurring.pattern)) {
+                logger.error(
+                    `Invalid recurring pattern: ${options.recurring.pattern}. Valid patterns: ${validPatterns.join(', ')}`
+                );
+                throw new Error(`Invalid recurring pattern: ${options.recurring.pattern}`);
+            }
+        }
+
         const task: ScheduledTask = {
             id: taskId,
             message: options.message,
@@ -146,6 +157,9 @@ export class SchedulerService extends EventEmitter {
         }
         if (options.recurring) {
             task.recurring = options.recurring;
+            logger.debug(
+                `Creating recurring task with pattern: ${options.recurring.pattern}, interval: ${options.recurring.interval}`
+            );
         }
         if (options.maxExecutions) {
             task.maxExecutions = options.maxExecutions;
