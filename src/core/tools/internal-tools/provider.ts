@@ -1,6 +1,5 @@
 import { ToolExecutionContext, ToolSet, InternalTool } from '../types.js';
 import { ToolConfirmationProvider } from '../confirmation/types.js';
-import { ToolExecutionDeniedError } from '../confirmation/errors.js';
 import { logger } from '../../logger/index.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { InternalToolsServices, KnownInternalTool, getInternalToolInfo } from './registry.js';
@@ -126,16 +125,13 @@ export class InternalToolsProvider {
     }
 
     /**
-     * Execute a tool with confirmation support matching MCP tools behavior
+     * Execute an internal tool - confirmation is handled by ToolManager
      */
     async executeTool(
         toolName: string,
         args: Record<string, unknown>,
         sessionId?: string
     ): Promise<unknown> {
-        logger.debug(`🔧 Internal tool execution requested: '${toolName}'`);
-        logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
-
         const tool = this.tools.get(toolName);
         if (!tool) {
             logger.error(`❌ No internal tool found: ${toolName}`);
@@ -143,24 +139,9 @@ export class InternalToolsProvider {
             throw new Error(`Internal tool not found: ${toolName}`);
         }
 
-        // Request tool confirmation (same as MCP tools)
-        const approved = await this.confirmationProvider.requestConfirmation({
-            toolName,
-            args,
-        });
-
-        if (!approved) {
-            logger.debug(`🚫 Internal tool execution denied: ${toolName}`);
-            throw new ToolExecutionDeniedError(toolName, sessionId);
-        }
-
-        logger.debug(`✅ Internal tool execution approved: ${toolName}`);
-
         try {
             const context: ToolExecutionContext = { sessionId };
-            const result = await tool.execute(args, context); // ← Execute original tool directly
-
-            logger.debug(`🎯 Internal tool execution completed: ${toolName}`);
+            const result = await tool.execute(args, context);
             return result;
         } catch (error) {
             logger.error(`❌ Internal tool execution failed: ${toolName}`, error);

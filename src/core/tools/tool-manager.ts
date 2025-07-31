@@ -4,6 +4,7 @@ import { InternalToolsServices } from './internal-tools/registry.js';
 import type { InternalToolsConfig } from '../config/schemas.js';
 import { ToolSet } from './types.js';
 import { ToolConfirmationProvider } from './confirmation/types.js';
+import { ToolExecutionDeniedError } from './confirmation/errors.js';
 import { logger } from '../logger/index.js';
 
 /**
@@ -102,13 +103,22 @@ export class ToolManager {
         const allTools: ToolSet = {};
 
         // Get tools from both sources (already in final JSON Schema format)
-        const mcpTools = await this.mcpManager.getAllTools();
+        let mcpTools: ToolSet = {};
         let internalTools: ToolSet = {};
+
+        try {
+            mcpTools = await this.mcpManager.getAllTools();
+        } catch (error) {
+            logger.error(
+                `Failed to get MCP tools: ${error instanceof Error ? error.message : String(error)}`
+            );
+            mcpTools = {};
+        }
 
         try {
             internalTools = this.internalToolsProvider?.getAllTools() || {};
         } catch (error) {
-            logger.warn(
+            logger.error(
                 `Failed to get internal tools: ${error instanceof Error ? error.message : String(error)}`
             );
             internalTools = {};
@@ -169,34 +179,67 @@ export class ToolManager {
         args: Record<string, unknown>,
         sessionId?: string
     ): Promise<unknown> {
-        logger.debug(`🔧 Tool execution: '${toolName}'`);
+        logger.debug(`🔧 Tool execution requested: '${toolName}'`);
         logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
 
-        // Route to MCP tools
-        if (toolName.startsWith(ToolManager.MCP_TOOL_PREFIX)) {
-            const actualToolName = toolName.substring(ToolManager.MCP_TOOL_PREFIX.length);
-            logger.debug(`🎯 MCP routing: '${toolName}' -> '${actualToolName}'`);
-            return await this.mcpManager.executeTool(actualToolName, args, sessionId);
+        // Centralized confirmation for ALL tools
+        const approved = await this.confirmationProvider.requestConfirmation({
+            toolName,
+            args,
+            ...(sessionId && { sessionId }),
+        });
+
+        if (!approved) {
+            logger.debug(`🚫 Tool execution denied: ${toolName}`);
+            throw new ToolExecutionDeniedError(toolName, sessionId);
         }
 
-        // Route to internal tools
-        if (toolName.startsWith(ToolManager.INTERNAL_TOOL_PREFIX)) {
-            const actualToolName = toolName.substring(ToolManager.INTERNAL_TOOL_PREFIX.length);
-            if (!this.internalToolsProvider) {
-                throw new Error(`Internal tools not initialized, cannot execute: ${toolName}`);
+        logger.debug(`✅ Tool execution approved: ${toolName}`);
+
+        const startTime = Date.now();
+
+        try {
+            let result: unknown;
+
+            // Route to MCP tools
+            if (toolName.startsWith(ToolManager.MCP_TOOL_PREFIX)) {
+                const actualToolName = toolName.substring(ToolManager.MCP_TOOL_PREFIX.length);
+                logger.debug(`🎯 MCP routing: '${toolName}' -> '${actualToolName}'`);
+                result = await this.mcpManager.executeTool(actualToolName, args, sessionId);
             }
-            logger.debug(`🎯 Internal routing: '${toolName}' -> '${actualToolName}'`);
-            return await this.internalToolsProvider.executeTool(actualToolName, args, sessionId);
+            // Route to internal tools
+            else if (toolName.startsWith(ToolManager.INTERNAL_TOOL_PREFIX)) {
+                const actualToolName = toolName.substring(ToolManager.INTERNAL_TOOL_PREFIX.length);
+                if (!this.internalToolsProvider) {
+                    throw new Error(`Internal tools not initialized, cannot execute: ${toolName}`);
+                }
+                logger.debug(`🎯 Internal routing: '${toolName}' -> '${actualToolName}'`);
+                result = await this.internalToolsProvider.executeTool(
+                    actualToolName,
+                    args,
+                    sessionId
+                );
+            }
+            // Tool doesn't have proper prefix
+            else {
+                const stats = await this.getToolStats();
+                logger.error(
+                    `❌ Tool missing source prefix: '${toolName}' (expected '${ToolManager.MCP_TOOL_PREFIX}*' or '${ToolManager.INTERNAL_TOOL_PREFIX}*')`
+                );
+                logger.debug(`Available: ${stats.mcp} MCP tools, ${stats.internal} internal tools`);
+                throw new Error(`Tool not found or missing source prefix: ${toolName}`);
+            }
+
+            const duration = Date.now() - startTime;
+            logger.debug(`🎯 Tool execution completed in ${duration}ms: '${toolName}'`);
+            return result;
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            logger.error(
+                `❌ Tool execution failed after ${duration}ms: '${toolName}' - ${error instanceof Error ? error.message : String(error)}`
+            );
+            throw error;
         }
-
-        // Tool doesn't have proper prefix
-        const stats = await this.getToolStats();
-        logger.error(
-            `❌ Tool missing source prefix: '${toolName}' (expected '${ToolManager.MCP_TOOL_PREFIX}*' or '${ToolManager.INTERNAL_TOOL_PREFIX}*')`
-        );
-        logger.debug(`Available: ${stats.mcp} MCP tools, ${stats.internal} internal tools`);
-
-        throw new Error(`Tool not found or missing source prefix: ${toolName}`);
     }
 
     /**
@@ -227,8 +270,26 @@ export class ToolManager {
         mcp: number;
         internal: number;
     }> {
-        const mcpTools = await this.mcpManager.getAllTools();
-        const internalTools = this.internalToolsProvider?.getAllTools() || {};
+        let mcpTools: ToolSet = {};
+        let internalTools: ToolSet = {};
+
+        try {
+            mcpTools = await this.mcpManager.getAllTools();
+        } catch (error) {
+            logger.error(
+                `Failed to get MCP tools for stats: ${error instanceof Error ? error.message : String(error)}`
+            );
+            mcpTools = {};
+        }
+
+        try {
+            internalTools = this.internalToolsProvider?.getAllTools() || {};
+        } catch (error) {
+            logger.error(
+                `Failed to get internal tools for stats: ${error instanceof Error ? error.message : String(error)}`
+            );
+            internalTools = {};
+        }
 
         const mcpCount = Object.keys(mcpTools).length;
         const internalCount = Object.keys(internalTools).length;
@@ -246,10 +307,16 @@ export class ToolManager {
      * @returns The source of the tool
      */
     getToolSource(toolName: string): 'mcp' | 'internal' | 'unknown' {
-        if (toolName.startsWith(ToolManager.MCP_TOOL_PREFIX)) {
+        if (
+            toolName.startsWith(ToolManager.MCP_TOOL_PREFIX) &&
+            toolName.length > ToolManager.MCP_TOOL_PREFIX.length
+        ) {
             return 'mcp';
         }
-        if (toolName.startsWith(ToolManager.INTERNAL_TOOL_PREFIX)) {
+        if (
+            toolName.startsWith(ToolManager.INTERNAL_TOOL_PREFIX) &&
+            toolName.length > ToolManager.INTERNAL_TOOL_PREFIX.length
+        ) {
             return 'internal';
         }
         return 'unknown';

@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { filterMessagesByLLMCapabilities, FilteringConfig } from './utils.js';
+import { filterMessagesByLLMCapabilities } from './utils.js';
 import { InternalMessage } from './types.js';
+import { LLMContext } from '../types.js';
 import * as registry from '../registry.js';
 
 // Mock the registry module
@@ -23,7 +24,7 @@ describe('filterMessagesByLLMCapabilities', () => {
             },
         ];
 
-        const config: FilteringConfig = { provider: 'openai', model: 'gpt-4' };
+        const config: LLMContext = { provider: 'openai', model: 'gpt-4' };
 
         const result = filterMessagesByLLMCapabilities(messages, config);
 
@@ -52,7 +53,7 @@ describe('filterMessagesByLLMCapabilities', () => {
             },
         ];
 
-        const config: FilteringConfig = { provider: 'openai', model: 'gpt-3.5-turbo' };
+        const config: LLMContext = { provider: 'openai', model: 'gpt-3.5-turbo' };
 
         const result = filterMessagesByLLMCapabilities(messages, config);
 
@@ -86,7 +87,7 @@ describe('filterMessagesByLLMCapabilities', () => {
             },
         ];
 
-        const config: FilteringConfig = { provider: 'openai', model: 'gpt-4o' };
+        const config: LLMContext = { provider: 'openai', model: 'gpt-4o' };
 
         const result = filterMessagesByLLMCapabilities(messages, config);
 
@@ -124,13 +125,13 @@ describe('filterMessagesByLLMCapabilities', () => {
         ];
 
         // Test with regular gpt-4 (should filter out audio)
-        const config1: FilteringConfig = { provider: 'openai', model: 'gpt-4' };
+        const config1: LLMContext = { provider: 'openai', model: 'gpt-4' };
         const result1 = filterMessagesByLLMCapabilities(messages, config1);
 
         expect(result1[0]!.content).toEqual([{ type: 'text', text: 'Transcribe this audio' }]);
 
         // Test with gpt-4o-audio-preview (should keep audio)
-        const config2: FilteringConfig = { provider: 'openai', model: 'gpt-4o-audio-preview' };
+        const config2: LLMContext = { provider: 'openai', model: 'gpt-4o-audio-preview' };
         const result2 = filterMessagesByLLMCapabilities(messages, config2);
 
         expect(result2[0]!.content).toEqual([
@@ -160,7 +161,7 @@ describe('filterMessagesByLLMCapabilities', () => {
             },
         ];
 
-        const config: FilteringConfig = { provider: 'openai', model: 'gpt-3.5-turbo' };
+        const config: LLMContext = { provider: 'openai', model: 'gpt-3.5-turbo' };
 
         const result = filterMessagesByLLMCapabilities(messages, config);
 
@@ -221,7 +222,7 @@ describe('filterMessagesByLLMCapabilities', () => {
             error: 'PDF not supported',
         });
 
-        const config: FilteringConfig = { provider: 'openai', model: 'gpt-3.5-turbo' };
+        const config: LLMContext = { provider: 'openai', model: 'gpt-3.5-turbo' };
 
         const result = filterMessagesByLLMCapabilities(messages, config);
 
@@ -243,7 +244,7 @@ describe('filterMessagesByLLMCapabilities', () => {
             },
         ];
 
-        const config: FilteringConfig = { provider: 'openai', model: 'gpt-4' };
+        const config: LLMContext = { provider: 'openai', model: 'gpt-4' };
 
         const result = filterMessagesByLLMCapabilities(messages, config);
 
@@ -261,7 +262,7 @@ describe('filterMessagesByLLMCapabilities', () => {
             },
         ];
 
-        const config: FilteringConfig = { provider: 'openai', model: 'gpt-4' };
+        const config: LLMContext = { provider: 'openai', model: 'gpt-4' };
 
         const result = filterMessagesByLLMCapabilities(messages, config);
 
@@ -285,7 +286,7 @@ describe('filterMessagesByLLMCapabilities', () => {
             },
         ];
 
-        const config: FilteringConfig = { provider: 'openai', model: 'gpt-4' };
+        const config: LLMContext = { provider: 'openai', model: 'gpt-4' };
 
         // Should return original messages when validation fails
         const result = filterMessagesByLLMCapabilities(messages, config);
@@ -301,7 +302,7 @@ describe('filterMessagesByLLMCapabilities', () => {
             },
         ];
 
-        const config: FilteringConfig = { provider: 'openai', model: 'gpt-4' };
+        const config: LLMContext = { provider: 'openai', model: 'gpt-4' };
 
         const result = filterMessagesByLLMCapabilities(messages, config);
 

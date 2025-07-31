@@ -23,7 +23,6 @@
 
 import { MCPManager } from '../client/manager.js';
 import { ToolManager } from '../tools/tool-manager.js';
-import { InternalToolsProvider } from '../tools/internal-tools/provider.js';
 import { createToolConfirmationProvider } from '../tools/confirmation/factory.js';
 import { PromptManager } from '../ai/systemPrompt/manager.js';
 import { ConfigManager } from '../config/config-manager.js';

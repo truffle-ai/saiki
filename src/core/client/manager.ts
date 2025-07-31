@@ -6,7 +6,6 @@ import { ToolSet } from '../tools/types.js';
 import { ToolConfirmationProvider } from '../tools/confirmation/types.js';
 import { NoOpConfirmationProvider } from '../tools/confirmation/noop-confirmation-provider.js';
 import { GetPromptResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
-import { ToolExecutionDeniedError } from '../tools/confirmation/errors.js';
 
 /**
  * Centralized manager for Multiple Model Context Protocol (MCP) servers.
@@ -342,10 +341,7 @@ export class MCPManager {
      * @param sessionId Optional session ID
      * @returns Promise resolving to the tool execution result
      */
-    async executeTool(toolName: string, args: any, sessionId?: string): Promise<any> {
-        logger.debug(`🔧 MCP tool execution requested: '${toolName}'`);
-        logger.debug(`Tool args: ${JSON.stringify(args, null, 2)}`);
-
+    async executeTool(toolName: string, args: any, _sessionId?: string): Promise<any> {
         const client = this.getToolClient(toolName);
         if (!client) {
             logger.error(`❌ No MCP tool found: ${toolName}`);
@@ -364,31 +360,14 @@ export class MCPManager {
         const actualToolName = parsed ? parsed.toolName : toolName;
         const serverName = parsed ? parsed.serverName : 'direct';
 
-        logger.debug(
-            `🎯 MCP tool routing: '${toolName}' -> server: '${serverName}', actual tool: '${actualToolName}'`
-        );
-
-        const approved = await this.confirmationProvider.requestConfirmation({
-            toolName: actualToolName,
-            args,
-        });
-        if (!approved) {
-            logger.warn(`🚫 MCP tool execution denied: ${toolName}`);
-            throw new ToolExecutionDeniedError(toolName, sessionId);
-        }
-
         logger.debug(`▶️  Executing MCP tool '${actualToolName}' on server '${serverName}'...`);
-        const startTime = Date.now();
 
         try {
             const result = await client.callTool(actualToolName, args);
-            const duration = Date.now() - startTime;
-            logger.debug(`✅ MCP tool execution completed in ${duration}ms: '${actualToolName}'`);
             return result;
         } catch (error) {
-            const duration = Date.now() - startTime;
             logger.error(
-                `❌ MCP tool execution failed after ${duration}ms: '${actualToolName}' - ${error instanceof Error ? error.message : String(error)}`
+                `❌ MCP tool execution failed: '${actualToolName}' - ${error instanceof Error ? error.message : String(error)}`
             );
             throw error;
         }

@@ -28,7 +28,7 @@ export class AnthropicMessageFormatter implements IMessageFormatter {
     format(
         history: Readonly<InternalMessage[]>,
         context: LLMContext,
-        systemPrompt?: string | null
+        _systemPrompt?: string | null
     ): unknown[] {
         const formatted = [];
 

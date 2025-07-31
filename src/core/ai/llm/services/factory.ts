@@ -13,6 +13,7 @@ import { AnthropicService } from './anthropic.js';
 import { LanguageModelV1 } from 'ai';
 import { SessionEventBus } from '../../../events/index.js';
 import { LLMRouter } from '../types.js';
+import { LLMProvider } from '../registry.js';
 import { ContextManager } from '../messages/manager.js';
 import { createCohere } from '@ai-sdk/cohere';
 import OpenAI from 'openai';
@@ -164,7 +165,7 @@ function _createVercelLLMService(
     return new VercelLLMService(
         toolManager,
         model,
-        config.provider,
+        config.provider as LLMProvider,
         sessionEventBus,
         contextManager,
         config.maxIterations,
