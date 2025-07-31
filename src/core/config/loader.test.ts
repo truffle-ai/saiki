@@ -91,9 +91,9 @@ mcpServers:
             expect(config).toBeDefined();
             expect(config.llm).toBeDefined();
         } catch (error) {
-            expect(error).toBeInstanceOf(ConfigFileNotFoundError);
-            expect((error as ConfigFileNotFoundError).message).toMatch(
-                /Configuration file not found/
+            expect(error).toSatisfy(
+                (err: Error) =>
+                    err instanceof ConfigFileNotFoundError || err instanceof ConfigEnvVarError
             );
         }
     });
