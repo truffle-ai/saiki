@@ -8,9 +8,10 @@
  * Uses InMemoryAllowedToolsProvider to satisfy the interface, but does not enforce any restrictions
  * when in auto-approve mode.
  */
-import { ToolConfirmationProvider } from './types.js';
+import { ToolConfirmationProvider, ToolExecutionDetails } from './types.js';
 import type { IAllowedToolsProvider } from './allowed-tools-provider/types.js';
 import { InMemoryAllowedToolsProvider } from './allowed-tools-provider/in-memory.js';
+import { logger } from '@core/logger/logger.js';
 
 export class NoOpConfirmationProvider implements ToolConfirmationProvider {
     public allowedToolsProvider: IAllowedToolsProvider;
@@ -21,7 +22,16 @@ export class NoOpConfirmationProvider implements ToolConfirmationProvider {
         this.autoApprove = autoApprove;
     }
 
-    async requestConfirmation(/* details */): Promise<boolean> {
+    async requestConfirmation(details: ToolExecutionDetails): Promise<boolean> {
+        if (this.autoApprove) {
+            logger.info(
+                `Tool confirmation auto-approved for ${details.toolName}, sessionId: ${details.sessionId ?? 'global'} (auto-approve mode)`
+            );
+        } else {
+            logger.info(
+                `Tool confirmation auto-denied for ${details.toolName}, sessionId: ${details.sessionId ?? 'global'} (auto-deny mode)`
+            );
+        }
         return this.autoApprove; // Always approve or deny based on configuration
     }
 }

@@ -51,7 +51,7 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
         );
 
         if (isAllowed) {
-            logger.debug(
+            logger.info(
                 `Tool '${details.toolName}' already allowed for session '${details.sessionId ?? 'global'}' – skipping confirmation.`
             );
             return true;
@@ -129,15 +129,21 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
             return;
         }
 
+        // Remove from pending map immediately to prevent duplicate processing
+        this.pendingConfirmations.delete(response.executionId);
+
         // If user wants to remember this choice, add to allowed tools
         if (response.approved && response.rememberChoice) {
             await this.allowedToolsProvider.allowTool(pending.toolName, response.sessionId);
+            logger.info(
+                `Tool '${pending.toolName}' added to allowed tools for session '${response.sessionId ?? 'global'}' (remember choice selected)`
+            );
         }
 
         // No further action needed if denied; LLM service wrapper will catch and return error
 
         logger.info(
-            `Tool confirmation ${response.approved ? 'approved' : 'denied'} for executionId ${response.executionId}, sessionId: ${response.sessionId}`
+            `Tool confirmation ${response.approved ? 'approved' : 'denied'} for ${pending.toolName}, executionId: ${response.executionId}, sessionId: ${response.sessionId ?? 'global'}`
         );
 
         pending.resolve(response.approved);

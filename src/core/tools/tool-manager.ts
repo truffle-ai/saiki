@@ -195,6 +195,9 @@ export class ToolManager {
         }
 
         logger.debug(`✅ Tool execution approved: ${toolName}`);
+        logger.info(
+            `🔧 Tool execution started for ${toolName}, sessionId: ${sessionId ?? 'global'}`
+        );
 
         const startTime = Date.now();
 
@@ -246,11 +249,14 @@ export class ToolManager {
 
             const duration = Date.now() - startTime;
             logger.debug(`🎯 Tool execution completed in ${duration}ms: '${toolName}'`);
+            logger.info(
+                `✅ Tool execution completed successfully for ${toolName} in ${duration}ms, sessionId: ${sessionId ?? 'global'}`
+            );
             return result;
         } catch (error) {
             const duration = Date.now() - startTime;
             logger.error(
-                `❌ Tool execution failed after ${duration}ms: '${toolName}' - ${error instanceof Error ? error.message : String(error)}`
+                `❌ Tool execution failed for ${toolName} after ${duration}ms, sessionId: ${sessionId ?? 'global'}: ${error instanceof Error ? error.message : String(error)}`
             );
             throw error;
         }
