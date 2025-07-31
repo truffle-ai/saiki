@@ -74,11 +74,10 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
     // Load available tools
     logger.info('Loading available tools...');
     try {
-        const tools = await agent.mcpManager.getAllTools(); // tools variable is not used currently but kept for potential future use
+        const toolStats = await agent.toolManager.getToolStats();
+
         logger.info(
-            `Loaded ${Object.keys(tools).length} tools from ${
-                agent.mcpManager.getClients().size
-            } MCP servers`
+            `Loaded ${toolStats.total} total tools: ${toolStats.mcp} MCP, ${toolStats.internal} internal`
         );
     } catch (error) {
         logger.error(

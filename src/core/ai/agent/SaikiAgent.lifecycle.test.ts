@@ -44,6 +44,7 @@ describe('SaikiAgent Lifecycle Management', () => {
                 disconnectAll: vi.fn(),
                 initializeFromConfig: vi.fn().mockResolvedValue(undefined),
             } as any,
+            toolManager: {} as any,
             promptManager: {} as any,
             agentEventBus: {} as any,
             stateManager: {
@@ -66,6 +67,7 @@ describe('SaikiAgent Lifecycle Management', () => {
                 init: vi.fn().mockResolvedValue(undefined),
                 createSession: vi.fn().mockResolvedValue({ id: 'test-session' }),
             } as any,
+            searchService: {} as any,
             storage: {} as any,
             storageManager: {
                 disconnect: vi.fn(),

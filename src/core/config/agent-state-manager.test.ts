@@ -34,6 +34,7 @@ describe('AgentStateManager Events', () => {
                 cache: { type: 'in-memory' },
                 database: { type: 'in-memory' },
             },
+            internalTools: [],
             sessions: {
                 maxSessions: 100,
                 sessionTTL: 3600000,

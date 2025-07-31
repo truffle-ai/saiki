@@ -6,3 +6,4 @@ export * from './client/index.js';
 export * from './settings/index.js';
 export * from './events/index.js';
 export * from './storage/index.js';
+export * from './tools/index.js';

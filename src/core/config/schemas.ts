@@ -598,6 +598,14 @@ export const AgentConfigSchema = z
         mcpServers: ServerConfigsSchema.default({}).describe(
             'Configurations for MCP (Model Context Protocol) servers used by the agent'
         ),
+
+        internalTools: z
+            .array(z.enum(['search_history']).describe('Available internal tool names'))
+            .default([])
+            .describe(
+                'Array of internal tool names to enable. Empty array = disabled. Available tools: search_history'
+            ),
+
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 
         // Storage configuration
@@ -661,6 +669,7 @@ export const AgentConfigSchema = z
     })
     .strict()
     .describe('Main configuration for an agent, including its LLM and server connections');
+
 // Input type for user-facing API (pre-parsing) - makes fields with defaults optional
 export type AgentConfig = z.input<typeof AgentConfigSchema>;
 // Validated type for internal use (post-parsing) - all defaults applied
