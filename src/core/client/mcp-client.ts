@@ -254,6 +254,7 @@ export class MCPClient implements IMCPClient {
      * @returns Result of the tool execution
      */
     async callTool(name: string, args: any): Promise<any> {
+        this.ensureConnected();
         try {
             logger.debug(`Calling tool '${name}' with args: ${JSON.stringify(args, null, 2)}`);
 
@@ -294,6 +295,7 @@ export class MCPClient implements IMCPClient {
      * @returns Array of available tools
      */
     async getTools(): Promise<ToolSet> {
+        this.ensureConnected();
         const tools: ToolSet = {};
         try {
             // Call listTools with parameters only
