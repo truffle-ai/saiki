@@ -6,7 +6,12 @@ import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../utils/service-initializer.js';
 import { logger } from '../logger/index.js';
-import { ValidatedLLMConfig, LLMConfig, McpServerConfig } from '../config/schemas.js';
+import {
+    ValidatedLLMConfig,
+    LLMConfig,
+    McpServerConfig,
+    LLMSwitchInput,
+} from '../config/schemas.js';
 import {
     getSupportedProviders,
     getDefaultModelForProvider,
@@ -604,7 +609,7 @@ export class SaikiAgent {
      * ```
      */
     public async switchLLM(
-        llmUpdates: Partial<LLMConfig>,
+        llmUpdates: LLMSwitchInput,
         sessionId?: string
     ): Promise<{
         success: boolean;

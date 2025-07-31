@@ -87,6 +87,7 @@ describe('ConfigManager', () => {
                 },
             };
 
+            // @ts-expect-error - Testing invalid provider input
             expect(() => new ConfigManager(invalidConfig)).toThrow(
                 /Configuration validation failed/
             );

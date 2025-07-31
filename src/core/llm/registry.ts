@@ -303,9 +303,10 @@ export function isValidProviderModel(provider?: string, model?: string): boolean
  * @param model The model name (e.g., 'gpt-4o-mini', 'claude-3-7-sonnet-20250219')
  * @returns The inferred provider name ('openai', 'anthropic', etc.), or 'unknown' if no match is found.
  */
-export function getProviderFromModel(model: string): string {
+export function getProviderFromModel(model: string): LLMProvider {
     const lowerModel = model.toLowerCase();
-    for (const [provider, info] of Object.entries(LLM_REGISTRY)) {
+    for (const provider of LLM_PROVIDERS) {
+        const info = LLM_REGISTRY[provider];
         if (info.models.some((m) => m.name.toLowerCase() === lowerModel)) {
             return provider;
         }

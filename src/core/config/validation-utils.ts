@@ -10,12 +10,14 @@ import {
     getDefaultModelForProvider,
     getEffectiveMaxInputTokens,
     acceptsAnyModel,
+    LLMProvider,
 } from '../llm/registry.js';
 import type {
     ValidatedLLMConfig,
     ValidatedMcpServerConfig,
     LLMConfig,
     McpServerConfig,
+    LLMSwitchInput,
 } from './schemas.js';
 import { LLMConfigSchema, McpServerConfigSchema } from './schemas.js';
 import type { AgentStateManager } from './agent-state-manager.js';
@@ -162,7 +164,7 @@ export function validateLLMSwitchRequest(request: {
  * logic for provider inference, API key resolution, compatibility checks, and validation.
  */
 export async function buildValidatedLLMConfig(
-    updates: Partial<LLMConfig>,
+    updates: LLMSwitchInput,
     currentConfig: LLMConfig,
     stateManager: AgentStateManager,
     sessionId?: string
@@ -218,7 +220,7 @@ export function validationErrorsToStrings(errors: ValidationError[]): string[] {
  * Handles provider inference, model compatibility, router selection, and API key resolution.
  */
 export async function buildLLMConfig(
-    updates: Partial<LLMConfig>,
+    updates: LLMSwitchInput,
     currentConfig: LLMConfig
 ): Promise<LLMConfigResult> {
     const errors: ValidationError[] = [];
@@ -306,7 +308,7 @@ export async function buildLLMConfig(
 // Helper functions for building LLM config
 
 function resolveModel(
-    updates: Partial<LLMConfig>,
+    updates: LLMSwitchInput,
     currentConfig: LLMConfig,
     errors: ValidationError[]
 ): string {
@@ -324,33 +326,15 @@ function resolveModel(
 }
 
 function resolveProvider(
-    updates: Partial<LLMConfig>,
+    updates: LLMSwitchInput,
     currentConfig: LLMConfig,
     model: string,
     errors: ValidationError[],
     _warnings: string[]
-): string {
+): LLMProvider {
     if (updates.provider !== undefined) {
-        // Explicit provider provided
-        if (typeof updates.provider !== 'string' || updates.provider.trim() === '') {
-            errors.push({
-                type: 'invalid_provider',
-                message: 'Provider must be a non-empty string',
-            });
-            return '';
-        }
-
-        const providerName = updates.provider.trim();
-        if (!isValidProvider(providerName)) {
-            errors.push({
-                type: 'invalid_provider',
-                message: `Unknown provider: ${providerName}`,
-                provider: providerName,
-            });
-            return '';
-        }
-
-        return providerName;
+        // Explicit provider provided - already validated by Zod schema
+        return updates.provider;
     } else if (updates.model !== undefined && model !== currentConfig.model) {
         // Model changed but provider not specified
         // If current provider accepts any model, keep it
@@ -370,7 +354,7 @@ function resolveProvider(
                 type: 'general',
                 message: `Could not infer provider from model '${model}'. Please specify provider explicitly.`,
             });
-            return '';
+            return currentConfig.provider; // Fallback to current provider
         }
     }
 
@@ -380,12 +364,12 @@ function resolveProvider(
 
 function resolveModelProviderCompatibility(
     model: string,
-    provider: string,
-    updates: Partial<LLMConfig>,
+    provider: LLMProvider,
+    updates: LLMSwitchInput,
     currentConfig: LLMConfig,
     errors: ValidationError[],
     warnings: string[]
-): { finalModel: string; finalProvider: string } {
+): { finalModel: string; finalProvider: LLMProvider } {
     if (acceptsAnyModel(provider) || isValidProviderModel(provider, model)) {
         return { finalModel: model, finalProvider: provider };
     }
@@ -414,7 +398,7 @@ function resolveModelProviderCompatibility(
 }
 
 function resolveRouter(
-    updates: Partial<LLMConfig>,
+    updates: LLMSwitchInput,
     currentConfig: LLMConfig,
     provider: string,
     errors: ValidationError[],
@@ -475,7 +459,7 @@ function resolveRouter(
 }
 
 async function resolveApiKey(
-    updates: Partial<LLMConfig>,
+    updates: LLMSwitchInput,
     currentConfig: LLMConfig,
     provider: string,
     errors: ValidationError[],
@@ -510,8 +494,8 @@ async function resolveApiKey(
 }
 
 function buildFinalConfig(
-    core: { provider: string; model: string; router: 'vercel' | 'in-built'; apiKey: string },
-    updates: Partial<LLMConfig>,
+    core: { provider: LLMProvider; model: string; router: 'vercel' | 'in-built'; apiKey: string },
+    updates: LLMSwitchInput,
     currentConfig: LLMConfig,
     errors: ValidationError[],
     warnings: string[]

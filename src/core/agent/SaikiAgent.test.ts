@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { LLMConfig, AgentConfig } from '../config/schemas.js';
+import type { LLMConfig, AgentConfig, ValidatedLLMConfig } from '../config/schemas.js';
 import * as validationUtils from '../config/validation-utils.js';
 
 // Mock the dependencies
@@ -176,7 +176,7 @@ describe('SaikiAgent.switchLLM', () => {
                         maxOutputTokens: resultConfig.maxOutputTokens,
                     }),
                     ...(resultConfig.temperature && { temperature: resultConfig.temperature }),
-                },
+                } as ValidatedLLMConfig,
                 isValid: true,
                 errors: [],
                 warnings: [],

@@ -201,20 +201,28 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('correctly validates case-insensitive provider names', () => {
+        it('requires exact case for provider names', () => {
             const configMixedCase = {
-                provider: 'OpenAI', // Mixed case
+                provider: 'OpenAI', // Mixed case - should fail
                 model: 'o4-mini',
                 apiKey: '123',
             };
-            expect(() => LLMConfigSchema.parse(configMixedCase)).not.toThrow();
+            expect(() => LLMConfigSchema.parse(configMixedCase)).toThrow();
 
             const configUpperCase = {
-                provider: 'ANTHROPIC', // Upper case
-                model: 'claude-3-opus-20240229', // Valid model for anthropic
+                provider: 'ANTHROPIC', // Upper case - should fail
+                model: 'claude-3-opus-20240229',
                 apiKey: '123',
             };
-            expect(() => LLMConfigSchema.parse(configUpperCase)).not.toThrow();
+            expect(() => LLMConfigSchema.parse(configUpperCase)).toThrow();
+
+            // But correct case should work
+            const configCorrectCase = {
+                provider: 'anthropic', // Correct case
+                model: 'claude-3-opus-20240229',
+                apiKey: '123',
+            };
+            expect(() => LLMConfigSchema.parse(configCorrectCase)).not.toThrow();
         });
 
         it('rejects if baseURL is set but provider does not support it', () => {

@@ -215,6 +215,7 @@ describe('buildLLMConfig', () => {
     });
 
     it('should validate empty provider', async () => {
+        // @ts-expect-error - we want to test the error case
         const result = await buildLLMConfig({ provider: '' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
@@ -224,6 +225,7 @@ describe('buildLLMConfig', () => {
     });
 
     it('should validate unknown provider', async () => {
+        // @ts-expect-error - Testing invalid provider input
         const result = await buildLLMConfig({ provider: 'unknown' }, baseLLMConfig);
 
         expect(result.isValid).toBe(false);
@@ -284,7 +286,7 @@ describe('buildLLMConfig', () => {
     it('should keep current baseURL when provider supports it', async () => {
         const configWithBaseURL = {
             ...baseLLMConfig,
-            provider: 'openai-compatible',
+            provider: 'openai-compatible' as const,
             model: 'custom-model',
             baseURL: 'https://custom.openai.com',
         };
@@ -301,13 +303,13 @@ describe('buildLLMConfig', () => {
 
         const configWithBaseURL = {
             ...baseLLMConfig,
-            provider: 'openai-compatible',
+            provider: 'openai-compatible' as const,
             model: 'custom-model',
             baseURL: 'https://custom.openai.com',
         };
 
         const result = await buildLLMConfig(
-            { provider: 'anthropic', model: 'claude-4-sonnet-20250514' },
+            { provider: 'anthropic' as const, model: 'claude-4-sonnet-20250514' },
             configWithBaseURL
         );
 

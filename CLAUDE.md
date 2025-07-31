@@ -9,10 +9,12 @@
 4. `npm run typecheck` - Validate TypeScript types
 
 ## General rules
-- If your goal is to communicate with the user, do it via chat message and never via comments in the code. These comments would be useless
 - Do NOT focus on pleasing the user. Focus on being CORRECT, use facts and code as your source of truth. Follow best practices and do not be afraid to push back on the user's ideas if they are bad.
+- Do not be lazy. Read as much relevant code as possible to keep your answers grounded in reality
 - If the user is asking you a question, it DOES NOT MEAN YOU ARE WRONG. JUST ANSWER THE QUESTION
 - Make as few assumptions as possible. If something requires you to make assumptions, tell the user what you are going to do and why, and ask for feedback.
+- Never communicate to the user with code comments. These comments add nothing. Comments are for people reading the code.
+
 
 ## Architecture & Design Patterns
 
@@ -65,7 +67,8 @@
 - **Strict null safety** - Handle null/undefined cases explicitly
 - **Proper error handling** - Use type guards and proper error messages
 - **Consistent return patterns** - All API endpoints return responses consistently
-- **Avoid `any` types** - Use specific types unless absolutely necessary (rare exceptions in tests)
+- **Avoid `any` types** - Use specific types unless absolutely necessary
+  - **In tests**: For invalid input testing, prefer `@ts-expect-error` over `as any` to be explicit about intentional type violations
 
 ### Git and PR Standards
 - **Never include "Generated with Claude Code" footers** - In commit messages, PR descriptions, or any documentation

@@ -26,6 +26,7 @@ import {
     supportsBaseURL,
 } from '@core/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
+import { LLMSwitchRequestSchema, type LLMSwitchInput } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
 import { validateInputForLLM, createInputValidationError } from '@core/llm/validation.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
@@ -608,21 +609,22 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Switch LLM configuration
     app.post('/api/llm/switch', express.json(), async (req, res) => {
         try {
-            // Thin wrapper - build LLMConfig object from request body
-            const { provider, model, apiKey, router, baseURL, sessionId, ...otherFields } =
-                req.body;
+            // Validate request body with Zod schema
+            const validationResult = LLMSwitchRequestSchema.safeParse(req.body);
 
-            // Build the LLMConfig object from the request parameters
-            const llmConfig: Partial<LLMConfig> = {};
-            if (provider !== undefined) llmConfig.provider = provider;
-            if (model !== undefined) llmConfig.model = model;
-            if (apiKey !== undefined) llmConfig.apiKey = apiKey;
-            if (router !== undefined) llmConfig.router = router;
-            if (baseURL !== undefined) llmConfig.baseURL = baseURL;
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid request data',
+                    errors: validationResult.error.errors.map((err) => ({
+                        field: err.path.join('.'),
+                        message: err.message,
+                        code: err.code,
+                    })),
+                });
+            }
 
-            // Include any other LLMConfig fields that might be in the request
-            Object.assign(llmConfig, otherFields);
-
+            const { sessionId, ...llmConfig } = validationResult.data;
             const result = await agent.switchLLM(llmConfig, sessionId);
             return res.json(result);
         } catch (error) {

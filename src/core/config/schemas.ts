@@ -195,7 +195,8 @@ export const SystemPromptConfigSchema = z
 
 export type SystemPromptConfig = z.infer<typeof SystemPromptConfigSchema>;
 
-export const LLMConfigSchema = z
+// Base LLM config object schema without business logic validation
+export const LLMConfigBaseSchema = z
     .object({
         provider: z
             .enum(LLM_PROVIDERS)
@@ -251,104 +252,105 @@ export const LLMConfigSchema = z
                 'Controls randomness in AI responses. 0 = deterministic, 1 = very creative. Default varies by provider.'
             ),
     })
-    .strict()
-    .superRefine((data, ctx) => {
-        const providerLower = data.provider?.toLowerCase();
-        const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
-        const maxInputTokensIsSet = data.maxInputTokens != null;
+    .strict();
 
-        // Provider must be one of the supported list
-        const supportedProvidersList = getSupportedProviders();
-        if (!supportedProvidersList.includes(providerLower)) {
+// Full LLM config schema with business logic validation
+export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
+    const providerLower = data.provider?.toLowerCase();
+    const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
+    const maxInputTokensIsSet = data.maxInputTokens != null;
+
+    // Provider must be one of the supported list
+    const supportedProvidersList = getSupportedProviders();
+    if (!supportedProvidersList.includes(providerLower)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['provider'],
+            message: `Provider '${data.provider}' is not supported. Supported: ${supportedProvidersList.join(', ')}`,
+        });
+    }
+
+    // When user provides a custom baseURL
+    if (baseURLIsSet) {
+        // 1. Check if provider supports baseURL using registry
+        if (!supportsBaseURL(providerLower)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['provider'],
-                message: `Provider '${data.provider}' is not supported. Supported: ${supportedProvidersList.join(', ')}`,
+                message: `Provider '${data.provider}' does not support baseURL. Use 'openai-compatible' or corresponding name instead`,
             });
         }
-
-        // When user provides a custom baseURL
-        if (baseURLIsSet) {
-            // 1. Check if provider supports baseURL using registry
-            if (!supportsBaseURL(providerLower)) {
+    }
+    // Check if provider requires baseURL but none is provided
+    else if (requiresBaseURL(providerLower)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['baseURL'],
+            message: `Provider '${data.provider}' requires a 'baseURL' to be set`,
+        });
+    }
+    // If no base URL
+    else {
+        // 1. Model must be valid for the provider (skip for providers that accept any model)
+        if (supportedProvidersList.includes(providerLower) && !acceptsAnyModel(providerLower)) {
+            const supportedModelsList = getSupportedModels(providerLower);
+            if (!isValidProviderModel(providerLower, data.model)) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    path: ['provider'],
-                    message: `Provider '${data.provider}' does not support baseURL. Use 'openai-compatible' or corresponding name instead`,
+                    path: ['model'],
+                    message: `Model '${data.model}' is not supported for provider '${data.provider}'. Supported: ${supportedModelsList.join(', ')}`,
                 });
             }
         }
-        // Check if provider requires baseURL but none is provided
-        else if (requiresBaseURL(providerLower)) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                path: ['baseURL'],
-                message: `Provider '${data.provider}' requires a 'baseURL' to be set`,
-            });
-        }
-        // If no base URL
-        else {
-            // 1. Model must be valid for the provider (skip for providers that accept any model)
-            if (supportedProvidersList.includes(providerLower) && !acceptsAnyModel(providerLower)) {
-                const supportedModelsList = getSupportedModels(providerLower);
-                if (!isValidProviderModel(providerLower, data.model)) {
+        // 2. maxInputTokens must be within the model's limit (skip for providers that accept any model)
+        if (maxInputTokensIsSet && !acceptsAnyModel(providerLower)) {
+            try {
+                const registryMaxInputTokens = getMaxInputTokensForModel(providerLower, data.model);
+                // Check maxInputTokens field
+                if (data.maxInputTokens != null && data.maxInputTokens > registryMaxInputTokens) {
                     ctx.addIssue({
                         code: z.ZodIssueCode.custom,
-                        path: ['model'],
-                        message: `Model '${data.model}' is not supported for provider '${data.provider}'. Supported: ${supportedModelsList.join(', ')}`,
+                        path: ['maxInputTokens'],
+                        message: `Max input tokens for model '${data.model}' is ${registryMaxInputTokens}. You provided ${data.maxInputTokens}`,
+                    });
+                }
+                // Temperature validation is already handled by the Zod schema, so we don't need to validate it here
+            } catch (error: any) {
+                // Handle ProviderNotFoundError and ModelNotFoundError specifically
+                if (error.name === 'ProviderNotFoundError' || error.name === 'ModelNotFoundError') {
+                    // This scenario should ideally be caught by the earlier provider/model validation checks.
+                    // However, if it still occurs, add an issue.
+                    // We might not have supportedModelsList here if provider was invalid.
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: ['model'], // Or ['provider', 'model']
+                        message: error.message, // The message from our custom error
+                    });
+                } else {
+                    // For any other unexpected error, rethrow or handle as a generic validation issue
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: [], // General error
+                        message: `An unexpected error occurred while validating maxInputTokens: ${error.message}`,
                     });
                 }
             }
-            // 2. maxInputTokens must be within the model's limit (skip for providers that accept any model)
-            if (maxInputTokensIsSet && !acceptsAnyModel(providerLower)) {
-                try {
-                    const registryMaxInputTokens = getMaxInputTokensForModel(
-                        providerLower,
-                        data.model
-                    );
-                    // Check maxInputTokens field
-                    if (
-                        data.maxInputTokens != null &&
-                        data.maxInputTokens > registryMaxInputTokens
-                    ) {
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: ['maxInputTokens'],
-                            message: `Max input tokens for model '${data.model}' is ${registryMaxInputTokens}. You provided ${data.maxInputTokens}`,
-                        });
-                    }
-                    // Temperature validation is already handled by the Zod schema, so we don't need to validate it here
-                } catch (error: any) {
-                    // Handle ProviderNotFoundError and ModelNotFoundError specifically
-                    if (
-                        error.name === 'ProviderNotFoundError' ||
-                        error.name === 'ModelNotFoundError'
-                    ) {
-                        // This scenario should ideally be caught by the earlier provider/model validation checks.
-                        // However, if it still occurs, add an issue.
-                        // We might not have supportedModelsList here if provider was invalid.
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: ['model'], // Or ['provider', 'model']
-                            message: error.message, // The message from our custom error
-                        });
-                    } else {
-                        // For any other unexpected error, rethrow or handle as a generic validation issue
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: [], // General error
-                            message: `An unexpected error occurred while validating maxInputTokens: ${error.message}`,
-                        });
-                    }
-                }
-            }
         }
-    });
+    }
+});
 
 // Input type for user-facing API (pre-parsing)
 export type LLMConfig = z.input<typeof LLMConfigSchema>;
 // Validated type for internal use (post-parsing)
 export type ValidatedLLMConfig = z.infer<typeof LLMConfigSchema>;
+
+// API request schemas and types
+export const LLMSwitchRequestSchema = LLMConfigBaseSchema.partial().extend({
+    sessionId: z.string().optional(),
+});
+
+export type LLMSwitchRequest = z.infer<typeof LLMSwitchRequestSchema>;
+export type LLMSwitchInput = z.infer<ReturnType<typeof LLMConfigBaseSchema.partial>>;
 
 export const StdioServerConfigSchema = z
     .object({
