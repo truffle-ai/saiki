@@ -643,6 +643,77 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    const formatModels = (models: any[]): any[] => {
+        return models.map((model) => ({
+            name: model.name,
+            supportedFileTypes: model.supportedFileTypes,
+            maxInputTokens: model.maxInputTokens,
+        }));
+    };
+
+    app.get('/api/llm/registry', (req, res) => {
+        try {
+            // Use a type assertion directly on the initial value of the reduce function
+            const formattedRegistry = Object.entries(LLM_REGISTRY).reduce(
+                (acc, [provider, providerInfo]) => {
+                    acc.providers[provider] = {
+                        models: formatModels(providerInfo.models),
+                    };
+                    return acc;
+                },
+                { providers: {} } as { providers: Record<string, { models: any[] }> }
+            ); // This is the key change
+
+            res.status(200).json(formattedRegistry);
+        } catch (error) {
+            logger.error('Error in /api/llm/registry:', error);
+            res.status(500).json({ error: 'Failed to retrieve LLM registry data.' });
+        }
+    });
+
+    // app.get('/api/llm/capabilities', (req, res) => {
+    //     const { provider, model } = req.query;
+
+    //     // Basic validation for the presence of query parameters
+    //     if (!provider || !model) {
+    //         return res.status(400).json({
+    //         error: 'Missing required query parameters: `provider` and `model`.'
+    //         });
+    //     }
+
+    //     try {
+    //         // Validate if the provider and model exist using your helper functions
+    //         if (!isValidProviderModel(provider, model)) {
+    //         return res.status(404).json({
+    //             error: `Provider '${provider}' or model '${model}' not found in registry.`
+    //         });
+    //         }
+
+    //         // Retrieve the specific capabilities using your helper functions
+    //         const supportedFileTypes = getSupportedFileTypesForModel(provider, model);
+    //         const maxInputTokens = getMaxInputTokensForModel(provider, model);
+    //         const supportedMimeTypes = getMimeTypesForFileTypes(supportedFileTypes);
+
+    //         // Construct the final response object
+    //         const capabilities = {
+    //         model: model,
+    //         provider: provider,
+    //         supportedFileTypes: supportedFileTypes,
+    //         supportedMimeTypes: supportedMimeTypes,
+    //         maxInputTokens: maxInputTokens
+    //         };
+
+    //         res.status(200).json(capabilities);
+
+    //     } catch (error) {
+    //         // We can use a more specific error message based on the error type if needed
+    //         // For now, a generic 500 will suffice, but in a production app,
+    //         // you might want to handle `ModelNotFoundError` or `ProviderNotFoundError` specifically.
+    //         console.error('Error in /api/llm/capabilities:', error);
+    //         res.status(500).json({ error: `Failed to retrieve capabilities for model '${model}'.` });
+    //     }
+    //     });
+
     // Session Management APIs
 
     // List all active sessions
