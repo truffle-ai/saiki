@@ -29,14 +29,14 @@ export function resolveAndValidateLLM(
     previous: ValidatedLLMConfig,
     updates: LLMUpdates
 ): Result<ValidatedLLMConfig, LLMUpdateContext> {
-    const { candidate, warnings } = resolveLLM(previous, updates);
+    const { candidate, warnings } = resolveLLMConfig(previous, updates);
 
     // If resolver produced any errors, fail immediately (don’t try to validate a broken candidate)
     if (hasErrors(warnings)) {
         const { errors } = splitIssues(warnings);
         return fail<ValidatedLLMConfig, LLMUpdateContext>(errors);
     }
-    const result = validateLLM(candidate, warnings);
+    const result = validateLLMConfig(candidate, warnings);
     return result;
 }
 
@@ -46,7 +46,7 @@ export function resolveAndValidateLLM(
  * @param updates - The updates to the LLM config
  * @returns The resolved LLM config
  */
-export function resolveLLM(
+export function resolveLLMConfig(
     previous: ValidatedLLMConfig,
     updates: LLMUpdates
 ): { candidate: LLMConfigInput; warnings: Issue<LLMUpdateContext>[] } {
@@ -160,7 +160,7 @@ export function resolveLLM(
     };
 }
 
-export function validateLLM(
+export function validateLLMConfig(
     candidate: LLMConfigInput,
     warnings: Issue<LLMUpdateContext>[]
 ): Result<ValidatedLLMConfig, LLMUpdateContext> {

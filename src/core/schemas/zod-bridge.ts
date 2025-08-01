@@ -2,6 +2,9 @@ import type { ZodError, ZodIssue } from 'zod';
 import { SaikiErrorCode } from './errors.js';
 import type { Issue } from './helpers.js';
 
+/**
+ * Helper utility to map Zod errors to internal known error codes
+ */
 export function zodToIssues<C = unknown>(
     err: ZodError,
     severity: 'error' | 'warning' = 'error'
