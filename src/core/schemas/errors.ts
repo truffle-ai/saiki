@@ -1,6 +1,12 @@
 export const enum SaikiErrorCode {
     SCHEMA_VALIDATION = 'schema_validation',
 
+    // Agent-level errors
+    AGENT_MISSING_LLM_INPUT = 'agent_missing_llm_input',
+    AGENT_LLM_SWITCH_FAILED = 'agent_llm_switch_failed',
+    AGENT_SESSION_NOT_FOUND = 'agent_session_not_found',
+    AGENT_MCP_CONNECTION_FAILED = 'agent_mcp_connection_failed',
+
     // LLM
     LLM_INCOMPATIBLE_MODEL_PROVIDER = 'llm_incompatible_model_provider',
     LLM_UNSUPPORTED_ROUTER = 'llm_unsupported_router',

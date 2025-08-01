@@ -497,20 +497,9 @@ export class SessionManager {
             const session = await this.getSession(sId);
             if (session) {
                 try {
-                    // Update LLM with validated config
-                    const sessionValidation = this.services.stateManager.updateLLM(
-                        newLLMConfig,
-                        sId
-                    );
-                    if (sessionValidation.isValid) {
-                        await session.switchLLM(newLLMConfig);
-                    } else {
-                        failedSessions.push(sId);
-                        logger.warn(
-                            `Failed to switch LLM for session ${sId}:`,
-                            sessionValidation.errors
-                        );
-                    }
+                    // Update state with validated config (no validation needed - already done by SaikiAgent)
+                    this.services.stateManager.updateLLM(newLLMConfig, sId);
+                    await session.switchLLM(newLLMConfig);
                 } catch (error) {
                     failedSessions.push(sId);
                     logger.warn(

@@ -54,3 +54,7 @@ test-temp/
 
 # temporary storage
 .saiki/
+
+
+# temp readmes
+src/core/**/README.md

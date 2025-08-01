@@ -4,7 +4,7 @@ import {
     SseServerConfig,
     McpServerConfig,
 } from '@core/schemas/mcp.js';
-import { validateMcpServerConfig } from '@core/config/validation-utils.js';
+import { resolveAndValidateMcpServerConfig } from '@core/mcp/resolver.js';
 import { parseOptions } from '../utils/arg-parser.js';
 import chalk from 'chalk';
 
@@ -215,22 +215,28 @@ export function validateAndShowErrors(
     config: McpServerConfig,
     existingServers: string[] = []
 ): boolean {
-    const validation = validateMcpServerConfig(serverName, config, existingServers);
+    const result = resolveAndValidateMcpServerConfig(serverName, config, existingServers);
 
-    if (!validation.isValid) {
+    if (!result.ok) {
         console.log(chalk.red('❌ Server configuration validation failed:'));
-        for (const error of validation.errors) {
+        const errors = result.issues.filter((issue) => issue.severity === 'error');
+        for (const error of errors) {
             console.log(chalk.red(`   ${error.message}`));
-            if (error.suggestedAction) {
-                console.log(chalk.dim(`   💡 ${error.suggestedAction}`));
+            if (
+                error.context &&
+                typeof error.context === 'object' &&
+                'suggestedAction' in error.context
+            ) {
+                console.log(chalk.dim(`   💡 ${error.context.suggestedAction}`));
             }
         }
         return false;
     }
 
-    if (validation.warnings.length > 0) {
-        for (const warning of validation.warnings) {
-            console.log(chalk.yellow(`⚠️  ${warning}`));
+    const warnings = result.issues.filter((issue) => issue.severity === 'warning');
+    if (warnings.length > 0) {
+        for (const warning of warnings) {
+            console.log(chalk.yellow(`⚠️  ${warning.message}`));
         }
     }
 

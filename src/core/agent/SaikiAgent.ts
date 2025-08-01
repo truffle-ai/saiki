@@ -8,7 +8,12 @@ import { AgentServices } from '../utils/service-initializer.js';
 import { logger } from '../logger/index.js';
 import { ValidatedLLMConfig, LLMConfig, LLMSwitchInput } from '../schemas/llm.js';
 import { resolveLLMConfig, validateLLMConfig } from '../llm/resolver.js';
-im;
+import { Result, ok, fail } from '../utils/result.js';
+import type { LLMUpdateContext } from '../llm/types.js';
+import { SaikiErrorCode } from '../schemas/errors.js';
+import { resolveAndValidateMcpServerConfig } from '../mcp/resolver.js';
+import type { McpServerConfig, ValidatedMcpServerConfig } from '../schemas/mcp.js';
+import type { McpServerContext } from '../mcp/resolver.js';
 import {
     getSupportedProviders,
     getDefaultModelForProvider,
@@ -607,72 +612,42 @@ export class SaikiAgent {
     public async switchLLM(
         llmUpdates: LLMSwitchInput,
         sessionId?: string
-    ): Promise<{
-        success: boolean;
-        config?: LLMConfig;
-        message?: string;
-        warnings?: string[];
-        errors?: Array<{
-            type: string;
-            message: string;
-            provider?: string;
-            model?: string;
-            router?: string;
-            suggestedAction?: string;
-        }>;
-    }> {
+    ): Promise<Result<ValidatedLLMConfig, LLMUpdateContext>> {
         this.ensureStarted();
+
         // Basic validation
         if (!llmUpdates.model && !llmUpdates.provider) {
-            return {
-                success: false,
-                errors: [
-                    {
-                        type: 'general',
-                        message: 'At least model or provider must be specified',
-                    },
-                ],
-            };
+            return fail([
+                {
+                    code: SaikiErrorCode.AGENT_MISSING_LLM_INPUT,
+                    message: 'At least model or provider must be specified',
+                    severity: 'error',
+                    context: {},
+                },
+            ]);
         }
 
-        try {
-            // Get current config for the session
-            const currentLLMConfig = sessionId
-                ? this.stateManager.getRuntimeConfig(sessionId).llm
-                : this.stateManager.getRuntimeConfig().llm;
+        // Get current config for the session
+        const currentLLMConfig = sessionId
+            ? this.stateManager.getRuntimeConfig(sessionId).llm
+            : this.stateManager.getRuntimeConfig().llm;
 
-            // Build and validate the new configuration using new Result pattern
-            const { candidate, warnings } = resolveLLMConfig(currentLLMConfig, llmUpdates);
-            const result = validateLLMConfig(candidate, warnings);
+        // Build and validate the new configuration using new Result pattern
+        const { candidate, warnings } = resolveLLMConfig(currentLLMConfig, llmUpdates);
+        const result = validateLLMConfig(candidate, warnings);
 
-            if (!result.ok)
-                return {
-                    success: false,
-                    errors: result.issues.map((i) => ({ type: i.code, message: i.message })),
-                };
-
-            // Perform the actual LLM switch with validated config
-            const warnMessages = result.issues
-                .filter((i) => i.severity === 'warning')
-                .map((i) => i.message);
-            return await this.performLLMSwitch(result.data!, sessionId, warnMessages);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error('Error switching LLM', {
-                error: errorMessage,
-                config: llmUpdates,
-                sessionScope: sessionId,
-            });
-            return {
-                success: false,
-                errors: [
-                    {
-                        type: 'general',
-                        message: errorMessage,
-                    },
-                ],
-            };
+        if (!result.ok) {
+            return result; // Pass through validation errors
         }
+
+        // Perform the actual LLM switch with validated config
+        const switchResult = await this.performLLMSwitch(result.data!, sessionId);
+        if (!switchResult.ok) {
+            return switchResult; // Pass through switch errors
+        }
+
+        // Return success with validated config and any warnings
+        return ok(result.data!, result.issues);
     }
 
     /**
@@ -681,86 +656,39 @@ export class SaikiAgent {
      *
      * @param validatedConfig - The validated LLM configuration to apply
      * @param sessionScope - Session ID, '*' for all sessions, or undefined for default session
-     * @param configWarnings - Warnings from the validation process
-     * @returns Promise resolving to switch result
      */
     private async performLLMSwitch(
         validatedConfig: ValidatedLLMConfig,
-        sessionScope?: string,
-        configWarnings: string[] = []
-    ): Promise<{
-        success: boolean;
-        config?: LLMConfig;
-        message?: string;
-        warnings?: string[];
-        errors?: Array<{
-            type: string;
-            message: string;
-            provider?: string;
-            model?: string;
-            router?: string;
-            suggestedAction?: string;
-        }>;
-    }> {
-        // Update state manager
-        const stateValidation = this.stateManager.updateLLM(validatedConfig, sessionScope);
-        if (!stateValidation.ok) {
-            return {
-                success: false,
-                errors: stateValidation.issues.map((err) => {
-                    const errorObj: any = {
-                        type: err.code,
-                        message: err.message,
-                    };
-                    if (err.context && typeof err.context === 'object') {
-                        const ctx = err.context as any;
-                        if (ctx.provider) errorObj.provider = ctx.provider;
-                        if (ctx.model) errorObj.model = ctx.model;
-                        if (ctx.router) errorObj.router = ctx.router;
-                        if (ctx.suggestedAction) errorObj.suggestedAction = ctx.suggestedAction;
-                    }
-                    return errorObj;
-                }),
-            };
-        }
+        sessionScope?: string
+    ): Promise<Result<void, LLMUpdateContext>> {
+        // Update state manager (no validation needed - already validated)
+        this.stateManager.updateLLM(validatedConfig, sessionScope);
 
         // Switch LLM in session(s)
-        let switchResult;
         if (sessionScope === '*') {
-            switchResult = await this.sessionManager.switchLLMForAllSessions(validatedConfig);
+            await this.sessionManager.switchLLMForAllSessions(validatedConfig);
         } else if (sessionScope) {
             // Verify session exists
-            if (!(await this.sessionManager.getSession(sessionScope))) {
-                return {
-                    success: false,
-                    errors: [
-                        {
-                            type: 'general',
-                            message: `Session ${sessionScope} not found`,
+            const session = await this.sessionManager.getSession(sessionScope);
+            if (!session) {
+                return fail([
+                    {
+                        code: SaikiErrorCode.AGENT_SESSION_NOT_FOUND,
+                        message: `Session ${sessionScope} not found`,
+                        severity: 'error',
+                        context: {
+                            provider: validatedConfig.provider,
+                            model: validatedConfig.model,
                         },
-                    ],
-                };
+                    },
+                ]);
             }
-            switchResult = await this.sessionManager.switchLLMForSpecificSession(
-                validatedConfig,
-                sessionScope
-            );
+            await this.sessionManager.switchLLMForSpecificSession(validatedConfig, sessionScope);
         } else {
-            switchResult = await this.sessionManager.switchLLMForDefaultSession(validatedConfig);
+            await this.sessionManager.switchLLMForDefaultSession(validatedConfig);
         }
 
-        // Collect warnings
-        const stateWarnings = stateValidation.issues
-            .filter((i) => i.severity === 'warning')
-            .map((i) => i.message);
-        const allWarnings = [...configWarnings, ...stateWarnings, ...(switchResult.warnings || [])];
-
-        return {
-            success: true,
-            config: validatedConfig as LLMConfig,
-            message: switchResult.message,
-            ...(allWarnings.length > 0 && { warnings: allWarnings }),
-        };
+        return ok(undefined);
     }
 
     /**
@@ -882,31 +810,31 @@ export class SaikiAgent {
 
     /**
      * Connects a new MCP server and adds it to the runtime configuration.
-     * This method handles both adding the server to runtime state and establishing the connection.
-     *
-     * TODO: USER-FACING API DECISION NEEDED
-     * Currently accepts McpServerConfig (input type with optional fields like timeout?, env?)
-     * This is appropriate for user-facing API as users expect to provide minimal config.
-     * Internal validation will apply defaults and convert to ValidatedMcpServerConfig.
+     * This method handles validation, state management, and establishing the connection.
      *
      * @param name The name of the server to connect.
      * @param config The configuration object for the server.
+     * @returns Result with validated config or validation errors
      */
-    public async connectMcpServer(name: string, config: McpServerConfig): Promise<void> {
+    public async connectMcpServer(
+        name: string,
+        config: McpServerConfig
+    ): Promise<Result<ValidatedMcpServerConfig, McpServerContext>> {
         this.ensureStarted();
+
+        // Validate the server configuration
+        const existingServerNames = Object.keys(this.stateManager.getRuntimeConfig().mcpServers);
+        const validation = resolveAndValidateMcpServerConfig(name, config, existingServerNames);
+
+        if (!validation.ok) {
+            return validation; // Pass through validation errors
+        }
+
+        // Add to runtime state (no validation needed - already validated)
+        this.stateManager.addMcpServer(name, validation.data!);
+
         try {
-            // Add to runtime state first with validation
-            const validation = this.stateManager.addMcpServer(name, config);
-
-            if (!validation.ok) {
-                const errorMessages = validation.issues
-                    .filter((i) => i.severity !== 'warning')
-                    .map((e) => e.message)
-                    .join(', ');
-                throw new Error(`Invalid MCP server configuration: ${errorMessages}`);
-            }
-
-            // Then connect the server
+            // Connect the server
             await this.mcpManager.connectServer(name, config);
 
             this.agentEventBus.emit('saiki:mcpServerConnected', {
@@ -915,12 +843,16 @@ export class SaikiAgent {
             });
             this.agentEventBus.emit('saiki:availableToolsUpdated', {
                 tools: Object.keys(await this.toolManager.getAllTools()),
-                source: 'mcp', // All tools are sent but source of updated tools is denoted in the event
+                source: 'mcp',
             });
+
             logger.info(`SaikiAgent: Successfully added and connected to MCP server '${name}'.`);
+
+            // Return success with validated config and any warnings
+            return ok(validation.data!, validation.issues);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error(`SaikiAgent: Failed to add MCP server '${name}': ${errorMessage}`);
+            logger.error(`SaikiAgent: Failed to connect to MCP server '${name}': ${errorMessage}`);
 
             // Clean up state if connection failed
             this.stateManager.removeMcpServer(name);
@@ -930,7 +862,15 @@ export class SaikiAgent {
                 success: false,
                 error: errorMessage,
             });
-            throw error;
+
+            return fail([
+                {
+                    code: SaikiErrorCode.AGENT_MCP_CONNECTION_FAILED,
+                    message: errorMessage,
+                    severity: 'error',
+                    context: { serverName: name },
+                },
+            ]);
         }
     }
 

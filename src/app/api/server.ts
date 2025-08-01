@@ -20,16 +20,18 @@ import { SaikiAgent } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
 import { resolveBundledScript } from '@core/index.js';
+import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
+import { z } from 'zod';
+import { LLMUpdatesSchema } from '@core/schemas/llm.js';
+import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
+import { validateInputForLLM } from '@core/llm/validation.js';
+import { createInputValidationError } from '@core/llm/validation.js';
 import {
     LLM_REGISTRY,
     LLM_PROVIDERS,
     getSupportedRoutersForProvider,
     supportsBaseURL,
 } from '@core/llm/registry.js';
-import { LLMSwitchRequestSchema } from '@core/index.js';
-import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
-import { validateInputForLLM, createInputValidationError } from '@core/llm/validation.js';
-import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
 
 /**
  * Helper function to send JSON response with optional pretty printing
@@ -44,6 +46,43 @@ function sendJsonResponse(res: any, data: any, statusCode = 200) {
     } else {
         res.json(data);
     }
+}
+
+/**
+ * Schema for LLM switch API requests
+ */
+const LLMSwitchRequestSchema = z
+    .object({
+        sessionId: z.string().optional(),
+    })
+    .merge(LLMUpdatesSchema);
+
+/**
+ * Helper function to validate request body and handle validation errors
+ */
+function validateBody<T>(
+    schema: z.ZodType<T>,
+    body: unknown
+): { success: true; data: T } | { success: false; response: any } {
+    const result = schema.safeParse(body);
+
+    if (!result.success) {
+        return {
+            success: false,
+            response: {
+                ok: false,
+                issues: result.error.errors.map((err) => ({
+                    code: 'schema_validation',
+                    message: err.message,
+                    path: err.path,
+                    severity: 'error',
+                    context: { field: err.path.join('.') },
+                })),
+            },
+        };
+    }
+
+    return { success: true, data: result.data };
 }
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
@@ -609,32 +648,29 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
     // Switch LLM configuration
     app.post('/api/llm/switch', express.json(), async (req, res) => {
-        try {
-            // Validate request body with Zod schema
-            const validationResult = LLMSwitchRequestSchema.safeParse(req.body);
+        // Validate request body
+        const validation = validateBody(LLMSwitchRequestSchema, req.body);
+        if (!validation.success) {
+            return res.status(400).json(validation.response);
+        }
 
-            if (!validationResult.success) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Invalid request data',
-                    errors: validationResult.error.errors.map((err) => ({
-                        field: err.path.join('.'),
-                        message: err.message,
-                        code: err.code,
-                    })),
-                });
-            }
+        const { sessionId, ...llmConfig } = validation.data;
+        const result = await agent.switchLLM(llmConfig, sessionId);
 
-            const { sessionId, ...llmConfig } = validationResult.data;
-            const result = await agent.switchLLM(llmConfig, sessionId);
-            return res.json(result);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error(`Error switching LLM: ${errorMessage}`);
-            return res.status(400).json({
-                success: false,
-                error: errorMessage,
-            });
+        // Return appropriate status code based on result
+        if (result.ok) {
+            return res.status(200).json(result);
+        } else {
+            // Check if it's a validation error or server error
+            const hasValidationErrors = result.issues.some(
+                (issue) =>
+                    issue.code.includes('schema_validation') ||
+                    issue.code.includes('missing') ||
+                    issue.code.includes('invalid')
+            );
+
+            const statusCode = hasValidationErrors ? 400 : 500;
+            return res.status(statusCode).json(result);
         }
     });
 

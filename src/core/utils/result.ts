@@ -1,33 +1,80 @@
-import { ZodError, ZodIssueCode, ZodType } from 'zod';
+// schemas/helpers.ts
+import { z, type ZodError, type ZodIssue } from 'zod';
+import { SaikiErrorCode } from './errors.js';
 
-/**
- * Generic severity enum so we can flag warnings vs errors in one list.
- */
+/** Trim and require non-empty after trim */
+export const NonEmptyTrimmed = z
+    .string()
+    .transform((s) => s.trim())
+    .refine((s) => s.length > 0, { message: 'Required' });
+
+/** Simple URL check (so we don’t need preprocess JUST to trim before .url()) */
+function isValidUrl(s: string): boolean {
+    try {
+        // Allow only http/https (adjust if you want more)
+        const u = new URL(s);
+        return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+        return false;
+    }
+}
+
+export const OptionalURL = z
+    .string()
+    .transform((s) => s.trim())
+    .refine((s) => s === '' || isValidUrl(s), { message: 'Invalid URL' })
+    .transform((s) => (s === '' ? undefined : s))
+    .optional();
+
+// Expand $VAR and ${VAR} using the provided env, then trim.
+export const EnvExpandedString = (env: Record<string, string | undefined> = process.env) =>
+    z.string().transform((input) => {
+        if (typeof input !== 'string') return '';
+        const out = input.replace(
+            /\$([A-Z_][A-Z0-9_]*)|\${([A-Z_][A-Z0-9_]*)}/gi,
+            (_, a, b) => env[a || b] ?? ''
+        );
+        return out.trim();
+    });
+
+// Zod type for non-empty environment expanded string
+export const NonEmptyEnvExpandedString = (env: Record<string, string | undefined> = process.env) =>
+    EnvExpandedString(env).refine((s) => s.length > 0, {
+        message: 'Value is required',
+    });
+
+// Zod type for URL that could be pulled from env variables
+export const RequiredEnvURL = (env = process.env) =>
+    EnvExpandedString(env).refine(
+        (s) => {
+            try {
+                const u = new URL(s);
+                return u.protocol === 'http:' || u.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        },
+        { message: 'Invalid URL' }
+    );
+
+/** Severity of an issue */
 export type Severity = 'error' | 'warning';
 
-/**
- * A single validation / business-logic issue that occurred while performing an operation.
- * The generic parameter `C` lets callers attach domain-specific context without
- * forcing that context on every consumer.
- */
+/** Generic issue type for validation results */
 export interface Issue<C = unknown> {
-    /** Category or machine-readable code for the issue (e.g. 'schema', 'business'). */
-    code: string;
-    /** Human-readable message. */
+    code: SaikiErrorCode;
     message: string;
-    /** Dot-notation path if the issue refers to a specific field. */
-    path?: string;
-    /** error | warning (default error) */
-    severity?: Severity;
-    /** Arbitrary contextual data. */
+    path?: Array<string | number>;
+    severity: Severity;
     context?: C;
 }
 
 /**
- * Canonical result container.
- *   ok      – true when the operation succeeded.
- *   data    – payload when ok is true.
- *   issues  – array of issues (possibly empty).
+ * A result type that can be either successful or failed
+ * Denotes validation related results
+ * @param T - The type of the data
+ * @param C - The type of the context
+ * @returns A result type that can be either successful or failed
  */
 export interface Result<T, C = unknown> {
     ok: boolean;
@@ -35,80 +82,172 @@ export interface Result<T, C = unknown> {
     issues: Issue<C>[];
 }
 
-/* ------------------------------------------------------------------ */
-/* Constructors                                                       */
-/* ------------------------------------------------------------------ */
-
+/**
+ * Create a successful result with validated data and optional warnings.
+ *
+ * **Usage Guidelines:**
+ * - Use for operations that completed successfully, even with warnings
+ * - Include warnings for non-blocking issues (API key too short, fallback model used, etc.)
+ * - SaikiAgent methods should prefer this over throwing exceptions
+ * - API layer maps this to 2xx status codes
+ *
+ * @param data - The successfully validated/processed data
+ * @param issues - Optional warnings or informational issues (defaults to empty array)
+ * @returns A successful Result with ok: true
+ *
+ * @example
+ * ```typescript
+ * // Success with no warnings
+ * return ok(validatedConfig);
+ *
+ * // Success with warnings
+ * return ok(validatedConfig, [
+ *   { code: 'llm_short_api_key', message: 'API key seems short', severity: 'warning', context: {} }
+ * ]);
+ * ```
+ */
 export const ok = <T, C = unknown>(data: T, issues: Issue<C>[] = []): Result<T, C> => ({
     ok: true,
     data,
-    issues,
+    issues, // warnings live alongside errors here
 });
 
+/**
+ * Create a failed result with blocking errors that prevent operation completion.
+ *
+ * **Usage Guidelines:**
+ * - Use for validation failures, business rule violations, or any error that should stop execution
+ * - Do NOT mix with exceptions - choose Result pattern OR throwing, not both
+ * - API layer maps this to 4xx status codes (user/validation errors)
+ * - Issues should have severity: 'error' for blocking problems
+ *
+ * @param issues - Array of error issues that caused the failure (must not be empty)
+ * @returns A failed Result with ok: false and no data
+ *
+ * @example
+ * ```typescript
+ * // Validation failure
+ * return fail([
+ *   {
+ *     code: SaikiErrorCode.AGENT_MISSING_LLM_INPUT,
+ *     message: 'At least model or provider must be specified',
+ *     severity: 'error',
+ *     context: {}
+ *   }
+ * ]);
+ *
+ * // Multiple validation errors
+ * return fail([
+ *   { code: 'missing_api_key', message: 'API key required', severity: 'error', context: {} },
+ *   { code: 'invalid_model', message: 'Model not supported', severity: 'error', context: {} }
+ * ]);
+ * ```
+ */
 export const fail = <T = never, C = unknown>(issues: Issue<C>[]): Result<T, C> => ({
     ok: false,
     issues,
 });
 
-/* ------------------------------------------------------------------ */
-/* Zod helper                                                         */
-/* ------------------------------------------------------------------ */
+/**
+ * Check if a list of issues contains any blocking errors (non-warning severity).
+ *
+ * **Usage Guidelines:**
+ * - Use to determine if a Result should be ok: false
+ * - Warnings don't count as errors - operations can succeed with warnings
+ * - Useful in validation functions to decide success vs failure
+ *
+ * @param issues - Array of issues to check
+ * @returns true if any issue has severity other than 'warning', false otherwise
+ *
+ * @example
+ * ```typescript
+ * const issues = [
+ *   { severity: 'warning', message: 'API key seems short' },
+ *   { severity: 'error', message: 'Model not found' }
+ * ];
+ *
+ * if (hasErrors(issues)) {
+ *   return fail(issues); // Contains errors, operation fails
+ * } else {
+ *   return ok(data, issues); // Only warnings, operation succeeds
+ * }
+ * ```
+ */
+export function hasErrors<C>(issues: Issue<C>[]) {
+    return issues.some((i) => i.severity !== 'warning');
+}
 
 /**
- * Convert a ZodError into an Issue list and wrap in fail().
- * Maps to 'schema_validation' by default - domain functions can override with specific codes.
+ * Separate issues into errors (blocking) and warnings (non-blocking) for different handling.
+ *
+ * **Usage Guidelines:**
+ * - Use when you need to handle errors and warnings differently
+ * - Errors should block operation, warnings should be logged/reported but allow success
+ * - Useful in API responses to show both what failed and what succeeded with caveats
+ *
+ * @param issues - Array of mixed issues to categorize
+ * @returns Object with separate arrays for errors and warnings
+ *
+ * @example
+ * ```typescript
+ * const { errors, warnings } = splitIssues(allIssues);
+ *
+ * if (errors.length > 0) {
+ *   logger.error('Validation failed:', errors);
+ *   return fail(errors);
+ * }
+ *
+ * if (warnings.length > 0) {
+ *   logger.warn('Validation succeeded with warnings:', warnings);
+ * }
+ *
+ * return ok(data, warnings);
+ * ```
  */
-export function fromZod<C = unknown>(error: ZodError, ctx?: Partial<C>): Result<never, C> {
-    const issues: Issue<C>[] = error.errors.map((z) => ({
-        code: 'schema_validation', // Generic code - domains can remap if needed
-        message: z.message,
-        path: z.path.join('.'),
-        severity: 'error',
-        context: ctx as C,
+export function splitIssues<C>(issues: Issue<C>[]) {
+    return {
+        errors: issues.filter((i) => i.severity !== 'warning'),
+        warnings: issues.filter((i) => i.severity === 'warning'),
+    };
+}
+
+/**
+ * Convert Zod validation errors to standardized Issue format for Result pattern.
+ *
+ * **Usage Guidelines:**
+ * - Use in schema validation functions to convert Zod errors to our Issue format
+ * - Allows custom error codes via Zod's params.code field in custom refinements
+ * - Falls back to SCHEMA_VALIDATION code for standard Zod validation errors
+ * - Typically used with severity: 'error' for blocking validation failures
+ *
+ * @param err - ZodError from failed schema validation
+ * @param severity - Issue severity level (defaults to 'error')
+ * @returns Array of Issues in our standardized format
+ *
+ * @example
+ * ```typescript
+ * // In a validation function
+ * const result = MySchema.safeParse(data);
+ * if (!result.success) {
+ *   const issues = zodToIssues(result.error);
+ *   return fail(issues);
+ * }
+ *
+ * // Custom error codes in Zod schema
+ * const schema = z.string().refine(val => val.length > 0, {
+ *   message: 'Field is required',
+ *   params: { code: SaikiErrorCode.LLM_MISSING_API_KEY }
+ * });
+ * ```
+ */
+export function zodToIssues<C = unknown>(
+    err: ZodError,
+    severity: 'error' | 'warning' = 'error'
+): Issue<C>[] {
+    return err.errors.map((e: ZodIssue) => ({
+        code: ((e as any).params?.code ?? SaikiErrorCode.SCHEMA_VALIDATION) as SaikiErrorCode,
+        message: e.message,
+        path: e.path,
+        severity,
     }));
-    return fail(issues);
-}
-
-/**
- * Convenience wrapper: validates data with schema.safeParse and returns Result.
- */
-export function zodResult<T, C = unknown>(
-    schema: ZodType<T>,
-    data: unknown,
-    ctx?: Partial<C>
-): Result<T, C> {
-    const parsed = schema.safeParse(data);
-    return parsed.success ? ok(parsed.data) : fromZod(parsed.error, ctx);
-}
-
-/* ------------------------------------------------------------------ */
-/* Utility helpers                                                    */
-/* ------------------------------------------------------------------ */
-
-/** Merge multiple Result objects. If any is fail, the merged result is fail. */
-export function mergeResults<T, C = unknown>(...results: Result<any, C>[]): Result<T, C> {
-    const issues: Issue<C>[] = results.flatMap((r) => r.issues);
-    const firstFail = results.find((r) => !r.ok);
-    if (firstFail) {
-        return fail(issues);
-    }
-    // Typescript: we know every result is ok, but we only have one payload to return.
-    // Caller can ignore data or we could return undefined.
-    const firstOk = results.find((r) => r.ok && r.data !== undefined);
-    return ok(firstOk?.data as T, issues);
-}
-
-/**
- * Log issues using Saiki logger with appropriate level.
- * The function signature is kept generic so utils can be used in core and app layers.
- */
-export function logIssues<C = unknown>(
-    where: string,
-    result: Result<any, C>,
-    logger: { error: Function; warn: Function }
-) {
-    result.issues.forEach((i) => {
-        const logFn = i.severity === 'warning' ? logger.warn : logger.error;
-        logFn(`${where}: ${i.message}`, i.context);
-    });
 }
