@@ -1,15 +1,15 @@
 // TODO: move this to llm folder
-import { Result, Issue, hasErrors, splitIssues } from './helpers.js';
-import { ok, fail } from './helpers.js';
-import { zodToIssues } from './zod-bridge.js';
-import { SaikiErrorCode } from './errors.js';
+import { Result, Issue, hasErrors, splitIssues } from '../schemas/helpers.js';
+import { ok, fail } from '../schemas/helpers.js';
+import { zodToIssues } from '../schemas/zod-bridge.js';
+import { SaikiErrorCode } from '../schemas/errors.js';
 
 import {
     LLMConfigSchema,
     type ValidatedLLMConfig,
     type LLMUpdates,
     type LLMConfigInput,
-} from './llm.js';
+} from './schema.js';
 import {
     getProviderFromModel,
     getSupportedRoutersForProvider,
@@ -18,8 +18,8 @@ import {
     getEffectiveMaxInputTokens,
     acceptsAnyModel,
     isValidProviderModel,
-} from '../llm/registry.js';
-import type { LLMUpdateContext } from '../llm/types.js';
+} from './registry.js';
+import type { LLMUpdateContext } from './types.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 
 /**

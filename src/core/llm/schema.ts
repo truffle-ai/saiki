@@ -12,8 +12,8 @@ import {
     LLM_PROVIDERS,
     LLM_ROUTERS,
 } from '../llm/registry.js';
-import { NonEmptyTrimmed, OptionalURL, EnvExpandedString } from './helpers.js';
-import { SaikiErrorCode } from './errors.js';
+import { NonEmptyTrimmed, OptionalURL, EnvExpandedString } from '../schemas/helpers.js';
+import { SaikiErrorCode } from '../schemas/errors.js';
 
 /** Core object with structural constraints and normalization */
 export const LLMConfigBaseSchema = z
