@@ -1,4 +1,4 @@
-import { LLMProvider } from './registry.js';
+import { LLMProvider, LLMRouter } from './registry.js';
 
 /**
  * LLMRouter defines the routing backend for LLM service instantiation.
@@ -20,8 +20,8 @@ export interface LLMContext {
 
 // TODO: see how we can combine this with LLMContext
 export interface LLMUpdateContext {
-    provider?: string;
+    provider?: LLMProvider;
     model?: string;
-    router?: string;
+    router?: LLMRouter;
     suggestedAction?: string;
 }

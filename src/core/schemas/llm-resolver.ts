@@ -1,5 +1,5 @@
 // TODO: move this to llm folder
-import type { Result, Issue } from './helpers.js';
+import { Result, Issue, hasErrors, splitIssues } from './helpers.js';
 import { ok, fail } from './helpers.js';
 import { zodToIssues } from './zod-bridge.js';
 import { SaikiErrorCode } from './errors.js';
@@ -23,6 +23,24 @@ import type { LLMUpdateContext } from '../llm/types.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 
 /**
+ * Convenience function that combines resolveLLM and validateLLM
+ */
+export function resolveAndValidateLLM(
+    previous: ValidatedLLMConfig,
+    updates: LLMUpdates
+): Result<ValidatedLLMConfig, LLMUpdateContext> {
+    const { candidate, warnings } = resolveLLM(previous, updates);
+
+    // If resolver produced any errors, fail immediately (don’t try to validate a broken candidate)
+    if (hasErrors(warnings)) {
+        const { errors } = splitIssues(warnings);
+        return fail<ValidatedLLMConfig, LLMUpdateContext>(errors);
+    }
+    const result = validateLLM(candidate, warnings);
+    return result;
+}
+
+/**
  * Infers the LLM config from the provided updates
  * @param previous - The previous LLM config
  * @param updates - The updates to the LLM config
@@ -31,10 +49,10 @@ import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 export function resolveLLM(
     previous: ValidatedLLMConfig,
     updates: LLMUpdates
-): Result<ValidatedLLMConfig, LLMUpdateContext> {
+): { candidate: LLMConfigInput; warnings: Issue<LLMUpdateContext>[] } {
     const warnings: Issue<LLMUpdateContext>[] = [];
 
-    // Provider inference
+    // Provider inference (if not provided, infer from model or previous provider)
     const provider =
         updates.provider ??
         (updates.model
@@ -48,6 +66,8 @@ export function resolveLLM(
             : previous.provider);
 
     // API key resolution
+    // (if not provided, previous API key if provider is the same)
+    // (if not provided, and provider is different, throw error)
     const envKey = resolveApiKeyForProvider(provider);
     const apiKey =
         updates.apiKey ?? (provider !== previous.provider ? envKey : previous.apiKey) ?? '';
@@ -68,33 +88,48 @@ export function resolveLLM(
     }
 
     // Router fallback
+    // if new provider doesn't support the previous router, use the first supported router
+    // if no supported routers, throw error
     let router = updates.router;
     if (!router) {
+        // if new provider is different from previous provider, and previous router is not supported
         if (
             provider !== previous.provider &&
             !isRouterSupportedForProvider(provider, previous.router)
         ) {
             const supported = getSupportedRoutersForProvider(provider);
-            router = supported.includes('vercel') ? 'vercel' : supported[0];
-            warnings.push({
-                code: SaikiErrorCode.UNSUPPORTED_ROUTER,
-                message: `Router changed to '${router}' for provider '${provider}'`,
-                severity: 'warning',
-                context: { provider, router },
-            });
+            // if no routers supported, throw error
+            if (supported.length === 0) {
+                warnings.push({
+                    code: SaikiErrorCode.UNSUPPORTED_ROUTER,
+                    message: `No routers supported for provider '${provider}'`,
+                    severity: 'error',
+                    context: { provider, router },
+                });
+                // if routers supported, use the first supported router
+            } else {
+                router = supported.includes('vercel') ? 'vercel' : supported[0]!;
+                warnings.push({
+                    code: SaikiErrorCode.UNSUPPORTED_ROUTER,
+                    message: `Router changed to '${router}' for provider '${provider}'`,
+                    severity: 'warning',
+                    context: { provider, router },
+                });
+            }
         } else {
             router = previous.router;
         }
     }
 
     // Model fallback
+    // if new provider doesn't support the previous model, use the default model
     let model = updates.model ?? previous.model;
     if (
         provider !== previous.provider &&
         !acceptsAnyModel(provider) &&
         !isValidProviderModel(provider, previous.model)
     ) {
-        model = getDefaultModelForProvider(provider);
+        model = getDefaultModelForProvider(provider) ?? previous.model;
         warnings.push({
             code: SaikiErrorCode.INCOMPATIBLE_MODEL_PROVIDER,
             message: `Model set to default '${model}' for provider '${provider}'`,
@@ -110,19 +145,25 @@ export function resolveLLM(
         getEffectiveMaxInputTokens({ provider, model, apiKey: apiKey || previous.apiKey });
 
     return {
-        provider,
-        model,
-        apiKey,
-        router,
-        baseURL: updates.baseURL ?? previous.baseURL,
-        maxIterations: updates.maxIterations ?? previous.maxIterations,
-        maxInputTokens,
-        maxOutputTokens: updates.maxOutputTokens ?? previous.maxOutputTokens,
-        temperature: updates.temperature ?? previous.temperature,
+        candidate: {
+            provider,
+            model,
+            apiKey,
+            router,
+            baseURL: updates.baseURL ?? previous.baseURL,
+            maxIterations: updates.maxIterations ?? previous.maxIterations,
+            maxInputTokens,
+            maxOutputTokens: updates.maxOutputTokens ?? previous.maxOutputTokens,
+            temperature: updates.temperature ?? previous.temperature,
+        },
+        warnings,
     };
 }
 
-export function validateLLM(candidate: LLMConfigInput, warnings: Issue<LLMUpdateContext>[]) {
+export function validateLLM(
+    candidate: LLMConfigInput,
+    warnings: Issue<LLMUpdateContext>[]
+): Result<ValidatedLLMConfig, LLMUpdateContext> {
     // Final validation (business rules + shape)
     const parsed = LLMConfigSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -137,7 +178,11 @@ export function validateLLM(candidate: LLMConfigInput, warnings: Issue<LLMUpdate
                 message: 'Missing API key',
                 path: ['apiKey'],
                 severity: 'error',
-                context: { provider },
+                context: {
+                    provider: candidate.provider,
+                    model: candidate.model,
+                    router: candidate.router,
+                },
             },
         ]);
     }

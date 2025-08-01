@@ -25,7 +25,7 @@ export const LLMConfigBaseSchema = z
         model: NonEmptyTrimmed.describe('Specific model name for the selected provider'),
 
         // Expand $ENV refs and trim; we still require a non-empty string at this stage.
-        apiKey: EnvExpandedString.describe('API key (can reference env via $VAR or ${VAR})'),
+        apiKey: EnvExpandedString(process.env),
 
         maxIterations: z.coerce
             .number()

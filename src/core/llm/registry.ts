@@ -38,7 +38,7 @@ export function getAllowedMimeTypes(): string[] {
 
 export interface ProviderInfo {
     models: ModelInfo[];
-    supportedRouters: string[];
+    supportedRouters: LLMRouter[];
     baseURLSupport: 'none' | 'optional' | 'required'; // Cleaner single field
     supportedFileTypes: SupportedFileType[]; // Provider-level default, used when model doesn't specify
     // Add other provider-specific metadata if needed
@@ -314,7 +314,7 @@ export function getAllSupportedModels(): string[] {
  * @param provider The name of the provider.
  * @returns An array of supported router names for the provider
  */
-export function getSupportedRoutersForProvider(provider: LLMProvider): string[] {
+export function getSupportedRoutersForProvider(provider: LLMProvider): LLMRouter[] {
     const providerInfo = LLM_REGISTRY[provider];
     return providerInfo.supportedRouters;
 }
