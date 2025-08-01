@@ -59,6 +59,10 @@ export const LLM_PROVIDERS = [
 
 export type LLMProvider = (typeof LLM_PROVIDERS)[number];
 
+export const LLM_ROUTERS = ['vercel', 'in-built'] as const;
+
+export type LLMRouter = (typeof LLM_ROUTERS)[number];
+
 // Central registry of supported LLM providers and their models
 export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     openai: {
@@ -346,16 +350,6 @@ export function acceptsAnyModel(provider: LLMProvider): boolean {
 }
 
 /**
- * Validates if a router name is valid.
- * @param router The router name to validate.
- * @returns True if the router is valid, false otherwise.
- */
-export function isValidRouter(router: string): boolean {
-    const validRouters = ['vercel', 'in-built'];
-    return validRouters.includes(router);
-}
-
-/**
  * Gets the supported file types for a specific model.
  * @param provider The name of the provider.
  * @param model The name of the model.
@@ -456,7 +450,7 @@ export function validateModelFileSupport(
  * @param router The router name to check.
  * @returns True if the provider supports the router, false otherwise.
  */
-export function isRouterSupportedForProvider(provider: LLMProvider, router: string): boolean {
+export function isRouterSupportedForProvider(provider: LLMProvider, router: LLMRouter): boolean {
     const supportedRouters = getSupportedRoutersForProvider(provider);
     return supportedRouters.includes(router);
 }

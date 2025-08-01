@@ -645,34 +645,41 @@ export class SaikiAgent {
                 ? this.stateManager.getRuntimeConfig(sessionId).llm
                 : this.stateManager.getRuntimeConfig().llm;
 
-            // Build and validate the new configuration
+            // Build and validate the new configuration using new Result pattern
             const result = await buildLLMConfig(llmUpdates, currentLLMConfig);
 
-            if (!result.isValid) {
+            if (!result.ok) {
                 // Return structured errors for UI consumption
                 return {
                     success: false,
-                    errors: result.errors.map((err) => ({
-                        type: err.type as string,
-                        message: err.message,
-                        ...(err.provider && { provider: err.provider }),
-                        ...(err.model && { model: err.model }),
-                        ...(err.router && { router: err.router }),
-                        ...((err.type === 'missing_api_key'
-                            ? `Please set the ${err.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
-                            : err.suggestedAction) && {
-                            suggestedAction:
-                                err.type === 'missing_api_key'
-                                    ? `Please set the ${err.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
-                                    : err.suggestedAction,
-                        }),
-                    })),
-                    warnings: result.warnings,
+                    errors: result.issues
+                        .filter((i) => i.severity !== 'warning')
+                        .map((err) => ({
+                            type: err.code,
+                            message: err.message,
+                            ...(err.context?.provider && { provider: err.context.provider }),
+                            ...(err.context?.model && { model: err.context.model }),
+                            ...(err.context?.router && { router: err.context.router }),
+                            ...((err.code === 'missing_api_key'
+                                ? `Please set the ${err.context?.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
+                                : err.context?.suggestedAction) && {
+                                suggestedAction:
+                                    err.code === 'missing_api_key'
+                                        ? `Please set the ${err.context?.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
+                                        : err.context?.suggestedAction,
+                            }),
+                        })),
+                    warnings: result.issues
+                        .filter((i) => i.severity === 'warning')
+                        .map((i) => i.message),
                 };
             }
 
             // Perform the actual LLM switch with validated config
-            return await this.performLLMSwitch(result.config, sessionId, result.warnings);
+            const warnMessages = result.issues
+                .filter((i) => i.severity === 'warning')
+                .map((i) => i.message);
+            return await this.performLLMSwitch(result.data!, sessionId, warnMessages);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error('Error switching LLM', {
@@ -721,17 +728,23 @@ export class SaikiAgent {
     }> {
         // Update state manager
         const stateValidation = this.stateManager.updateLLM(validatedConfig, sessionScope);
-        if (!stateValidation.isValid) {
+        if (!stateValidation.ok) {
             return {
                 success: false,
-                errors: stateValidation.errors.map((err) => ({
-                    type: err.type as string,
-                    message: err.message,
-                    ...(err.provider && { provider: err.provider }),
-                    ...(err.model && { model: err.model }),
-                    ...(err.router && { router: err.router }),
-                    ...(err.suggestedAction && { suggestedAction: err.suggestedAction }),
-                })),
+                errors: stateValidation.issues.map((err) => {
+                    const errorObj: any = {
+                        type: err.code,
+                        message: err.message,
+                    };
+                    if (err.context && typeof err.context === 'object') {
+                        const ctx = err.context as any;
+                        if (ctx.provider) errorObj.provider = ctx.provider;
+                        if (ctx.model) errorObj.model = ctx.model;
+                        if (ctx.router) errorObj.router = ctx.router;
+                        if (ctx.suggestedAction) errorObj.suggestedAction = ctx.suggestedAction;
+                    }
+                    return errorObj;
+                }),
             };
         }
 
@@ -761,11 +774,10 @@ export class SaikiAgent {
         }
 
         // Collect warnings
-        const allWarnings = [
-            ...configWarnings,
-            ...(stateValidation.warnings || []),
-            ...(switchResult.warnings || []),
-        ];
+        const stateWarnings = stateValidation.issues
+            .filter((i) => i.severity === 'warning')
+            .map((i) => i.message);
+        const allWarnings = [...configWarnings, ...stateWarnings, ...(switchResult.warnings || [])];
 
         return {
             success: true,
@@ -910,8 +922,11 @@ export class SaikiAgent {
             // Add to runtime state first with validation
             const validation = this.stateManager.addMcpServer(name, config);
 
-            if (!validation.isValid) {
-                const errorMessages = validation.errors.map((e) => e.message).join(', ');
+            if (!validation.ok) {
+                const errorMessages = validation.issues
+                    .filter((i) => i.severity !== 'warning')
+                    .map((e) => e.message)
+                    .join(', ');
                 throw new Error(`Invalid MCP server configuration: ${errorMessages}`);
             }
 

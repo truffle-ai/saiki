@@ -110,7 +110,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 }
             );
 
-            if (!validation.isValid) {
+            if (!validation.ok) {
                 return res.status(400).send(
                     createInputValidationError(validation, {
                         provider: currentConfig.llm.provider,
@@ -168,7 +168,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             }
         );
 
-        if (!validation.isValid) {
+        if (!validation.ok) {
             return res.status(400).send(
                 createInputValidationError(validation, {
                     provider: currentConfig.llm.provider,
@@ -395,7 +395,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                         }
                     );
 
-                    if (!validation.isValid) {
+                    if (!validation.ok) {
                         const errorDetails = createInputValidationError(validation, {
                             provider: currentConfig.llm.provider,
                             model: currentConfig.llm.model,

@@ -1,11 +1,13 @@
 import { logger } from '../logger/index.js';
-import type { ValidatedAgentConfig, ValidatedLLMConfig, McpServerConfig } from './schemas.js';
+import type {
+    ValidatedAgentConfig,
+    ValidatedLLMConfig,
+    McpServerConfig,
+    ValidatedMcpServerConfig,
+} from './schemas.js';
 import type { AgentEventBus } from '../events/index.js';
-import {
-    validateMcpServerConfig,
-    type ValidationResult,
-    type McpServerValidationResult,
-} from './validation-utils.js';
+import { validateMcpServerConfig, type McpServerContext } from './validation-utils.js';
+import { Result, ok, Issue } from '../utils/result.js';
 
 /**
  * Session-specific overrides that can differ from the global configuration
@@ -78,7 +80,7 @@ export class AgentStateManager {
     /**
      * Update the LLM configuration (globally or for a specific session)
      */
-    public updateLLM(newConfig: Partial<ValidatedLLMConfig>, sessionId?: string): ValidationResult {
+    public updateLLM(newConfig: Partial<ValidatedLLMConfig>, sessionId?: string): Result<void> {
         // Build the new effective config for validation
         const currentConfig = sessionId ? this.getRuntimeConfig(sessionId) : this.runtimeConfig;
         const _updatedConfig: ValidatedAgentConfig = {
@@ -112,11 +114,7 @@ export class AgentStateManager {
             isSessionSpecific: !!sessionId,
         });
 
-        return {
-            isValid: true,
-            errors: [],
-            warnings: [],
-        };
+        return ok(undefined);
     }
 
     // ============= MCP SERVER MANAGEMENT =============
@@ -127,33 +125,40 @@ export class AgentStateManager {
     public addMcpServer(
         serverName: string,
         serverConfig: McpServerConfig
-    ): McpServerValidationResult {
+    ): Result<ValidatedMcpServerConfig, McpServerContext> {
         logger.debug(`Adding/updating MCP server: ${serverName}`);
 
         // Validate the server configuration
         const existingServerNames = Object.keys(this.runtimeConfig.mcpServers);
         const validation = validateMcpServerConfig(serverName, serverConfig, existingServerNames);
 
-        if (!validation.isValid) {
+        if (!validation.ok) {
             logger.warn('MCP server configuration validation failed', {
                 serverName,
-                errors: validation.errors.map((e) => e.message),
-                warnings: validation.warnings,
+                errors: validation.issues
+                    .filter((i) => i.severity !== 'warning')
+                    .map((e: Issue<McpServerContext>) => e.message),
+                warnings: validation.issues
+                    .filter((i) => i.severity === 'warning')
+                    .map((e: Issue<McpServerContext>) => e.message),
             });
             return validation;
         }
 
         // Log warnings if any
-        if (validation.warnings.length > 0) {
+        const warnings = validation.issues
+            .filter((i) => i.severity === 'warning')
+            .map((e: Issue<McpServerContext>) => e.message);
+        if (warnings.length > 0) {
             logger.warn('MCP server configuration warnings', {
                 serverName,
-                warnings: validation.warnings,
+                warnings,
             });
         }
 
         const isUpdate = serverName in this.runtimeConfig.mcpServers;
         // Use the validated config with defaults applied from validation result
-        this.runtimeConfig.mcpServers[serverName] = validation.config!;
+        this.runtimeConfig.mcpServers[serverName] = validation.data!;
 
         const eventName = isUpdate ? 'saiki:mcpServerUpdated' : 'saiki:mcpServerAdded';
         this.agentEventBus.emit(eventName, { serverName, config: serverConfig });

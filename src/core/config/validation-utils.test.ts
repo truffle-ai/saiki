@@ -25,8 +25,8 @@ describe('buildLLMConfig', () => {
     it('should return valid config when no updates provided', async () => {
         const result = await buildLLMConfig({}, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.errors).toHaveLength(0);
+        expect(result.ok).toBe(true);
+        expect(result.issues.filter((i) => i.severity !== 'warning')).toHaveLength(0);
 
         // The function automatically calculates maxInputTokens from the model if not present
         const expectedConfig = {
@@ -35,15 +35,15 @@ describe('buildLLMConfig', () => {
             maxOutputTokens: undefined,
             temperature: undefined,
         };
-        expect(result.config).toEqual(expectedConfig);
+        expect(result.data).toEqual(expectedConfig);
     });
 
     it('should update model successfully', async () => {
         const result = await buildLLMConfig({ model: 'gpt-4o-mini' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.model).toBe('gpt-4o-mini');
-        expect(result.config.provider).toBe('openai'); // Should remain unchanged
+        expect(result.ok).toBe(true);
+        expect(result.data!.model).toBe('gpt-4o-mini');
+        expect(result.data!.provider).toBe('openai'); // Should remain unchanged
     });
 
     it('should update provider and switch to default model', async () => {
@@ -52,26 +52,27 @@ describe('buildLLMConfig', () => {
 
         const result = await buildLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.provider).toBe('anthropic');
-        expect(result.config.model).toBe('claude-4-sonnet-20250514'); // Should switch to default from registry
-        expect(result.warnings).toContain(
-            "Switched to default model 'claude-4-sonnet-20250514' for provider 'anthropic'"
-        );
+        expect(result.ok).toBe(true);
+        expect(result.data!.provider).toBe('anthropic');
+        expect(result.data!.model).toBe('claude-4-sonnet-20250514'); // Should switch to default from registry
+        const warnings = result.issues
+            .filter((i) => i.severity === 'warning')
+            .map((i) => i.message);
+        expect(warnings).toContain("Switched to default model 'claude-4-sonnet-20250514'");
     });
 
     it('should update API key', async () => {
         const result = await buildLLMConfig({ apiKey: 'new-api-key-12345' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.apiKey).toBe('new-api-key-12345');
+        expect(result.ok).toBe(true);
+        expect(result.data!.apiKey).toBe('new-api-key-12345');
     });
 
     it('should update router', async () => {
         const result = await buildLLMConfig({ router: 'in-built' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.router).toBe('in-built');
+        expect(result.ok).toBe(true);
+        expect(result.data!.router).toBe('in-built');
     });
 
     it('should update multiple fields', async () => {
@@ -87,10 +88,10 @@ describe('buildLLMConfig', () => {
             baseLLMConfig
         );
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.provider).toBe('anthropic');
-        expect(result.config.model).toBe('claude-4-sonnet-20250514');
-        expect(result.config.router).toBe('in-built');
+        expect(result.ok).toBe(true);
+        expect(result.data!.provider).toBe('anthropic');
+        expect(result.data!.model).toBe('claude-4-sonnet-20250514');
+        expect(result.data!.router).toBe('in-built');
     });
 
     it('should resolve API key from environment when provider changes', async () => {
@@ -98,17 +99,18 @@ describe('buildLLMConfig', () => {
 
         const result = await buildLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.apiKey).toBe('sk-ant-api-key-123');
+        expect(result.ok).toBe(true);
+        expect(result.data!.apiKey).toBe('sk-ant-api-key-123');
     });
 
     it('should fail when provider changes but no API key available', async () => {
         const result = await buildLLMConfig({ provider: 'anthropic' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors?.[0]?.type).toBe('missing_api_key');
-        expect(result.errors?.[0]?.message).toContain("No API key found for provider 'anthropic'");
+        expect(result.ok).toBe(false);
+        const errors = result.issues.filter((i) => i.severity !== 'warning');
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.code).toBe('missing_api_key');
+        expect(errors[0]?.message).toContain("No API key found for provider 'anthropic'");
     });
 
     it('should validate provider/model compatibility', async () => {
@@ -118,13 +120,14 @@ describe('buildLLMConfig', () => {
         const result = await buildLLMConfig({ provider: 'google' }, baseLLMConfig);
 
         // Since only provider is changed (not model), function should switch to default Google model
-        expect(result.isValid).toBe(true);
-        expect(result.config.provider).toBe('google');
+        expect(result.ok).toBe(true);
+        expect(result.data!.provider).toBe('google');
         // Should switch to default Google model from registry
-        expect(result.config.model).toBe('gemini-2.5-pro'); // Default Google model
-        expect(result.warnings).toContain(
-            "Switched to default model 'gemini-2.5-pro' for provider 'google'"
-        );
+        expect(result.data!.model).toBe('gemini-2.5-pro'); // Default Google model
+        const warnings = result.issues
+            .filter((i) => i.severity === 'warning')
+            .map((i) => i.message);
+        expect(warnings).toContain("Switched to default model 'gemini-2.5-pro'");
     });
 
     it('should reject explicit incompatible model/provider combination', async () => {
@@ -134,10 +137,11 @@ describe('buildLLMConfig', () => {
         // Explicitly provide both incompatible model and provider
         const result = await buildLLMConfig({ provider: 'google', model: 'gpt-4o' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors?.[0]?.type).toBe('incompatible_model_provider');
-        expect(result.errors?.[0]?.message).toContain(
+        expect(result.ok).toBe(false);
+        const errors = result.issues.filter((i) => i.severity !== 'warning');
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.code).toBe('schema_validation');
+        expect(errors[0]?.message).toContain(
             "Model 'gpt-4o' is not supported for provider 'google'"
         );
     });
@@ -145,14 +149,17 @@ describe('buildLLMConfig', () => {
     it('should switch to supported router when provider changes', async () => {
         const result = await buildLLMConfig({ provider: 'google' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(false); // Will fail due to model incompatibility, but shows router logic
+        expect(result.ok).toBe(false); // Will fail due to model incompatibility, but shows router logic
     });
 
     it('should warn about short API key', async () => {
         const result = await buildLLMConfig({ apiKey: 'short' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.warnings).toContain('API key seems too short - please verify it is correct');
+        expect(result.ok).toBe(true);
+        const warnings = result.issues
+            .filter((i) => i.severity === 'warning')
+            .map((i) => i.message);
+        expect(warnings).toContain('API key seems too short - please verify it is correct');
     });
 
     it('should handle baseURL updates for openai-compatible', async () => {
@@ -168,10 +175,10 @@ describe('buildLLMConfig', () => {
             baseLLMConfig
         );
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.baseURL).toBe('https://custom.openai.com');
-        expect(result.config.provider).toBe('openai-compatible');
-        expect(result.config.model).toBe('custom-model');
+        expect(result.ok).toBe(true);
+        expect(result.data!.baseURL).toBe('https://custom.openai.com');
+        expect(result.data!.provider).toBe('openai-compatible');
+        expect(result.data!.model).toBe('custom-model');
     });
 
     it('should reject baseURL for unsupported providers', async () => {
@@ -186,10 +193,11 @@ describe('buildLLMConfig', () => {
             baseLLMConfig
         );
 
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors?.[0]?.type).toBe('invalid_base_url');
-        expect(result.errors?.[0]?.message).toContain(
+        expect(result.ok).toBe(false);
+        const errors = result.issues.filter((i) => i.severity !== 'warning');
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.code).toBe('invalid_base_url');
+        expect(errors[0]?.message).toContain(
             'Custom baseURL is not supported for anthropic provider'
         );
     });
@@ -197,8 +205,8 @@ describe('buildLLMConfig', () => {
     it('should handle maxInputTokens updates', async () => {
         const result = await buildLLMConfig({ maxInputTokens: 2000 }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.maxInputTokens).toBe(2000);
+        expect(result.ok).toBe(true);
+        expect(result.data!.maxInputTokens).toBe(2000);
     });
 
     // Tests for empty model, empty provider, and unknown provider removed
@@ -207,19 +215,21 @@ describe('buildLLMConfig', () => {
     it('should validate negative maxInputTokens', async () => {
         const result = await buildLLMConfig({ maxInputTokens: -100 }, baseLLMConfig);
 
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors?.[0]?.type).toBe('invalid_max_tokens');
-        expect(result.errors?.[0]?.message).toBe('maxInputTokens must be a positive number');
+        expect(result.ok).toBe(false);
+        const errors = result.issues.filter((i) => i.severity !== 'warning');
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.code).toBe('invalid_max_tokens');
+        expect(errors[0]?.message).toBe('maxInputTokens must be a positive number');
     });
 
     it('should validate invalid router', async () => {
         const result = await buildLLMConfig({ router: 'invalid' as any }, baseLLMConfig);
 
-        expect(result.isValid).toBe(false);
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors?.[0]?.type).toBe('unsupported_router');
-        expect(result.errors?.[0]?.message).toBe('Router must be either "vercel" or "in-built"');
+        expect(result.ok).toBe(false);
+        const errors = result.issues.filter((i) => i.severity !== 'warning');
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.code).toBe('unsupported_router');
+        expect(errors[0]?.message).toBe('Router must be either "vercel" or "in-built"');
     });
 
     it('should handle temperature and maxOutputTokens validation', async () => {
@@ -227,30 +237,30 @@ describe('buildLLMConfig', () => {
             { temperature: 0.5, maxOutputTokens: 4000 },
             baseLLMConfig
         );
-        expect(result1.isValid).toBe(true);
-        expect(result1.config.temperature).toBe(0.5);
-        expect(result1.config.maxOutputTokens).toBe(4000);
+        expect(result1.ok).toBe(true);
+        expect(result1.data!.temperature).toBe(0.5);
+        expect(result1.data!.maxOutputTokens).toBe(4000);
     });
 
     it('should handle maxIterations update', async () => {
         const result = await buildLLMConfig({ maxIterations: 100 }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.maxIterations).toBe(100);
+        expect(result.ok).toBe(true);
+        expect(result.data!.maxIterations).toBe(100);
     });
 
     it('should update maxInputTokens when model changes', async () => {
         const result = await buildLLMConfig({ model: 'gpt-4o-mini' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.maxInputTokens).toBeDefined();
+        expect(result.ok).toBe(true);
+        expect(result.data!.maxInputTokens).toBeDefined();
     });
 
     it('should handle high maxInputTokens without error', async () => {
         const result = await buildLLMConfig({ maxInputTokens: 50000 }, baseLLMConfig);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.maxInputTokens).toBe(50000);
+        expect(result.ok).toBe(true);
+        expect(result.data!.maxInputTokens).toBe(50000);
     });
 
     it('should keep current baseURL when provider supports it', async () => {
@@ -263,9 +273,9 @@ describe('buildLLMConfig', () => {
 
         const result = await buildLLMConfig({ model: 'another-custom-model' }, configWithBaseURL);
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.baseURL).toBe('https://custom.openai.com');
-        expect(result.config.provider).toBe('openai-compatible');
+        expect(result.ok).toBe(true);
+        expect(result.data!.baseURL).toBe('https://custom.openai.com');
+        expect(result.data!.provider).toBe('openai-compatible');
     });
 
     it('should remove baseURL when switching to unsupported provider', async () => {
@@ -283,9 +293,12 @@ describe('buildLLMConfig', () => {
             configWithBaseURL
         );
 
-        expect(result.isValid).toBe(true);
-        expect(result.config.baseURL).toBeUndefined();
-        expect(result.warnings).toContain(
+        expect(result.ok).toBe(true);
+        expect(result.data!.baseURL).toBeUndefined();
+        const warnings = result.issues
+            .filter((i) => i.severity === 'warning')
+            .map((i) => i.message);
+        expect(warnings).toContain(
             "Removed custom baseURL because provider 'anthropic' doesn't support it"
         );
     });
@@ -293,10 +306,11 @@ describe('buildLLMConfig', () => {
     it('should handle provider inference from model', async () => {
         const result = await buildLLMConfig({ model: 'claude-4-sonnet-20250514' }, baseLLMConfig);
 
-        expect(result.isValid).toBe(false); // Will fail due to missing API key
-        expect(result.errors).toHaveLength(1);
-        expect(result.errors?.[0]?.type).toBe('missing_api_key');
-        expect(result.errors?.[0]?.message).toContain("No API key found for provider 'anthropic'");
+        expect(result.ok).toBe(false); // Will fail due to missing API key
+        const errors = result.issues.filter((i) => i.severity !== 'warning');
+        expect(errors).toHaveLength(1);
+        expect(errors[0]?.code).toBe('missing_api_key');
+        expect(errors[0]?.message).toContain("No API key found for provider 'anthropic'");
     });
 });
 
@@ -316,8 +330,8 @@ describe('validateMcpServerConfig', () => {
 
             const result = validateMcpServerConfig('test-server', serverConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity !== 'warning')).toHaveLength(0);
         });
 
         test('should validate sse server config', () => {
@@ -331,8 +345,8 @@ describe('validateMcpServerConfig', () => {
 
             const result = validateMcpServerConfig('test-server', serverConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity !== 'warning')).toHaveLength(0);
         });
 
         test('should validate http server config', () => {
@@ -346,8 +360,8 @@ describe('validateMcpServerConfig', () => {
 
             const result = validateMcpServerConfig('test-server', serverConfig);
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity !== 'warning')).toHaveLength(0);
         });
     });
 
@@ -364,8 +378,9 @@ describe('validateMcpServerConfig', () => {
 
             const result = validateMcpServerConfig('', serverConfig);
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors?.[0]?.message).toBe('Server name must be a non-empty string');
+            expect(result.ok).toBe(false);
+            const errors = result.issues.filter((i) => i.severity !== 'warning');
+            expect(errors[0]?.message).toBe('Server name must be a non-empty string');
         });
 
         test('should reject empty stdio command', () => {
@@ -380,8 +395,9 @@ describe('validateMcpServerConfig', () => {
 
             const result = validateMcpServerConfig('test-server', serverConfig);
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors?.[0]?.message).toBe('Stdio server requires a non-empty command');
+            expect(result.ok).toBe(false);
+            const errors = result.issues.filter((i) => i.severity !== 'warning');
+            expect(errors[0]?.message).toBe('Stdio server requires a non-empty command');
         });
 
         test('should reject invalid sse url', () => {
@@ -395,8 +411,9 @@ describe('validateMcpServerConfig', () => {
 
             const result = validateMcpServerConfig('test-server', serverConfig);
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors?.[0]?.message).toContain('Invalid server configuration');
+            expect(result.ok).toBe(false);
+            const errors = result.issues.filter((i) => i.severity !== 'warning');
+            expect(errors[0]?.message).toContain('Invalid server configuration');
         });
 
         test('should reject invalid http url', () => {
@@ -410,8 +427,9 @@ describe('validateMcpServerConfig', () => {
 
             const result = validateMcpServerConfig('test-server', serverConfig);
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors?.[0]?.message).toContain('Invalid server configuration');
+            expect(result.ok).toBe(false);
+            const errors = result.issues.filter((i) => i.severity !== 'warning');
+            expect(errors[0]?.message).toContain('Invalid server configuration');
         });
     });
 
@@ -429,9 +447,10 @@ describe('validateMcpServerConfig', () => {
 
             const result = validateMcpServerConfig('myserver', serverConfig, existingNames);
 
-            expect(result.isValid).toBe(true);
-            expect(result.warnings).toHaveLength(1);
-            expect(result.warnings[0]).toContain('similar to existing server');
+            expect(result.ok).toBe(true);
+            const warnings = result.issues.filter((i) => i.severity === 'warning');
+            expect(warnings).toHaveLength(1);
+            expect(warnings[0]?.message).toContain('similar to existing server');
         });
     });
 });

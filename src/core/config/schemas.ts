@@ -7,7 +7,10 @@ import {
     supportsBaseURL,
     requiresBaseURL,
     acceptsAnyModel,
+    isRouterSupportedForProvider,
+    getSupportedRoutersForProvider,
     LLM_PROVIDERS,
+    LLM_ROUTERS,
 } from '../llm/registry.js';
 
 // (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
@@ -216,7 +219,7 @@ export const LLMConfigBaseSchema = z
                 'Maximum number of iterations for agentic loops or chained LLM calls, defaults to 50'
             ),
         router: z
-            .enum(['vercel', 'in-built'])
+            .enum(LLM_ROUTERS)
             .default('vercel')
             .describe('LLM router to use (vercel or in-built), defaults to vercel'),
         baseURL: z
@@ -324,6 +327,16 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
                 }
             }
         }
+    }
+
+    // 3. Router must be supported by the provider
+    if (!isRouterSupportedForProvider(data.provider, data.router)) {
+        const supportedRouters = getSupportedRoutersForProvider(data.provider);
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['router'],
+            message: `Provider '${data.provider}' does not support '${data.router}' router. Supported routers: ${supportedRouters.join(', ')}`,
+        });
     }
 });
 

@@ -153,14 +153,15 @@ describe('SaikiAgent.switchLLM', () => {
         agent = new SaikiAgent(mockConfig);
         await agent.start();
 
-        // Mock the validation function - return ValidatedLLMConfig with all required fields
+        // Mock the validation function - return Result<ValidatedLLMConfig, LLMConfigContext>
         mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, _currentConfig) => {
             const resultConfig = {
                 ...mockLLMConfig,
                 ...updates,
             };
             return {
-                config: {
+                ok: true,
+                data: {
                     provider: resultConfig.provider,
                     model: resultConfig.model,
                     apiKey: resultConfig.apiKey,
@@ -177,9 +178,7 @@ describe('SaikiAgent.switchLLM', () => {
                     }),
                     ...(resultConfig.temperature && { temperature: resultConfig.temperature }),
                 } as ValidatedLLMConfig,
-                isValid: true,
-                errors: [],
-                warnings: [],
+                issues: [],
             };
         });
     });
@@ -199,15 +198,14 @@ describe('SaikiAgent.switchLLM', () => {
 
         test('should handle validation failure', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: mockLLMConfig as any, // Type assertion since this is a test mock
-                isValid: false,
-                errors: [
+                ok: false,
+                issues: [
                     {
-                        type: 'invalid_model',
+                        code: 'invalid_model',
                         message: 'Invalid model',
+                        severity: 'error',
                     },
                 ],
-                warnings: [],
             });
 
             const result = await agent.switchLLM({ model: 'invalid-model' });
@@ -251,10 +249,15 @@ describe('SaikiAgent.switchLLM', () => {
 
         test('should include warnings in response', async () => {
             mockValidationUtils.buildLLMConfig.mockResolvedValue({
-                config: { ...mockLLMConfig, model: 'gpt-4o' } as any,
-                isValid: true,
-                errors: [],
-                warnings: ['Config warning'],
+                ok: true,
+                data: { ...mockLLMConfig, model: 'gpt-4o' } as any,
+                issues: [
+                    {
+                        code: 'warning',
+                        message: 'Config warning',
+                        severity: 'warning',
+                    },
+                ],
             });
 
             mockSessionManager.switchLLMForDefaultSession.mockResolvedValue({

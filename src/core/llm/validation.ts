@@ -1,10 +1,21 @@
 import { validateModelFileSupport, getAllowedMimeTypes, LLMProvider } from './registry.js';
 import { logger } from '../logger/index.js';
 import type { ImageData, FileData } from './messages/types.js';
+import { Result, ok, fail, Issue } from '../utils/result.js';
 
-export interface InputValidationResult {
-    isValid: boolean;
-    errors: string[];
+export interface ValidationLLMConfig {
+    provider: LLMProvider;
+    model?: string;
+}
+
+export interface ValidationContext {
+    provider?: string;
+    model?: string;
+    fileType?: string;
+    suggestedAction?: string;
+}
+
+export interface ValidationData {
     fileValidation?: {
         isSupported: boolean;
         fileType?: string;
@@ -14,11 +25,6 @@ export interface InputValidationResult {
         isSupported: boolean;
         error?: string;
     };
-}
-
-export interface ValidationLLMConfig {
-    provider: LLMProvider;
-    model?: string;
 }
 
 /**
@@ -40,17 +46,26 @@ export interface ValidationInput {
 export function validateInputForLLM(
     input: ValidationInput,
     config: ValidationLLMConfig
-): InputValidationResult {
-    const errors: string[] = [];
-    let fileValidation: InputValidationResult['fileValidation'];
-    let imageValidation: InputValidationResult['imageValidation'];
+): Result<ValidationData, ValidationContext> {
+    const issues: Issue<ValidationContext>[] = [];
+    let fileValidation: ValidationData['fileValidation'];
+    let imageValidation: ValidationData['imageValidation'];
 
     try {
+        const context: ValidationContext = {
+            provider: config.provider,
+            model: config.model,
+        };
+
         // Validate file data if provided
         if (input.fileData) {
             fileValidation = validateFileInput(input.fileData, config);
             if (!fileValidation.isSupported) {
-                errors.push(fileValidation.error || 'File type not supported by current LLM');
+                issues.push({
+                    code: 'file_validation',
+                    message: fileValidation.error || 'File type not supported by current LLM',
+                    context: { ...context, fileType: fileValidation.fileType },
+                });
             }
         }
 
@@ -58,27 +73,38 @@ export function validateInputForLLM(
         if (input.imageData) {
             imageValidation = validateImageInput(input.imageData, config);
             if (!imageValidation.isSupported) {
-                errors.push(imageValidation.error || 'Image format not supported by current LLM');
+                issues.push({
+                    code: 'image_validation',
+                    message: imageValidation.error || 'Image format not supported by current LLM',
+                    context,
+                });
             }
         }
 
         // Basic text validation (could be extended)
         if (input.text && input.text.length === 0) {
-            errors.push('Text input cannot be empty');
+            issues.push({
+                code: 'text_validation',
+                message: 'Text input cannot be empty',
+                context,
+            });
         }
 
-        return {
-            isValid: errors.length === 0,
-            errors,
+        const validationData: ValidationData = {
             ...(fileValidation && { fileValidation }),
             ...(imageValidation && { imageValidation }),
         };
+
+        return issues.length === 0 ? ok(validationData, issues) : fail(issues);
     } catch (error) {
         logger.error(`Error during input validation: ${error}`);
-        return {
-            isValid: false,
-            errors: ['Failed to validate input'],
-        };
+        return fail([
+            {
+                code: 'validation_error',
+                message: 'Failed to validate input',
+                context: { provider: config.provider, model: config.model },
+            },
+        ]);
     }
 }
 
@@ -91,7 +117,7 @@ export function validateInputForLLM(
 function validateFileInput(
     fileData: FileData,
     config: ValidationLLMConfig
-): NonNullable<InputValidationResult['fileValidation']> {
+): NonNullable<ValidationData['fileValidation']> {
     // Security validation: file size check (max 50MB for base64)
     if (typeof fileData.data === 'string' && fileData.data.length > 67108864) {
         return {
@@ -142,7 +168,7 @@ function validateFileInput(
 function validateImageInput(
     _imageData: ImageData,
     _config: ValidationLLMConfig
-): NonNullable<InputValidationResult['imageValidation']> {
+): NonNullable<ValidationData['imageValidation']> {
     // For now, assume images are supported (existing behavior)
     // This can be expanded later with proper image capability validation
     return {
@@ -157,17 +183,20 @@ function validateImageInput(
  * @returns Standardized error object
  */
 export function createInputValidationError(
-    validation: InputValidationResult,
+    validation: Result<ValidationData, ValidationContext>,
     config: ValidationLLMConfig
 ) {
+    const errors = validation.ok ? [] : validation.issues.map((issue) => issue.message);
+    const validationData = validation.ok ? validation.data : undefined;
+
     return {
-        error: validation.errors.join('; '),
+        error: errors.join('; '),
         provider: config.provider,
         model: config.model,
-        fileType: validation.fileValidation?.fileType,
+        fileType: validationData?.fileValidation?.fileType,
         details: {
-            fileValidation: validation.fileValidation,
-            imageValidation: validation.imageValidation,
+            fileValidation: validationData?.fileValidation,
+            imageValidation: validationData?.imageValidation,
         },
     };
 }
