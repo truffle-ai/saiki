@@ -1,7 +1,5 @@
 // TODO: move this to llm folder
-import { Result, Issue, hasErrors, splitIssues } from '../schemas/helpers.js';
-import { ok, fail } from '../schemas/helpers.js';
-import { zodToIssues } from '@core/schemas/helpers.js';
+import { Result, Issue, hasErrors, splitIssues, ok, fail, zodToIssues } from '../utils/result.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 
 import {

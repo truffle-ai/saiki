@@ -1,6 +1,6 @@
 // schemas/helpers.ts
 import { z, type ZodError, type ZodIssue } from 'zod';
-import { SaikiErrorCode } from './errors.js';
+import { SaikiErrorCode } from '../schemas/errors.js';
 
 /** Trim and require non-empty after trim */
 export const NonEmptyTrimmed = z

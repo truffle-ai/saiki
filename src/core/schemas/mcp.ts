@@ -1,7 +1,7 @@
 // src/config/schemas.mcp.ts
 import { z } from 'zod';
 import { SaikiErrorCode } from './errors.js';
-import { EnvExpandedString, RequiredEnvURL } from './helpers.js';
+import { EnvExpandedString, RequiredEnvURL } from '../utils/result.js';
 
 // ---- stdio ----
 export const StdioServerConfigSchema = z

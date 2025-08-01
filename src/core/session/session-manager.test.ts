@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SessionManager } from './session-manager.js';
 import { ChatSession } from './chat-session.js';
-import type { ValidatedLLMConfig } from '../config/schemas.js';
+import type { ValidatedLLMConfig } from '../schemas/llm.js';
 
 // Mock dependencies
 vi.mock('./chat-session.js');

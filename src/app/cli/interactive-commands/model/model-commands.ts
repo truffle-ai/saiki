@@ -123,22 +123,24 @@ export const modelCommands: CommandDefinition = {
                     const llmConfig = { model, provider };
                     const result = await agent.switchLLM(llmConfig);
 
-                    if (result.success) {
-                        console.log(chalk.green(`✅ ${result.message}`));
-                        if (result.warnings && result.warnings.length > 0) {
-                            for (const warning of result.warnings) {
-                                console.log(chalk.yellow(`⚠️  ${warning}`));
+                    if (result.ok) {
+                        console.log(
+                            chalk.green(`✅ Successfully switched to ${model} (${provider})`)
+                        );
+                        // Show warnings if any
+                        const warnings = result.issues.filter(
+                            (issue) => issue.severity === 'warning'
+                        );
+                        if (warnings.length > 0) {
+                            for (const warning of warnings) {
+                                console.log(chalk.yellow(`⚠️  ${warning.message}`));
                             }
                         }
                     } else {
                         console.log(chalk.red('❌ Failed to switch model:'));
-                        if (result.errors) {
-                            for (const error of result.errors) {
-                                console.log(chalk.red(`   ${error.message}`));
-                                if (error.suggestedAction) {
-                                    console.log(chalk.dim(`   💡 ${error.suggestedAction}`));
-                                }
-                            }
+                        const errors = result.issues.filter((issue) => issue.severity === 'error');
+                        for (const error of errors) {
+                            console.log(chalk.red(`   ${error.message}`));
                         }
                     }
                 } catch (error) {

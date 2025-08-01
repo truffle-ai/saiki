@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { INTERNAL_TOOL_NAMES } from '../tools/internal-tools/registry.js';
-import { LLMConfigSchema } from '../schemas/llm.js';
-import { ServerConfigsSchema as McpServersConfigSchema } from '../schemas/mcp.js';
+import { LLMConfigSchema, type ValidatedLLMConfig } from '../schemas/llm.js';
+import {
+    ServerConfigsSchema as McpServersConfigSchema,
+    type McpServerConfig,
+    type ValidatedMcpServerConfig,
+    type ServerConfigs,
+} from '../schemas/mcp.js';
 
 // (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
 
@@ -676,3 +681,6 @@ export const AgentConfigSchema = z
 export type AgentConfig = z.input<typeof AgentConfigSchema>;
 // Validated type for internal use (post-parsing) - all defaults applied
 export type ValidatedAgentConfig = z.infer<typeof AgentConfigSchema>;
+
+// Re-export types from other schemas for convenience
+export type { ValidatedLLMConfig, McpServerConfig, ValidatedMcpServerConfig, ServerConfigs };

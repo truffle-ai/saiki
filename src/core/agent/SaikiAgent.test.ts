@@ -1,13 +1,17 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { LLMConfig, AgentConfig, ValidatedLLMConfig } from '../config/schemas.js';
+import type { LLMConfig, ValidatedLLMConfig, AgentConfig } from '../index.js';
 
 // Mock the dependencies
 vi.mock('../logger/index.js');
 vi.mock('../utils/service-initializer.js');
+vi.mock('../llm/resolver.js');
 
 import { createAgentServices } from '../utils/service-initializer.js';
+import { resolveLLMConfig, validateLLMConfig } from '../llm/resolver.js';
 const mockCreateAgentServices = vi.mocked(createAgentServices);
+const mockResolveLLMConfig = vi.mocked(resolveLLMConfig);
+const mockValidateLLMConfig = vi.mocked(validateLLMConfig);
 
 //TODO: potentially reducing mocking and have real tests
 describe('SaikiAgent.switchLLM', () => {
@@ -149,32 +153,39 @@ describe('SaikiAgent.switchLLM', () => {
         agent = new SaikiAgent(mockConfig);
         await agent.start();
 
-        // Mock the validation function - return Result<ValidatedLLMConfig, LLMConfigContext>
-        mockValidationUtils.buildLLMConfig.mockImplementation(async (updates, _currentConfig) => {
-            const resultConfig = {
+        // Mock the LLM resolver functions
+        mockResolveLLMConfig.mockImplementation((previousConfig, updates) => {
+            const candidate = {
                 ...mockLLMConfig,
                 ...updates,
             };
             return {
+                candidate,
+                warnings: [],
+            };
+        });
+
+        mockValidateLLMConfig.mockImplementation((candidate, warnings) => {
+            return {
                 ok: true,
                 data: {
-                    provider: resultConfig.provider,
-                    model: resultConfig.model,
-                    apiKey: resultConfig.apiKey,
+                    provider: candidate.provider,
+                    model: candidate.model,
+                    apiKey: candidate.apiKey,
                     // Ensure required fields have values (ValidatedLLMConfig)
-                    maxIterations: resultConfig.maxIterations ?? 50,
-                    router: resultConfig.router ?? 'vercel',
+                    maxIterations: candidate.maxIterations ?? 50,
+                    router: candidate.router ?? 'vercel',
                     // Optional fields
-                    ...(resultConfig.baseURL && { baseURL: resultConfig.baseURL }),
-                    ...(resultConfig.maxInputTokens && {
-                        maxInputTokens: resultConfig.maxInputTokens,
+                    ...(candidate.baseURL && { baseURL: candidate.baseURL }),
+                    ...(candidate.maxInputTokens && {
+                        maxInputTokens: candidate.maxInputTokens,
                     }),
-                    ...(resultConfig.maxOutputTokens && {
-                        maxOutputTokens: resultConfig.maxOutputTokens,
+                    ...(candidate.maxOutputTokens && {
+                        maxOutputTokens: candidate.maxOutputTokens,
                     }),
-                    ...(resultConfig.temperature && { temperature: resultConfig.temperature }),
+                    ...(candidate.temperature && { temperature: candidate.temperature }),
                 } as ValidatedLLMConfig,
-                issues: [],
+                issues: warnings,
             };
         });
     });
@@ -193,7 +204,7 @@ describe('SaikiAgent.switchLLM', () => {
         });
 
         test('should handle validation failure', async () => {
-            mockValidationUtils.buildLLMConfig.mockResolvedValue({
+            mockValidateLLMConfig.mockResolvedValue({
                 ok: false,
                 issues: [
                     {
@@ -234,7 +245,7 @@ describe('SaikiAgent.switchLLM', () => {
         test('should use specified router', async () => {
             await agent.switchLLM({ model: 'gpt-4o', router: 'in-built' });
 
-            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o',
                     router: 'in-built',
@@ -244,7 +255,7 @@ describe('SaikiAgent.switchLLM', () => {
         });
 
         test('should include warnings in response', async () => {
-            mockValidationUtils.buildLLMConfig.mockResolvedValue({
+            mockValidateLLMConfig.mockResolvedValue({
                 ok: true,
                 data: { ...mockLLMConfig, model: 'gpt-4o' } as any,
                 issues: [
@@ -292,7 +303,7 @@ describe('SaikiAgent.switchLLM', () => {
         test('should handle provider and model together', async () => {
             await agent.switchLLM({ provider: 'anthropic', model: 'claude-4-sonnet-20250514' });
 
-            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({
                     provider: 'anthropic',
                     model: 'claude-4-sonnet-20250514',
@@ -304,7 +315,7 @@ describe('SaikiAgent.switchLLM', () => {
         test('should handle API key in config', async () => {
             await agent.switchLLM({ model: 'gpt-4o', apiKey: 'new-key' });
 
-            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o',
                     apiKey: 'new-key',
@@ -316,7 +327,7 @@ describe('SaikiAgent.switchLLM', () => {
         test('should handle baseURL in config', async () => {
             await agent.switchLLM({ model: 'gpt-4o', baseURL: 'https://api.example.com' });
 
-            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o',
                     baseURL: 'https://api.example.com',
@@ -357,7 +368,7 @@ describe('SaikiAgent.switchLLM', () => {
             await agent.switchLLM({ model: 'gpt-4o' }, 'session1');
 
             expect(mockStateManager.getRuntimeConfig).toHaveBeenCalledWith('session1');
-            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({ model: 'gpt-4o' }),
                 sessionLLMConfig
             );
@@ -420,7 +431,7 @@ describe('SaikiAgent.switchLLM', () => {
                 baseURL: 'https://custom.api.com',
             });
 
-            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
                 {
                     provider: 'google',
                     model: 'gemini-2.5-pro',
@@ -435,7 +446,7 @@ describe('SaikiAgent.switchLLM', () => {
         test('should handle partial parameters', async () => {
             await agent.switchLLM({ model: 'gpt-4o-mini' });
 
-            expect(mockValidationUtils.buildLLMConfig).toHaveBeenCalledWith(
+            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
                 {
                     model: 'gpt-4o-mini',
                 },
@@ -456,7 +467,7 @@ describe('SaikiAgent.switchLLM', () => {
 
     describe('Warning Collection', () => {
         test('should collect and deduplicate warnings', async () => {
-            mockValidationUtils.buildLLMConfig.mockResolvedValue({
+            mockValidateLLMConfig.mockResolvedValue({
                 config: { ...mockLLMConfig, model: 'gpt-4o-mini' } as any,
                 isValid: true,
                 errors: [],
@@ -488,7 +499,7 @@ describe('SaikiAgent.switchLLM', () => {
     describe('Error Handling', () => {
         test('should handle validation exceptions', async () => {
             const validationError = new Error('Validation failed');
-            mockValidationUtils.buildLLMConfig.mockRejectedValue(validationError);
+            mockValidateLLMConfig.mockRejectedValue(validationError);
 
             const result = await agent.switchLLM({ model: 'gpt-4o' });
 
@@ -500,7 +511,7 @@ describe('SaikiAgent.switchLLM', () => {
         });
 
         test('should handle state manager validation errors', async () => {
-            mockValidationUtils.buildLLMConfig.mockResolvedValue({
+            mockValidateLLMConfig.mockResolvedValue({
                 config: mockLLMConfig as any, // Type assertion since this is a test mock
                 isValid: true,
                 errors: [],

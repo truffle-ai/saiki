@@ -12,7 +12,7 @@ import {
     LLM_PROVIDERS,
     LLM_ROUTERS,
 } from '../llm/registry.js';
-import { NonEmptyTrimmed, OptionalURL, EnvExpandedString } from './helpers.js';
+import { NonEmptyTrimmed, OptionalURL, EnvExpandedString } from '../utils/result.js';
 import { SaikiErrorCode } from './errors.js';
 
 /** Core object with structural constraints and normalization */
@@ -156,3 +156,6 @@ export type ValidatedLLMConfig = z.infer<typeof LLMConfigSchema>;
 // PATCH-like schema for updates (switch flows)
 export const LLMUpdatesSchema = LLMConfigBaseSchema.partial().strict();
 export type LLMUpdates = z.input<typeof LLMUpdatesSchema>;
+
+// Re-export context type from llm module
+export type { LLMUpdateContext } from '../llm/types.js';
