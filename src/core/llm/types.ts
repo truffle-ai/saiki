@@ -17,3 +17,11 @@ export interface LLMContext {
     /** Specific LLM model name (e.g., 'gemini-2.5-flash', 'gpt-4') */
     model: string;
 }
+
+// TODO: see how we can combine this with LLMContext
+export interface LLMUpdateContext {
+    provider?: string;
+    model?: string;
+    router?: string;
+    suggestedAction?: string;
+}
