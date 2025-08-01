@@ -120,12 +120,12 @@ export function resolveLLMConfig(
     }
 
     // Model fallback
-    // if new provider doesn't support the previous model, use the default model
+    // if new provider doesn't support the new model, use the default model
     let model = updates.model ?? previous.model;
     if (
         provider !== previous.provider &&
         !acceptsAnyModel(provider) &&
-        !isValidProviderModel(provider, previous.model)
+        !isValidProviderModel(provider, model)
     ) {
         model = getDefaultModelForProvider(provider) ?? previous.model;
         warnings.push({
@@ -136,10 +136,9 @@ export function resolveLLMConfig(
         });
     }
 
-    // Token defaults
+    // Token defaults - always use model's effective max unless explicitly provided
     const maxInputTokens =
         updates.maxInputTokens ??
-        previous.maxInputTokens ??
         getEffectiveMaxInputTokens({ provider, model, apiKey: apiKey || previous.apiKey });
 
     return {
