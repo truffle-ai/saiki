@@ -79,7 +79,7 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
                 message:
                     `Provider '${data.provider}' does not support baseURL. ` +
                     `Use an 'openai-compatible' provider if you need a custom base URL.`,
-                params: { code: SaikiErrorCode.INVALID_BASE_URL },
+                params: { code: SaikiErrorCode.LLM_INVALID_BASE_URL },
             });
         }
     } else if (requiresBaseURL(data.provider)) {
@@ -87,7 +87,7 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
             code: z.ZodIssueCode.custom,
             path: ['baseURL'],
             message: `Provider '${data.provider}' requires a 'baseURL'.`,
-            params: { code: SaikiErrorCode.MISSING_BASE_URL },
+            params: { code: SaikiErrorCode.LLM_MISSING_BASE_URL },
         });
     } else {
         if (!acceptsAnyModel(data.provider)) {
@@ -99,7 +99,7 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
                     message:
                         `Model '${data.model}' is not supported for provider '${data.provider}'. ` +
                         `Supported: ${supportedModelsList.join(', ')}`,
-                    params: { code: SaikiErrorCode.INCOMPATIBLE_MODEL_PROVIDER },
+                    params: { code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER },
                 });
             }
         }
@@ -114,7 +114,7 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
                         message:
                             `Max input tokens for model '${data.model}' is ${cap}. ` +
                             `You provided ${data.maxInputTokens}`,
-                        params: { code: SaikiErrorCode.MAX_INPUT_TOKENS_EXCEEDED },
+                        params: { code: SaikiErrorCode.LLM_MAX_INPUT_TOKENS_EXCEEDED },
                     });
                 }
             } catch (error: unknown) {
@@ -127,7 +127,7 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
                     message: e?.message ?? 'Unknown provider/model',
                     params: {
                         code: isModelNotFoundError
-                            ? SaikiErrorCode.UNKNOWN_MODEL
+                            ? SaikiErrorCode.LLM_UNKNOWN_MODEL
                             : SaikiErrorCode.SCHEMA_VALIDATION,
                     },
                 });
@@ -143,7 +143,7 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
             message:
                 `Provider '${data.provider}' does not support router '${data.router}'. ` +
                 `Supported: ${supportedRouters.join(', ')}`,
-            params: { code: SaikiErrorCode.UNSUPPORTED_ROUTER },
+            params: { code: SaikiErrorCode.LLM_UNSUPPORTED_ROUTER },
         });
     }
 })

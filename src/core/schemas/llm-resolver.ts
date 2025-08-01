@@ -73,14 +73,14 @@ export function resolveLLMConfig(
         updates.apiKey ?? (provider !== previous.provider ? envKey : previous.apiKey) ?? '';
     if (!apiKey) {
         warnings.push({
-            code: SaikiErrorCode.MISSING_API_KEY_CANDIDATE,
+            code: SaikiErrorCode.LLM_MISSING_API_KEY_CANDIDATE,
             message: 'API key not provided or found in environment',
             severity: 'warning',
             context: { provider },
         });
     } else if (typeof apiKey === 'string' && apiKey.length < 10) {
         warnings.push({
-            code: SaikiErrorCode.SHORT_API_KEY,
+            code: SaikiErrorCode.LLM_SHORT_API_KEY,
             message: 'API key looks unusually short',
             severity: 'warning',
             context: { provider },
@@ -101,7 +101,7 @@ export function resolveLLMConfig(
             // if no routers supported, throw error
             if (supported.length === 0) {
                 warnings.push({
-                    code: SaikiErrorCode.UNSUPPORTED_ROUTER,
+                    code: SaikiErrorCode.LLM_UNSUPPORTED_ROUTER,
                     message: `No routers supported for provider '${provider}'`,
                     severity: 'error',
                     context: { provider, router },
@@ -110,7 +110,7 @@ export function resolveLLMConfig(
             } else {
                 router = supported.includes('vercel') ? 'vercel' : supported[0]!;
                 warnings.push({
-                    code: SaikiErrorCode.UNSUPPORTED_ROUTER,
+                    code: SaikiErrorCode.LLM_UNSUPPORTED_ROUTER,
                     message: `Router changed to '${router}' for provider '${provider}'`,
                     severity: 'warning',
                     context: { provider, router },
@@ -131,7 +131,7 @@ export function resolveLLMConfig(
     ) {
         model = getDefaultModelForProvider(provider) ?? previous.model;
         warnings.push({
-            code: SaikiErrorCode.INCOMPATIBLE_MODEL_PROVIDER,
+            code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
             message: `Model set to default '${model}' for provider '${provider}'`,
             severity: 'warning',
             context: { provider, model },
@@ -174,7 +174,7 @@ export function validateLLMConfig(
     if (!parsed.data.apiKey?.trim()) {
         return fail<ValidatedLLMConfig, LLMUpdateContext>([
             {
-                code: SaikiErrorCode.MISSING_API_KEY,
+                code: SaikiErrorCode.LLM_MISSING_API_KEY,
                 message: 'Missing API key',
                 path: ['apiKey'],
                 severity: 'error',
