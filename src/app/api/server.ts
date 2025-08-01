@@ -29,7 +29,7 @@ import type { LLMConfig } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
 import { validateInputForLLM, createInputValidationError } from '@core/ai/llm/validation.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
-import { ModelInfo, ProviderInfo } from '@core/ai/llm/registry.js';
+import { ModelInfo } from '@core/ai/llm/registry.js';
 /**
  * Helper function to send JSON response with optional pretty printing
  */
