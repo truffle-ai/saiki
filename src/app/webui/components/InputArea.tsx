@@ -17,6 +17,10 @@ import { useChatContext } from './hooks/ChatContext';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 
+// Import the types we'll need for the API responses
+import type { LLMRegistry, ModelCapabilities } from '../types.js';
+import { logger } from '@core/logger';
+
 interface InputAreaProps {
   onSend: (
     content: string,
@@ -39,7 +43,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   
-  // Get current session context to ensure model switch applies to the correct session
   const { currentSessionId, isStreaming, setStreaming } = useChatContext();
   
   // LLM selector state
@@ -48,28 +51,65 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
   const [modelSwitchError, setModelSwitchError] = useState<string | null>(null);
   const [fileUploadError, setFileUploadError] = useState<string | null>(null);
   
-  // TODO: Populate using LLM_REGISTRY by exposing an API endpoint
-  const coreModels = [
-    { name: 'Claude 4 Sonnet', provider: 'anthropic', model: 'claude-4-sonnet-20250514' },
-    { name: 'GPT-4o', provider: 'openai', model: 'gpt-4o' },
-    { name: 'GPT-4.1 Mini', provider: 'openai', model: 'gpt-4.1-mini' },
-    { name: 'Gemini 2.5 Pro', provider: 'google', model: 'gemini-2.5-pro' },
-  ];
+  // State for dynamically loaded models
+  const [allModels, setAllModels] = useState<Array<{ name: string; provider: string; model: string }>>([]);
+  const [coreModels, setCoreModels] = useState<Array<{ name: string; provider: string; model: string }>>([]);
+  const [showAllModels, setShowAllModels] = useState(false);
+  const [modelCapabilities, setModelCapabilities] = useState<Set<string>>(new Set());
 
   // File size limit (50MB)
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
 
   const showUserError = (message: string) => {
     setFileUploadError(message);
-    // Auto-clear error after 5 seconds
     setTimeout(() => setFileUploadError(null), 5000);
   };
+  
+  // --- New useEffect to fetch ALL models from the registry ---
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('/api/llm/registry');
+        if (response.ok) {
+          const registry: LLMRegistry = await response.json();
+          const models = Object.entries(registry.providers).flatMap(([provider, data]) =>
+            data.models.map(model => ({
+              name: model.name,
+              provider,
+              model: model.name,
+            }))
+          );
+          setAllModels(models);
+          
+          // Define which models are "core" from the full list
+          const popularModelNames = [
+            'claude-4-sonnet-20250514',
+            'gpt-4.1-mini', 
+            'gpt-4o',
+            'gemini-2.5-pro',
+            'llama-3.3-70b-versatile',
+            'grok-4'
+          ];
+          
+          const popularModels = models.filter(model => 
+            popularModelNames.includes(model.model)
+          );
+          setCoreModels(popularModels);
+        }
+      } catch (error) {
+        logger.error(`Failed to fetch models: ${error}`);
+        setAllModels([]);
+        setCoreModels([]);
+      }
+    };
 
-  // Fetch current LLM configuration
+    fetchModels();
+  }, []);
+
+  // --- Modified useEffect to fetch current LLM configuration and capabilities ---
   useEffect(() => {
     const fetchCurrentModel = async () => {
       try {
-        // Include session ID in the request to get the model for the specific session
         const url = currentSessionId 
           ? `/api/llm/current?sessionId=${currentSessionId}` 
           : '/api/llm/current';
@@ -77,23 +117,37 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         const response = await fetch(url);
         if (response.ok) {
           const config = await response.json();
-          // Try to match with core models first
-          const matchedModel = coreModels.find(m => m.model === config.config.model);
+          
+          // Use the fetched model list to find the current model's name
+          const matchedModel = allModels.find(m => m.model === config.config.model);
           if (matchedModel) {
             setCurrentModel(matchedModel.name);
           } else {
-            // Fallback to provider/model display
             setCurrentModel(`${config.config.provider}/${config.config.model}`);
+          }
+
+          // --- Fetch model capabilities based on the current model ---
+          const capabilitiesRes = await fetch(`/api/llm/capabilities?provider=${config.config.provider}&model=${config.config.model}`);
+          if (capabilitiesRes.ok) {
+            const capabilities: ModelCapabilities = await capabilitiesRes.json();
+            setModelCapabilities(new Set(capabilities.supportedFileTypes));
+          } else {
+            setModelCapabilities(new Set()); // No capabilities on failure
           }
         }
       } catch (error) {
-        console.error('Failed to fetch current model:', error);
+        logger.error(`Failed to fetch current model: ${error}`);
         setCurrentModel('Unknown');
+        setModelCapabilities(new Set());
       }
     };
 
-    fetchCurrentModel();
-  }, [currentSessionId]); // Re-fetch whenever the session changes
+    // Only run this effect if allModels has been populated
+    if (allModels.length > 0) {
+      fetchCurrentModel();
+    }
+
+  }, [currentSessionId, allModels]); // Re-fetch whenever the session or allModels changes
 
   const adjustTextareaHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -111,7 +165,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
   const handleSend = () => {
     const trimmed = text.trim();
-    // Allow sending if we have text OR any attachment
     if (!trimmed && !imageData && !fileData) return;
     onSend(trimmed, imageData ?? undefined, fileData ?? undefined);
     setText('');
@@ -134,7 +187,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // File size validation
     if (file.size > MAX_FILE_SIZE) {
       showUserError('PDF file too large. Maximum size is 50MB.');
       e.target.value = '';
@@ -154,7 +206,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         const commaIndex = result.indexOf(',');
         const base64 = result.substring(commaIndex + 1);
         setFileData({ base64, mimeType: 'application/pdf', filename: file.name });
-        setFileUploadError(null); // Clear any previous errors
+        setFileUploadError(null);
       } catch (error) {
         showUserError('Failed to process PDF file. Please try again.');
         setFileData(null);
@@ -188,7 +240,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
             const result = reader.result as string;
             const commaIndex = result.indexOf(',');
             const base64 = result.substring(commaIndex + 1);
-            // Preserve original MIME type and determine appropriate extension
             const mimeType = mediaRecorder.mimeType || 'audio/webm';
             const getExtensionFromMime = (mime: string): string => {
               const mimeToExt: Record<string, string> = {
@@ -217,8 +268,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
           }
         };
         reader.readAsDataURL(blob);
-
-        // Stop all tracks to release microphone
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -238,7 +287,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // File size validation
     if (file.size > MAX_FILE_SIZE) {
       showUserError('Image file too large. Maximum size is 50MB.');
       e.target.value = '';
@@ -260,14 +308,13 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
         const meta = result.substring(0, commaIndex);
         const base64 = result.substring(commaIndex + 1);
-
         const mimeMatch = meta.match(/data:(.*);base64/);
         const mimeType = mimeMatch ? mimeMatch[1] : file.type;
 
         if (!mimeType) throw new Error("Could not determine MIME type");
 
         setImageData({ base64, mimeType });
-        setFileUploadError(null); // Clear any previous errors
+        setFileUploadError(null);
       } catch (error) {
           showUserError('Failed to process image file. Please try again.');
           setImageData(null);
@@ -283,13 +330,28 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
   const removeImage = () => setImageData(null);
 
-  const triggerFileInput = () => fileInputRef.current?.click();
-  const triggerPdfInput = () => pdfInputRef.current?.click();
-  const triggerAudioInput = () => audioInputRef.current?.click();
+  // --- Trigger file inputs based on whether the model supports the file type ---
+  const triggerFileInput = () => {
+    if (modelCapabilities.has('image')) {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const triggerPdfInput = () => {
+    if (modelCapabilities.has('pdf')) {
+      pdfInputRef.current?.click();
+    }
+  };
+
+  const triggerAudioInput = () => {
+    if (modelCapabilities.has('audio')) {
+      audioInputRef.current?.click();
+    }
+  };
 
   const handleModelSwitch = async (model: { name: string; provider: string; model: string }) => {
     setIsLoadingModel(true);
-    setModelSwitchError(null); // Clear any previous errors
+    setModelSwitchError(null);
     try {
       const requestBody: any = {
         provider: model.provider,
@@ -297,8 +359,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         router: 'vercel'
       };
 
-      // Include current session ID to ensure model switch applies to the correct session
-      // If there's no active session, it will fall back to the default session behavior
       if (currentSessionId) {
         requestBody.sessionId = currentSessionId;
       }
@@ -313,42 +373,36 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
       
       if (result.success) {
         setCurrentModel(model.name);
-        setModelSwitchError(null); // Clear any errors on success
+        setModelSwitchError(null);
+        // Clear any attachments that are no longer supported
+        // This is a new feature you should consider adding
+        // setModelCapabilities(new Set(result.capabilities.supportedFileTypes));
       } else {
-        // Handle new structured error format
         let errorMessage = 'Failed to switch model';
         if (result.errors && result.errors.length > 0) {
           const primaryError = result.errors[0];
           errorMessage = primaryError.message;
-          
-          // For API key errors, show the suggested action
           if (primaryError.type === 'missing_api_key' && primaryError.suggestedAction) {
             errorMessage += `. ${primaryError.suggestedAction}`;
           }
         } else if (result.error) {
-          // Fallback to old format
           errorMessage = result.error;
         }
         
-        console.error('Failed to switch model:', errorMessage);
+        logger.error(`Failed to switch model: ${errorMessage}`);
         setModelSwitchError(errorMessage);
-        
-        // Auto-clear error after 10 seconds
         setTimeout(() => setModelSwitchError(null), 10000);
       }
     } catch (error) {
-      console.error('Network error while switching model:', error);
+      logger.error(`Network error while switching model: ${error}`);
       const errorMessage = 'Network error while switching model';
       setModelSwitchError(errorMessage);
-      
-      // Auto-clear error after 10 seconds
       setTimeout(() => setModelSwitchError(null), 10000);
     } finally {
       setIsLoadingModel(false);
     }
   };
 
-  // Clear model switch error when user starts typing
   useEffect(() => {
     if (text && modelSwitchError) {
       setModelSwitchError(null);
@@ -364,7 +418,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // File size validation
     if (file.size > MAX_FILE_SIZE) {
       showUserError('Audio file too large. Maximum size is 50MB.');
       e.target.value = '';
@@ -383,9 +436,8 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         const result = reader.result as string;
         const commaIndex = result.indexOf(',');
         const base64 = result.substring(commaIndex + 1);
-        // Preserve original MIME type from file
         setFileData({ base64, mimeType: file.type, filename: file.name });
-        setFileUploadError(null); // Clear any previous errors
+        setFileUploadError(null);
       } catch (error) {
         showUserError('Failed to process audio file. Please try again.');
         setFileData(null);
@@ -404,7 +456,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
       id="input-area"
       className="flex flex-col gap-2 w-full"
     >
-      {/* Model Switch Error Alert */}
       {modelSwitchError && (
         <Alert variant="destructive" className="mb-2">
           <AlertCircle className="h-4 w-4" />
@@ -422,7 +473,6 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
         </Alert>
       )}
 
-      {/* File Upload Error Alert */}
       {fileUploadError && (
         <Alert variant="destructive" className="mb-2">
           <AlertCircle className="h-4 w-4" />
@@ -454,13 +504,13 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start">
-            <DropdownMenuItem onClick={triggerFileInput}>
+            <DropdownMenuItem onClick={triggerFileInput} disabled={!modelCapabilities.has('image')}>
               <Paperclip className="h-4 w-4 mr-2" /> Image
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={triggerPdfInput}>
+            <DropdownMenuItem onClick={triggerPdfInput} disabled={!modelCapabilities.has('pdf')}>
               <File className="h-4 w-4 mr-2" /> PDF
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={triggerAudioInput}>
+            <DropdownMenuItem onClick={triggerAudioInput} disabled={!modelCapabilities.has('audio')}>
               <FileAudio className="h-4 w-4 mr-2" /> Audio file
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -471,7 +521,8 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
           variant="outline"
           size="icon"
           onClick={isRecording ? stopRecording : startRecording}
-          className="flex-shrink-0 text-muted-foreground hover:text-primary rounded-full p-2"
+          disabled={!modelCapabilities.has('audio')}
+          className="flex-shrink-0 text-muted-foreground hover:text-primary rounded-full p-2 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={isRecording ? 'Stop recording' : 'Record audio'}
         >
           {isRecording ? <StopCircle className="h-8 w-8 text-red-500" /> : <Mic className="h-8 w-8" />}
