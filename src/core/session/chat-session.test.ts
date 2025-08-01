@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatSession } from './chat-session.js';
-import type { ValidatedLLMConfig } from '../schemas/llm.js';
+import { LLMConfigSchema, type ValidatedLLMConfig } from '../schemas/llm.js';
 
 // Mock all dependencies
 vi.mock('../llm/messages/history/factory.js', () => ({
@@ -55,14 +55,14 @@ describe('ChatSession', () => {
     let mockFormatter: any;
 
     const sessionId = 'test-session-123';
-    const mockLLMConfig: ValidatedLLMConfig = {
+    const mockLLMConfig = LLMConfigSchema.parse({
         provider: 'openai',
         model: 'gpt-4',
         apiKey: 'test-key',
         router: 'in-built',
         maxIterations: 50,
         maxInputTokens: 128000,
-    };
+    });
 
     beforeEach(() => {
         vi.resetAllMocks();

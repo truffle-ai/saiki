@@ -2,6 +2,7 @@ import { validateModelFileSupport, getAllowedMimeTypes, LLMProvider } from './re
 import { logger } from '../logger/index.js';
 import type { ImageData, FileData } from './messages/types.js';
 import { Result, ok, fail, Issue } from '../utils/result.js';
+import { SaikiErrorCode } from '../schemas/errors.js';
 
 export interface ValidationLLMConfig {
     provider: LLMProvider;
@@ -10,8 +11,12 @@ export interface ValidationLLMConfig {
 
 export interface ValidationContext {
     provider?: string;
-    model?: string;
-    fileType?: string;
+    model?: string | undefined;
+    fileSize?: number;
+    maxFileSize?: number;
+    filename?: string | undefined;
+    mimeType?: string;
+    fileType?: string | undefined;
     suggestedAction?: string;
 }
 
@@ -36,9 +41,13 @@ export interface ValidationInput {
     fileData?: FileData | undefined;
 }
 
+// Security constants
+const MAX_FILE_SIZE = 67108864; // 50MB in base64 format
+const MAX_IMAGE_SIZE = 20971520; // 20MB
+
 /**
  * Validates all inputs (text, image, file) against LLM capabilities and security requirements.
- * This is the single entry point for all input validation.
+ * This is the single entry point for all input validation using pure Result<T,C> pattern.
  * @param input The input data to validate (text, image, file)
  * @param config The LLM configuration (provider and model)
  * @returns Comprehensive validation result
@@ -48,8 +57,7 @@ export function validateInputForLLM(
     config: ValidationLLMConfig
 ): Result<ValidationData, ValidationContext> {
     const issues: Issue<ValidationContext>[] = [];
-    let fileValidation: ValidationData['fileValidation'];
-    let imageValidation: ValidationData['imageValidation'];
+    const validationData: ValidationData = {};
 
     try {
         const context: ValidationContext = {
@@ -59,50 +67,69 @@ export function validateInputForLLM(
 
         // Validate file data if provided
         if (input.fileData) {
-            fileValidation = validateFileInput(input.fileData, config);
+            const fileValidation = validateFileInput(input.fileData, config);
+            validationData.fileValidation = fileValidation;
+
             if (!fileValidation.isSupported) {
                 issues.push({
-                    code: 'file_validation',
+                    code: SaikiErrorCode.FILE_VALIDATION,
                     message: fileValidation.error || 'File type not supported by current LLM',
-                    context: { ...context, fileType: fileValidation.fileType },
+                    severity: 'error',
+                    context: {
+                        ...context,
+                        fileType: fileValidation.fileType,
+                        mimeType: input.fileData.mimeType,
+                        filename: input.fileData.filename,
+                        suggestedAction: 'Use a supported file type or different model',
+                    },
                 });
             }
         }
 
         // Validate image data if provided
         if (input.imageData) {
-            imageValidation = validateImageInput(input.imageData, config);
+            const imageValidation = validateImageInput(input.imageData, config);
+            validationData.imageValidation = imageValidation;
+
             if (!imageValidation.isSupported) {
                 issues.push({
-                    code: 'image_validation',
+                    code: SaikiErrorCode.IMAGE_VALIDATION,
                     message: imageValidation.error || 'Image format not supported by current LLM',
-                    context,
+                    severity: 'error',
+                    context: {
+                        ...context,
+                        suggestedAction: 'Use a supported image format or different model',
+                    },
                 });
             }
         }
 
         // Basic text validation (could be extended)
-        if (input.text && input.text.length === 0) {
+        if (input.text !== undefined && input.text.length === 0) {
             issues.push({
-                code: 'text_validation',
+                code: SaikiErrorCode.TEXT_VALIDATION,
                 message: 'Text input cannot be empty',
-                context,
+                severity: 'error',
+                context: {
+                    ...context,
+                    suggestedAction: 'Provide non-empty text input',
+                },
             });
         }
-
-        const validationData: ValidationData = {
-            ...(fileValidation && { fileValidation }),
-            ...(imageValidation && { imageValidation }),
-        };
 
         return issues.length === 0 ? ok(validationData, issues) : fail(issues);
     } catch (error) {
         logger.error(`Error during input validation: ${error}`);
         return fail([
             {
-                code: 'validation_error',
+                code: SaikiErrorCode.VALIDATION_ERROR,
                 message: 'Failed to validate input',
-                context: { provider: config.provider, model: config.model },
+                severity: 'error',
+                context: {
+                    provider: config.provider,
+                    model: config.model,
+                    suggestedAction: 'Check input format and try again',
+                },
             },
         ]);
     }
@@ -119,7 +146,7 @@ function validateFileInput(
     config: ValidationLLMConfig
 ): NonNullable<ValidationData['fileValidation']> {
     // Security validation: file size check (max 50MB for base64)
-    if (typeof fileData.data === 'string' && fileData.data.length > 67108864) {
+    if (typeof fileData.data === 'string' && fileData.data.length > MAX_FILE_SIZE) {
         return {
             isSupported: false,
             error: 'File size too large (max 50MB)',
@@ -160,45 +187,35 @@ function validateFileInput(
 }
 
 /**
- * Validates image input (placeholder for future image validation logic).
- * @param _imageData The image data to validate
+ * Validates image input with size and format checks.
+ * @param imageData The image data to validate
  * @param _config The LLM configuration
  * @returns Image validation result
  */
 function validateImageInput(
-    _imageData: ImageData,
+    imageData: ImageData,
     _config: ValidationLLMConfig
 ): NonNullable<ValidationData['imageValidation']> {
+    // Check image size if available
+    if (typeof imageData.image === 'string' && imageData.image.length > MAX_IMAGE_SIZE) {
+        return {
+            isSupported: false,
+            error: `Image size too large (max ${MAX_IMAGE_SIZE / 1048576}MB)`,
+        };
+    }
+
+    // Basic MIME type validation for images
+    const supportedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (imageData.mimeType && !supportedImageTypes.includes(imageData.mimeType)) {
+        return {
+            isSupported: false,
+            error: 'Unsupported image format',
+        };
+    }
+
     // For now, assume images are supported (existing behavior)
     // This can be expanded later with proper image capability validation
     return {
         isSupported: true,
     };
 }
-
-/**
- * Creates a standardized error response for input validation failures.
- * @param validation The validation result containing error details
- * @param config The LLM configuration for context
- * @returns Standardized error object
- */
-export function createInputValidationError(
-    validation: Result<ValidationData, ValidationContext>,
-    config: ValidationLLMConfig
-) {
-    const errors = validation.ok ? [] : validation.issues.map((issue) => issue.message);
-    const validationData = validation.ok ? validation.data : undefined;
-
-    return {
-        error: errors.join('; '),
-        provider: config.provider,
-        model: config.model,
-        fileType: validationData?.fileValidation?.fileType,
-        details: {
-            fileValidation: validationData?.fileValidation,
-            imageValidation: validationData?.imageValidation,
-        },
-    };
-}
-
-// Removed deprecated legacy functions - no backward compatibility needed

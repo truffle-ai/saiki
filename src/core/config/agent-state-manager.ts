@@ -4,7 +4,7 @@ import type { ValidatedLLMConfig } from '../schemas/llm.js';
 import type { McpServerConfig, ValidatedMcpServerConfig } from '../schemas/mcp.js';
 import type { AgentEventBus } from '../events/index.js';
 import type { McpServerContext } from '../mcp/resolver.js';
-import { Result, ok, Issue, hasErrors, splitIssues } from '../schemas/helpers.js';
+import { Result, ok, Issue, hasErrors, splitIssues } from '../utils/result.js';
 import { resolveAndValidateMcpServerConfig } from '../mcp/resolver.js';
 
 /**

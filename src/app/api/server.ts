@@ -25,7 +25,6 @@ import { z } from 'zod';
 import { LLMUpdatesSchema } from '@core/schemas/llm.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
 import { validateInputForLLM } from '@core/llm/validation.js';
-import { createInputValidationError } from '@core/llm/validation.js';
 import {
     LLM_REGISTRY,
     LLM_PROVIDERS,
@@ -150,12 +149,16 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             );
 
             if (!validation.ok) {
-                return res.status(400).send(
-                    createInputValidationError(validation, {
-                        provider: currentConfig.llm.provider,
-                        model: currentConfig.llm.model,
-                    })
-                );
+                const errorMessages = validation.issues
+                    .filter((issue) => issue.severity === 'error')
+                    .map((issue) => issue.message);
+
+                return res.status(400).send({
+                    error: errorMessages.join('; '),
+                    provider: currentConfig.llm.provider,
+                    model: currentConfig.llm.model,
+                    issues: validation.issues,
+                });
             }
 
             await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);
@@ -208,12 +211,16 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         );
 
         if (!validation.ok) {
-            return res.status(400).send(
-                createInputValidationError(validation, {
-                    provider: currentConfig.llm.provider,
-                    model: currentConfig.llm.model,
-                })
-            );
+            const errorMessages = validation.issues
+                .filter((issue) => issue.severity === 'error')
+                .map((issue) => issue.message);
+
+            return res.status(400).send({
+                error: errorMessages.join('; '),
+                provider: currentConfig.llm.provider,
+                model: currentConfig.llm.model,
+                issues: validation.issues,
+            });
         }
 
         try {
@@ -435,10 +442,16 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                     );
 
                     if (!validation.ok) {
-                        const errorDetails = createInputValidationError(validation, {
+                        const errorMessages = validation.issues
+                            .filter((issue) => issue.severity === 'error')
+                            .map((issue) => issue.message);
+
+                        const errorDetails = {
+                            error: errorMessages.join('; '),
                             provider: currentConfig.llm.provider,
                             model: currentConfig.llm.model,
-                        });
+                            issues: validation.issues,
+                        };
 
                         ws.send(
                             JSON.stringify({

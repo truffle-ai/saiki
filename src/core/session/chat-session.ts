@@ -18,7 +18,6 @@ import {
     SessionEventName,
 } from '../events/index.js';
 import { logger } from '../logger/index.js';
-import { validateInputForLLM, createInputValidationError } from '../llm/validation.js';
 
 /**
  * Represents an isolated conversation session within a Saiki agent.
@@ -242,37 +241,7 @@ export class ChatSession {
             `Running session ${this.id} with input: ${input}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}`
         );
 
-        // Validate input at session level
-        const currentConfig = this.services.stateManager.getLLMConfig(this.id);
-        const validation = validateInputForLLM(
-            {
-                text: input,
-                ...(imageDataInput && { imageData: imageDataInput }),
-                ...(fileDataInput && { fileData: fileDataInput }),
-            },
-            {
-                provider: currentConfig.provider,
-                model: currentConfig.model,
-            }
-        );
-
-        if (!validation.isValid) {
-            // Emit unsupported input event
-            const errorDetails = createInputValidationError(validation, {
-                provider: currentConfig.provider,
-                model: currentConfig.model,
-            });
-
-            this.eventBus.emit('llmservice:unsupportedInput', {
-                errors: validation.errors,
-                provider: currentConfig.provider,
-                model: currentConfig.model,
-                fileType: errorDetails.fileType,
-                details: errorDetails.details,
-            });
-
-            throw new Error(`Input validation failed: ${validation.errors.join('; ')}`);
-        }
+        // Input validation is now handled at SaikiAgent.run() level
 
         const response = await this.llmService.completeTask(
             input,

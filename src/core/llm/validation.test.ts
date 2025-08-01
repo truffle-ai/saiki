@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { validateInputForLLM, createInputValidationError } from './validation.js';
+import { validateInputForLLM } from './validation.js';
 
 describe('validateInputForLLM', () => {
     describe('text validation', () => {
@@ -9,8 +9,8 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
         });
 
         test('should pass validation for empty text when no other input provided', () => {
@@ -19,15 +19,15 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
         });
 
         test('should pass validation for undefined text', () => {
             const result = validateInputForLLM({}, { provider: 'openai', model: 'gpt-4' });
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
         });
     });
 
@@ -45,9 +45,9 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4o' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
-            expect(result.fileValidation?.isSupported).toBe(true);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
+            expect(result.data?.fileValidation?.isSupported).toBe(true);
         });
 
         test('should pass validation for supported audio file with model that supports audio', () => {
@@ -63,9 +63,9 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4o-audio-preview' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
-            expect(result.fileValidation?.isSupported).toBe(true);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
+            expect(result.data?.fileValidation?.isSupported).toBe(true);
         });
 
         test('should fail validation for unsupported file type (model without audio support)', () => {
@@ -81,9 +81,9 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4o' } // This model doesn't support audio
             );
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors.length).toBeGreaterThan(0);
-            expect(result.fileValidation?.isSupported).toBe(false);
+            expect(result.ok).toBe(false);
+            expect(result.issues.filter((i) => i.severity === 'error').length).toBeGreaterThan(0);
+            expect(result.data?.fileValidation?.isSupported).toBe(false);
         });
 
         test('should fail validation for file not in allowed MIME types', () => {
@@ -99,9 +99,11 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4o' }
             );
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Unsupported file type');
-            expect(result.fileValidation?.isSupported).toBe(false);
+            expect(result.ok).toBe(false);
+            expect(
+                result.issues.filter((i) => i.severity === 'error').map((i) => i.message)
+            ).toContain('Unsupported file type');
+            expect(result.data?.fileValidation?.isSupported).toBe(false);
         });
 
         test('should fail validation for oversized file', () => {
@@ -119,8 +121,10 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4' }
             );
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('File size too large (max 50MB)');
+            expect(result.ok).toBe(false);
+            expect(
+                result.issues.filter((i) => i.severity === 'error').map((i) => i.message)
+            ).toContain('File size too large (max 50MB)');
         });
 
         test('should fail validation for invalid base64 format', () => {
@@ -136,8 +140,10 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4' }
             );
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain('Invalid file data format');
+            expect(result.ok).toBe(false);
+            expect(
+                result.issues.filter((i) => i.severity === 'error').map((i) => i.message)
+            ).toContain('Invalid file data format');
         });
 
         test('should fail validation when model is not specified for file', () => {
@@ -153,10 +159,10 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai' } // No model specified
             );
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors).toContain(
-                'Model must be specified for file capability validation'
-            );
+            expect(result.ok).toBe(false);
+            expect(
+                result.issues.filter((i) => i.severity === 'error').map((i) => i.message)
+            ).toContain('Model must be specified for file capability validation');
         });
 
         test('should fail validation for file without mimeType', () => {
@@ -172,9 +178,11 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4o' }
             );
 
-            expect(result.isValid).toBe(false);
-            expect(result.fileValidation?.isSupported).toBe(false);
-            expect(result.errors).toContain('Unsupported file type');
+            expect(result.ok).toBe(false);
+            expect(result.data?.fileValidation?.isSupported).toBe(false);
+            expect(
+                result.issues.filter((i) => i.severity === 'error').map((i) => i.message)
+            ).toContain('Unsupported file type');
         });
     });
 
@@ -191,10 +199,10 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4o' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
-            expect(result.imageValidation).toBeDefined();
-            expect(result.imageValidation?.isSupported).toBe(true);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
+            expect(result.data?.imageValidation).toBeDefined();
+            expect(result.data?.imageValidation?.isSupported).toBe(true);
         });
 
         test('should pass validation for image without mimeType', () => {
@@ -208,8 +216,8 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4o' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
         });
     });
 
@@ -231,8 +239,8 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4o' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
         });
 
         test('should fail validation when file input is invalid for model', () => {
@@ -252,9 +260,9 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'gpt-4o' } // This model doesn't support audio
             );
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors.length).toBeGreaterThan(0);
-            expect(result.fileValidation?.isSupported).toBe(false);
+            expect(result.ok).toBe(false);
+            expect(result.issues.filter((i) => i.severity === 'error').length).toBeGreaterThan(0);
+            expect(result.data?.fileValidation?.isSupported).toBe(false);
         });
     });
 
@@ -272,8 +280,8 @@ describe('validateInputForLLM', () => {
                 { provider: 'openai', model: 'unknown-model' }
             );
 
-            expect(result.isValid).toBe(false);
-            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.ok).toBe(false);
+            expect(result.issues.filter((i) => i.severity === 'error').length).toBeGreaterThan(0);
         });
 
         test('should fail validation for unknown model', () => {
@@ -290,9 +298,9 @@ describe('validateInputForLLM', () => {
             );
 
             // Fixed behavior: unknown models should fail validation
-            expect(result.isValid).toBe(false);
-            expect(result.fileValidation?.isSupported).toBe(false);
-            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.ok).toBe(false);
+            expect(result.data?.fileValidation?.isSupported).toBe(false);
+            expect(result.issues.filter((i) => i.severity === 'error').length).toBeGreaterThan(0);
         });
     });
 
@@ -310,9 +318,9 @@ describe('validateInputForLLM', () => {
                 { provider: 'anthropic', model: 'claude-4-sonnet-20250514' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
-            expect(result.fileValidation?.isSupported).toBe(true);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
+            expect(result.data?.fileValidation?.isSupported).toBe(true);
         });
 
         test('should work with Google provider and PDF files', () => {
@@ -328,9 +336,9 @@ describe('validateInputForLLM', () => {
                 { provider: 'google', model: 'gemini-2.0-flash' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
-            expect(result.fileValidation?.isSupported).toBe(true);
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
+            expect(result.data?.fileValidation?.isSupported).toBe(true);
         });
 
         test('should work with image validation (always supported currently)', () => {
@@ -345,71 +353,9 @@ describe('validateInputForLLM', () => {
                 { provider: 'google', model: 'gemini-2.0-flash' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
-            expect(result.imageValidation?.isSupported).toBe(true);
-        });
-    });
-});
-
-describe('createInputValidationError', () => {
-    test('should create standardized error response', () => {
-        const validation = {
-            isValid: false,
-            errors: ['File type not supported', 'Image format not supported'],
-            fileValidation: {
-                isSupported: false,
-                fileType: 'application/pdf',
-                error: 'PDF not supported by this model',
-            },
-            imageValidation: {
-                isSupported: false,
-                error: 'Image format not supported',
-            },
-        };
-
-        const config = { provider: 'openai' as const, model: 'gpt-3.5-turbo' };
-
-        const result = createInputValidationError(validation, config);
-
-        expect(result).toEqual({
-            error: 'File type not supported; Image format not supported',
-            provider: 'openai',
-            model: 'gpt-3.5-turbo',
-            fileType: 'application/pdf',
-            details: {
-                fileValidation: {
-                    isSupported: false,
-                    fileType: 'application/pdf',
-                    error: 'PDF not supported by this model',
-                },
-                imageValidation: {
-                    isSupported: false,
-                    error: 'Image format not supported',
-                },
-            },
-        });
-    });
-
-    test('should handle validation without file or image details', () => {
-        const validation = {
-            isValid: false,
-            errors: ['Text input cannot be empty'],
-        };
-
-        const config = { provider: 'openai' as const, model: 'gpt-4' };
-
-        const result = createInputValidationError(validation, config);
-
-        expect(result).toEqual({
-            error: 'Text input cannot be empty',
-            provider: 'openai',
-            model: 'gpt-4',
-            fileType: undefined,
-            details: {
-                fileValidation: undefined,
-                imageValidation: undefined,
-            },
+            expect(result.ok).toBe(true);
+            expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
+            expect(result.data?.imageValidation?.isSupported).toBe(true);
         });
     });
 });

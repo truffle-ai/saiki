@@ -27,4 +27,10 @@ export const enum SaikiErrorCode {
     MCP_DUPLICATE_NAME = 'mcp_duplicate_name', // use as warning
     MCP_INVALID_HEADERS = 'mcp_invalid_headers',
     MCP_INVALID_ENV = 'mcp_invalid_env',
+
+    // Validation
+    FILE_VALIDATION = 'file_validation',
+    IMAGE_VALIDATION = 'image_validation',
+    TEXT_VALIDATION = 'text_validation',
+    VALIDATION_ERROR = 'validation_error',
 }

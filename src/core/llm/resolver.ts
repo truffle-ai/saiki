@@ -102,7 +102,7 @@ export function resolveLLMConfig(
                     code: SaikiErrorCode.LLM_UNSUPPORTED_ROUTER,
                     message: `No routers supported for provider '${provider}'`,
                     severity: 'error',
-                    context: { provider, router },
+                    context: router ? { provider, router } : { provider },
                 });
                 // if routers supported, use the first supported router
             } else {
@@ -180,7 +180,7 @@ export function validateLLMConfig(
                 context: {
                     provider: candidate.provider,
                     model: candidate.model,
-                    router: candidate.router,
+                    ...(candidate.router && { router: candidate.router }),
                 },
             },
         ]);

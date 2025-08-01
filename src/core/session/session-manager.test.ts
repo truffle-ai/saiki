@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SessionManager } from './session-manager.js';
 import { ChatSession } from './chat-session.js';
-import type { ValidatedLLMConfig } from '../schemas/llm.js';
+import { LLMConfigSchema, type ValidatedLLMConfig } from '../schemas/llm.js';
 
 // Mock dependencies
 vi.mock('./chat-session.js');
@@ -17,14 +17,14 @@ describe('SessionManager', () => {
     let mockServices: any;
     let mockStorageManager: any;
 
-    const mockLLMConfig: ValidatedLLMConfig = {
+    const mockLLMConfig = LLMConfigSchema.parse({
         provider: 'openai',
         model: 'gpt-4',
         apiKey: 'test-key',
         router: 'in-built',
         maxIterations: 50,
         maxInputTokens: 128000,
-    };
+    });
 
     const mockSessionData = {
         id: 'test-session',

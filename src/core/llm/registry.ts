@@ -1,5 +1,5 @@
 import { logger } from '../logger/index.js';
-import { LLMConfig } from '../config/schemas.js';
+import { LLMConfig } from '../schemas/llm.js';
 import {
     CantInferProviderError,
     EffectiveMaxInputTokensError,

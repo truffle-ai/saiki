@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentStateManager } from './agent-state-manager.js';
 import { AgentEventBus } from '../events/index.js';
 import { AgentConfigSchema } from './schemas.js';
+import { LLMConfigSchema } from '../schemas/llm.js';
 import type { AgentConfig } from './schemas.js';
+import type { ValidatedLLMConfig } from '../schemas/llm.js';
 
 describe('AgentStateManager Events', () => {
     let stateManager: AgentStateManager;
@@ -54,7 +56,11 @@ describe('AgentStateManager Events', () => {
         const eventSpy = vi.fn();
         eventBus.on('saiki:stateChanged', eventSpy);
 
-        stateManager.updateLLM({ model: 'gpt-4o-mini' });
+        const updatedConfig = LLMConfigSchema.parse({
+            ...mockConfig.llm,
+            model: 'gpt-4o-mini',
+        });
+        stateManager.updateLLM(updatedConfig);
 
         expect(eventSpy).toHaveBeenCalledWith({
             field: 'llm',
@@ -100,7 +106,11 @@ describe('AgentStateManager Events', () => {
         const eventSpy = vi.fn();
         eventBus.on('saiki:sessionOverrideSet', eventSpy);
 
-        stateManager.updateLLM({ model: 'gpt-4o' }, 'session-123');
+        const sessionConfig = LLMConfigSchema.parse({
+            ...mockConfig.llm,
+            model: 'gpt-4o',
+        });
+        stateManager.updateLLM(sessionConfig, 'session-123');
 
         expect(eventSpy).toHaveBeenCalledWith({
             sessionId: 'session-123',
@@ -115,7 +125,11 @@ describe('AgentStateManager Events', () => {
         eventBus.on('saiki:sessionOverrideCleared', eventSpy);
 
         // First set an override
-        stateManager.updateLLM({ model: 'gpt-4o' }, 'session-123');
+        const sessionConfig = LLMConfigSchema.parse({
+            ...mockConfig.llm,
+            model: 'gpt-4o',
+        });
+        stateManager.updateLLM(sessionConfig, 'session-123');
 
         // Then clear it
         stateManager.clearSessionOverride('session-123');

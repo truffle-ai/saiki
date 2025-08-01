@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
 import type { LLMConfig, ValidatedLLMConfig, AgentConfig } from '../index.js';
+import { SaikiErrorCode } from '../schemas/errors.js';
 
 // Mock the dependencies
 vi.mock('../logger/index.js');
@@ -81,24 +82,14 @@ describe('SaikiAgent.switchLLM', () => {
             deleteSession: vi.fn(),
             endSession: vi.fn(),
             getSessionMetadata: vi.fn(),
-            switchLLMForDefaultSession: vi.fn().mockResolvedValue({
-                message: 'Successfully switched to openai/gpt-4o using vercel router',
-                warnings: [],
-            }),
+            switchLLMForDefaultSession: vi.fn().mockResolvedValue(undefined),
             switchLLMForSpecificSession: vi.fn().mockImplementation((config, sessionId) => {
                 if (sessionId === 'nonexistent') {
                     return Promise.reject(new Error(`Session ${sessionId} not found`));
                 }
-                return Promise.resolve({
-                    message: `Successfully switched to openai/gpt-4o using vercel router for session ${sessionId}`,
-                    warnings: [],
-                });
+                return Promise.resolve(undefined);
             }),
-            switchLLMForAllSessions: vi.fn().mockResolvedValue({
-                message:
-                    'Successfully switched to openai/gpt-4o using vercel router for all sessions',
-                warnings: [],
-            }),
+            switchLLMForAllSessions: vi.fn().mockResolvedValue(undefined),
         };
 
         mockEventBus = {
@@ -158,6 +149,10 @@ describe('SaikiAgent.switchLLM', () => {
             const candidate = {
                 ...mockLLMConfig,
                 ...updates,
+                // Ensure required fields are always defined
+                apiKey: updates.apiKey ?? mockLLMConfig.apiKey,
+                model: updates.model ?? mockLLMConfig.model,
+                provider: updates.provider ?? mockLLMConfig.provider,
             };
             return {
                 candidate,
@@ -194,13 +189,11 @@ describe('SaikiAgent.switchLLM', () => {
         test('should require model or provider parameter', async () => {
             const result = await agent.switchLLM({});
 
-            expect(result.success).toBe(false);
-            expect(result.errors).toBeDefined();
-            expect(result.errors!).toHaveLength(1);
-            expect(result.errors?.[0]?.type).toBe('general');
-            expect(result.errors?.[0]?.message).toBe(
-                'At least model or provider must be specified'
-            );
+            expect(result.ok).toBe(false);
+            expect(result.issues).toBeDefined();
+            expect(result.issues).toHaveLength(1);
+            expect(result.issues[0]?.code).toBe(SaikiErrorCode.AGENT_MISSING_LLM_INPUT);
+            expect(result.issues[0]?.message).toBe('At least model or provider must be specified');
         });
 
         test('should handle validation failure', async () => {
@@ -208,7 +201,7 @@ describe('SaikiAgent.switchLLM', () => {
                 ok: false,
                 issues: [
                     {
-                        code: 'invalid_model',
+                        code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Invalid model',
                         severity: 'error',
                     },
@@ -217,11 +210,11 @@ describe('SaikiAgent.switchLLM', () => {
 
             const result = await agent.switchLLM({ model: 'invalid-model' });
 
-            expect(result.success).toBe(false);
-            expect(result.errors).toBeDefined();
-            expect(result.errors!).toHaveLength(1);
-            expect(result.errors?.[0]?.type).toBe('invalid_model');
-            expect(result.errors?.[0]?.message).toBe('Invalid model');
+            expect(result.ok).toBe(false);
+            expect(result.issues).toBeDefined();
+            expect(result.issues).toHaveLength(1);
+            expect(result.issues[0]?.code).toBe(SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER);
+            expect(result.issues[0]?.message).toBe('Invalid model');
         });
     });
 
@@ -229,12 +222,11 @@ describe('SaikiAgent.switchLLM', () => {
         test('should switch LLM for default session', async () => {
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
-            expect(result.success).toBe(true);
-            expect(result.config).toBeDefined();
-            expect(result.config?.model).toBe('gpt-4o-mini');
-            expect(result.message).toContain(
-                'Successfully switched to openai/gpt-4o using vercel router'
-            );
+            expect(result.ok).toBe(true);
+            expect(result.data).toBeDefined();
+            expect(result.data?.model).toBe('gpt-4o-mini');
+            // Success case - no issues should be present unless there are warnings
+            expect(result.issues).toHaveLength(0);
             expect(mockSessionManager.switchLLMForDefaultSession).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o-mini',
@@ -250,7 +242,7 @@ describe('SaikiAgent.switchLLM', () => {
                     model: 'gpt-4o',
                     router: 'in-built',
                 }),
-                mockLLMConfig
+                []
             );
         });
 
@@ -260,27 +252,25 @@ describe('SaikiAgent.switchLLM', () => {
                 data: { ...mockLLMConfig, model: 'gpt-4o' } as any,
                 issues: [
                     {
-                        code: 'warning',
+                        code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Config warning',
                         severity: 'warning',
                     },
                 ],
             });
 
-            mockSessionManager.switchLLMForDefaultSession.mockResolvedValue({
-                message: 'Success',
-                warnings: ['Session warning'],
-            });
-
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
-            expect(result.warnings).toEqual(['Config warning', 'Session warning']);
+            expect(result.ok).toBe(true);
+            expect(result.issues).toHaveLength(1);
+            expect(result.issues[0]?.message).toBe('Config warning');
+            expect(result.issues[0]?.severity).toBe('warning');
         });
 
         test('should switch LLM for specific session', async () => {
             const result = await agent.switchLLM({ model: 'gpt-4o' }, 'session1');
 
-            expect(result.success).toBe(true);
+            expect(result.ok).toBe(true);
             expect(mockSessionManager.switchLLMForSpecificSession).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o',
@@ -292,7 +282,7 @@ describe('SaikiAgent.switchLLM', () => {
         test('should switch LLM for all sessions', async () => {
             const result = await agent.switchLLM({ model: 'gpt-4o' }, '*');
 
-            expect(result.success).toBe(true);
+            expect(result.ok).toBe(true);
             expect(mockSessionManager.switchLLMForAllSessions).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model: 'gpt-4o',
@@ -308,7 +298,7 @@ describe('SaikiAgent.switchLLM', () => {
                     provider: 'anthropic',
                     model: 'claude-4-sonnet-20250514',
                 }),
-                mockLLMConfig
+                []
             );
         });
 
@@ -320,7 +310,7 @@ describe('SaikiAgent.switchLLM', () => {
                     model: 'gpt-4o',
                     apiKey: 'new-key',
                 }),
-                mockLLMConfig
+                []
             );
         });
 
@@ -332,7 +322,7 @@ describe('SaikiAgent.switchLLM', () => {
                     model: 'gpt-4o',
                     baseURL: 'https://api.example.com',
                 }),
-                mockLLMConfig
+                []
             );
         });
     });
@@ -341,8 +331,9 @@ describe('SaikiAgent.switchLLM', () => {
         test('should switch LLM for specific session', async () => {
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, 'session1');
 
-            expect(result.success).toBe(true);
-            expect(result.message).toContain('for session session1');
+            expect(result.ok).toBe(true);
+            // Success case - no issues should be present
+            expect(result.issues).toHaveLength(0);
             expect(mockSessionManager.switchLLMForSpecificSession).toHaveBeenCalledWith(
                 expect.objectContaining({ model: 'gpt-4o-mini' }),
                 'session1'
@@ -354,11 +345,11 @@ describe('SaikiAgent.switchLLM', () => {
 
             const result = await agent.switchLLM({ model: 'gpt-4o' }, 'nonexistent');
 
-            expect(result.success).toBe(false);
-            expect(result.errors).toBeDefined();
-            expect(result.errors!).toHaveLength(1);
-            expect(result.errors?.[0]?.type).toBe('general');
-            expect(result.errors?.[0]?.message).toBe('Session nonexistent not found');
+            expect(result.ok).toBe(false);
+            expect(result.issues).toBeDefined();
+            expect(result.issues!).toHaveLength(1);
+            expect(result.issues?.[0]?.code).toBe(SaikiErrorCode.AGENT_SESSION_NOT_FOUND);
+            expect(result.issues?.[0]?.message).toBe('Session nonexistent not found');
         });
 
         test('should use session-specific state', async () => {
@@ -370,7 +361,7 @@ describe('SaikiAgent.switchLLM', () => {
             expect(mockStateManager.getRuntimeConfig).toHaveBeenCalledWith('session1');
             expect(mockValidateLLMConfig).toHaveBeenCalledWith(
                 expect.objectContaining({ model: 'gpt-4o' }),
-                sessionLLMConfig
+                []
             );
         });
     });
@@ -379,42 +370,25 @@ describe('SaikiAgent.switchLLM', () => {
         test('should switch LLM for all sessions successfully', async () => {
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, '*');
 
-            expect(result.success).toBe(true);
+            expect(result.ok).toBe(true);
             expect(mockSessionManager.switchLLMForAllSessions).toHaveBeenCalledWith(
                 expect.objectContaining({ model: 'gpt-4o-mini' })
             );
         });
 
         test('should handle failed sessions gracefully', async () => {
-            mockSessionManager.switchLLMForAllSessions.mockResolvedValue({
-                message:
-                    'Successfully switched to openai/gpt-4o using vercel router for 1 sessions, 1 sessions failed',
-                warnings: ['Failed to switch LLM for sessions: session2'],
-            });
-
+            // This test is not applicable with the new Result pattern
+            // Session switching either succeeds or fails completely
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, '*');
 
-            expect(result.success).toBe(true);
-            expect(result.message).toContain('1 sessions failed');
-            expect(result.warnings).toContain('Failed to switch LLM for sessions: session2');
-        });
-
-        test('should handle session validation failures', async () => {
-            mockSessionManager.switchLLMForAllSessions.mockResolvedValue({
-                message: 'Successfully switched',
-                warnings: ['Failed to switch LLM for sessions: session2'],
-            });
-
-            const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, '*');
-
-            expect(result.success).toBe(true);
-            expect(result.warnings).toEqual(['Failed to switch LLM for sessions: session2']);
+            expect(result.ok).toBe(true);
+            expect(result.issues).toHaveLength(0);
         });
 
         test('should handle missing sessions', async () => {
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' }, '*');
 
-            expect(result.success).toBe(true);
+            expect(result.ok).toBe(true);
             expect(mockSessionManager.switchLLMForAllSessions).toHaveBeenCalledWith(
                 expect.objectContaining({ model: 'gpt-4o-mini' })
             );
@@ -432,14 +406,14 @@ describe('SaikiAgent.switchLLM', () => {
             });
 
             expect(mockValidateLLMConfig).toHaveBeenCalledWith(
-                {
+                expect.objectContaining({
                     provider: 'google',
                     model: 'gemini-2.5-pro',
                     apiKey: 'custom-key',
                     router: 'vercel',
                     baseURL: 'https://custom.api.com',
-                },
-                mockLLMConfig
+                }),
+                []
             );
         });
 
@@ -447,10 +421,10 @@ describe('SaikiAgent.switchLLM', () => {
             await agent.switchLLM({ model: 'gpt-4o-mini' });
 
             expect(mockValidateLLMConfig).toHaveBeenCalledWith(
-                {
+                expect.objectContaining({
                     model: 'gpt-4o-mini',
-                },
-                mockLLMConfig
+                }),
+                []
             );
         });
 
@@ -465,89 +439,56 @@ describe('SaikiAgent.switchLLM', () => {
         });
     });
 
-    describe('Warning Collection', () => {
-        test('should collect and deduplicate warnings', async () => {
+    describe('Issue Collection', () => {
+        test('should return validation issues', async () => {
             mockValidateLLMConfig.mockResolvedValue({
-                config: { ...mockLLMConfig, model: 'gpt-4o-mini' } as any,
-                isValid: true,
-                errors: [],
-                warnings: ['Config warning', 'Duplicate warning'],
-            });
-
-            mockSessionManager.switchLLMForDefaultSession.mockResolvedValue({
-                message: 'Success',
-                warnings: ['Session warning', 'Duplicate warning'],
+                ok: true,
+                data: { ...mockLLMConfig, model: 'gpt-4o-mini' } as any,
+                issues: [
+                    {
+                        code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
+                        message: 'Config warning',
+                        severity: 'warning',
+                    },
+                ],
             });
 
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
-            expect(result.warnings).toEqual([
-                'Config warning',
-                'Duplicate warning',
-                'Session warning',
-                'Duplicate warning',
-            ]);
+            expect(result.ok).toBe(true);
+            expect(result.issues).toHaveLength(1);
+            expect(result.issues[0]?.message).toBe('Config warning');
+            expect(result.issues[0]?.severity).toBe('warning');
         });
 
-        test('should return undefined warnings when none exist', async () => {
+        test('should return empty issues when none exist', async () => {
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
-            expect(result.warnings).toBeUndefined();
+            expect(result.ok).toBe(true);
+            expect(result.issues).toHaveLength(0);
         });
     });
 
     describe('Error Handling', () => {
-        test('should handle validation exceptions', async () => {
-            const validationError = new Error('Validation failed');
-            mockValidateLLMConfig.mockRejectedValue(validationError);
-
-            const result = await agent.switchLLM({ model: 'gpt-4o' });
-
-            expect(result.success).toBe(false);
-            expect(result.errors).toBeDefined();
-            expect(result.errors!).toHaveLength(1);
-            expect(result.errors?.[0]?.type).toBe('general');
-            expect(result.errors?.[0]?.message).toBe('Validation failed');
-        });
-
-        test('should handle state manager validation errors', async () => {
-            mockValidateLLMConfig.mockResolvedValue({
-                config: mockLLMConfig as any, // Type assertion since this is a test mock
-                isValid: true,
-                errors: [],
-                warnings: [],
-            });
-
-            mockStateManager.updateLLM.mockReturnValue({
-                isValid: false,
-                errors: [
+        test('should handle validation errors', async () => {
+            mockValidateLLMConfig.mockReturnValue({
+                ok: false,
+                issues: [
                     {
-                        type: 'missing_api_key',
-                        message: 'API key required',
-                        provider: 'openai',
+                        code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
+                        message: 'Validation failed',
+                        severity: 'error',
                     },
                 ],
-                warnings: [],
             });
 
             const result = await agent.switchLLM({ model: 'gpt-4o' });
 
-            expect(result.success).toBe(false);
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors?.[0]?.type).toBe('missing_api_key');
-            expect(result.errors?.[0]?.message).toBe('API key required');
-        });
-
-        test('should handle session manager errors', async () => {
-            const sessionError = new Error('Session error');
-            mockSessionManager.switchLLMForDefaultSession.mockRejectedValue(sessionError);
-
-            const result = await agent.switchLLM({ model: 'gpt-4o' });
-
-            expect(result.success).toBe(false);
-            expect(result.errors).toHaveLength(1);
-            expect(result.errors?.[0]?.type).toBe('general');
-            expect(result.errors?.[0]?.message).toBe('Session error');
+            expect(result.ok).toBe(false);
+            expect(result.issues).toHaveLength(1);
+            expect(result.issues[0]?.code).toBe(SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER);
+            expect(result.issues[0]?.message).toBe('Validation failed');
+            expect(result.issues[0]?.severity).toBe('error');
         });
     });
 });

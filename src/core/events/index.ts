@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import { LLMProvider } from '../llm/registry.js';
+import type { Issue } from '../utils/result.js';
 
 /**
  * Agent-level event names - events that occur at the agent/global level
@@ -8,6 +9,7 @@ export const AGENT_EVENT_NAMES = [
     'saiki:conversationReset',
     'saiki:mcpServerConnected',
     'saiki:availableToolsUpdated',
+    'saiki:inputValidationFailed',
     'saiki:llmSwitched',
     // Agent state manager events
     'saiki:stateChanged',
@@ -64,6 +66,14 @@ export interface AgentEventMap {
     'saiki:availableToolsUpdated': {
         tools: string[];
         source: 'mcp' | 'builtin';
+    };
+
+    /** Fired when input validation fails */
+    'saiki:inputValidationFailed': {
+        sessionId: string;
+        issues: Issue<Record<string, unknown>>[];
+        provider: string;
+        model: string;
     };
 
     /** Fired when LLM service switched */

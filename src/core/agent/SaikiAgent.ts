@@ -6,11 +6,12 @@ import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../utils/service-initializer.js';
 import { logger } from '../logger/index.js';
-import { ValidatedLLMConfig, LLMConfig, LLMSwitchInput } from '../schemas/llm.js';
+import { ValidatedLLMConfig, LLMConfig, LLMUpdates } from '../schemas/llm.js';
 import { resolveLLMConfig, validateLLMConfig } from '../llm/resolver.js';
 import { Result, ok, fail } from '../utils/result.js';
 import type { LLMUpdateContext } from '../llm/types.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
+import { validateInputForLLM } from '../llm/validation.js';
 import { resolveAndValidateMcpServerConfig } from '../mcp/resolver.js';
 import type { McpServerConfig, ValidatedMcpServerConfig } from '../schemas/mcp.js';
 import type { McpServerContext } from '../mcp/resolver.js';
@@ -303,6 +304,42 @@ export class SaikiAgent {
     ): Promise<string | null> {
         this.ensureStarted();
         try {
+            // Determine target session ID for validation
+            const targetSessionId = sessionId || this.currentDefaultSessionId;
+
+            // Get session-specific LLM config for validation
+            const llmConfig = this.stateManager.getLLMConfig(targetSessionId);
+
+            // Validate inputs early using session-specific config
+            const validation = validateInputForLLM(
+                {
+                    text: textInput,
+                    ...(imageDataInput && { imageData: imageDataInput }),
+                    ...(fileDataInput && { fileData: fileDataInput }),
+                },
+                {
+                    provider: llmConfig.provider,
+                    model: llmConfig.model,
+                }
+            );
+
+            if (!validation.ok) {
+                // Extract error messages from validation issues
+                const errorMessages = validation.issues
+                    .filter((issue) => issue.severity === 'error')
+                    .map((issue) => issue.message);
+
+                // Emit event for monitoring/webhooks
+                this.agentEventBus.emit('saiki:inputValidationFailed', {
+                    sessionId: targetSessionId,
+                    issues: validation.issues,
+                    provider: llmConfig.provider,
+                    model: llmConfig.model,
+                });
+
+                throw new Error(`Input validation failed: ${errorMessages.join('; ')}`);
+            }
+
             let session: ChatSession;
 
             if (sessionId) {
@@ -610,7 +647,7 @@ export class SaikiAgent {
      * ```
      */
     public async switchLLM(
-        llmUpdates: LLMSwitchInput,
+        llmUpdates: LLMUpdates,
         sessionId?: string
     ): Promise<Result<ValidatedLLMConfig, LLMUpdateContext>> {
         this.ensureStarted();
@@ -643,7 +680,7 @@ export class SaikiAgent {
         // Perform the actual LLM switch with validated config
         const switchResult = await this.performLLMSwitch(result.data!, sessionId);
         if (!switchResult.ok) {
-            return switchResult; // Pass through switch errors
+            return fail(switchResult.issues); // Pass through switch errors
         }
 
         // Return success with validated config and any warnings
