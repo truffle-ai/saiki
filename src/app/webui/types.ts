@@ -89,6 +89,28 @@ export interface LLMProvider {
     supportsBaseURL: boolean;
 }
 
+export interface ModelInfo {
+    name: string;
+    supportedFileTypes: string[];
+    maxInputTokens: number;
+}
+
+export interface LLMRegistryProvider {
+    models: ModelInfo[];
+}
+
+export interface LLMRegistry {
+    providers: Record<string, LLMRegistryProvider>;
+}
+
+export interface ModelCapabilities {
+    model: string;
+    provider: string;
+    supportedFileTypes: string[];
+    supportedMimeTypes: string[];
+    maxInputTokens: number;
+}
+
 export interface LLMConfig {
     config: {
         provider: string;
