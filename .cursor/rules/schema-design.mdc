@@ -36,7 +36,7 @@ export const StdioServerConfigSchema = z
     .strict(); // This prevents extra fields
 
 // ❌ DON'T: Allow unknown keys in config objects
-const LlmConfig = z.object({
+const LlmConfigInput = z.object({
     provider: z.string(),
     model: z.string(),
     // No .strict() means a typo like 'modle' would be ignored

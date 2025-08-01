@@ -1,7 +1,7 @@
 // src/config/schemas.mcp.ts
 import { z } from 'zod';
-import { SaikiErrorCode } from '../schemas/errors.js';
-import { EnvExpandedString, RequiredEnvURL } from '../schemas/helpers.js';
+import { SaikiErrorCode } from './errors.js';
+import { EnvExpandedString, RequiredEnvURL } from './helpers.js';
 
 // ---- stdio ----
 export const StdioServerConfigSchema = z
@@ -31,7 +31,7 @@ export const StdioServerConfigSchema = z
     })
     .strict();
 
-export type StdioServerConfigInput = z.input<typeof StdioServerConfigSchema>;
+export type StdioServerConfig = z.input<typeof StdioServerConfigSchema>;
 export type ValidatedStdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
 
 // ---- sse ----
@@ -45,7 +45,7 @@ export const SseServerConfigSchema = z
     })
     .strict();
 
-export type SseServerConfigInput = z.input<typeof SseServerConfigSchema>;
+export type SseServerConfig = z.input<typeof SseServerConfigSchema>;
 export type ValidatedSseServerConfig = z.infer<typeof SseServerConfigSchema>;
 
 // ---- http ----
@@ -59,7 +59,7 @@ export const HttpServerConfigSchema = z
     })
     .strict();
 
-export type HttpServerConfigInput = z.input<typeof HttpServerConfigSchema>;
+export type HttpServerConfig = z.input<typeof HttpServerConfigSchema>;
 export type ValidatedHttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
 
 // ---- discriminated union ----
@@ -73,10 +73,12 @@ export const McpServerConfigSchema = z
         // cross-type business rules if you ever need them
     });
 
-export type McpServerConfigInput = z.input<typeof McpServerConfigSchema>;
+export type McpServerConfig = z.input<typeof McpServerConfigSchema>;
 export type ValidatedMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
-// A map of named servers
-export const ServerConfigsSchema = z.record(McpServerConfigSchema);
-export type ServerConfigsInput = z.input<typeof ServerConfigsSchema>;
+export const ServerConfigsSchema = z
+    .record(McpServerConfigSchema)
+    .describe('A dictionary of server configurations, keyed by server name');
+
+export type ServerConfigs = z.input<typeof ServerConfigsSchema>;
 export type ValidatedServerConfigs = z.infer<typeof ServerConfigsSchema>;

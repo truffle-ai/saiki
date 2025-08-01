@@ -12,8 +12,8 @@ import {
     LLM_PROVIDERS,
     LLM_ROUTERS,
 } from '../llm/registry.js';
-import { NonEmptyTrimmed, OptionalURL, EnvExpandedString } from '../schemas/helpers.js';
-import { SaikiErrorCode } from '../schemas/errors.js';
+import { NonEmptyTrimmed, OptionalURL, EnvExpandedString } from './helpers.js';
+import { SaikiErrorCode } from './errors.js';
 
 /** Core object with structural constraints and normalization */
 export const LLMConfigBaseSchema = z
@@ -146,11 +146,11 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
             params: { code: SaikiErrorCode.LLM_UNSUPPORTED_ROUTER },
         });
     }
-})
-    // Brand the validated type so it can be distinguished at compile time
+}) // Brand the validated type so it can be distinguished at compile time
     .brand<'ValidatedLLMConfig'>();
 
-export type LLMConfigInput = z.input<typeof LLMConfigSchema>;
+// Input type and output types for the zod schema
+export type LLMConfig = z.input<typeof LLMConfigSchema>;
 export type ValidatedLLMConfig = z.infer<typeof LLMConfigSchema>;
 
 // PATCH-like schema for updates (switch flows)

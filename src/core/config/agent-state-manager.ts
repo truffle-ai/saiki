@@ -1,13 +1,11 @@
 import { logger } from '../logger/index.js';
-import type {
-    ValidatedAgentConfig,
-    ValidatedLLMConfig,
-    McpServerConfig,
-    ValidatedMcpServerConfig,
-} from './schemas.js';
+import type { ValidatedAgentConfig } from '../config/schemas.js';
+import type { ValidatedLLMConfig } from '../schemas/llm.js';
+import type { McpServerConfig, ValidatedMcpServerConfig } from '../schemas/mcp.js';
 import type { AgentEventBus } from '../events/index.js';
-import { validateMcpServerConfig, type McpServerContext } from './validation-utils.js';
+import type { McpServerContext } from '../mcp/resolver.js';
 import { Result, ok, Issue } from '../utils/result.js';
+import { resolveAndValidateMcpServerConfig } from '../mcp/resolver.js';
 
 /**
  * Session-specific overrides that can differ from the global configuration
@@ -130,18 +128,30 @@ export class AgentStateManager {
 
         // Validate the server configuration
         const existingServerNames = Object.keys(this.runtimeConfig.mcpServers);
-        const validation = validateMcpServerConfig(serverName, serverConfig, existingServerNames);
+        // const validation = validateMcpServerConfig(serverName, serverConfig, existingServerNames);
+        const validation = resolveAndValidateMcpServerConfig(
+            serverName,
+            serverConfig,
+            existingServerNames
+        );
 
         if (!validation.ok) {
-            logger.warn('MCP server configuration validation failed', {
-                serverName,
-                errors: validation.issues
-                    .filter((i) => i.severity !== 'warning')
-                    .map((e: Issue<McpServerContext>) => e.message),
-                warnings: validation.issues
-                    .filter((i) => i.severity === 'warning')
-                    .map((e: Issue<McpServerContext>) => e.message),
-            });
+            // log errors and warnings distinctly
+            const errors = validation.issues.filter((i) => i.severity !== 'warning');
+            const warnings = validation.issues.filter((i) => i.severity === 'warning');
+
+            if (errors.length > 0) {
+                logger.warn('MCP server configuration validation failed', {
+                    serverName,
+                    errors: errors.map((e) => e.message),
+                });
+            }
+            if (warnings.length > 0) {
+                logger.warn('MCP server configuration warnings', {
+                    serverName,
+                    warnings: warnings.map((w) => w.message),
+                });
+            }
             return validation;
         }
 

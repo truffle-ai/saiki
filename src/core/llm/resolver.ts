@@ -1,15 +1,15 @@
 // TODO: move this to llm folder
 import { Result, Issue, hasErrors, splitIssues } from '../schemas/helpers.js';
 import { ok, fail } from '../schemas/helpers.js';
-import { zodToIssues } from '../schemas/zod-bridge.js';
+import { zodToIssues } from '@core/schemas/helpers.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 
 import {
     LLMConfigSchema,
     type ValidatedLLMConfig,
     type LLMUpdates,
-    type LLMConfigInput,
-} from './schema.js';
+    type LLMConfig,
+} from '../schemas/llm.js';
 import {
     getProviderFromModel,
     getSupportedRoutersForProvider,
@@ -25,7 +25,7 @@ import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 /**
  * Convenience function that combines resolveLLM and validateLLM
  */
-export function resolveAndValidateLLM(
+export function resolveAndValidateLLMConfig(
     previous: ValidatedLLMConfig,
     updates: LLMUpdates
 ): Result<ValidatedLLMConfig, LLMUpdateContext> {
@@ -49,7 +49,7 @@ export function resolveAndValidateLLM(
 export function resolveLLMConfig(
     previous: ValidatedLLMConfig,
     updates: LLMUpdates
-): { candidate: LLMConfigInput; warnings: Issue<LLMUpdateContext>[] } {
+): { candidate: LLMConfig; warnings: Issue<LLMUpdateContext>[] } {
     const warnings: Issue<LLMUpdateContext>[] = [];
 
     // Provider inference (if not provided, infer from model or previous provider)
@@ -160,8 +160,9 @@ export function resolveLLMConfig(
     };
 }
 
+// Passes the input candidate through the schema and returns a result
 export function validateLLMConfig(
-    candidate: LLMConfigInput,
+    candidate: LLMConfig,
     warnings: Issue<LLMUpdateContext>[]
 ): Result<ValidatedLLMConfig, LLMUpdateContext> {
     // Final validation (business rules + shape)

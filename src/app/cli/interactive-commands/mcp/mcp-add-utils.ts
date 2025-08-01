@@ -3,7 +3,7 @@ import {
     HttpServerConfig,
     SseServerConfig,
     McpServerConfig,
-} from '@core/config/schemas.js';
+} from '@core/schemas/mcp.js';
 import { validateMcpServerConfig } from '@core/config/validation-utils.js';
 import { parseOptions } from '../utils/arg-parser.js';
 import chalk from 'chalk';

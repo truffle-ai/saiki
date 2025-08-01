@@ -6,12 +6,9 @@ import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../utils/service-initializer.js';
 import { logger } from '../logger/index.js';
-import {
-    ValidatedLLMConfig,
-    LLMConfig,
-    McpServerConfig,
-    LLMSwitchInput,
-} from '../config/schemas.js';
+import { ValidatedLLMConfig, LLMConfig, LLMSwitchInput } from '../schemas/llm.js';
+import { resolveLLMConfig, validateLLMConfig } from '../llm/resolver.js';
+im;
 import {
     getSupportedProviders,
     getDefaultModelForProvider,
@@ -23,7 +20,6 @@ import {
 import { createAgentServices } from '../utils/service-initializer.js';
 import type { AgentConfig } from '../config/schemas.js';
 import { AgentEventBus } from '../events/index.js';
-import { buildLLMConfig } from '../config/validation-utils.js';
 import type { IMCPClient } from '../mcp/types.js';
 import type { ToolSet } from '../tools/types.js';
 import { SearchService } from '../search/index.js';
@@ -646,34 +642,14 @@ export class SaikiAgent {
                 : this.stateManager.getRuntimeConfig().llm;
 
             // Build and validate the new configuration using new Result pattern
-            const result = await buildLLMConfig(llmUpdates, currentLLMConfig);
+            const { candidate, warnings } = resolveLLMConfig(currentLLMConfig, llmUpdates);
+            const result = validateLLMConfig(candidate, warnings);
 
-            if (!result.ok) {
-                // Return structured errors for UI consumption
+            if (!result.ok)
                 return {
                     success: false,
-                    errors: result.issues
-                        .filter((i) => i.severity !== 'warning')
-                        .map((err) => ({
-                            type: err.code,
-                            message: err.message,
-                            ...(err.context?.provider && { provider: err.context.provider }),
-                            ...(err.context?.model && { model: err.context.model }),
-                            ...(err.context?.router && { router: err.context.router }),
-                            ...((err.code === 'missing_api_key'
-                                ? `Please set the ${err.context?.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
-                                : err.context?.suggestedAction) && {
-                                suggestedAction:
-                                    err.code === 'missing_api_key'
-                                        ? `Please set the ${err.context?.provider?.toUpperCase()}_API_KEY environment variable or provide the API key directly.`
-                                        : err.context?.suggestedAction,
-                            }),
-                        })),
-                    warnings: result.issues
-                        .filter((i) => i.severity === 'warning')
-                        .map((i) => i.message),
+                    errors: result.issues.map((i) => ({ type: i.code, message: i.message })),
                 };
-            }
 
             // Perform the actual LLM switch with validated config
             const warnMessages = result.issues

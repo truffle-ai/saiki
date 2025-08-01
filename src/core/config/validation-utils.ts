@@ -23,18 +23,6 @@ import { Result, ok, fail, Issue, zodResult } from '../utils/result.js';
 // CONTEXT TYPES
 // ============================================================================
 
-export type LLMConfigContext = {
-    provider?: string;
-    model?: string;
-    router?: string;
-    suggestedAction?: string;
-};
-
-export type McpServerContext = {
-    serverName?: string;
-    suggestedAction?: string;
-};
-
 // ============================================================================
 // LLM CONFIGURATION VALIDATION
 // ============================================================================
@@ -44,180 +32,180 @@ export type McpServerContext = {
  * Handles smart transformations (provider inference, API key resolution, fallbacks)
  * then delegates validation to LLMConfigSchema via zodResult helper.
  */
-export async function buildLLMConfig(
-    updates: LLMSwitchInput,
-    currentConfig: ValidatedLLMConfig
-): Promise<Result<ValidatedLLMConfig, LLMConfigContext>> {
-    const warnings: Issue<LLMConfigContext>[] = [];
-    const smartUpdates: LLMSwitchInput = { ...updates };
+// export async function buildLLMConfig(
+//     updates: LLMSwitchInput,
+//     currentConfig: ValidatedLLMConfig
+// ): Promise<Result<ValidatedLLMConfig, LLMConfigContext>> {
+//     const warnings: Issue<LLMConfigContext>[] = [];
+//     const smartUpdates: LLMSwitchInput = { ...updates };
 
-    // 1: Provider inference from model
-    if (
-        !smartUpdates.provider &&
-        smartUpdates.model &&
-        smartUpdates.model !== currentConfig.model
-    ) {
-        if (!acceptsAnyModel(currentConfig.provider)) {
-            try {
-                smartUpdates.provider = getProviderFromModel(smartUpdates.model);
-            } catch {
-                /* ignore; schema validation will catch */
-            }
-        }
-    }
+//     // 1: Provider inference from model
+//     if (
+//         !smartUpdates.provider &&
+//         smartUpdates.model &&
+//         smartUpdates.model !== currentConfig.model
+//     ) {
+//         if (!acceptsAnyModel(currentConfig.provider)) {
+//             try {
+//                 smartUpdates.provider = getProviderFromModel(smartUpdates.model);
+//             } catch {
+//                 /* ignore; schema validation will catch */
+//             }
+//         }
+//     }
 
-    // 2: API key resolution from environment
-    const finalProvider = smartUpdates.provider || currentConfig.provider;
-    if (!smartUpdates.apiKey && finalProvider !== currentConfig.provider) {
-        const envApiKey = resolveApiKeyForProvider(finalProvider);
-        if (envApiKey) {
-            smartUpdates.apiKey = envApiKey;
-        }
-    }
+//     // 2: API key resolution from environment
+//     const finalProvider = smartUpdates.provider || currentConfig.provider;
+//     if (!smartUpdates.apiKey && finalProvider !== currentConfig.provider) {
+//         const envApiKey = resolveApiKeyForProvider(finalProvider);
+//         if (envApiKey) {
+//             smartUpdates.apiKey = envApiKey;
+//         }
+//     }
 
-    // 3: Router fallback when provider changes
-    if (!smartUpdates.router && finalProvider !== currentConfig.provider) {
-        if (!isRouterSupportedForProvider(finalProvider, currentConfig.router)) {
-            const supportedRouters = getSupportedRoutersForProvider(finalProvider);
-            if (supportedRouters.length > 0) {
-                smartUpdates.router = supportedRouters.includes('vercel')
-                    ? 'vercel'
-                    : (supportedRouters[0] as 'vercel' | 'in-built');
-                warnings.push({
-                    code: 'router_fallback',
-                    message: `Switched router to '${smartUpdates.router}' for provider '${finalProvider}'`,
-                    severity: 'warning',
-                    context: { provider: finalProvider, router: smartUpdates.router },
-                });
-            }
-        }
-    }
+//     // 3: Router fallback when provider changes
+//     if (!smartUpdates.router && finalProvider !== currentConfig.provider) {
+//         if (!isRouterSupportedForProvider(finalProvider, currentConfig.router)) {
+//             const supportedRouters = getSupportedRoutersForProvider(finalProvider);
+//             if (supportedRouters.length > 0) {
+//                 smartUpdates.router = supportedRouters.includes('vercel')
+//                     ? 'vercel'
+//                     : (supportedRouters[0] as 'vercel' | 'in-built');
+//                 warnings.push({
+//                     code: 'router_fallback',
+//                     message: `Switched router to '${smartUpdates.router}' for provider '${finalProvider}'`,
+//                     severity: 'warning',
+//                     context: { provider: finalProvider, router: smartUpdates.router },
+//                 });
+//             }
+//         }
+//     }
 
-    // 4: Model fallback when provider changes
-    if (
-        !smartUpdates.model &&
-        smartUpdates.provider &&
-        smartUpdates.provider !== currentConfig.provider
-    ) {
-        if (
-            !acceptsAnyModel(smartUpdates.provider) &&
-            !isValidProviderModel(smartUpdates.provider, currentConfig.model)
-        ) {
-            const defaultModel = getDefaultModelForProvider(smartUpdates.provider);
-            if (defaultModel) {
-                smartUpdates.model = defaultModel;
-                warnings.push({
-                    code: 'model_fallback',
-                    message: `Switched to default model '${defaultModel}'`,
-                    severity: 'warning',
-                    context: { provider: smartUpdates.provider, model: defaultModel },
-                });
-            }
-        }
-    }
+//     // 4: Model fallback when provider changes
+//     if (
+//         !smartUpdates.model &&
+//         smartUpdates.provider &&
+//         smartUpdates.provider !== currentConfig.provider
+//     ) {
+//         if (
+//             !acceptsAnyModel(smartUpdates.provider) &&
+//             !isValidProviderModel(smartUpdates.provider, currentConfig.model)
+//         ) {
+//             const defaultModel = getDefaultModelForProvider(smartUpdates.provider);
+//             if (defaultModel) {
+//                 smartUpdates.model = defaultModel;
+//                 warnings.push({
+//                     code: 'model_fallback',
+//                     message: `Switched to default model '${defaultModel}'`,
+//                     severity: 'warning',
+//                     context: { provider: smartUpdates.provider, model: defaultModel },
+//                 });
+//             }
+//         }
+//     }
 
-    // 5: MaxInputTokens calculation (ensure required field is present)
-    const finalModel = smartUpdates.model || currentConfig.model;
-    if (!smartUpdates.maxInputTokens && !currentConfig.maxInputTokens) {
-        // Calculate because it's missing (required for proper LLM operation)
-        const effectiveMaxInputTokens = getEffectiveMaxInputTokens({
-            ...currentConfig,
-            ...smartUpdates,
-            provider: finalProvider,
-            model: finalModel,
-            apiKey: smartUpdates.apiKey || currentConfig.apiKey,
-        });
-        smartUpdates.maxInputTokens = effectiveMaxInputTokens;
-    }
+//     // 5: MaxInputTokens calculation (ensure required field is present)
+//     const finalModel = smartUpdates.model || currentConfig.model;
+//     if (!smartUpdates.maxInputTokens && !currentConfig.maxInputTokens) {
+//         // Calculate because it's missing (required for proper LLM operation)
+//         const effectiveMaxInputTokens = getEffectiveMaxInputTokens({
+//             ...currentConfig,
+//             ...smartUpdates,
+//             provider: finalProvider,
+//             model: finalModel,
+//             apiKey: smartUpdates.apiKey || currentConfig.apiKey,
+//         });
+//         smartUpdates.maxInputTokens = effectiveMaxInputTokens;
+//     }
 
-    // 6: API key length warning (business logic)
-    const finalApiKey = smartUpdates.apiKey || currentConfig.apiKey;
-    if (finalApiKey && finalApiKey.length < 10) {
-        warnings.push({
-            code: 'short_api_key',
-            message: 'API key seems too short - please verify it is correct',
-            severity: 'warning',
-            context: { provider: finalProvider },
-        });
-    }
+//     // 6: API key length warning (business logic)
+//     const finalApiKey = smartUpdates.apiKey || currentConfig.apiKey;
+//     if (finalApiKey && finalApiKey.length < 10) {
+//         warnings.push({
+//             code: 'short_api_key',
+//             message: 'API key seems too short - please verify it is correct',
+//             severity: 'warning',
+//             context: { provider: finalProvider },
+//         });
+//     }
 
-    // 7: Prepare merged config and context
-    const mergedConfig = { ...currentConfig, ...smartUpdates };
-    const context: LLMConfigContext = {
-        provider: mergedConfig.provider,
-        model: mergedConfig.model,
-        router: mergedConfig.router,
-    };
+//     // 7: Prepare merged config and context
+//     const mergedConfig = { ...currentConfig, ...smartUpdates };
+//     const context: LLMConfigContext = {
+//         provider: mergedConfig.provider,
+//         model: mergedConfig.model,
+//         router: mergedConfig.router,
+//     };
 
-    // 8: Schema validation first (catches structure + compatibility issues)
-    const validationResult = zodResult(LLMConfigSchema, mergedConfig, context);
+//     // 8: Schema validation first (catches structure + compatibility issues)
+//     const validationResult = zodResult(LLMConfigSchema, mergedConfig, context);
 
-    if (!validationResult.ok) {
-        // Remap schema errors to domain-specific codes where appropriate
-        const mappedIssues = validationResult.issues.map((issue) => {
-            if (issue.message.includes('is not supported for provider')) {
-                return { ...issue, code: 'incompatible_model_provider' };
-            }
-            if (issue.message.includes('does not support') && issue.message.includes('router')) {
-                return { ...issue, code: 'unsupported_router' };
-            }
-            if (issue.message.includes('does not support baseURL')) {
-                return { ...issue, code: 'invalid_base_url' };
-            }
-            return issue; // Keep original for other schema issues
-        });
-        return fail(mappedIssues);
-    }
+//     if (!validationResult.ok) {
+//         // Remap schema errors to domain-specific codes where appropriate
+//         const mappedIssues = validationResult.issues.map((issue) => {
+//             if (issue.message.includes('is not supported for provider')) {
+//                 return { ...issue, code: 'incompatible_model_provider' };
+//             }
+//             if (issue.message.includes('does not support') && issue.message.includes('router')) {
+//                 return { ...issue, code: 'unsupported_router' };
+//             }
+//             if (issue.message.includes('does not support baseURL')) {
+//                 return { ...issue, code: 'invalid_base_url' };
+//             }
+//             return issue; // Keep original for other schema issues
+//         });
+//         return fail(mappedIssues);
+//     }
 
-    // 9: Business logic validation (after schema passes)
-    const validatedConfig = validationResult.data;
+//     // 9: Business logic validation (after schema passes)
+//     const validatedConfig = validationResult.data;
 
-    // Missing API key validation
-    if (!validatedConfig.apiKey || validatedConfig.apiKey.trim() === '') {
-        return fail([
-            {
-                code: 'missing_api_key',
-                message: `No API key found for provider '${validatedConfig.provider}'`,
-                severity: 'error',
-                context: {
-                    ...context,
-                    suggestedAction: `Set ${validatedConfig.provider.toUpperCase()}_API_KEY environment variable`,
-                },
-            },
-        ]);
-    }
+//     // Missing API key validation
+//     if (!validatedConfig.apiKey || validatedConfig.apiKey.trim() === '') {
+//         return fail([
+//             {
+//                 code: 'missing_api_key',
+//                 message: `No API key found for provider '${validatedConfig.provider}'`,
+//                 severity: 'error',
+//                 context: {
+//                     ...context,
+//                     suggestedAction: `Set ${validatedConfig.provider.toUpperCase()}_API_KEY environment variable`,
+//                 },
+//             },
+//         ]);
+//     }
 
-    // Base URL validation (additional check beyond schema)
-    if (validatedConfig.baseURL && !supportsBaseURL(validatedConfig.provider)) {
-        return fail([
-            {
-                code: 'invalid_base_url',
-                message: `Custom baseURL is not supported for ${validatedConfig.provider} provider`,
-                severity: 'error',
-                context: {
-                    ...context,
-                    suggestedAction: 'Remove baseURL or use openai-compatible provider',
-                },
-            },
-        ]);
-    }
+//     // Base URL validation (additional check beyond schema)
+//     if (validatedConfig.baseURL && !supportsBaseURL(validatedConfig.provider)) {
+//         return fail([
+//             {
+//                 code: 'invalid_base_url',
+//                 message: `Custom baseURL is not supported for ${validatedConfig.provider} provider`,
+//                 severity: 'error',
+//                 context: {
+//                     ...context,
+//                     suggestedAction: 'Remove baseURL or use openai-compatible provider',
+//                 },
+//             },
+//         ]);
+//     }
 
-    // Max tokens validation (additional check beyond schema)
-    if (validatedConfig.maxInputTokens !== undefined && validatedConfig.maxInputTokens <= 0) {
-        return fail([
-            {
-                code: 'invalid_max_tokens',
-                message: 'maxInputTokens must be a positive number',
-                severity: 'error',
-                context,
-            },
-        ]);
-    }
+//     // Max tokens validation (additional check beyond schema)
+//     if (validatedConfig.maxInputTokens !== undefined && validatedConfig.maxInputTokens <= 0) {
+//         return fail([
+//             {
+//                 code: 'invalid_max_tokens',
+//                 message: 'maxInputTokens must be a positive number',
+//                 severity: 'error',
+//                 context,
+//             },
+//         ]);
+//     }
 
-    // Combine schema validation issues + accumulated warnings
-    const allIssues = [...validationResult.issues, ...warnings];
-    return ok(validatedConfig, allIssues);
-}
+//     // Combine schema validation issues + accumulated warnings
+//     const allIssues = [...validationResult.issues, ...warnings];
+//     return ok(validatedConfig, allIssues);
+// }
 
 // ============================================================================
 // MCP SERVER CONFIGURATION VALIDATION
