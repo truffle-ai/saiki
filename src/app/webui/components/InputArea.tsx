@@ -18,7 +18,8 @@ import { Switch } from './ui/switch';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 
 // Import the types we'll need for the API responses
-import type { LLMRegistry, ModelCapabilities } from '../types';
+import type { LLMRegistry, ModelCapabilities } from '../types.js';
+import { logger } from '@core/logger';
 
 interface InputAreaProps {
   onSend: (
@@ -96,7 +97,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
           setCoreModels(popularModels);
         }
       } catch (error) {
-        console.error('Failed to fetch models:', error);
+        logger.error(`Failed to fetch models: ${error}`);
         setAllModels([]);
         setCoreModels([]);
       }
@@ -135,7 +136,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch current model:', error);
+        logger.error(`Failed to fetch current model: ${error}`);
         setCurrentModel('Unknown');
         setModelCapabilities(new Set());
       }
@@ -388,12 +389,12 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
           errorMessage = result.error;
         }
         
-        console.error('Failed to switch model:', errorMessage);
+        logger.error(`Failed to switch model: ${errorMessage}`);
         setModelSwitchError(errorMessage);
         setTimeout(() => setModelSwitchError(null), 10000);
       }
     } catch (error) {
-      console.error('Network error while switching model:', error);
+      logger.error(`Network error while switching model: ${error}`);
       const errorMessage = 'Network error while switching model';
       setModelSwitchError(errorMessage);
       setTimeout(() => setModelSwitchError(null), 10000);
