@@ -56,10 +56,11 @@ export const fail = <T = never, C = unknown>(issues: Issue<C>[]): Result<T, C> =
 
 /**
  * Convert a ZodError into an Issue list and wrap in fail().
+ * Maps to 'schema_validation' by default - domain functions can override with specific codes.
  */
 export function fromZod<C = unknown>(error: ZodError, ctx?: Partial<C>): Result<never, C> {
     const issues: Issue<C>[] = error.errors.map((z) => ({
-        code: 'schema',
+        code: 'schema_validation', // Generic code - domains can remap if needed
         message: z.message,
         path: z.path.join('.'),
         severity: 'error',

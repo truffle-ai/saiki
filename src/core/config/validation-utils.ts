@@ -2,6 +2,7 @@ import {
     isValidProviderModel,
     getSupportedRoutersForProvider,
     isRouterSupportedForProvider,
+    supportsBaseURL,
     getProviderFromModel,
     getDefaultModelForProvider,
     getEffectiveMaxInputTokens,
@@ -115,9 +116,10 @@ export async function buildLLMConfig(
         }
     }
 
-    // 5: MaxInputTokens recalculation when model changes
+    // 5: MaxInputTokens calculation (ensure required field is present)
     const finalModel = smartUpdates.model || currentConfig.model;
-    if (!smartUpdates.maxInputTokens && finalModel !== currentConfig.model) {
+    if (!smartUpdates.maxInputTokens && !currentConfig.maxInputTokens) {
+        // Calculate because it's missing (required for proper LLM operation)
         const effectiveMaxInputTokens = getEffectiveMaxInputTokens({
             ...currentConfig,
             ...smartUpdates,
@@ -128,7 +130,18 @@ export async function buildLLMConfig(
         smartUpdates.maxInputTokens = effectiveMaxInputTokens;
     }
 
-    // 6: Merge with current and validate via zodResult helper
+    // 6: API key length warning (business logic)
+    const finalApiKey = smartUpdates.apiKey || currentConfig.apiKey;
+    if (finalApiKey && finalApiKey.length < 10) {
+        warnings.push({
+            code: 'short_api_key',
+            message: 'API key seems too short - please verify it is correct',
+            severity: 'warning',
+            context: { provider: finalProvider },
+        });
+    }
+
+    // 7: Prepare merged config and context
     const mergedConfig = { ...currentConfig, ...smartUpdates };
     const context: LLMConfigContext = {
         provider: mergedConfig.provider,
@@ -136,15 +149,74 @@ export async function buildLLMConfig(
         router: mergedConfig.router,
     };
 
+    // 8: Schema validation first (catches structure + compatibility issues)
     const validationResult = zodResult(LLMConfigSchema, mergedConfig, context);
 
     if (!validationResult.ok) {
-        return validationResult as Result<ValidatedLLMConfig, LLMConfigContext>;
+        // Remap schema errors to domain-specific codes where appropriate
+        const mappedIssues = validationResult.issues.map((issue) => {
+            if (issue.message.includes('is not supported for provider')) {
+                return { ...issue, code: 'incompatible_model_provider' };
+            }
+            if (issue.message.includes('does not support') && issue.message.includes('router')) {
+                return { ...issue, code: 'unsupported_router' };
+            }
+            if (issue.message.includes('does not support baseURL')) {
+                return { ...issue, code: 'invalid_base_url' };
+            }
+            return issue; // Keep original for other schema issues
+        });
+        return fail(mappedIssues);
+    }
+
+    // 9: Business logic validation (after schema passes)
+    const validatedConfig = validationResult.data;
+
+    // Missing API key validation
+    if (!validatedConfig.apiKey || validatedConfig.apiKey.trim() === '') {
+        return fail([
+            {
+                code: 'missing_api_key',
+                message: `No API key found for provider '${validatedConfig.provider}'`,
+                severity: 'error',
+                context: {
+                    ...context,
+                    suggestedAction: `Set ${validatedConfig.provider.toUpperCase()}_API_KEY environment variable`,
+                },
+            },
+        ]);
+    }
+
+    // Base URL validation (additional check beyond schema)
+    if (validatedConfig.baseURL && !supportsBaseURL(validatedConfig.provider)) {
+        return fail([
+            {
+                code: 'invalid_base_url',
+                message: `Custom baseURL is not supported for ${validatedConfig.provider} provider`,
+                severity: 'error',
+                context: {
+                    ...context,
+                    suggestedAction: 'Remove baseURL or use openai-compatible provider',
+                },
+            },
+        ]);
+    }
+
+    // Max tokens validation (additional check beyond schema)
+    if (validatedConfig.maxInputTokens !== undefined && validatedConfig.maxInputTokens <= 0) {
+        return fail([
+            {
+                code: 'invalid_max_tokens',
+                message: 'maxInputTokens must be a positive number',
+                severity: 'error',
+                context,
+            },
+        ]);
     }
 
     // Combine schema validation issues + accumulated warnings
     const allIssues = [...validationResult.issues, ...warnings];
-    return ok(validationResult.data as ValidatedLLMConfig, allIssues);
+    return ok(validatedConfig, allIssues);
 }
 
 // ============================================================================
