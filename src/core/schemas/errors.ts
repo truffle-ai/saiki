@@ -1,6 +1,7 @@
 export const enum SaikiErrorCode {
     SCHEMA_VALIDATION = 'schema_validation',
 
+    // LLM
     LLM_INCOMPATIBLE_MODEL_PROVIDER = 'llm_incompatible_model_provider',
     LLM_UNSUPPORTED_ROUTER = 'llm_unsupported_router',
     LLM_MISSING_BASE_URL = 'llm_missing_base_url',
@@ -11,7 +12,13 @@ export const enum SaikiErrorCode {
     LLM_MAX_INPUT_TOKENS_EXCEEDED = 'llm_max_input_tokens_exceeded',
     LLM_UNKNOWN_MODEL = 'llm_unknown_model',
 
-    // examples you’ll likely need soon for other domains:
-    DUPLICATE_NAME = 'duplicate_name',
-    INVALID_URL = 'invalid_url',
+    // MCP
+    MCP_SCHEMA_VALIDATION = 'mcp_schema_validation',
+    MCP_MISSING_COMMAND = 'mcp_missing_command',
+    MCP_MISSING_URL = 'mcp_missing_url',
+    MCP_INVALID_URL = 'mcp_invalid_url',
+    MCP_INVALID_TIMEOUT = 'mcp_invalid_timeout',
+    MCP_DUPLICATE_NAME = 'mcp_duplicate_name', // use as warning
+    MCP_INVALID_HEADERS = 'mcp_invalid_headers',
+    MCP_INVALID_ENV = 'mcp_invalid_env',
 }

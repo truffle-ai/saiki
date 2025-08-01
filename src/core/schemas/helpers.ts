@@ -37,19 +37,37 @@ export const OptionalURL = z
  * Expand $VAR / ${VAR} using provided env (defaults to process.env),
  * then trim and require non-empty. Input: string → Output: string
  */
+// Expand $VAR and ${VAR} using the provided env, then trim.
 export const EnvExpandedString = (env: Record<string, string | undefined> = process.env) =>
-    z
-        .string()
-        .transform((s) =>
-            s.replace(
-                /\$([A-Z_][A-Z0-9_]*)|\${([A-Z_][A-Z0-9_]*)}/gi,
-                (_, v1, v2) => env[v1 || v2] ?? ''
-            )
-        )
-        .transform((s) => s.trim())
-        .refine((s) => s.length > 0, {
-            message: 'Must be non-empty after env expansion',
-        });
+    z.string().transform((input) => {
+        if (typeof input !== 'string') return '';
+        const out = input.replace(
+            /\$([A-Z_][A-Z0-9_]*)|\${([A-Z_][A-Z0-9_]*)}/gi,
+            (_, a, b) => env[a || b] ?? ''
+        );
+        return out.trim();
+    });
+
+// If you want "required" variant (non-empty after expansion):
+export const NonEmptyEnvExpandedString = (env: Record<string, string | undefined> = process.env) =>
+    EnvExpandedString(env).refine((s) => s.length > 0, {
+        message: 'Value is required',
+    });
+
+export const RequiredEnvURL = (env = process.env) =>
+    EnvExpandedString(env).refine(
+        (s) => {
+            try {
+                const u = new URL(s);
+                return u.protocol === 'http:' || u.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        },
+        { message: 'Invalid URL' }
+    );
+
+/** generic validation types, utilities */
 
 export type Severity = 'error' | 'warning';
 
