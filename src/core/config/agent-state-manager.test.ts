@@ -4,7 +4,6 @@ import { AgentEventBus } from '../events/index.js';
 import { AgentConfigSchema } from './schemas.js';
 import { LLMConfigSchema } from '../schemas/llm.js';
 import type { AgentConfig } from './schemas.js';
-import type { ValidatedLLMConfig } from '../schemas/llm.js';
 
 describe('AgentStateManager Events', () => {
     let stateManager: AgentStateManager;

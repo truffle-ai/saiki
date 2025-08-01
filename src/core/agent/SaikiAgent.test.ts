@@ -223,8 +223,10 @@ describe('SaikiAgent.switchLLM', () => {
             const result = await agent.switchLLM({ model: 'gpt-4o-mini' });
 
             expect(result.ok).toBe(true);
-            expect(result.data).toBeDefined();
-            expect(result.data?.model).toBe('gpt-4o-mini');
+            if (result.ok) {
+                expect(result.data).toBeDefined();
+                expect(result.data.model).toBe('gpt-4o-mini');
+            }
             // Success case - no issues should be present unless there are warnings
             expect(result.issues).toHaveLength(0);
             expect(mockSessionManager.switchLLMForDefaultSession).toHaveBeenCalledWith(

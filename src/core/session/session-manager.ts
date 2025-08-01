@@ -497,10 +497,13 @@ export class SessionManager {
             const session = await this.getSession(sId);
             if (session) {
                 try {
-                    // Update state with validated config (no validation needed - already done by SaikiAgent)
+                    // Update state with validated config (validation already done by SaikiAgent)
+                    // Using exceptions here for session-specific runtime failures (corruption, disposal, etc.)
+                    // This is different from input validation which uses Result<T,C> pattern
                     this.services.stateManager.updateLLM(newLLMConfig, sId);
                     await session.switchLLM(newLLMConfig);
                 } catch (error) {
+                    // Session-level failure - continue processing other sessions (isolation)
                     failedSessions.push(sId);
                     logger.warn(
                         `Error switching LLM for session ${sId}: ${error instanceof Error ? error.message : String(error)}`

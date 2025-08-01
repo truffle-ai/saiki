@@ -19,7 +19,7 @@ describe('SessionManager', () => {
 
     const mockLLMConfig = LLMConfigSchema.parse({
         provider: 'openai',
-        model: 'gpt-4',
+        model: 'gpt-4o',
         apiKey: 'test-key',
         router: 'in-built',
         maxIterations: 50,
@@ -541,13 +541,13 @@ describe('SessionManager', () => {
 
             mockStorageManager.database.list.mockResolvedValue(sessionIds);
 
-            // Mock validation failure for one session
+            // Mock runtime failure for one session (e.g., session corruption, disposal, etc.)
             mockServices.stateManager.updateLLM.mockImplementation(
                 (config: any, sessionId: string) => {
                     if (sessionId === 'session-2') {
-                        return { isValid: false, errors: ['Validation failed'], warnings: [] };
+                        throw new Error('Session state corruption detected');
                     }
-                    return { isValid: true, errors: [], warnings: [] };
+                    // Normal case - returns void (no return needed)
                 }
             );
 

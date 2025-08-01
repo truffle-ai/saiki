@@ -36,6 +36,64 @@
 - **Provide sensible defaults** with `.default()` - Simplifies consuming code
 - **Use `superRefine` for complex validation** - Cross-field validation logic
 
+### Result Pattern & Validation Architecture
+
+#### Core Principles
+1. **SaikiAgent as Validation Boundary** - All input validation happens at SaikiAgent level
+   - Public SDK methods validate all inputs before processing
+   - Internal layers can assume data is already validated
+   - Creates clear contract between public API and internal implementation
+
+2. **Consistent Result<T,C> Returns** - SaikiAgent methods return Result types, not exceptions
+   - ✅ DO: `return ok(data, warnings)` or `return fail(errors)`
+   - ❌ DON'T: Mix Result pattern with thrown exceptions
+   - Provides explicit error handling in type system
+
+3. **API Layer Error Mapping** - Clean HTTP status code mapping
+   - `try/catch` → 500 (infrastructure failures, database errors, crashes)
+   - `!result.ok` → 400 (validation errors, business rule violations)
+   - `result.ok` → 200 (success, may include warnings)
+
+4. **Defensive API Validation** - API layer validates request schemas
+   - Use Zod schemas for request validation at API boundary
+   - Provides early error detection and clear error messages
+   - Prevents malformed data from reaching core logic
+
+#### Result Pattern Helpers
+Use standardized helpers from `src/core/schemas/helpers.ts`:
+
+- **`ok(data, issues?)`** - Success with optional warnings
+- **`fail(issues)`** - Failure with blocking errors  
+- **`hasErrors(issues)`** - Check if issues contain blocking errors
+- **`splitIssues(issues)`** - Separate errors from warnings
+- **`zodToIssues(zodError)`** - Convert Zod errors to Issue format
+
+#### Implementation Examples
+```typescript
+// SaikiAgent method - validate input, return Result
+public async switchLLM(updates: LLMSwitchInput, sessionId?: string): Promise<Result<ValidatedLLMConfig, LLMUpdateContext>> {
+    if (!updates.model && !updates.provider) {
+        return fail([{ code: SaikiErrorCode.AGENT_MISSING_LLM_INPUT, message: '...', severity: 'error', context: {} }]);
+    }
+    // ... validation and processing
+    return ok(validatedConfig, warnings);
+}
+
+// API endpoint - validate request, handle Result
+app.post('/api/llm/switch', express.json(), async (req, res) => {
+    const validation = validateBody(LLMSwitchRequestSchema, req.body);
+    if (!validation.success) return res.status(400).json(validation.response);
+    
+    try {
+        const result = await agent.switchLLM(validation.data);
+        return result.ok ? res.status(200).json(result) : res.status(400).json(result);
+    } catch (error) {
+        // Infrastructure failures
+        return res.status(500).json({ ok: false, issues: [{ code: 'internal_server_error', ... }] });
+    }
+});
+```
+
 ## Code Standards
 
 ### Import Requirements

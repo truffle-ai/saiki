@@ -1,5 +1,4 @@
 // src/config/mcp/validate-shim.ts
-import { z } from 'zod';
 import { ok, fail, type Result, type Issue, hasErrors, zodToIssues } from '../utils/result.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 

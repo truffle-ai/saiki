@@ -70,17 +70,14 @@ export interface Issue<C = unknown> {
 }
 
 /**
- * A result type that can be either successful or failed
- * Denotes validation related results
- * @param T - The type of the data
- * @param C - The type of the context
- * @returns A result type that can be either successful or failed
+ * A discriminated union result type that can be either successful or failed
+ * Provides type safety by ensuring data is only available on success
+ * @param T - The type of the data on success
+ * @param C - The type of the context for issues
  */
-export interface Result<T, C = unknown> {
-    ok: boolean;
-    data?: T;
-    issues: Issue<C>[];
-}
+export type Result<T, C = unknown> =
+    | { ok: true; data: T; issues: Issue<C>[] }
+    | { ok: false; issues: Issue<C>[] };
 
 /**
  * Create a successful result with validated data and optional warnings.

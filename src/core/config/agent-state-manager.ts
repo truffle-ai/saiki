@@ -1,11 +1,8 @@
 import { logger } from '../logger/index.js';
 import type { ValidatedAgentConfig } from '../config/schemas.js';
 import type { ValidatedLLMConfig } from '../schemas/llm.js';
-import type { McpServerConfig, ValidatedMcpServerConfig } from '../schemas/mcp.js';
+import type { ValidatedMcpServerConfig } from '../schemas/mcp.js';
 import type { AgentEventBus } from '../events/index.js';
-import type { McpServerContext } from '../mcp/resolver.js';
-import { Result, ok, Issue, hasErrors, splitIssues } from '../utils/result.js';
-import { resolveAndValidateMcpServerConfig } from '../mcp/resolver.js';
 
 /**
  * Session-specific overrides that can differ from the global configuration

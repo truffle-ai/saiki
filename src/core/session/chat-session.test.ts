@@ -18,9 +18,13 @@ vi.mock('../llm/tokenizer/factory.js', () => ({
 vi.mock('../llm/messages/formatters/factory.js', () => ({
     createMessageFormatter: vi.fn(),
 }));
-vi.mock('../llm/registry.js', () => ({
-    getEffectiveMaxInputTokens: vi.fn(),
-}));
+vi.mock('../llm/registry.js', async (importOriginal) => {
+    const actual = (await importOriginal()) as typeof import('../llm/registry.js');
+    return {
+        ...actual,
+        getEffectiveMaxInputTokens: vi.fn(),
+    };
+});
 vi.mock('../logger/index.js', () => ({
     logger: {
         debug: vi.fn(),
@@ -57,7 +61,7 @@ describe('ChatSession', () => {
     const sessionId = 'test-session-123';
     const mockLLMConfig = LLMConfigSchema.parse({
         provider: 'openai',
-        model: 'gpt-4',
+        model: 'gpt-4o',
         apiKey: 'test-key',
         router: 'in-built',
         maxIterations: 50,

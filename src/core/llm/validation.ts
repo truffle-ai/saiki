@@ -104,18 +104,9 @@ export function validateInputForLLM(
             }
         }
 
-        // Basic text validation (could be extended)
-        if (input.text !== undefined && input.text.length === 0) {
-            issues.push({
-                code: SaikiErrorCode.TEXT_VALIDATION,
-                message: 'Text input cannot be empty',
-                severity: 'error',
-                context: {
-                    ...context,
-                    suggestedAction: 'Provide non-empty text input',
-                },
-            });
-        }
+        // Basic text validation (currently permissive - empty text is allowed)
+        // TODO: Could be extended with more sophisticated text validation rules
+        // Note: Empty text is currently allowed as it may be valid in combination with images/files
 
         return issues.length === 0 ? ok(validationData, issues) : fail(issues);
     } catch (error) {

@@ -370,18 +370,19 @@ describe('Config Schemas', () => {
             expect(() => StdioServerConfigSchema.parse(invalidConfig as any)).toThrow();
         });
 
-        it('rejects missing required fields (command, args)', () => {
+        it('rejects missing required fields (command)', () => {
             const missingCommand = {
                 type: 'stdio',
                 args: ['server.js'],
             };
             expect(() => StdioServerConfigSchema.parse(missingCommand as any)).toThrow();
 
+            // args is optional with default [], so this should NOT throw
             const missingArgs = {
                 type: 'stdio',
                 command: 'node',
             };
-            expect(() => StdioServerConfigSchema.parse(missingArgs as any)).toThrow();
+            expect(() => StdioServerConfigSchema.parse(missingArgs as any)).not.toThrow();
         });
 
         it('rejects invalid types for fields', () => {

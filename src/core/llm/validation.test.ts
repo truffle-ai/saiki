@@ -47,7 +47,9 @@ describe('validateInputForLLM', () => {
 
             expect(result.ok).toBe(true);
             expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
-            expect(result.data?.fileValidation?.isSupported).toBe(true);
+            if (result.ok) {
+                expect(result.data.fileValidation?.isSupported).toBe(true);
+            }
         });
 
         test('should pass validation for supported audio file with model that supports audio', () => {
@@ -65,7 +67,9 @@ describe('validateInputForLLM', () => {
 
             expect(result.ok).toBe(true);
             expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
-            expect(result.data?.fileValidation?.isSupported).toBe(true);
+            if (result.ok) {
+                expect(result.data.fileValidation?.isSupported).toBe(true);
+            }
         });
 
         test('should fail validation for unsupported file type (model without audio support)', () => {
@@ -83,7 +87,7 @@ describe('validateInputForLLM', () => {
 
             expect(result.ok).toBe(false);
             expect(result.issues.filter((i) => i.severity === 'error').length).toBeGreaterThan(0);
-            expect(result.data?.fileValidation?.isSupported).toBe(false);
+            expect(result.issues.some((i) => i.code === 'file_validation')).toBe(true);
         });
 
         test('should fail validation for file not in allowed MIME types', () => {
@@ -103,7 +107,7 @@ describe('validateInputForLLM', () => {
             expect(
                 result.issues.filter((i) => i.severity === 'error').map((i) => i.message)
             ).toContain('Unsupported file type');
-            expect(result.data?.fileValidation?.isSupported).toBe(false);
+            expect(result.issues.some((i) => i.code === 'file_validation')).toBe(true);
         });
 
         test('should fail validation for oversized file', () => {
@@ -179,7 +183,7 @@ describe('validateInputForLLM', () => {
             );
 
             expect(result.ok).toBe(false);
-            expect(result.data?.fileValidation?.isSupported).toBe(false);
+            expect(result.issues.some((i) => i.code === 'file_validation')).toBe(true);
             expect(
                 result.issues.filter((i) => i.severity === 'error').map((i) => i.message)
             ).toContain('Unsupported file type');
@@ -201,8 +205,10 @@ describe('validateInputForLLM', () => {
 
             expect(result.ok).toBe(true);
             expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
-            expect(result.data?.imageValidation).toBeDefined();
-            expect(result.data?.imageValidation?.isSupported).toBe(true);
+            if (result.ok) {
+                expect(result.data.imageValidation).toBeDefined();
+                expect(result.data.imageValidation?.isSupported).toBe(true);
+            }
         });
 
         test('should pass validation for image without mimeType', () => {
@@ -262,7 +268,7 @@ describe('validateInputForLLM', () => {
 
             expect(result.ok).toBe(false);
             expect(result.issues.filter((i) => i.severity === 'error').length).toBeGreaterThan(0);
-            expect(result.data?.fileValidation?.isSupported).toBe(false);
+            expect(result.issues.some((i) => i.code === 'file_validation')).toBe(true);
         });
     });
 
@@ -299,7 +305,7 @@ describe('validateInputForLLM', () => {
 
             // Fixed behavior: unknown models should fail validation
             expect(result.ok).toBe(false);
-            expect(result.data?.fileValidation?.isSupported).toBe(false);
+            expect(result.issues.some((i) => i.code === 'file_validation')).toBe(true);
             expect(result.issues.filter((i) => i.severity === 'error').length).toBeGreaterThan(0);
         });
     });
@@ -320,7 +326,9 @@ describe('validateInputForLLM', () => {
 
             expect(result.ok).toBe(true);
             expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
-            expect(result.data?.fileValidation?.isSupported).toBe(true);
+            if (result.ok) {
+                expect(result.data.fileValidation?.isSupported).toBe(true);
+            }
         });
 
         test('should work with Google provider and PDF files', () => {
@@ -338,7 +346,9 @@ describe('validateInputForLLM', () => {
 
             expect(result.ok).toBe(true);
             expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
-            expect(result.data?.fileValidation?.isSupported).toBe(true);
+            if (result.ok) {
+                expect(result.data.fileValidation?.isSupported).toBe(true);
+            }
         });
 
         test('should work with image validation (always supported currently)', () => {
@@ -355,7 +365,9 @@ describe('validateInputForLLM', () => {
 
             expect(result.ok).toBe(true);
             expect(result.issues.filter((i) => i.severity === 'error')).toHaveLength(0);
-            expect(result.data?.imageValidation?.isSupported).toBe(true);
+            if (result.ok) {
+                expect(result.data.imageValidation?.isSupported).toBe(true);
+            }
         });
     });
 });
