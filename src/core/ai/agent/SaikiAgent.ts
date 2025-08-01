@@ -24,6 +24,7 @@ import type { ToolSet } from '../types.js';
 import { SearchService } from '../search/index.js';
 import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';
 import { getSaikiPath } from '../../utils/path.js';
+import type { SchedulerService } from '../../utils/scheduler.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
@@ -32,6 +33,7 @@ const requiredServices: (keyof AgentServices)[] = [
     'agentEventBus',
     'stateManager',
     'sessionManager',
+    'scheduler',
 ];
 
 /**
@@ -96,6 +98,7 @@ export class SaikiAgent {
     public readonly stateManager!: AgentStateManager;
     public readonly sessionManager!: SessionManager;
     public readonly toolManager!: ToolManager;
+    public readonly scheduler!: SchedulerService;
     public readonly services!: AgentServices;
 
     // Search service for conversation search
@@ -158,10 +161,17 @@ export class SaikiAgent {
                 stateManager: services.stateManager,
                 sessionManager: services.sessionManager,
                 services: services,
+                scheduler: services.scheduler,
             });
 
             // Initialize search service from services
             this.searchService = services.searchService;
+
+            // Set up input event listeners
+            this.setupInputEventListeners();
+
+            // Start scheduler service
+            this.scheduler.start();
 
             this._isStarted = true;
             logger.info('SaikiAgent started successfully.');
@@ -197,7 +207,18 @@ export class SaikiAgent {
 
             const shutdownErrors: Error[] = [];
 
-            // 1. Clean up session manager (stop accepting new sessions, clean existing ones)
+            // 1. Stop scheduler service
+            try {
+                if (this.scheduler) {
+                    this.scheduler.stop();
+                    logger.debug('Scheduler service stopped successfully');
+                }
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                shutdownErrors.push(new Error(`Scheduler stop failed: ${err.message}`));
+            }
+
+            // 2. Clean up session manager (stop accepting new sessions, clean existing ones)
             try {
                 if (this.sessionManager) {
                     await this.sessionManager.cleanup();
@@ -208,7 +229,7 @@ export class SaikiAgent {
                 shutdownErrors.push(new Error(`SessionManager cleanup failed: ${err.message}`));
             }
 
-            // 2. Disconnect all MCP clients
+            // 3. Disconnect all MCP clients
             try {
                 if (this.mcpManager) {
                     await this.mcpManager.disconnectAll();
@@ -219,7 +240,7 @@ export class SaikiAgent {
                 shutdownErrors.push(new Error(`MCPManager disconnect failed: ${err.message}`));
             }
 
-            // 3. Close storage backends
+            // 4. Close storage backends
             try {
                 if (this.services?.storageManager) {
                     await this.services.storageManager.disconnect();
@@ -244,6 +265,212 @@ export class SaikiAgent {
             logger.error('Failed to stop SaikiAgent', error);
             throw error;
         }
+    }
+
+    /**
+     * Sets up listeners for input events that can trigger agent processing
+     */
+    private setupInputEventListeners(): void {
+        // Subscribe to conversation trigger events
+        this.agentEventBus.on('saiki:triggerConversation', async (data) => {
+            try {
+                logger.info(
+                    `Processing triggered conversation from ${data.source || 'unknown'}: ${data.message.substring(0, 100)}...`
+                );
+
+                const response = await this.run(
+                    data.message,
+                    data.imageData,
+                    undefined, // fileDataInput
+                    data.sessionId,
+                    false // Don't stream triggered conversations by default
+                );
+
+                if (response) {
+                    logger.info(
+                        `🤖 Agent Response [${new Date().toISOString()}]: ${response.substring(0, 200)}${response.length > 200 ? '...' : ''}`
+                    );
+                } else {
+                    logger.info(
+                        `🤖 Agent Response [${new Date().toISOString()}]: No response generated`
+                    );
+                }
+            } catch (error) {
+                logger.error(
+                    `Error processing triggered conversation: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+        });
+
+        // Subscribe to webhook received events
+        this.agentEventBus.on('saiki:webhookReceived', async (data) => {
+            try {
+                const message =
+                    data.transformedMessage ||
+                    `Webhook received from ${data.source}: ${JSON.stringify(data.payload, null, 2)}`;
+
+                logger.info(`Processing webhook trigger from ${data.source}: ${data.webhookId}`);
+
+                const response = await this.run(
+                    message,
+                    undefined,
+                    undefined,
+                    data.sessionId,
+                    false
+                );
+
+                if (response) {
+                    logger.info(
+                        `🤖 Agent Response [${new Date().toISOString()}]: ${response.substring(0, 200)}${response.length > 200 ? '...' : ''}`
+                    );
+                } else {
+                    logger.info(
+                        `🤖 Agent Response [${new Date().toISOString()}]: No response generated`
+                    );
+                }
+            } catch (error) {
+                logger.error(
+                    `Error processing webhook trigger: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+        });
+
+        // Subscribe to external trigger events
+        this.agentEventBus.on('saiki:externalTrigger', async (data) => {
+            try {
+                const message =
+                    data.message ||
+                    `External trigger from ${data.source}: ${JSON.stringify(data.data, null, 2)}`;
+
+                logger.info(`Processing external trigger from ${data.source}: ${data.triggerId}`);
+
+                const response = await this.run(
+                    message,
+                    undefined,
+                    undefined,
+                    data.sessionId,
+                    false
+                );
+
+                if (response) {
+                    logger.info(
+                        `🤖 Agent Response [${new Date().toISOString()}]: ${response.substring(0, 200)}${response.length > 200 ? '...' : ''}`
+                    );
+                } else {
+                    logger.info(
+                        `🤖 Agent Response [${new Date().toISOString()}]: No response generated`
+                    );
+                }
+            } catch (error) {
+                logger.error(
+                    `Error processing external trigger: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+        });
+
+        logger.debug('Input event listeners set up successfully');
+    }
+
+    // ============= SCHEDULER MANAGEMENT =============
+
+    /**
+     * Creates a scheduled task that will trigger the agent at a specific time
+     * @param options Task configuration including message, schedule, and optional session
+     * @returns The task ID for managing the scheduled task
+     */
+    public createScheduledTask(options: {
+        message: string;
+        scheduledFor: Date;
+        sessionId?: string;
+        metadata?: Record<string, any>;
+        recurring?: {
+            pattern: 'daily' | 'weekly' | 'monthly' | 'custom';
+            interval?: number;
+            cron?: string;
+        };
+        maxExecutions?: number;
+        enabled?: boolean;
+    }): string {
+        this.ensureStarted();
+        return this.scheduler.createTask(options);
+    }
+
+    /**
+     * Gets a scheduled task by ID
+     * @param taskId The task ID to retrieve
+     * @returns The scheduled task or undefined if not found
+     */
+    public getScheduledTask(taskId: string) {
+        this.ensureStarted();
+        return this.scheduler.getTask(taskId);
+    }
+
+    /**
+     * Lists all scheduled tasks with optional filtering
+     * @param filter Optional filter criteria
+     * @returns Array of scheduled tasks
+     */
+    public listScheduledTasks(filter?: {
+        enabled?: boolean;
+        recurring?: boolean;
+        sessionId?: string;
+    }) {
+        this.ensureStarted();
+        return this.scheduler.listTasks(filter);
+    }
+
+    /**
+     * Enable or disable a scheduled task
+     * @param taskId The task ID to modify
+     * @param enabled Whether the task should be enabled
+     * @returns True if the task was found and modified, false otherwise
+     */
+    public setScheduledTaskEnabled(taskId: string, enabled: boolean): boolean {
+        this.ensureStarted();
+        return this.scheduler.setTaskEnabled(taskId, enabled);
+    }
+
+    /**
+     * Delete a scheduled task
+     * @param taskId The task ID to delete
+     * @returns True if the task was found and deleted, false otherwise
+     */
+    public deleteScheduledTask(taskId: string): boolean {
+        this.ensureStarted();
+        return this.scheduler.deleteTask(taskId);
+    }
+
+    /**
+     * Update the schedule for a task
+     * @param taskId The task ID to update
+     * @param newScheduledFor The new scheduled time
+     * @returns True if the task was found and updated, false otherwise
+     */
+    public updateScheduledTask(taskId: string, newScheduledFor: Date): boolean {
+        this.ensureStarted();
+        return this.scheduler.updateTaskSchedule(taskId, newScheduledFor);
+    }
+
+    /**
+     * Get scheduler statistics
+     * @returns Statistics about the scheduler service
+     */
+    public getSchedulerStats() {
+        this.ensureStarted();
+        return this.scheduler.getStats();
+    }
+
+    /**
+     * Manually trigger an input event to start agent processing
+     * @param eventType The type of input event to trigger
+     * @param eventData The data for the event
+     */
+    public triggerInputEvent(
+        eventType: 'saiki:triggerConversation' | 'saiki:webhookReceived' | 'saiki:externalTrigger',
+        eventData: any
+    ): void {
+        this.ensureStarted();
+        this.agentEventBus.emit(eventType, eventData);
     }
 
     /**

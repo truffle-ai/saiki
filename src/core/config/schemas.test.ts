@@ -858,4 +858,41 @@ describe('Config Schemas', () => {
             expect(() => AgentConfigSchema.parse(configWithStringTTL as any)).toThrow();
         });
     });
+
+    it('should validate internal tools with new scheduler tools', () => {
+        const config = {
+            systemPrompt: 'Test prompt',
+            llm: {
+                provider: 'openai',
+                model: 'gpt-4o-mini',
+                apiKey: 'test-key',
+            },
+            internalTools: [
+                'search_history',
+                'schedule_task',
+                'scheduler_create_task',
+                'scheduler_list_tasks',
+                'scheduler_get_task',
+                'scheduler_update_task',
+                'scheduler_toggle_task',
+                'scheduler_delete_task',
+                'scheduler_get_stats',
+            ],
+        };
+
+        const result = AgentConfigSchema.safeParse(config);
+        if (!result.success) {
+            console.log('Validation errors:', JSON.stringify(result.error.errors, null, 2));
+        }
+        expect(result.success).toBe(true);
+        if (result.success) {
+            expect(result.data.internalTools).toContain('scheduler_create_task');
+            expect(result.data.internalTools).toContain('scheduler_list_tasks');
+            expect(result.data.internalTools).toContain('scheduler_get_task');
+            expect(result.data.internalTools).toContain('scheduler_update_task');
+            expect(result.data.internalTools).toContain('scheduler_toggle_task');
+            expect(result.data.internalTools).toContain('scheduler_delete_task');
+            expect(result.data.internalTools).toContain('scheduler_get_stats');
+        }
+    });
 });

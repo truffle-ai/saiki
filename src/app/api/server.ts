@@ -1003,6 +1003,231 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
     });
 
+    // ============= SCHEDULER MANAGEMENT APIS =============
+
+    // Create a scheduled task
+    app.post('/api/scheduler/tasks', express.json(), async (req, res) => {
+        try {
+            const {
+                message,
+                scheduledFor,
+                sessionId,
+                metadata,
+                recurring,
+                maxExecutions,
+                enabled,
+            } = req.body;
+
+            if (!message || !scheduledFor) {
+                return res
+                    .status(400)
+                    .json({ error: 'Missing required fields: message, scheduledFor' });
+            }
+
+            const taskId = agent.createScheduledTask({
+                message,
+                scheduledFor: new Date(scheduledFor),
+                sessionId,
+                metadata,
+                recurring,
+                maxExecutions,
+                enabled,
+            });
+
+            const task = agent.getScheduledTask(taskId);
+            return res.status(201).json({ taskId, task });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error creating scheduled task: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to create scheduled task' });
+        }
+    });
+
+    // List scheduled tasks
+    app.get('/api/scheduler/tasks', async (req, res) => {
+        try {
+            const filter: any = {};
+            if (req.query.enabled !== undefined) {
+                filter.enabled = req.query.enabled === 'true';
+            }
+            if (req.query.recurring !== undefined) {
+                filter.recurring = req.query.recurring === 'true';
+            }
+            if (req.query.sessionId) {
+                filter.sessionId = req.query.sessionId as string;
+            }
+
+            const tasks = agent.listScheduledTasks(filter);
+            return sendJsonResponse(res, { tasks });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error listing scheduled tasks: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to list scheduled tasks' });
+        }
+    });
+
+    // Get a specific scheduled task
+    app.get('/api/scheduler/tasks/:taskId', async (req, res) => {
+        try {
+            const { taskId } = req.params;
+            const task = agent.getScheduledTask(taskId);
+
+            if (!task) {
+                return res.status(404).json({ error: 'Task not found' });
+            }
+
+            return sendJsonResponse(res, { task });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error getting scheduled task ${req.params.taskId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to get scheduled task' });
+        }
+    });
+
+    // Update a scheduled task
+    app.put('/api/scheduler/tasks/:taskId', express.json(), async (req, res) => {
+        try {
+            const { taskId } = req.params;
+            const { enabled, scheduledFor } = req.body;
+
+            if (enabled !== undefined) {
+                const success = agent.setScheduledTaskEnabled(taskId, enabled);
+                if (!success) {
+                    return res.status(404).json({ error: 'Task not found' });
+                }
+            }
+
+            if (scheduledFor !== undefined) {
+                const success = agent.updateScheduledTask(taskId, new Date(scheduledFor));
+                if (!success) {
+                    return res.status(404).json({ error: 'Task not found' });
+                }
+            }
+
+            const task = agent.getScheduledTask(taskId);
+            return sendJsonResponse(res, { task });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error updating scheduled task ${req.params.taskId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to update scheduled task' });
+        }
+    });
+
+    // Delete a scheduled task
+    app.delete('/api/scheduler/tasks/:taskId', async (req, res) => {
+        try {
+            const { taskId } = req.params;
+            const success = agent.deleteScheduledTask(taskId);
+
+            if (!success) {
+                return res.status(404).json({ error: 'Task not found' });
+            }
+
+            return res.json({ status: 'deleted', taskId });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error deleting scheduled task ${req.params.taskId}: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to delete scheduled task' });
+        }
+    });
+
+    // Get scheduler statistics
+    app.get('/api/scheduler/stats', async (req, res) => {
+        try {
+            const stats = agent.getSchedulerStats();
+            return sendJsonResponse(res, { stats });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error getting scheduler stats: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to get scheduler stats' });
+        }
+    });
+
+    // ============= INPUT EVENT TRIGGER APIS =============
+
+    // Trigger a conversation manually
+    app.post('/api/trigger/conversation', express.json(), async (req, res) => {
+        try {
+            const { message, sessionId, metadata, imageData, source } = req.body;
+
+            if (!message) {
+                return res.status(400).json({ error: 'Missing required field: message' });
+            }
+
+            agent.triggerInputEvent('saiki:triggerConversation', {
+                message,
+                sessionId,
+                metadata,
+                imageData,
+                source: source || 'api',
+            });
+
+            return res
+                .status(202)
+                .json({ status: 'triggered', message: 'Conversation trigger sent' });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error triggering conversation: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to trigger conversation' });
+        }
+    });
+
+    // Trigger a webhook event manually
+    app.post('/api/trigger/webhook', express.json(), async (req, res) => {
+        try {
+            const { webhookId, payload, headers, source, transformedMessage, sessionId } = req.body;
+
+            if (!webhookId || !payload || !source) {
+                return res
+                    .status(400)
+                    .json({ error: 'Missing required fields: webhookId, payload, source' });
+            }
+
+            agent.triggerInputEvent('saiki:webhookReceived', {
+                webhookId,
+                payload,
+                headers: headers || {},
+                source,
+                transformedMessage,
+                sessionId,
+            });
+
+            return res.status(202).json({ status: 'triggered', message: 'Webhook trigger sent' });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error triggering webhook: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to trigger webhook' });
+        }
+    });
+
+    // Trigger an external event manually
+    app.post('/api/trigger/external', express.json(), async (req, res) => {
+        try {
+            const { triggerId, source, data, message, sessionId, metadata } = req.body;
+
+            if (!triggerId || !source || !data) {
+                return res
+                    .status(400)
+                    .json({ error: 'Missing required fields: triggerId, source, data' });
+            }
+
+            agent.triggerInputEvent('saiki:externalTrigger', {
+                triggerId,
+                source,
+                data,
+                message,
+                sessionId,
+                metadata,
+            });
+
+            return res.status(202).json({ status: 'triggered', message: 'External trigger sent' });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error triggering external event: ${errorMessage}`);
+            return res.status(500).json({ error: 'Failed to trigger external event' });
+        }
+    });
+
     return { app, server, wss, webSubscriber, webhookSubscriber };
 }
 
