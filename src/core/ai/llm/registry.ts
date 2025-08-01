@@ -40,11 +40,12 @@ export function getAllowedMimeTypes(): string[] {
 }
 export function getMimeTypesForFileTypes(supportedFileTypes: SupportedFileType[]): string[] {
     const mimeTypes: Set<string> = new Set();
-    for (const mimeType in MIME_TYPE_TO_FILE_TYPE) {
-        if (supportedFileTypes.includes(MIME_TYPE_TO_FILE_TYPE[mimeType])) {
+    Object.keys(MIME_TYPE_TO_FILE_TYPE).forEach((mimeType) => {
+        const fileType = MIME_TYPE_TO_FILE_TYPE[mimeType];
+        if (fileType && supportedFileTypes.includes(fileType)) {
             mimeTypes.add(mimeType);
         }
-    }
+    });
     return Array.from(mimeTypes);
 }
 

@@ -717,11 +717,11 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 maxInputTokens: maxInputTokens,
             };
 
-            res.status(200).json(capabilities);
+            return res.status(200).json(capabilities);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Error in /api/llm/capabilities: ${errorMessage}`);
-            res.status(500).json({
+            return res.status(500).json({
                 error: `Failed to retrieve capabilities for model '${model}'.`,
             });
         }
