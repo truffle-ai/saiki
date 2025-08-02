@@ -1,7 +1,6 @@
 /* Brand Theme Variables (Infima overrides) */
 
-/* Import Geist fonts (same as used in your website/webui) */
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500;600&display=swap');
+/* Geist fonts loaded via <link> tag in docusaurus.config.ts for better performance */
 
 :root {
   /* Primary brand colors – VS Code inspired teal */
