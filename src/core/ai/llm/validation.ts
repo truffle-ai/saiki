@@ -217,7 +217,9 @@ function validateModelImageSupport(provider: string, model: string): ValidationR
             warnings: [],
         };
     }
-    const modelInfo = LLM_REGISTRY[provider as LLMProvider]?.models.find((m) => m.name === model);
+    const modelInfo = LLM_REGISTRY[provider as LLMProvider]?.models.find(
+        (m) => m.name.toLowerCase() === model.toLowerCase()
+    );
 
     if (!modelInfo) {
         return {
