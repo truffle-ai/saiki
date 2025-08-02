@@ -202,7 +202,7 @@ export function createInputValidationError(
     };
 }
 
-export function validateModelImageSupport(provider: string, model: string): ValidationResult {
+function validateModelImageSupport(provider: string, model: string): ValidationResult {
     if (!(provider in LLM_REGISTRY)) {
         return {
             isValid: false,
