@@ -149,8 +149,6 @@ function validateImageInput(
     _imageData: ImageData,
     _config: ValidationLLMConfig
 ): NonNullable<InputValidationResult['imageValidation']> {
-    // For now, assume images are supported (existing behavior)
-    // This can be expanded later with proper image capability validation
     const allowedMimeTypes = getAllowedMimeTypes();
     if (!_imageData.mimeType || !allowedMimeTypes.includes(_imageData.mimeType)) {
         return {
@@ -158,6 +156,25 @@ function validateImageInput(
             error: 'Unsupported image type',
         };
     }
+
+    if (_config.model) {
+        const modelSupport = validateModelImageSupport(_config.provider, _config.model);
+        if (!modelSupport.isValid) {
+            // Return the specific error from the new function
+            const firstError = modelSupport.errors[0];
+            return {
+                isSupported: false,
+                error: firstError.message,
+            };
+        }
+    } else {
+        // If no model specified, we cannot validate capabilities
+        return {
+            isSupported: false,
+            error: 'Model must be specified for image capability validation',
+        };
+    }
+
     return {
         isSupported: true,
     };
