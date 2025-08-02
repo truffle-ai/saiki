@@ -60,7 +60,7 @@
 
   /* Navbar */
   --ifm-navbar-height: 4rem;
-  --ifm-navbar-background-color: rgba(255, 255, 255, 0.90);
+  --ifm-navbar-background-color: var(--ifm-background-color);
 
   /* Components */
   --ifm-card-border-radius: 0.75rem;

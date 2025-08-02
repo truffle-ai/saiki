@@ -15,13 +15,13 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
 }
 
 /* Enhanced mesh gradient background */
 body::before {
   content: "";
   position: fixed;
+  overflow-x: hidden;
   inset: 0;
   pointer-events: none;
   background: 
@@ -45,11 +45,23 @@ body::after {
   z-index: -1;
 }
 
-/* Enhanced navbar with glass morphism */
-.navbar {
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(78, 201, 176, 0.1);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+/* Enhanced navbar with glass morphism - optimized for performance */
+@media (prefers-reduced-motion: no-preference) {
+  .navbar {
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(78, 201, 176, 0.1);
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    z-index: var(--ifm-z-index-fixed);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar {
+    background: var(--ifm-navbar-background-color);
+    border-bottom: 1px solid rgba(78, 201, 176, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    z-index: var(--ifm-z-index-fixed);
+  }
 }
 
 [data-theme='dark'] .navbar {
@@ -589,6 +601,7 @@ h3 {
   border: 1px solid rgba(78, 201, 176, 0.2);
   border-radius: var(--ifm-code-border-radius);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  overflow-x: auto;
 }
 
 [data-theme='light'] .prism-code {
@@ -624,14 +637,38 @@ code {
   }
 }
 
-/* Mobile sidebar (drawer) enhancements */
+/* Enhanced mobile sidebar with proper full-page overlay */
 @media (max-width: 996px) {
+  /* Mobile sidebar backdrop - covers entire viewport */
+  .navbar-sidebar__backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: calc(var(--ifm-z-index-overlay) + 1) !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+  }
+
+  /* Mobile sidebar container - fixed full viewport overlay */
+  .navbar-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100vh !important;
+    z-index: calc(var(--ifm-z-index-overlay) + 2) !important;
+  }
+
   .navbar-sidebar .menu {
     padding: 0.5rem 1rem;
-    max-height: calc(100vh - var(--ifm-navbar-height));
+    height: 100vh !important;
+    max-height: none !important;
     overflow-y: auto;
     background: rgba(37, 37, 38, 0.95);
     backdrop-filter: blur(20px);
+    position: relative;
+    z-index: calc(var(--ifm-z-index-overlay) + 3);
   }
 
   [data-theme='light'] .navbar-sidebar .menu {
