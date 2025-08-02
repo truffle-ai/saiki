@@ -164,7 +164,7 @@ function validateImageInput(
             const firstError = modelSupport.errors[0];
             return {
                 isSupported: false,
-                error: firstError.message,
+                error: firstError ? firstError.message : 'Model does not support images',
             };
         }
     } else {
