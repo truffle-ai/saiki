@@ -200,19 +200,60 @@ describe('validateInputForLLM', () => {
             expect(result.imageValidation?.isSupported).toBe(true);
         });
 
-        test('should pass validation for image without mimeType', () => {
+        // New test case: should fail when the model does not support images
+        test('should fail validation for image input when model does not support images', () => {
             const result = validateInputForLLM(
                 {
                     text: 'Analyze this image',
                     imageData: {
                         image: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD',
+                        mimeType: 'image/jpeg',
+                    },
+                },
+                { provider: 'openai', model: 'gpt-4.1-mini' } // Model without image support
+            );
+
+            expect(result.isValid).toBe(false);
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors).toContain('Model does not support images');
+            expect(result.imageValidation?.isSupported).toBe(false);
+        });
+
+        // New test case: should fail validation for an image with a not allowed MIME type
+        test('should fail validation for unsupported image MIME type', () => {
+            const result = validateInputForLLM(
+                {
+                    text: 'Analyze this image',
+                    imageData: {
+                        image: 'data:image/bmp;base64,Qk0=',
+                        mimeType: 'image/svg',
                     },
                 },
                 { provider: 'openai', model: 'gpt-4o' }
             );
 
-            expect(result.isValid).toBe(true);
-            expect(result.errors).toHaveLength(0);
+            expect(result.isValid).toBe(false);
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors).toContain('Unsupported image type');
+            expect(result.imageValidation?.isSupported).toBe(false);
+        });
+
+        // New test case: should fail validation when model is not specified for image
+        test('should fail validation when model is not specified for image', () => {
+            const result = validateInputForLLM(
+                {
+                    text: 'Analyze this image',
+                    imageData: {
+                        image: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD',
+                        mimeType: 'image/jpeg',
+                    },
+                },
+                { provider: 'openai' } // No model specified
+            );
+            expect(result.isValid).toBe(false);
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors[0]).toContain('Model must be specified');
+            expect(result.imageValidation?.isSupported).toBe(false);
         });
     });
 
@@ -296,6 +337,24 @@ describe('validateInputForLLM', () => {
             expect(result.isValid).toBe(false);
             expect(result.fileValidation?.isSupported).toBe(false);
             expect(result.errors.length).toBeGreaterThan(0);
+        });
+
+        test('should fail validation for unknown model when image is provided', () => {
+            const result = validateInputForLLM(
+                {
+                    text: 'Analyze this image',
+                    imageData: {
+                        image: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD',
+                        mimeType: 'image/jpeg',
+                    },
+                },
+                { provider: 'openai', model: 'unknown-model' }
+            );
+
+            expect(result.isValid).toBe(false);
+            expect(result.imageValidation?.isSupported).toBe(false);
+            expect(result.errors.length).toBeGreaterThan(0);
+            expect(result.errors).toContain('Model not found');
         });
 
         test('should throw LLMInputValidationError if validateFileInput throws', () => {

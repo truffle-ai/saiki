@@ -282,6 +282,7 @@ describe('File support functionality', () => {
         it('should return correct file types for Anthropic default model', () => {
             expect(getSupportedFileTypesForModel('anthropic', 'claude-4-sonnet-20250514')).toEqual([
                 'pdf',
+                'image',
             ]);
         });
 
@@ -289,6 +290,7 @@ describe('File support functionality', () => {
             expect(getSupportedFileTypesForModel('google', 'gemini-2.5-pro')).toEqual([
                 'pdf',
                 'audio',
+                'image',
             ]);
         });
 
@@ -323,7 +325,7 @@ describe('File support functionality', () => {
         });
 
         it('should be case-insensitive for model names', () => {
-            expect(getSupportedFileTypesForModel('openai', 'GPT-4O')).toEqual(['pdf']);
+            expect(getSupportedFileTypesForModel('openai', 'GPT-4O')).toEqual(['pdf', 'image']);
         });
     });
 
@@ -334,7 +336,7 @@ describe('File support functionality', () => {
                     'pdf',
                     'audio',
                 ]);
-                expect(getSupportedFileTypesForModel('openai', 'gpt-4o')).toEqual(['pdf']);
+                expect(getSupportedFileTypesForModel('openai', 'gpt-4o')).toEqual(['pdf', 'image']);
             });
 
             it('should return empty array for openai-compatible provider with any model (custom endpoints)', () => {
@@ -369,6 +371,13 @@ describe('File support functionality', () => {
                 expect(modelSupportsFileType('openai', 'gpt-4o-audio-preview', 'audio')).toBe(true);
                 expect(modelSupportsFileType('openai', 'gpt-4o-audio-preview', 'pdf')).toBe(true);
                 expect(modelSupportsFileType('openai', 'gpt-4o', 'pdf')).toBe(true);
+                expect(modelSupportsFileType('openai', 'gpt-4o', 'image')).toBe(true);
+                expect(modelSupportsFileType('anthropic', 'claude-3-opus-20240229', 'image')).toBe(
+                    true
+                );
+                expect(modelSupportsFileType('google', 'gemini-1.5-pro-latest', 'image')).toBe(
+                    true
+                );
             });
 
             it('should return false for unsupported model file types', () => {

@@ -16,7 +16,7 @@ export interface ModelInfo {
     // Add other relevant metadata if needed, e.g., supported features, cost tier
 }
 
-export type SupportedFileType = 'audio' | 'pdf';
+export type SupportedFileType = 'audio' | 'pdf' | 'image';
 
 // Central MIME type to file type mapping
 export const MIME_TYPE_TO_FILE_TYPE: Record<string, SupportedFileType> = {
@@ -30,11 +30,23 @@ export const MIME_TYPE_TO_FILE_TYPE: Record<string, SupportedFileType> = {
     'audio/ogg': 'audio',
     'audio/m4a': 'audio',
     'audio/aac': 'audio',
+    'image/jpeg': 'image',
+    'image/png': 'image',
+    'image/gif': 'image',
+    'image/webp': 'image',
+    'image/bmp': 'image',
+    'image/tiff': 'image',
 };
 
 // Helper function to get array of allowed MIME types
 export function getAllowedMimeTypes(): string[] {
     return Object.keys(MIME_TYPE_TO_FILE_TYPE);
+}
+
+export function getSupportedImageMimeTypes(): string[] {
+    return Object.keys(MIME_TYPE_TO_FILE_TYPE).filter(
+        (mimeType) => MIME_TYPE_TO_FILE_TYPE[mimeType] === 'image'
+    );
 }
 
 export interface ProviderInfo {
@@ -69,8 +81,12 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
                 supportedFileTypes: ['pdf'],
             },
             { name: 'gpt-4.1-nano', maxInputTokens: 1047576, supportedFileTypes: ['pdf'] },
-            { name: 'gpt-4o', maxInputTokens: 128000, supportedFileTypes: ['pdf'] },
-            { name: 'gpt-4o-mini', maxInputTokens: 128000, supportedFileTypes: ['pdf'] },
+            { name: 'gpt-4o', maxInputTokens: 128000, supportedFileTypes: ['pdf', 'image'] },
+            {
+                name: 'gpt-4o-mini',
+                maxInputTokens: 128000,
+                supportedFileTypes: ['pdf', 'image'],
+            },
             {
                 name: 'gpt-4o-audio-preview',
                 maxInputTokens: 128000,
@@ -93,33 +109,41 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
     },
     anthropic: {
         models: [
-            { name: 'claude-4-opus-20250514', maxInputTokens: 200000, supportedFileTypes: ['pdf'] },
+            {
+                name: 'claude-4-opus-20250514',
+                maxInputTokens: 200000,
+                supportedFileTypes: ['pdf', 'image'],
+            },
             {
                 name: 'claude-4-sonnet-20250514',
                 maxInputTokens: 200000,
                 default: true,
-                supportedFileTypes: ['pdf'],
+                supportedFileTypes: ['pdf', 'image'],
             },
             {
                 name: 'claude-3-7-sonnet-20250219',
                 maxInputTokens: 200000,
-                supportedFileTypes: ['pdf'],
+                supportedFileTypes: ['pdf', 'image'],
             },
             {
                 name: 'claude-3-5-sonnet-20240620',
                 maxInputTokens: 200000,
-                supportedFileTypes: ['pdf'],
+                supportedFileTypes: ['pdf', 'image'],
             },
             {
                 name: 'claude-3-haiku-20240307',
                 maxInputTokens: 200000,
-                supportedFileTypes: ['pdf'],
+                supportedFileTypes: ['pdf', 'image'],
             },
-            { name: 'claude-3-opus-20240229', maxInputTokens: 200000, supportedFileTypes: ['pdf'] },
+            {
+                name: 'claude-3-opus-20240229',
+                maxInputTokens: 200000,
+                supportedFileTypes: ['pdf', 'image'],
+            },
             {
                 name: 'claude-3-sonnet-20240229',
                 maxInputTokens: 200000,
-                supportedFileTypes: ['pdf'],
+                supportedFileTypes: ['pdf', 'image'],
             },
         ],
         supportedRouters: ['vercel', 'in-built'],
@@ -132,32 +156,32 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
                 name: 'gemini-2.5-pro',
                 maxInputTokens: 1048576,
                 default: true,
-                supportedFileTypes: ['pdf', 'audio'],
+                supportedFileTypes: ['pdf', 'audio', 'image'],
             },
             {
                 name: 'gemini-2.5-flash',
                 maxInputTokens: 1048576,
-                supportedFileTypes: ['pdf', 'audio'],
+                supportedFileTypes: ['pdf', 'audio', 'image'],
             },
             {
                 name: 'gemini-2.0-flash',
                 maxInputTokens: 1048576,
-                supportedFileTypes: ['pdf', 'audio'],
+                supportedFileTypes: ['pdf', 'audio', 'image'],
             },
             {
                 name: 'gemini-2.0-flash-lite',
                 maxInputTokens: 1048576,
-                supportedFileTypes: ['pdf', 'audio'],
+                supportedFileTypes: ['pdf', 'audio', 'image'],
             },
             {
                 name: 'gemini-1.5-pro-latest',
                 maxInputTokens: 1048576,
-                supportedFileTypes: ['pdf', 'audio'],
+                supportedFileTypes: ['pdf', 'audio', 'image'],
             },
             {
                 name: 'gemini-1.5-flash-latest',
                 maxInputTokens: 1048576,
-                supportedFileTypes: ['pdf', 'audio'],
+                supportedFileTypes: ['pdf', 'audio', 'image'],
             },
         ],
         supportedRouters: ['vercel'],
