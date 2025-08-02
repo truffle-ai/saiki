@@ -1,7 +1,13 @@
-import { validateModelFileSupport, getAllowedMimeTypes } from './registry.js';
+import {
+    validateModelFileSupport,
+    getAllowedMimeTypes,
+    LLM_REGISTRY,
+    LLMProvider,
+} from './registry.js';
 import { logger } from '../../logger/index.js';
 import type { ImageData, FileData } from './messages/types.js';
 import { LLMInputValidationError } from '@core/error/index.js';
+import { ValidationResult } from '@core/config/index.js';
 
 export interface InputValidationResult {
     isValid: boolean;
@@ -145,6 +151,13 @@ function validateImageInput(
 ): NonNullable<InputValidationResult['imageValidation']> {
     // For now, assume images are supported (existing behavior)
     // This can be expanded later with proper image capability validation
+    const allowedMimeTypes = getAllowedMimeTypes();
+    if (!_imageData.mimeType || !allowedMimeTypes.includes(_imageData.mimeType)) {
+        return {
+            isSupported: false,
+            error: 'Unsupported image type',
+        };
+    }
     return {
         isSupported: true,
     };
@@ -172,4 +185,56 @@ export function createInputValidationError(
     };
 }
 
-// Removed deprecated legacy functions - no backward compatibility needed
+export function validateModelImageSupport(provider: string, model: string): ValidationResult {
+    if (!(provider in LLM_REGISTRY)) {
+        return {
+            isValid: false,
+            errors: [
+                {
+                    type: 'invalid_provider',
+                    message: `Unknown provider: ${provider}`,
+                    provider,
+                    model,
+                },
+            ],
+            warnings: [],
+        };
+    }
+    const modelInfo = LLM_REGISTRY[provider as LLMProvider]?.models.find((m) => m.name === model);
+
+    if (!modelInfo) {
+        return {
+            isValid: false,
+            errors: [
+                {
+                    type: 'invalid_model',
+                    message: 'Model not found',
+                    provider,
+                    model,
+                },
+            ],
+            warnings: [],
+        };
+    }
+
+    if (!modelInfo.supportedFileTypes.includes('image')) {
+        return {
+            isValid: false,
+            errors: [
+                {
+                    type: 'unsupported_file_type',
+                    message: 'Model does not support images',
+                    provider,
+                    model,
+                },
+            ],
+            warnings: [],
+        };
+    }
+
+    return {
+        isValid: true,
+        errors: [],
+        warnings: [],
+    };
+}

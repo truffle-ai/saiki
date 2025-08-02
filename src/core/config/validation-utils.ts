@@ -35,6 +35,7 @@ export type ValidationErrorType =
     | 'invalid_base_url'
     | 'invalid_max_tokens'
     | 'schema_validation'
+    | 'unsupported_file_type'
     | 'general';
 
 /**

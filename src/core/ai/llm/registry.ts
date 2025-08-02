@@ -16,7 +16,7 @@ export interface ModelInfo {
     // Add other relevant metadata if needed, e.g., supported features, cost tier
 }
 
-export type SupportedFileType = 'audio' | 'pdf';
+export type SupportedFileType = 'audio' | 'pdf' | 'image';
 
 // Central MIME type to file type mapping
 export const MIME_TYPE_TO_FILE_TYPE: Record<string, SupportedFileType> = {
@@ -30,11 +30,23 @@ export const MIME_TYPE_TO_FILE_TYPE: Record<string, SupportedFileType> = {
     'audio/ogg': 'audio',
     'audio/m4a': 'audio',
     'audio/aac': 'audio',
+    'image/jpeg': 'image',
+    'image/png': 'image',
+    'image/gif': 'image',
+    'image/webp': 'image',
+    'image/bmp': 'image',
+    'image/tiff': 'image',
 };
 
 // Helper function to get array of allowed MIME types
 export function getAllowedMimeTypes(): string[] {
     return Object.keys(MIME_TYPE_TO_FILE_TYPE);
+}
+
+export function getSupportedImageMimeTypes(): string[] {
+    return Object.keys(MIME_TYPE_TO_FILE_TYPE).filter(
+        (mimeType) => MIME_TYPE_TO_FILE_TYPE[mimeType] === 'image'
+    );
 }
 
 export interface ProviderInfo {
@@ -69,7 +81,7 @@ export const LLM_REGISTRY: Record<LLMProvider, ProviderInfo> = {
                 supportedFileTypes: ['pdf'],
             },
             { name: 'gpt-4.1-nano', maxInputTokens: 1047576, supportedFileTypes: ['pdf'] },
-            { name: 'gpt-4o', maxInputTokens: 128000, supportedFileTypes: ['pdf'] },
+            { name: 'gpt-4o', maxInputTokens: 128000, supportedFileTypes: ['pdf', 'image'] },
             { name: 'gpt-4o-mini', maxInputTokens: 128000, supportedFileTypes: ['pdf'] },
             {
                 name: 'gpt-4o-audio-preview',
