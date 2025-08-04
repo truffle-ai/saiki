@@ -3,8 +3,7 @@ import { LLMConfig } from '../schemas/llm.js';
 import {
     CantInferProviderError,
     EffectiveMaxInputTokensError,
-    ModelNotFoundError,
-    ProviderNotFoundError,
+    UnknownModelError,
 } from './errors.js';
 
 export interface ModelInfo {
@@ -249,7 +248,7 @@ export function getSupportedModels(provider: LLMProvider): string[] {
  * @param provider The name of the provider (e.g., 'openai', 'anthropic', 'google').
  * @param model The specific model name.
  * @returns The maximum input token limit for the model.
- * @throws {ModelNotFoundError} If the model is not found in the registry.
+ * @throws {UnknownModelError} If the model is not found in the registry.
  */
 export function getMaxInputTokensForModel(provider: LLMProvider, model: string): number {
     const providerInfo = LLM_REGISTRY[provider];
@@ -260,7 +259,7 @@ export function getMaxInputTokensForModel(provider: LLMProvider, model: string):
         logger.error(
             `Model '${model}' not found for provider '${provider}' in LLM registry. Supported models: ${supportedModels}`
         );
-        throw new ModelNotFoundError(provider, model);
+        throw new UnknownModelError(provider, model);
     }
 
     logger.debug(`Found max tokens for ${provider}/${model}: ${modelInfo.maxInputTokens}`);
@@ -269,16 +268,12 @@ export function getMaxInputTokensForModel(provider: LLMProvider, model: string):
 
 /**
  * Validates if a provider and model combination is supported.
+ * Both parameters are required - structural validation (missing values) is handled by Zod schemas.
  * @param provider The provider name.
  * @param model The model name.
  * @returns True if the combination is valid, false otherwise.
  */
-export function isValidProviderModel(provider?: LLMProvider, model?: string): boolean {
-    if (!provider || !model) {
-        // If either is missing, we consider it valid at this level
-        // (the refine function in Zod handles the both-or-neither case)
-        return true;
-    }
+export function isValidProviderModel(provider: LLMProvider, model: string): boolean {
     const providerInfo = LLM_REGISTRY[provider];
     return providerInfo.models.some((m) => m.name.toLowerCase() === model.toLowerCase());
 }
@@ -370,10 +365,8 @@ export function getSupportedFileTypesForModel(
     // Find the specific model
     const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === model.toLowerCase());
     if (!modelInfo) {
-        const availableModels = providerInfo.models.map((m) => m.name).join(', ');
-        throw new Error(
-            `Model '${model}' not found in provider '${provider}'. Available models: ${availableModels || 'none'}`
-        );
+        const availableModels = providerInfo.models.map((m) => m.name);
+        throw new UnknownModelError(provider, model);
     }
 
     return modelInfo.supportedFileTypes;
@@ -498,7 +491,7 @@ export function getEffectiveMaxInputTokens(config: LLMConfig): number {
             }
         } catch (error: any) {
             // Handle registry lookup failures during override check
-            if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
+            if (error instanceof UnknownModelError) {
                 logger.warn(
                     `Registry lookup failed during maxInputTokens override check for ${config.provider}/${config.model}: ${error.message}. ` +
                         `Proceeding with the provided maxInputTokens value (${configuredMaxInputTokens}), but it might be invalid.`
@@ -541,7 +534,7 @@ export function getEffectiveMaxInputTokens(config: LLMConfig): number {
         return registryMaxInputTokens;
     } catch (error: any) {
         // Handle registry lookup failures gracefully (e.g., typo in validated config)
-        if (error instanceof ProviderNotFoundError || error instanceof ModelNotFoundError) {
+        if (error instanceof UnknownModelError) {
             // Log as error and throw a specific fatal error
             logger.error(
                 `Registry lookup failed for ${config.provider}/${config.model}: ${error.message}. ` +

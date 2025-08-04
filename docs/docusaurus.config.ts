@@ -69,11 +69,11 @@ const config: Config = {
         docs: {
             sidebar: {
                 hideable: true,
-                autoCollapseCategories: true,
+                autoCollapseCategories: false,
             },
         },
         colorMode: {
-            defaultMode: 'light',
+            defaultMode: 'dark',
             disableSwitch: false,
             respectPrefersColorScheme: true,
         },
@@ -284,7 +284,7 @@ const config: Config = {
 
     stylesheets: [
         {
-            href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap',
+            href: 'https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500;600&display=swap',
             type: 'text/css',
         },
     ],

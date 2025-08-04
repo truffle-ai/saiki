@@ -6,7 +6,7 @@ import { logger } from '../../logger/index.js';
 import { ContextManager } from '../messages/manager.js';
 import { getMaxInputTokensForModel } from '../registry.js';
 import { ImageData, FileData } from '../messages/types.js';
-import { ModelNotFoundError } from '../errors.js';
+import { UnknownModelError } from '../errors.js';
 import type { SessionEventBus } from '../../events/index.js';
 
 /**
@@ -223,7 +223,7 @@ export class OpenAIService implements ILLMService {
             modelMaxInputTokens = getMaxInputTokensForModel('openai', this.model);
         } catch (error) {
             // if the model is not found in the LLM registry, log and default to configured max tokens
-            if (error instanceof ModelNotFoundError) {
+            if (error instanceof UnknownModelError) {
                 modelMaxInputTokens = configuredMaxInputTokens;
                 logger.debug(
                     `Could not find model ${this.model} in LLM registry to get max tokens. Using configured max tokens: ${configuredMaxInputTokens}.`

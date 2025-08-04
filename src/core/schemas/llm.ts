@@ -120,13 +120,13 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
             } catch (error: unknown) {
                 // TODO: improve this
                 const e = error as { name?: string; message?: string };
-                const isModelNotFoundError = e?.name === 'ModelNotFoundError';
+                const isUnknownModelError = e?.name === 'UnknownModelError';
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     path: ['model'],
                     message: e?.message ?? 'Unknown provider/model',
                     params: {
-                        code: isModelNotFoundError
+                        code: isUnknownModelError
                             ? SaikiErrorCode.LLM_UNKNOWN_MODEL
                             : SaikiErrorCode.SCHEMA_VALIDATION,
                     },

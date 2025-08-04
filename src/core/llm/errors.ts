@@ -1,15 +1,30 @@
 import { LLMProvider } from './registry.js';
 
-export class ProviderNotFoundError extends Error {
-    constructor(provider: LLMProvider) {
-        super(`Provider '${provider}' not found in LLM registry.`);
-        this.name = 'ProviderNotFoundError';
+/**
+ * Custom error class for when a requested provider is not found.
+ */
+export class UnknownProviderError extends Error {
+    constructor(provider: string, availableProviders?: string[]) {
+        const message = availableProviders
+            ? `Provider '${provider}' not found. Available providers: ${availableProviders.join(', ')}`
+            : `Provider '${provider}' not found`;
+
+        super(message);
+        this.name = 'UnknownProviderError';
     }
 }
-export class ModelNotFoundError extends Error {
-    constructor(provider: LLMProvider, model: string) {
-        super(`Model '${model}' not found for provider '${provider}' in LLM registry.`);
-        this.name = 'ModelNotFoundError';
+
+/**
+ * Custom error class for when a requested model is not found within a specific provider.
+ */
+export class UnknownModelError extends Error {
+    constructor(provider: string, model: string, availableModels?: string[]) {
+        const message = availableModels
+            ? `Model '${model}' not found in provider '${provider}'. Available models: ${availableModels.join(', ')}`
+            : `Model '${model}' not found in provider '${provider}'`;
+
+        super(message);
+        this.name = 'UnknownModelError';
     }
 }
 
@@ -20,7 +35,6 @@ export class CantInferProviderError extends Error {
     }
 }
 
-// Custom error for when maxInputTokens cannot be determined
 export class EffectiveMaxInputTokensError extends Error {
     constructor(provider: LLMProvider, model: string) {
         super(

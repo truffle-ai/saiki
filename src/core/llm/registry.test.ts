@@ -17,8 +17,16 @@ import {
     modelSupportsFileType,
     validateModelFileSupport,
 } from './registry.js';
-import { ModelNotFoundError } from './errors.js';
-import { EffectiveMaxInputTokensError } from './errors.js';
+import {
+    UnknownModelError,
+    UnknownProviderError,
+    EffectiveMaxInputTokensError,
+    CantInferProviderError,
+} from './errors.js';
+
+function fail(message: string): never {
+    throw new Error(message);
+}
 
 describe('LLM Registry', () => {
     describe('Strict Type Validation', () => {
@@ -65,12 +73,24 @@ describe('LLM Registry', () => {
         expect(getMaxInputTokensForModel('openai', 'o4-mini')).toBe(200000);
     });
 
-    it('should throw ModelNotFoundError for unknown model in getMaxInputTokensForModel', () => {
-        expect(() => getMaxInputTokensForModel('openai', 'foo')).toThrow(ModelNotFoundError);
+    it('should throw UnknownModelError for unknown model in getMaxInputTokensForModel', () => {
+        expect(() => getMaxInputTokensForModel('openai', 'foo')).toThrow(UnknownModelError);
     });
 
-    it('should return true if model is missing in isValidProviderModel', () => {
-        expect(isValidProviderModel('openai', undefined)).toBe(true);
+    it('should return true for requiresBaseURL with provider that needs baseURL', () => {
+        expect(requiresBaseURL('openai-compatible')).toBe(true);
+    });
+
+    it("should return false for requiresBaseURL with provider that doesn't need baseURL", () => {
+        expect(requiresBaseURL('openai')).toBe(false);
+    });
+
+    it('should return true for acceptsAnyModel with provider that accepts any model', () => {
+        expect(acceptsAnyModel('openai-compatible')).toBe(true);
+    });
+
+    it('should return false for acceptsAnyModel with provider that has specific models', () => {
+        expect(acceptsAnyModel('openai')).toBe(false);
     });
 
     it('should return true for valid provider-model combinations', () => {
@@ -89,8 +109,8 @@ describe('LLM Registry', () => {
         expect(getProviderFromModel('O4-MINI')).toBe('openai');
     });
 
-    it('should throw for unknown model in getProviderFromModel', () => {
-        expect(() => getProviderFromModel('foo')).toThrow();
+    it('should throw CantInferProviderError for unknown model in getProviderFromModel', () => {
+        expect(() => getProviderFromModel('foo')).toThrow(CantInferProviderError);
     });
 
     it('should return all supported models for getAllSupportedModels', () => {
@@ -266,6 +286,17 @@ describe('File support functionality', () => {
             expect(getSupportedFileTypesForModel('xai', 'grok-3')).toEqual([]);
             expect(getSupportedFileTypesForModel('cohere', 'command-r')).toEqual([]);
         });
+
+        it('should throw UnknownModelError for unknown model', () => {
+            const unknownModel = 'unknown-model';
+            expect(() => getSupportedFileTypesForModel('openai', unknownModel)).toThrow(
+                UnknownModelError
+            );
+        });
+
+        it('should be case-insensitive for model names', () => {
+            expect(getSupportedFileTypesForModel('openai', 'GPT-4O')).toEqual(['pdf']);
+        });
     });
 
     describe('Model-aware file support', () => {
@@ -280,7 +311,7 @@ describe('File support functionality', () => {
 
             it('should throw error for unknown models', () => {
                 expect(() => getSupportedFileTypesForModel('openai', 'unknown-model')).toThrow(
-                    "Model 'unknown-model' not found in provider 'openai'"
+                    UnknownModelError
                 );
             });
 
@@ -323,7 +354,7 @@ describe('File support functionality', () => {
 
             it('should throw error for unknown model', () => {
                 expect(() => modelSupportsFileType('openai', 'unknown-model', 'pdf')).toThrow(
-                    "Model 'unknown-model' not found in provider 'openai'"
+                    UnknownModelError
                 );
             });
         });

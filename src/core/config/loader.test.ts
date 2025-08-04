@@ -2,13 +2,18 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { loadAgentConfig } from './loader.js';
+import {
+    ConfigEnvVarError,
+    ConfigFileNotFoundError,
+    ConfigFileReadError,
+    ConfigParseError,
+} from '@core/error/index.js';
 
-// Use a temp file next to the loader file
 const tmpFile = path.resolve(process.cwd(), 'src/core/config/temp-config.yml');
 
 beforeEach(async () => {
     delete process.env.TEST_VAR;
-    // Clean up before test
+    delete process.env.MAX_TOKENS;
     try {
         await fs.unlink(tmpFile);
     } catch {
@@ -18,6 +23,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
     delete process.env.TEST_VAR;
+    delete process.env.MAX_TOKENS;
     try {
         await fs.unlink(tmpFile);
     } catch {
@@ -33,11 +39,11 @@ describe('loadAgentConfig', () => {
 llm:
   provider: 'test-provider'
   model: 'test-model'
-  systemPrompt: 'base-prompt' # Added a base system prompt for completeness
+  systemPrompt: 'base-prompt'
   temperature: \${TEST_VAR}
   maxOutputTokens: \${MAX_TOKENS}
 mcpServers:
-  testServer: # Added a minimal mcpServers entry for schema validity
+  testServer:
     type: 'stdio'
     command: 'echo'
     args: ['hello']
@@ -45,30 +51,67 @@ mcpServers:
         await fs.writeFile(tmpFile, yamlContent);
 
         const config = await loadAgentConfig(tmpFile);
-        // Access the new explicit fields
         expect(config.llm?.temperature).toBe(0.7);
         expect(config.llm?.maxOutputTokens).toBe(4000);
     });
 
-    it('throws error when file cannot be read', async () => {
+    it('throws ConfigFileNotFoundError when file does not exist', async () => {
         const missing = path.resolve(process.cwd(), 'nonexistent.yml');
-        await expect(loadAgentConfig(missing)).rejects.toThrow(
-            /Failed to load config file at .*nonexistent\.yml/
-        );
+        await expect(loadAgentConfig(missing)).rejects.toThrow(ConfigFileNotFoundError);
+    });
+
+    it('throws ConfigFileReadError when file cannot be read (e.g., permissions)', async () => {
+        await fs.writeFile(tmpFile, 'some content', { mode: 0o000 });
+        await expect(loadAgentConfig(tmpFile)).rejects.toThrow(ConfigFileReadError);
+        await fs.unlink(tmpFile);
+    });
+
+    it('throws ConfigParseError when file content is invalid YAML', async () => {
+        const invalidYamlContent = `
+llm:
+  provider: 'test-provider'
+  model: 'test-model'
+  temperature: 0.5
+    malformed:
+mcpServers:
+  testServer:
+    type: 'stdio'
+    command: 'echo'
+    args: ['hello']
+`;
+        await fs.writeFile(tmpFile, invalidYamlContent);
+        await expect(loadAgentConfig(tmpFile)).rejects.toThrow(ConfigParseError);
     });
 
     it('loads default config when no path is provided', async () => {
-        // This test verifies that loadAgentConfig() works without parameters
-        // It will use auto-discovery logic from resolveConfigPath()
         try {
             const config = await loadAgentConfig();
-            // Should successfully load a config (either bundled or project-local)
             expect(config).toBeDefined();
             expect(config.llm).toBeDefined();
         } catch (error) {
-            // If no default config is found, it should throw a specific error
-            expect(error).toBeInstanceOf(Error);
-            expect((error as Error).message).toMatch(/No agent\.yml found|No bundled config found/);
+            expect(error).toSatisfy(
+                (err: Error) =>
+                    err instanceof ConfigFileNotFoundError || err instanceof ConfigEnvVarError
+            );
         }
+    });
+
+    it('throws ConfigEnvVarError when a referenced environment variable is missing', async () => {
+        const yamlContent = `
+llm:
+  provider: 'test-provider'
+  model: 'test-model'
+  api_key: \${UNDEFINED_API_KEY} # This variable is intentionally not set
+mcpServers:
+  testServer:
+    type: 'stdio'
+    command: 'echo'
+    args: ['hello']
+`;
+        await fs.writeFile(tmpFile, yamlContent);
+
+        delete process.env.UNDEFINED_API_KEY;
+
+        await expect(loadAgentConfig(tmpFile)).rejects.toThrow(ConfigEnvVarError);
     });
 });
