@@ -1,5 +1,5 @@
 import { SaikiErrorCode } from '@core/schemas/errors.js';
-import { NonEmptyTrimmed, EnvExpandedString, OptionalURL } from '@core/utils/result.js';
+import { NonEmptyTrimmed, NonEmptyEnvExpandedString, OptionalURL } from '@core/utils/result.js';
 import { z } from 'zod';
 import {
     LLM_PROVIDERS,
@@ -24,8 +24,8 @@ export const LLMConfigBaseSchema = z
 
         model: NonEmptyTrimmed.describe('Specific model name for the selected provider'),
 
-        // Expand $ENV refs and trim; we still require a non-empty string at this stage.
-        apiKey: EnvExpandedString(process.env),
+        // Expand $ENV refs and trim; require non-empty string after expansion
+        apiKey: NonEmptyEnvExpandedString(process.env),
 
         maxIterations: z.coerce
             .number()

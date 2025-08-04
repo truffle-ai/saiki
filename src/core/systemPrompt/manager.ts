@@ -42,7 +42,7 @@ export class PromptManager {
                 return new DynamicContributor(config.id, config.priority, promptGenerator);
             }
 
-            case 'file':
+            case 'file': {
                 logger.debug(
                     `[PromptManager] Creating FileContributor "${config.id}" with files: ${JSON.stringify(config.files)}`
                 );
@@ -53,11 +53,13 @@ export class PromptManager {
                     config.options,
                     this.configDir
                 );
+            }
 
-            default:
+            default: {
                 // Exhaustive check - TypeScript will error if we miss a case
                 const _exhaustive: never = config;
                 throw new Error(`Invalid contributor config: ${JSON.stringify(_exhaustive)}`);
+            }
         }
     }
 

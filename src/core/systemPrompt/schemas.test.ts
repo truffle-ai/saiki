@@ -26,7 +26,7 @@ describe('SystemPromptConfigSchema', () => {
 
             expect(result.contributors).toHaveLength(1);
             const contributor = result.contributors[0];
-            if (contributor.type === 'static') {
+            if (contributor?.type === 'static') {
                 expect(contributor.content).toBe('');
             }
         });
@@ -43,8 +43,8 @@ You can help with:
 
             expect(result.contributors).toHaveLength(1);
             const contributor = result.contributors[0];
-            if (contributor.type === 'static') {
-                expect(contributor.content).toBe(multilinePrompt);
+            if (contributor?.type === 'static') {
+                expect((contributor! as any).content).toBe(multilinePrompt);
             }
         });
     });
@@ -84,7 +84,7 @@ You can help with:
             });
 
             expect(result.contributors).toHaveLength(1);
-            expect(result.contributors[0].id).toBe('custom');
+            expect(result.contributors[0]?.id).toBe('custom');
         });
 
         it('should pass through valid contributors object', () => {
@@ -232,9 +232,9 @@ You can help with:
 
             expect(result.contributors).toHaveLength(1);
             const contributor = result.contributors[0];
-            expect(contributor.type).toBe('static');
-            if (contributor.type === 'static') {
-                expect(contributor.content).toBe('You are a coding assistant');
+            expect(contributor?.type).toBe('static');
+            if (contributor?.type === 'static') {
+                expect((contributor! as any).content).toBe('You are a coding assistant');
             }
         });
 
@@ -296,8 +296,8 @@ You can help with:
 
             const result = SystemPromptConfigSchema.parse(templateConfig);
             expect(result.contributors).toHaveLength(2);
-            expect(result.contributors[0].id).toBe('primary');
-            expect(result.contributors[1].id).toBe('dateTime');
+            expect(result.contributors[0]?.id).toBe('primary');
+            expect(result.contributors[1]?.id).toBe('dateTime');
         });
     });
 });
