@@ -230,15 +230,37 @@ program
         if (!existsSync('.env')) {
             logger.debug('WARNING: .env file not found; copy .env.example and set your API keys.');
         }
-        if (
-            !process.env.OPENAI_API_KEY &&
-            !process.env.GOOGLE_GENERATIVE_AI_API_KEY &&
-            !process.env.ANTHROPIC_API_KEY
-        ) {
-            console.error(
-                '❌ No API key found. Please set OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or ANTHROPIC_API_KEY.'
+
+        // Check if any API key is available for common providers
+        const commonProviders = ['openai', 'google', 'anthropic', 'groq'];
+        const hasApiKey = commonProviders.some((provider) => resolveApiKeyForProvider(provider));
+
+        if (!hasApiKey) {
+            // Import the interactive setup function dynamically to avoid loading overhead
+            const { interactiveApiKeySetup } = await import(
+                './cli/utils/interactive-api-key-setup.js'
             );
-            process.exit(1);
+
+            const setupResult = await interactiveApiKeySetup();
+
+            if (!setupResult.success) {
+                if (setupResult.skipSetup) {
+                    // User chose manual setup - show message and exit gracefully
+                    console.log(
+                        chalk.dim('\n👋 Run saiki again once you have set up your API key!')
+                    );
+                } else {
+                    // Setup failed or was cancelled
+                    console.error(chalk.red('\n❌ API key setup required to continue.'));
+                }
+                process.exit(0);
+            }
+
+            // Reload environment variables after setup
+            const dotenv = await import('dotenv');
+            dotenv.config();
+
+            console.log(chalk.green('\n✨ API key configured! Starting Saiki...\n'));
         }
 
         const opts = program.opts();
