@@ -677,6 +677,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 data: config,
                 issues: [],
             });
+            // TODO: move this check to middleware
         } catch (error) {
             if (error instanceof SaikiValidationError) {
                 // User/validation errors -> 400
