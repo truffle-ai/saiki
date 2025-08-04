@@ -102,7 +102,7 @@ Fired when input validation fails for an LLM request.
 {
   sessionId: string;
   issues: Issue[];
-  provider: string;
+  provider: LLMProvider;
   model: string;
 }
 ```

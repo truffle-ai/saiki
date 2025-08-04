@@ -72,7 +72,7 @@ export interface AgentEventMap {
     'saiki:inputValidationFailed': {
         sessionId: string;
         issues: Issue<Record<string, unknown>>[];
-        provider: string;
+        provider: LLMProvider;
         model: string;
     };
 
