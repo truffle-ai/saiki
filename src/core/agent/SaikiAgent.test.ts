@@ -10,10 +10,9 @@ vi.mock('../utils/service-initializer.js');
 vi.mock('../llm/resolver.js');
 
 import { createAgentServices } from '../utils/service-initializer.js';
-import { resolveLLMConfig, validateLLMConfig } from '../llm/resolver.js';
+import { resolveAndValidateLLMConfig } from '../llm/resolver.js';
 const mockCreateAgentServices = vi.mocked(createAgentServices);
-const mockResolveLLMConfig = vi.mocked(resolveLLMConfig);
-const mockValidateLLMConfig = vi.mocked(validateLLMConfig);
+const mockResolveAndValidateLLMConfig = vi.mocked(resolveAndValidateLLMConfig);
 
 //TODO: potentially reducing mocking and have real tests
 describe('SaikiAgent.switchLLM', () => {
@@ -145,43 +144,29 @@ describe('SaikiAgent.switchLLM', () => {
         agent = new SaikiAgent(mockConfig);
         await agent.start();
 
-        // Mock the LLM resolver functions
-        mockResolveLLMConfig.mockImplementation((previousConfig, updates) => {
-            const candidate = {
+        // Mock the LLM resolver function
+        mockResolveAndValidateLLMConfig.mockImplementation((previousConfig, updates) => {
+            const validatedConfig = {
                 ...mockLLMConfig,
                 ...updates,
                 // Ensure required fields are always defined
                 apiKey: updates.apiKey ?? mockLLMConfig.apiKey,
                 model: updates.model ?? mockLLMConfig.model,
                 provider: updates.provider ?? mockLLMConfig.provider,
-            };
-            return {
-                candidate,
-                warnings: [],
-            };
-        });
+                // Ensure required fields have values (ValidatedLLMConfig)
+                maxIterations: updates.maxIterations ?? mockLLMConfig.maxIterations ?? 50,
+                router: updates.router ?? mockLLMConfig.router ?? 'vercel',
+                // Optional fields
+                ...(updates.baseURL && { baseURL: updates.baseURL }),
+                ...(updates.maxInputTokens && { maxInputTokens: updates.maxInputTokens }),
+                ...(updates.maxOutputTokens && { maxOutputTokens: updates.maxOutputTokens }),
+                ...(updates.temperature && { temperature: updates.temperature }),
+            } as ValidatedLLMConfig;
 
-        mockValidateLLMConfig.mockImplementation((candidate, warnings) => {
             return {
                 ok: true,
-                data: {
-                    provider: candidate.provider,
-                    model: candidate.model,
-                    apiKey: candidate.apiKey,
-                    // Ensure required fields have values (ValidatedLLMConfig)
-                    maxIterations: candidate.maxIterations ?? 50,
-                    router: candidate.router ?? 'vercel',
-                    // Optional fields
-                    ...(candidate.baseURL && { baseURL: candidate.baseURL }),
-                    ...(candidate.maxInputTokens && {
-                        maxInputTokens: candidate.maxInputTokens,
-                    }),
-                    ...(candidate.maxOutputTokens && {
-                        maxOutputTokens: candidate.maxOutputTokens,
-                    }),
-                    ...(candidate.temperature && { temperature: candidate.temperature }),
-                } as ValidatedLLMConfig,
-                issues: warnings,
+                data: validatedConfig,
+                issues: [],
             };
         });
     });
@@ -192,13 +177,14 @@ describe('SaikiAgent.switchLLM', () => {
         });
 
         test('should handle validation failure', async () => {
-            mockValidateLLMConfig.mockReturnValue({
+            mockResolveAndValidateLLMConfig.mockReturnValue({
                 ok: false,
                 issues: [
                     {
                         code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Invalid model',
                         severity: 'error',
+                        context: {},
                     },
                 ],
             });
@@ -225,24 +211,25 @@ describe('SaikiAgent.switchLLM', () => {
         test('should use specified router', async () => {
             await agent.switchLLM({ model: 'gpt-4o', router: 'in-built' });
 
-            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
+            expect(mockResolveAndValidateLLMConfig).toHaveBeenCalledWith(
+                mockLLMConfig, // previousConfig
                 expect.objectContaining({
                     model: 'gpt-4o',
                     router: 'in-built',
-                }),
-                []
+                })
             );
         });
 
         test('should include warnings in response', async () => {
-            mockValidateLLMConfig.mockReturnValue({
+            mockResolveAndValidateLLMConfig.mockReturnValue({
                 ok: true,
-                data: { ...mockLLMConfig, model: 'gpt-4o' } as any,
+                data: { ...mockLLMConfig, model: 'gpt-4o' } as ValidatedLLMConfig,
                 issues: [
                     {
                         code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Config warning',
                         severity: 'warning',
+                        context: {},
                     },
                 ],
             });
@@ -279,36 +266,36 @@ describe('SaikiAgent.switchLLM', () => {
         test('should handle provider and model together', async () => {
             await agent.switchLLM({ provider: 'anthropic', model: 'claude-4-sonnet-20250514' });
 
-            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
+            expect(mockResolveAndValidateLLMConfig).toHaveBeenCalledWith(
+                mockLLMConfig, // previousConfig
                 expect.objectContaining({
                     provider: 'anthropic',
                     model: 'claude-4-sonnet-20250514',
-                }),
-                []
+                })
             );
         });
 
         test('should handle API key in config', async () => {
             await agent.switchLLM({ model: 'gpt-4o', apiKey: 'new-key' });
 
-            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
+            expect(mockResolveAndValidateLLMConfig).toHaveBeenCalledWith(
+                mockLLMConfig, // previousConfig
                 expect.objectContaining({
                     model: 'gpt-4o',
                     apiKey: 'new-key',
-                }),
-                []
+                })
             );
         });
 
         test('should handle baseURL in config', async () => {
             await agent.switchLLM({ model: 'gpt-4o', baseURL: 'https://api.example.com' });
 
-            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
+            expect(mockResolveAndValidateLLMConfig).toHaveBeenCalledWith(
+                mockLLMConfig, // previousConfig
                 expect.objectContaining({
                     model: 'gpt-4o',
                     baseURL: 'https://api.example.com',
-                }),
-                []
+                })
             );
         });
     });
@@ -346,9 +333,9 @@ describe('SaikiAgent.switchLLM', () => {
             await agent.switchLLM({ model: 'gpt-4o' }, 'session1');
 
             expect(mockStateManager.getRuntimeConfig).toHaveBeenCalledWith('session1');
-            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
-                expect.objectContaining({ model: 'gpt-4o' }),
-                []
+            expect(mockResolveAndValidateLLMConfig).toHaveBeenCalledWith(
+                sessionLLMConfig, // should use session-specific config
+                expect.objectContaining({ model: 'gpt-4o' })
             );
         });
     });
@@ -391,26 +378,26 @@ describe('SaikiAgent.switchLLM', () => {
                 baseURL: 'https://custom.api.com',
             });
 
-            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
+            expect(mockResolveAndValidateLLMConfig).toHaveBeenCalledWith(
+                mockLLMConfig, // previousConfig
                 expect.objectContaining({
                     provider: 'google',
                     model: 'gemini-2.5-pro',
                     apiKey: 'custom-key',
                     router: 'vercel',
                     baseURL: 'https://custom.api.com',
-                }),
-                []
+                })
             );
         });
 
         test('should handle partial parameters', async () => {
             await agent.switchLLM({ model: 'gpt-4o-mini' });
 
-            expect(mockValidateLLMConfig).toHaveBeenCalledWith(
+            expect(mockResolveAndValidateLLMConfig).toHaveBeenCalledWith(
+                mockLLMConfig, // previousConfig
                 expect.objectContaining({
                     model: 'gpt-4o-mini',
-                }),
-                []
+                })
             );
         });
 
@@ -427,14 +414,15 @@ describe('SaikiAgent.switchLLM', () => {
 
     describe('Issue Collection', () => {
         test('should handle validation warnings silently', async () => {
-            mockValidateLLMConfig.mockReturnValue({
+            mockResolveAndValidateLLMConfig.mockReturnValue({
                 ok: true,
-                data: { ...mockLLMConfig, model: 'gpt-4o-mini' } as any,
+                data: { ...mockLLMConfig, model: 'gpt-4o-mini' } as ValidatedLLMConfig,
                 issues: [
                     {
                         code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Config warning',
                         severity: 'warning',
+                        context: {},
                     },
                 ],
             });
@@ -454,13 +442,14 @@ describe('SaikiAgent.switchLLM', () => {
 
     describe('Error Handling', () => {
         test('should handle validation errors', async () => {
-            mockValidateLLMConfig.mockReturnValue({
+            mockResolveAndValidateLLMConfig.mockReturnValue({
                 ok: false,
                 issues: [
                     {
                         code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Validation failed',
                         severity: 'error',
+                        context: {},
                     },
                 ],
             });

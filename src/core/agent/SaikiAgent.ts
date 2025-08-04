@@ -7,7 +7,7 @@ import { SessionManager, SessionMetadata, ChatSession } from '../session/index.j
 import { AgentServices } from '../utils/service-initializer.js';
 import { logger } from '../logger/index.js';
 import { ValidatedLLMConfig, LLMConfig, LLMUpdates } from '../schemas/llm.js';
-import { resolveLLMConfig, validateLLMConfig } from '../llm/resolver.js';
+import { resolveAndValidateLLMConfig } from '../llm/resolver.js';
 import { Result, ok, fail } from '../utils/result.js';
 import type { LLMUpdateContext } from '../llm/types.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
@@ -673,8 +673,7 @@ export class SaikiAgent {
             : this.stateManager.getRuntimeConfig().llm;
 
         // Build and validate the new configuration using Result pattern internally
-        const { candidate, warnings } = resolveLLMConfig(currentLLMConfig, llmUpdates);
-        const result = validateLLMConfig(candidate, warnings);
+        const result = resolveAndValidateLLMConfig(currentLLMConfig, llmUpdates);
 
         if (!result.ok) {
             // Convert Result to exception
@@ -694,6 +693,7 @@ export class SaikiAgent {
         }
 
         // Log warnings if present
+        const warnings = result.issues.filter((issue) => issue.severity === 'warning');
         if (warnings.length > 0) {
             logger.warn(
                 `LLM switch completed with warnings: ${warnings.map((w) => w.message).join(', ')}`
