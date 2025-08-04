@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import {
     InternalToolsSchema,
     ToolConfirmationConfigSchema,
@@ -7,6 +8,8 @@ import {
     type ValidatedToolConfirmationConfig,
 } from './schemas.js';
 
+// safeParse for invalid test cases to check exact error codes
+// parse for valid test cases for less boilerplate
 describe('InternalToolsSchema', () => {
     describe('Array Validation', () => {
         it('should accept empty array as default', () => {
@@ -20,7 +23,10 @@ describe('InternalToolsSchema', () => {
         });
 
         it('should reject invalid tool names', () => {
-            expect(() => InternalToolsSchema.parse(['invalid-tool'])).toThrow();
+            const result = InternalToolsSchema.safeParse(['invalid-tool']);
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_enum_value);
+            expect(result.error?.issues[0]?.path).toEqual([0]);
         });
         // TODO: update when more valid tools are added
         it('should accept multiple valid tools', () => {
@@ -50,34 +56,57 @@ describe('ToolConfirmationConfigSchema', () => {
             const validModes = ['event-based', 'auto-approve', 'auto-deny'];
 
             validModes.forEach((mode) => {
-                expect(() => ToolConfirmationConfigSchema.parse({ mode })).not.toThrow();
+                const result = ToolConfirmationConfigSchema.parse({ mode });
+                expect(result.mode).toBe(mode);
             });
 
-            expect(() => ToolConfirmationConfigSchema.parse({ mode: 'invalid' })).toThrow();
+            const invalidResult = ToolConfirmationConfigSchema.safeParse({ mode: 'invalid' });
+            expect(invalidResult.success).toBe(false);
+            expect(invalidResult.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_enum_value);
+            expect(invalidResult.error?.issues[0]?.path).toEqual(['mode']);
         });
 
         it('should validate timeout as positive integer', () => {
-            expect(() => ToolConfirmationConfigSchema.parse({ timeout: -1 })).toThrow();
-            expect(() => ToolConfirmationConfigSchema.parse({ timeout: 0 })).toThrow();
-            expect(() => ToolConfirmationConfigSchema.parse({ timeout: 1.5 })).toThrow();
+            // Negative should fail
+            let result = ToolConfirmationConfigSchema.safeParse({ timeout: -1 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['timeout']);
+
+            // Zero should fail
+            result = ToolConfirmationConfigSchema.safeParse({ timeout: 0 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['timeout']);
+
+            // Float should fail
+            result = ToolConfirmationConfigSchema.safeParse({ timeout: 1.5 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['timeout']);
 
             // Valid values should pass
-            expect(() => ToolConfirmationConfigSchema.parse({ timeout: 1000 })).not.toThrow();
-            expect(() => ToolConfirmationConfigSchema.parse({ timeout: 30000 })).not.toThrow();
+            const valid1 = ToolConfirmationConfigSchema.parse({ timeout: 1000 });
+            expect(valid1.timeout).toBe(1000);
+
+            const valid2 = ToolConfirmationConfigSchema.parse({ timeout: 30000 });
+            expect(valid2.timeout).toBe(30000);
         });
 
         it('should validate allowedToolsStorage enum values', () => {
             const validStorage = ['memory', 'storage'];
 
             validStorage.forEach((allowedToolsStorage) => {
-                expect(() =>
-                    ToolConfirmationConfigSchema.parse({ allowedToolsStorage })
-                ).not.toThrow();
+                const result = ToolConfirmationConfigSchema.parse({ allowedToolsStorage });
+                expect(result.allowedToolsStorage).toBe(allowedToolsStorage);
             });
 
-            expect(() =>
-                ToolConfirmationConfigSchema.parse({ allowedToolsStorage: 'invalid' })
-            ).toThrow();
+            const invalidResult = ToolConfirmationConfigSchema.safeParse({
+                allowedToolsStorage: 'invalid',
+            });
+            expect(invalidResult.success).toBe(false);
+            expect(invalidResult.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_enum_value);
+            expect(invalidResult.error?.issues[0]?.path).toEqual(['allowedToolsStorage']);
         });
     });
 
@@ -139,13 +168,31 @@ describe('ToolConfirmationConfigSchema', () => {
         });
 
         it('should reject non-string mode values', () => {
-            expect(() => ToolConfirmationConfigSchema.parse({ mode: 123 })).toThrow();
-            expect(() => ToolConfirmationConfigSchema.parse({ mode: null })).toThrow();
+            // Number should fail
+            let result = ToolConfirmationConfigSchema.safeParse({ mode: 123 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['mode']);
+
+            // Null should fail
+            result = ToolConfirmationConfigSchema.safeParse({ mode: null });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['mode']);
         });
 
         it('should reject non-numeric timeout values', () => {
-            expect(() => ToolConfirmationConfigSchema.parse({ timeout: 'abc' })).toThrow();
-            expect(() => ToolConfirmationConfigSchema.parse({ timeout: null })).toThrow();
+            // String should fail
+            let result = ToolConfirmationConfigSchema.safeParse({ timeout: 'abc' });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['timeout']);
+
+            // Null should fail
+            result = ToolConfirmationConfigSchema.safeParse({ timeout: null });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['timeout']);
         });
 
         it('should reject extra fields with strict validation', () => {
@@ -156,7 +203,9 @@ describe('ToolConfirmationConfigSchema', () => {
                 unknownField: 'should fail',
             };
 
-            expect(() => ToolConfirmationConfigSchema.parse(configWithExtra)).toThrow();
+            const result = ToolConfirmationConfigSchema.safeParse(configWithExtra);
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.unrecognized_keys);
         });
     });
 

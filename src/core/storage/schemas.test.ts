@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import {
     StorageSchema,
     type StorageConfig,
@@ -13,13 +14,16 @@ describe('StorageSchema', () => {
     describe('Backend Configuration - In-Memory', () => {
         it('should accept minimal in-memory backend config', () => {
             const config = { type: 'in-memory' as const };
-            const result = StorageSchema.parse({
+            const result = StorageSchema.safeParse({
                 cache: config,
                 database: config,
             });
 
-            expect(result.cache.type).toBe('in-memory');
-            expect(result.database.type).toBe('in-memory');
+            expect(result.success).toBe(true);
+            if (result.success) {
+                expect(result.data.cache.type).toBe('in-memory');
+                expect(result.data.database.type).toBe('in-memory');
+            }
         });
 
         it('should accept in-memory backend with optional connection options', () => {
@@ -30,12 +34,11 @@ describe('StorageSchema', () => {
                 connectionTimeoutMillis: 3000,
             };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: config,
-                    database: config,
-                })
-            ).not.toThrow();
+            const result = StorageSchema.safeParse({
+                cache: config,
+                database: config,
+            });
+            expect(result.success).toBe(true);
         });
     });
 
@@ -46,12 +49,14 @@ describe('StorageSchema', () => {
                 url: 'redis://localhost:6379',
             };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: config,
-                    database: { type: 'in-memory' },
-                })
-            ).not.toThrow();
+            const result = StorageSchema.parse({
+                cache: config,
+                database: { type: 'in-memory' },
+            });
+            expect(result.cache.type).toBe('redis');
+            if (result.cache.type === 'redis') {
+                expect(result.cache.url).toBe('redis://localhost:6379');
+            }
         });
 
         it('should accept Redis backend with host/port', () => {
@@ -63,23 +68,27 @@ describe('StorageSchema', () => {
                 database: 0,
             };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: config,
-                    database: { type: 'in-memory' },
-                })
-            ).not.toThrow();
+            const result = StorageSchema.parse({
+                cache: config,
+                database: { type: 'in-memory' },
+            });
+            expect(result.cache.type).toBe('redis');
+            if (result.cache.type === 'redis') {
+                expect(result.cache.host).toBe('localhost');
+            }
         });
 
         it('should reject Redis backend without URL or host', () => {
             const config = { type: 'redis' };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: config,
-                    database: { type: 'in-memory' },
-                })
-            ).toThrow();
+            const result = StorageSchema.safeParse({
+                cache: config,
+                database: { type: 'in-memory' },
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.custom);
+            expect(result.error?.issues[0]?.message).toContain('Redis backend requires either');
+            expect(result.error?.issues[0]?.path).toEqual(['cache', 'url']);
         });
     });
 
@@ -90,12 +99,14 @@ describe('StorageSchema', () => {
                 path: '/tmp/saiki.db',
             };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory' },
-                    database: config,
-                })
-            ).not.toThrow();
+            const result = StorageSchema.parse({
+                cache: { type: 'in-memory' },
+                database: config,
+            });
+            expect(result.database.type).toBe('sqlite');
+            if (result.database.type === 'sqlite') {
+                expect(result.database.path).toBe('/tmp/saiki.db');
+            }
         });
 
         it('should accept SQLite backend with database filename', () => {
@@ -104,23 +115,24 @@ describe('StorageSchema', () => {
                 database: 'saiki.db',
             };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory' },
-                    database: config,
-                })
-            ).not.toThrow();
+            const result = StorageSchema.parse({
+                cache: { type: 'in-memory' },
+                database: config,
+            });
+            expect(result.database.type).toBe('sqlite');
+            if (result.database.type === 'sqlite') {
+                expect(result.database.database).toBe('saiki.db');
+            }
         });
 
         it('should accept SQLite backend with minimal config', () => {
             const config = { type: 'sqlite' as const };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory' },
-                    database: config,
-                })
-            ).not.toThrow();
+            const result = StorageSchema.parse({
+                cache: { type: 'in-memory' },
+                database: config,
+            });
+            expect(result.database.type).toBe('sqlite');
         });
     });
 
@@ -131,12 +143,14 @@ describe('StorageSchema', () => {
                 url: 'postgresql://user:pass@localhost:5432/saiki',
             };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory' },
-                    database: config,
-                })
-            ).not.toThrow();
+            const result = StorageSchema.parse({
+                cache: { type: 'in-memory' },
+                database: config,
+            });
+            expect(result.database.type).toBe('postgres');
+            if (result.database.type === 'postgres') {
+                expect(result.database.url).toBe('postgresql://user:pass@localhost:5432/saiki');
+            }
         });
 
         it('should accept PostgreSQL backend with connection string', () => {
@@ -145,12 +159,16 @@ describe('StorageSchema', () => {
                 connectionString: 'postgresql://user:pass@localhost:5432/saiki',
             };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory' },
-                    database: config,
-                })
-            ).not.toThrow();
+            const result = StorageSchema.parse({
+                cache: { type: 'in-memory' },
+                database: config,
+            });
+            expect(result.database.type).toBe('postgres');
+            if (result.database.type === 'postgres') {
+                expect(result.database.connectionString).toBe(
+                    'postgresql://user:pass@localhost:5432/saiki'
+                );
+            }
         });
 
         it('should accept PostgreSQL backend with host/port details', () => {
@@ -162,23 +180,30 @@ describe('StorageSchema', () => {
                 password: 'secret',
             };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory' },
-                    database: config,
-                })
-            ).not.toThrow();
+            const result = StorageSchema.parse({
+                cache: { type: 'in-memory' },
+                database: config,
+            });
+            expect(result.database.type).toBe('postgres');
+            if (result.database.type === 'postgres') {
+                expect(result.database.host).toBe('localhost');
+                expect(result.database.port).toBe(5432);
+            }
         });
 
         it('should reject PostgreSQL backend without connection info', () => {
             const config = { type: 'postgres' };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory' },
-                    database: config,
-                })
-            ).toThrow();
+            const result = StorageSchema.safeParse({
+                cache: { type: 'in-memory' },
+                database: config,
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.custom);
+            expect(result.error?.issues[0]?.message).toContain(
+                'PostgreSQL backend requires one of'
+            );
+            expect(result.error?.issues[0]?.path).toEqual(['database', 'url']);
         });
     });
 
@@ -186,73 +211,82 @@ describe('StorageSchema', () => {
         it('should reject invalid backend type', () => {
             const config = { type: 'invalid-backend' };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: config,
-                    database: { type: 'in-memory' },
-                })
-            ).toThrow();
+            const result = StorageSchema.safeParse({
+                cache: config,
+                database: { type: 'in-memory' },
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_union_discriminator);
+            expect(result.error?.issues[0]?.path).toEqual(['cache', 'type']);
         });
 
         it('should provide clear error messages for invalid discriminator', () => {
             const config = { type: 'nosql' };
 
-            try {
-                StorageSchema.parse({
-                    cache: config,
-                    database: { type: 'in-memory' },
-                });
-            } catch (error: any) {
-                expect(error.message).toContain('Invalid backend type');
-            }
+            const result = StorageSchema.safeParse({
+                cache: config,
+                database: { type: 'in-memory' },
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_union_discriminator);
+            expect(result.error?.issues[0]?.message).toContain('Invalid backend type');
+            expect(result.error?.issues[0]?.path).toEqual(['cache', 'type']);
         });
     });
 
     describe('Connection Pool Options', () => {
         it('should validate positive connection limits', () => {
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory', maxConnections: -1 },
-                    database: { type: 'in-memory' },
-                })
-            ).toThrow();
+            // Negative connections should fail
+            let result = StorageSchema.safeParse({
+                cache: { type: 'in-memory', maxConnections: -1 },
+                database: { type: 'in-memory' },
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['cache', 'maxConnections']);
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory', maxConnections: 0 },
-                    database: { type: 'in-memory' },
-                })
-            ).toThrow();
+            // Zero connections should fail
+            result = StorageSchema.safeParse({
+                cache: { type: 'in-memory', maxConnections: 0 },
+                database: { type: 'in-memory' },
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['cache', 'maxConnections']);
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory', maxConnections: 10 },
-                    database: { type: 'in-memory' },
-                })
-            ).not.toThrow();
+            // Positive connections should succeed
+            const validResult = StorageSchema.parse({
+                cache: { type: 'in-memory', maxConnections: 10 },
+                database: { type: 'in-memory' },
+            });
+            expect(validResult.cache.maxConnections).toBe(10);
         });
 
         it('should validate positive timeout values', () => {
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory', idleTimeoutMillis: -1 },
-                    database: { type: 'in-memory' },
-                })
-            ).toThrow();
+            // Negative idle timeout should fail
+            let result = StorageSchema.safeParse({
+                cache: { type: 'in-memory', idleTimeoutMillis: -1 },
+                database: { type: 'in-memory' },
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['cache', 'idleTimeoutMillis']);
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory', connectionTimeoutMillis: 0 },
-                    database: { type: 'in-memory' },
-                })
-            ).toThrow();
+            // Zero connection timeout should fail
+            result = StorageSchema.safeParse({
+                cache: { type: 'in-memory', connectionTimeoutMillis: 0 },
+                database: { type: 'in-memory' },
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['cache', 'connectionTimeoutMillis']);
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: { type: 'in-memory', idleTimeoutMillis: 5000 },
-                    database: { type: 'in-memory' },
-                })
-            ).not.toThrow();
+            // Positive timeout should succeed
+            const validResult = StorageSchema.parse({
+                cache: { type: 'in-memory', idleTimeoutMillis: 5000 },
+                database: { type: 'in-memory' },
+            });
+            expect(validResult.cache.idleTimeoutMillis).toBe(5000);
         });
     });
 
@@ -263,12 +297,13 @@ describe('StorageSchema', () => {
                 unknownField: 'should fail',
             };
 
-            expect(() =>
-                StorageSchema.parse({
-                    cache: configWithExtra,
-                    database: { type: 'in-memory' },
-                })
-            ).toThrow();
+            const result = StorageSchema.safeParse({
+                cache: configWithExtra,
+                database: { type: 'in-memory' },
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.unrecognized_keys);
+            expect(result.error?.issues[0]?.path).toEqual(['cache']);
         });
 
         it('should reject extra fields on storage config', () => {
@@ -278,7 +313,9 @@ describe('StorageSchema', () => {
                 unknownField: 'should fail',
             };
 
-            expect(() => StorageSchema.parse(configWithExtra)).toThrow();
+            const result = StorageSchema.safeParse(configWithExtra);
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.unrecognized_keys);
         });
     });
 
@@ -289,9 +326,12 @@ describe('StorageSchema', () => {
                 database: { type: 'postgres', url: 'postgresql://localhost/saiki' },
             };
 
-            const result = StorageSchema.parse(config);
-            expect(result.cache.type).toBe('redis');
-            expect(result.database.type).toBe('postgres');
+            const result = StorageSchema.safeParse(config);
+            expect(result.success).toBe(true);
+            if (result.success) {
+                expect(result.data.cache.type).toBe('redis');
+                expect(result.data.database.type).toBe('postgres');
+            }
         });
 
         it('should handle backend config type unions correctly', () => {
@@ -303,12 +343,11 @@ describe('StorageSchema', () => {
             ];
 
             backends.forEach((backend) => {
-                expect(() =>
-                    StorageSchema.parse({
-                        cache: backend,
-                        database: { type: 'in-memory' },
-                    })
-                ).not.toThrow();
+                const result = StorageSchema.parse({
+                    cache: backend,
+                    database: { type: 'in-memory' },
+                });
+                expect(result.cache.type).toBe(backend.type);
             });
         });
     });
@@ -320,8 +359,11 @@ describe('StorageSchema', () => {
                 database: { type: 'sqlite', path: './dev.db' },
             };
 
-            const result = StorageSchema.parse(devConfig);
-            expect(result).toEqual(devConfig);
+            const result = StorageSchema.safeParse(devConfig);
+            expect(result.success).toBe(true);
+            if (result.success) {
+                expect(result.data).toEqual(devConfig);
+            }
         });
 
         it('should handle production configuration with Redis cache', () => {
@@ -340,8 +382,11 @@ describe('StorageSchema', () => {
                 },
             };
 
-            const result = StorageSchema.parse(prodConfig);
-            expect(result).toEqual(prodConfig);
+            const result = StorageSchema.safeParse(prodConfig);
+            expect(result.success).toBe(true);
+            if (result.success) {
+                expect(result.data).toEqual(prodConfig);
+            }
         });
 
         it('should handle high-availability configuration', () => {
@@ -363,8 +408,11 @@ describe('StorageSchema', () => {
                 },
             };
 
-            const result = StorageSchema.parse(haConfig);
-            expect(result).toEqual(haConfig);
+            const result = StorageSchema.safeParse(haConfig);
+            expect(result.success).toBe(true);
+            if (result.success) {
+                expect(result.data).toEqual(haConfig);
+            }
         });
     });
 });

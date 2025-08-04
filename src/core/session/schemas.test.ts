@@ -1,35 +1,71 @@
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import { SessionConfigSchema, type SessionConfig, type ValidatedSessionConfig } from './schemas.js';
 
 describe('SessionConfigSchema', () => {
     describe('Field Validation', () => {
         it('should validate maxSessions as positive integer', () => {
-            expect(() => SessionConfigSchema.parse({ maxSessions: -1 })).toThrow();
-            expect(() => SessionConfigSchema.parse({ maxSessions: 0 })).toThrow();
-            expect(() => SessionConfigSchema.parse({ maxSessions: 1.5 })).toThrow();
+            // Negative should fail
+            let result = SessionConfigSchema.safeParse({ maxSessions: -1 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['maxSessions']);
+
+            // Zero should fail
+            result = SessionConfigSchema.safeParse({ maxSessions: 0 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['maxSessions']);
+
+            // Float should fail
+            result = SessionConfigSchema.safeParse({ maxSessions: 1.5 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['maxSessions']);
 
             // Valid values should pass
-            expect(() => SessionConfigSchema.parse({ maxSessions: 1 })).not.toThrow();
-            expect(() => SessionConfigSchema.parse({ maxSessions: 100 })).not.toThrow();
+            const valid1 = SessionConfigSchema.parse({ maxSessions: 1 });
+            expect(valid1.maxSessions).toBe(1);
+
+            const valid2 = SessionConfigSchema.parse({ maxSessions: 100 });
+            expect(valid2.maxSessions).toBe(100);
         });
 
         it('should validate sessionTTL as positive integer', () => {
-            expect(() => SessionConfigSchema.parse({ sessionTTL: -1 })).toThrow();
-            expect(() => SessionConfigSchema.parse({ sessionTTL: 0 })).toThrow();
-            expect(() => SessionConfigSchema.parse({ sessionTTL: 1.5 })).toThrow();
+            // Negative should fail
+            let result = SessionConfigSchema.safeParse({ sessionTTL: -1 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['sessionTTL']);
+
+            // Zero should fail
+            result = SessionConfigSchema.safeParse({ sessionTTL: 0 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+            expect(result.error?.issues[0]?.path).toEqual(['sessionTTL']);
+
+            // Float should fail
+            result = SessionConfigSchema.safeParse({ sessionTTL: 1.5 });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['sessionTTL']);
 
             // Valid values should pass
-            expect(() => SessionConfigSchema.parse({ sessionTTL: 1000 })).not.toThrow();
-            expect(() => SessionConfigSchema.parse({ sessionTTL: 3600000 })).not.toThrow();
+            const valid1 = SessionConfigSchema.parse({ sessionTTL: 1000 });
+            expect(valid1.sessionTTL).toBe(1000);
+
+            const valid2 = SessionConfigSchema.parse({ sessionTTL: 3600000 });
+            expect(valid2.sessionTTL).toBe(3600000);
         });
 
         it('should reject string inputs without coercion', () => {
-            expect(() =>
-                SessionConfigSchema.parse({
-                    maxSessions: '50',
-                    sessionTTL: '1800000',
-                })
-            ).toThrow();
+            const result = SessionConfigSchema.safeParse({
+                maxSessions: '50',
+                sessionTTL: '1800000',
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['maxSessions']);
         });
     });
 
@@ -88,9 +124,23 @@ describe('SessionConfigSchema', () => {
         });
 
         it('should reject non-numeric types', () => {
-            expect(() => SessionConfigSchema.parse({ maxSessions: 'abc' })).toThrow();
-            expect(() => SessionConfigSchema.parse({ sessionTTL: null })).toThrow();
-            expect(() => SessionConfigSchema.parse({ maxSessions: {} })).toThrow();
+            // String should fail
+            let result = SessionConfigSchema.safeParse({ maxSessions: 'abc' });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['maxSessions']);
+
+            // Null should fail
+            result = SessionConfigSchema.safeParse({ sessionTTL: null });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['sessionTTL']);
+
+            // Object should fail
+            result = SessionConfigSchema.safeParse({ maxSessions: {} });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+            expect(result.error?.issues[0]?.path).toEqual(['maxSessions']);
         });
 
         it('should reject extra fields with strict validation', () => {
@@ -100,8 +150,9 @@ describe('SessionConfigSchema', () => {
                 unknownField: 'should fail',
             };
 
-            // Should fail due to strict validation
-            expect(() => SessionConfigSchema.parse(configWithExtra)).toThrow();
+            const result = SessionConfigSchema.safeParse(configWithExtra);
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.unrecognized_keys);
         });
     });
 
