@@ -92,6 +92,31 @@ Fired when the available tools list is updated.
 }
 ```
 
+### Validation Events
+
+#### `saiki:inputValidationFailed`
+
+Fired when input validation fails for an LLM request.
+
+```typescript
+{
+  sessionId: string;
+  issues: Issue[];
+  provider: string;
+  model: string;
+}
+```
+
+**Example:**
+```typescript
+agent.agentEventBus.on('saiki:inputValidationFailed', (data) => {
+  console.log(`Input validation failed for ${data.provider}/${data.model} in session ${data.sessionId}`);
+  data.issues.forEach(issue => {
+    console.log(`  - ${issue.severity}: ${issue.message}`);
+  });
+});
+```
+
 ### Configuration Events
 
 #### `saiki:llmSwitched`
