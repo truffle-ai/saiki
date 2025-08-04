@@ -25,7 +25,6 @@ import { MCPManager } from '../mcp/manager.js';
 import { ToolManager } from '../tools/tool-manager.js';
 import { createToolConfirmationProvider } from '../tools/confirmation/factory.js';
 import { PromptManager } from '../systemPrompt/manager.js';
-import { ConfigManager } from '../config/config-manager.js';
 import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager } from '../session/index.js';
 import { SearchService } from '../search/index.js';
@@ -33,7 +32,7 @@ import { dirname, resolve } from 'path';
 import { createStorageBackends, type StorageBackends, StorageManager } from '../storage/index.js';
 import { createAllowedToolsProvider } from '../tools/confirmation/allowed-tools-provider/factory.js';
 import { logger } from '../logger/index.js';
-import type { AgentConfig } from '@core/agent/schemas.js';
+import type { ValidatedAgentConfig } from '@core/agent/schemas.js';
 import { AgentEventBus } from '../events/index.js';
 
 /**
@@ -53,23 +52,20 @@ export type AgentServices = {
 
 // High-level factory to load, validate, and wire up all agent services in one call
 /**
- * Loads and validates configuration and initializes all agent services as a single unit.
- * @param agentConfig The agent configuration object
+ * Initializes all agent services from a validated configuration.
+ * @param config The validated agent configuration object
+ * @param configPath Optional path to the config file (for relative path resolution)
  * @returns All the initialized services required for a Saiki agent
  */
 export async function createAgentServices(
-    agentConfig: AgentConfig,
+    config: ValidatedAgentConfig,
     configPath?: string
 ): Promise<AgentServices> {
-    // 1. Initialize config manager and validate
-    const configManager = new ConfigManager(agentConfig);
-    const config = configManager.getConfig();
-
-    // 2. Initialize shared event bus
+    // 1. Initialize shared event bus
     const agentEventBus: AgentEventBus = new AgentEventBus();
     logger.debug('Agent event bus initialized');
 
-    // 3. Initialize storage backends (instance-specific, not singleton)
+    // 2. Initialize storage backends (instance-specific, not singleton)
     logger.debug('Initializing storage backends');
     const storageResult = await createStorageBackends(config.storage);
     const storage = storageResult.backends;
@@ -80,7 +76,7 @@ export async function createAgentServices(
         database: config.storage.database.type,
     });
 
-    // 4. Initialize client manager with configurable tool confirmation
+    // 3. Initialize client manager with configurable tool confirmation
     // Create allowed tools provider based on configuration
     const allowedToolsProvider = createAllowedToolsProvider({
         type: config.toolConfirmation.allowedToolsStorage,
@@ -98,10 +94,10 @@ export async function createAgentServices(
     const mcpManager = new MCPManager(confirmationProvider);
     await mcpManager.initializeFromConfig(config.mcpServers);
 
-    // 5. Initialize search service
+    // 4. Initialize search service
     const searchService = new SearchService(storage.database);
 
-    // 6. Initialize unified tool manager with internal tools options
+    // 5. Initialize unified tool manager with internal tools options
     const toolManager = new ToolManager(mcpManager, confirmationProvider, {
         internalToolsServices: { searchService },
         internalToolsConfig: config.internalTools,
@@ -123,18 +119,18 @@ export async function createAgentServices(
         logger.info(`Internal tools enabled: ${config.internalTools.join(', ')}`);
     }
 
-    // 7. Initialize prompt manager
+    // 6. Initialize prompt manager
     const configDir = configPath ? dirname(resolve(configPath)) : process.cwd();
     logger.debug(
         `[ServiceInitializer] Creating PromptManager with configPath: ${configPath} → configDir: ${configDir}`
     );
     const promptManager = new PromptManager(config.systemPrompt, configDir);
 
-    // 8. Initialize state manager for runtime state tracking
+    // 7. Initialize state manager for runtime state tracking
     const stateManager = new AgentStateManager(config, agentEventBus);
     logger.debug('Agent state manager initialized');
 
-    // 9. Initialize session manager
+    // 8. Initialize session manager
     const sessionManager = new SessionManager(
         {
             stateManager,
@@ -154,7 +150,7 @@ export async function createAgentServices(
 
     logger.debug('Session manager initialized with storage support');
 
-    // 10. Return the core services
+    // 9. Return the core services
     return {
         mcpManager,
         toolManager,

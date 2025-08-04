@@ -31,9 +31,9 @@ export class AgentStateManager {
     private sessionOverrides: Map<string, SessionOverride> = new Map();
 
     /**
-     * Initialize AgentStateManager from a processed static configuration.
+     * Initialize AgentStateManager from a validated static configuration.
      *
-     * @param staticConfig The processed configuration from ConfigManager
+     * @param staticConfig The validated configuration from SaikiAgent
      * @param agentEventBus The agent event bus for emitting state change events
      */
     constructor(
