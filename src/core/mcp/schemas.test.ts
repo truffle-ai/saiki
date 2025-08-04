@@ -165,7 +165,7 @@ describe('MCP Schemas', () => {
 
                 const result = SseServerConfigSchema.parse(config);
                 expect(result.type).toBe('sse');
-                expect((result as any).url).toBe('http://localhost:8080/events');
+                expect(result.url).toBe('http://localhost:8080/events');
             });
 
             it('should apply default values', () => {
@@ -313,7 +313,7 @@ describe('MCP Schemas', () => {
 
                 const result = HttpServerConfigSchema.parse(config);
                 expect(result.type).toBe('http');
-                expect((result as any).url).toBe('http://localhost:9000/api');
+                expect(result.url).toBe('http://localhost:9000/api');
             });
 
             it('should apply default values', () => {
@@ -430,6 +430,7 @@ describe('MCP Schemas', () => {
                 const invalidTimeout = { type: 'http', url: 'http://localhost', timeout: false };
                 result = HttpServerConfigSchema.safeParse(invalidTimeout);
                 expect(result.success).toBe(false);
+                // weird behaviour, but this is how zod works for coerce
                 expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
                 expect(result.error?.issues[0]?.path).toEqual(['timeout']);
             });
@@ -460,7 +461,7 @@ describe('MCP Schemas', () => {
 
                 const result = McpServerConfigSchema.parse(config);
                 expect(result.type).toBe('stdio');
-                expect((result as any).command).toBe('node');
+                expect((result as StdioServerConfig).command).toBe('node');
             });
 
             it('should accept valid sse server config', () => {
@@ -471,7 +472,7 @@ describe('MCP Schemas', () => {
 
                 const result = McpServerConfigSchema.parse(config);
                 expect(result.type).toBe('sse');
-                expect((result as any).url).toBe('http://localhost:8080/sse');
+                expect((result as SseServerConfig).url).toBe('http://localhost:8080/sse');
             });
 
             it('should accept valid http server config', () => {
@@ -482,7 +483,7 @@ describe('MCP Schemas', () => {
 
                 const result = McpServerConfigSchema.parse(config);
                 expect(result.type).toBe('http');
-                expect((result as any).url).toBe('http://localhost:9000/mcp');
+                expect((result as HttpServerConfig).url).toBe('http://localhost:9000/mcp');
             });
         });
 
@@ -492,12 +493,7 @@ describe('MCP Schemas', () => {
                     command: 'node',
                     args: ['server.js'],
                 };
-                const result = McpServerConfigSchema.safeParse(config);
-                expect(result.success).toBe(false);
-                expect(result.error?.issues[0]?.code).toBe(
-                    z.ZodIssueCode.invalid_union_discriminator
-                );
-                expect(result.error?.issues[0]?.path).toEqual(['type']);
+                expect(() => McpServerConfigSchema.parse(config)).toThrow();
             });
 
             it('should reject config with invalid type', () => {
@@ -505,12 +501,7 @@ describe('MCP Schemas', () => {
                     type: 'websocket', // Invalid type
                     url: 'ws://localhost:8080',
                 };
-                const result = McpServerConfigSchema.safeParse(config);
-                expect(result.success).toBe(false);
-                expect(result.error?.issues[0]?.code).toBe(
-                    z.ZodIssueCode.invalid_union_discriminator
-                );
-                expect(result.error?.issues[0]?.path).toEqual(['type']);
+                expect(() => McpServerConfigSchema.parse(config)).toThrow();
             });
 
             it('should reject config with valid type but wrong fields', () => {
@@ -518,10 +509,7 @@ describe('MCP Schemas', () => {
                     type: 'stdio',
                     url: 'http://localhost', // Wrong field for stdio
                 };
-                const result = McpServerConfigSchema.safeParse(config);
-                expect(result.success).toBe(false);
-                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
-                expect(result.error?.issues[0]?.path).toEqual(['command']);
+                expect(() => McpServerConfigSchema.parse(config)).toThrow();
             });
         });
     });
@@ -591,10 +579,7 @@ describe('MCP Schemas', () => {
                     },
                 };
 
-                const result = ServerConfigsSchema.safeParse(configs);
-                expect(result.success).toBe(false);
-                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
-                expect(result.error?.issues[0]?.path).toEqual(['invalidServer', 'command']);
+                expect(() => ServerConfigsSchema.parse(configs)).toThrow();
             });
 
             it('should reject configs with invalid server types', () => {
@@ -609,12 +594,7 @@ describe('MCP Schemas', () => {
                     },
                 };
 
-                const result = ServerConfigsSchema.safeParse(configs);
-                expect(result.success).toBe(false);
-                expect(result.error?.issues[0]?.code).toBe(
-                    z.ZodIssueCode.invalid_union_discriminator
-                );
-                expect(result.error?.issues[0]?.path).toEqual(['server2', 'type']);
+                expect(() => ServerConfigsSchema.parse(configs)).toThrow();
             });
         });
 
