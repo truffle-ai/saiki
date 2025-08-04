@@ -42,7 +42,7 @@ export interface ValidationInput {
 }
 
 // Security constants
-const MAX_FILE_SIZE = 67108864; // 50MB in base64 format
+const MAX_FILE_SIZE = 67108864; // 64MB in base64 format
 const MAX_IMAGE_SIZE = 20971520; // 20MB
 
 /**
@@ -136,11 +136,11 @@ function validateFileInput(
     fileData: FileData,
     config: ValidationLLMConfig
 ): NonNullable<ValidationData['fileValidation']> {
-    // Security validation: file size check (max 50MB for base64)
+    // Security validation: file size check (max 64MB for base64)
     if (typeof fileData.data === 'string' && fileData.data.length > MAX_FILE_SIZE) {
         return {
             isSupported: false,
-            error: 'File size too large (max 50MB)',
+            error: 'File size too large (max 64MB)',
         };
     }
 

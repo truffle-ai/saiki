@@ -56,8 +56,8 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     { name: 'Gemini 2.5 Pro', provider: 'google', model: 'gemini-2.5-pro' },
   ];
 
-  // File size limit (50MB)
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
+  // File size limit (64MB)
+  const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64MB in bytes
 
   const showUserError = (message: string) => {
     setFileUploadError(message);
@@ -136,7 +136,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
     // File size validation
     if (file.size > MAX_FILE_SIZE) {
-      showUserError('PDF file too large. Maximum size is 50MB.');
+      showUserError('PDF file too large. Maximum size is 64MB.');
       e.target.value = '';
       return;
     }
@@ -240,7 +240,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
     // File size validation
     if (file.size > MAX_FILE_SIZE) {
-      showUserError('Image file too large. Maximum size is 50MB.');
+      showUserError('Image file too large. Maximum size is 64MB.');
       e.target.value = '';
       return;
     }
@@ -363,7 +363,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
     // File size validation
     if (file.size > MAX_FILE_SIZE) {
-      showUserError('Audio file too large. Maximum size is 50MB.');
+      showUserError('Audio file too large. Maximum size is 64MB.');
       e.target.value = '';
       return;
     }

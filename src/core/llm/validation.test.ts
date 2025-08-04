@@ -111,7 +111,7 @@ describe('validateInputForLLM', () => {
         });
 
         test('should fail validation for oversized file', () => {
-            const largeBase64 = 'A'.repeat(67108865); // > 50MB
+            const largeBase64 = 'A'.repeat(67108865); // > 64MB
 
             const result = validateInputForLLM(
                 {
@@ -128,7 +128,7 @@ describe('validateInputForLLM', () => {
             expect(result.ok).toBe(false);
             expect(
                 result.issues.filter((i) => i.severity === 'error').map((i) => i.message)
-            ).toContain('File size too large (max 50MB)');
+            ).toContain('File size too large (max 64MB)');
         });
 
         test('should fail validation for invalid base64 format', () => {
