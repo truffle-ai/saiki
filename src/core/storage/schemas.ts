@@ -114,6 +114,8 @@ export const StorageSchema = z
         ),
     })
     .strict()
-    .describe('Storage configuration with cache and database backends');
+    .describe('Storage configuration with cache and database backends')
+    .brand<'ValidatedStorageConfig'>();
 
-export type StorageConfig = z.output<typeof StorageSchema>;
+export type StorageConfig = z.input<typeof StorageSchema>;
+export type ValidatedStorageConfig = z.output<typeof StorageSchema>;

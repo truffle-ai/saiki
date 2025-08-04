@@ -137,7 +137,8 @@ export const SystemPromptConfigSchema = z
         })),
         SystemPromptContributorsSchema,
     ])
-    .describe('Plain string or structured contributors object');
+    .describe('Plain string or structured contributors object')
+    .brand<'ValidatedSystemPromptConfig'>();
 
 // Type definitions
 export type SystemPromptConfig = z.input<typeof SystemPromptConfigSchema>; // string | object (user input)

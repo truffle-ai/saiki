@@ -3,6 +3,7 @@ import { AgentStateManager } from './agent-state-manager.js';
 import { AgentEventBus } from '../events/index.js';
 import { AgentConfigSchema } from '@core/agent/schemas.js';
 import { LLMConfigSchema } from '@core/llm/schemas.js';
+import { McpServerConfigSchema } from '@core/mcp/schemas.js';
 import type { AgentConfig, ValidatedAgentConfig } from '@core/agent/schemas.js';
 
 describe('AgentStateManager Events', () => {
@@ -74,14 +75,14 @@ describe('AgentStateManager Events', () => {
         const eventSpy = vi.fn();
         eventBus.on('saiki:mcpServerAdded', eventSpy);
 
-        const newServerConfig = {
+        const newServerConfig = McpServerConfigSchema.parse({
             type: 'stdio' as const,
             command: 'new-server',
             args: [],
             env: {},
             timeout: 30000,
             connectionMode: 'lenient' as const,
-        };
+        });
 
         stateManager.addMcpServer('new-server', newServerConfig);
 

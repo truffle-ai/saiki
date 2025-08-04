@@ -71,14 +71,16 @@ export const McpServerConfigSchema = z
     ])
     .superRefine((_data, _ctx) => {
         // cross-type business rules if you ever need them
-    });
+    })
+    .brand<'ValidatedMcpServerConfig'>();
 
 export type McpServerConfig = z.input<typeof McpServerConfigSchema>;
 export type ValidatedMcpServerConfig = z.output<typeof McpServerConfigSchema>;
 
 export const ServerConfigsSchema = z
     .record(McpServerConfigSchema)
-    .describe('A dictionary of server configurations, keyed by server name');
+    .describe('A dictionary of server configurations, keyed by server name')
+    .brand<'ValidatedServerConfigs'>();
 
 export type ServerConfigs = z.input<typeof ServerConfigsSchema>;
 export type ValidatedServerConfigs = z.output<typeof ServerConfigsSchema>;

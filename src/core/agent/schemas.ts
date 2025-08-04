@@ -111,7 +111,8 @@ export const AgentConfigSchema = z
         ),
     })
     .strict()
-    .describe('Main configuration for an agent, including its LLM and server connections');
+    .describe('Main configuration for an agent, including its LLM and server connections')
+    .brand<'ValidatedAgentConfig'>();
 // Input type for user-facing API (pre-parsing) - makes fields with defaults optional
 
 export type AgentConfig = z.input<typeof AgentConfigSchema>;
