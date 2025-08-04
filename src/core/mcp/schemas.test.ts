@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import {
     StdioServerConfigSchema,
     SseServerConfigSchema,
@@ -11,6 +12,7 @@ import {
     type McpServerConfig,
     type ServerConfigs,
 } from './schemas.js';
+import { SaikiErrorCode } from '@core/schemas/errors.js';
 
 describe('MCP Schemas', () => {
     describe('StdioServerConfigSchema', () => {
@@ -65,7 +67,23 @@ describe('MCP Schemas', () => {
                     type: 'stdio',
                     args: ['server.js'],
                 };
-                expect(() => StdioServerConfigSchema.parse(config)).toThrow();
+                const result = StdioServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['command']);
+            });
+
+            it('should reject empty command', () => {
+                const config = {
+                    type: 'stdio',
+                    command: '',
+                };
+                const result = StdioServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.custom);
+                expect((result.error?.issues[0] as any)?.params?.code).toBe(
+                    SaikiErrorCode.MCP_MISSING_COMMAND
+                );
             });
 
             it('should validate connectionMode values', () => {
@@ -77,7 +95,8 @@ describe('MCP Schemas', () => {
                         command: 'node',
                         connectionMode,
                     };
-                    expect(() => StdioServerConfigSchema.parse(config)).not.toThrow();
+                    const result = StdioServerConfigSchema.safeParse(config);
+                    expect(result.success).toBe(true);
                 }
 
                 const invalidConfig = {
@@ -85,20 +104,40 @@ describe('MCP Schemas', () => {
                     command: 'node',
                     connectionMode: 'invalid',
                 };
-                expect(() => StdioServerConfigSchema.parse(invalidConfig)).toThrow();
+                const result = StdioServerConfigSchema.safeParse(invalidConfig);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_enum_value);
+                expect(result.error?.issues[0]?.path).toEqual(['connectionMode']);
             });
 
             it('should validate field types', () => {
-                const invalidConfigs = [
-                    { type: 'stdio', command: 123 }, // command must be string
-                    { type: 'stdio', command: 'node', args: 'not-array' }, // args must be array
-                    { type: 'stdio', command: 'node', env: ['not-object'] }, // env must be object
-                    { type: 'stdio', command: 'node', timeout: 'fast' }, // timeout must be number
-                ];
+                // Command must be string
+                const invalidCommand = { type: 'stdio', command: 123 };
+                let result = StdioServerConfigSchema.safeParse(invalidCommand);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['command']);
 
-                for (const config of invalidConfigs) {
-                    expect(() => StdioServerConfigSchema.parse(config)).toThrow();
-                }
+                // Args must be array
+                const invalidArgs = { type: 'stdio', command: 'node', args: 'not-array' };
+                result = StdioServerConfigSchema.safeParse(invalidArgs);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['args']);
+
+                // Env must be object
+                const invalidEnv = { type: 'stdio', command: 'node', env: ['not-object'] };
+                result = StdioServerConfigSchema.safeParse(invalidEnv);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['env']);
+
+                // Timeout must be positive number
+                const invalidTimeout = { type: 'stdio', command: 'node', timeout: 'fast' };
+                result = StdioServerConfigSchema.safeParse(invalidTimeout);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['timeout']);
             });
         });
 
@@ -109,7 +148,9 @@ describe('MCP Schemas', () => {
                     command: 'node',
                     unknownField: 'should-fail',
                 };
-                expect(() => StdioServerConfigSchema.parse(config)).toThrow();
+                const result = StdioServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.unrecognized_keys);
             });
         });
     });
@@ -167,7 +208,10 @@ describe('MCP Schemas', () => {
                     type: 'sse',
                     headers: {},
                 };
-                expect(() => SseServerConfigSchema.parse(config)).toThrow();
+                const result = SseServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['url']);
             });
 
             it('should validate URL format', () => {
@@ -179,14 +223,18 @@ describe('MCP Schemas', () => {
 
                 for (const url of validUrls) {
                     const config = { type: 'sse', url };
-                    expect(() => SseServerConfigSchema.parse(config)).not.toThrow();
+                    const result = SseServerConfigSchema.safeParse(config);
+                    expect(result.success).toBe(true);
                 }
 
                 const invalidConfig = {
                     type: 'sse',
                     url: 'not-a-valid-url',
                 };
-                expect(() => SseServerConfigSchema.parse(invalidConfig)).toThrow();
+                const result = SseServerConfigSchema.safeParse(invalidConfig);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.custom);
+                expect(result.error?.issues[0]?.path).toEqual(['url']);
             });
 
             it('should validate connectionMode values', () => {
@@ -198,7 +246,8 @@ describe('MCP Schemas', () => {
                         url: 'http://localhost:8080/events',
                         connectionMode,
                     };
-                    expect(() => SseServerConfigSchema.parse(config)).not.toThrow();
+                    const result = SseServerConfigSchema.safeParse(config);
+                    expect(result.success).toBe(true);
                 }
 
                 const invalidConfig = {
@@ -206,19 +255,37 @@ describe('MCP Schemas', () => {
                     url: 'http://localhost:8080/events',
                     connectionMode: 'invalid',
                 };
-                expect(() => SseServerConfigSchema.parse(invalidConfig)).toThrow();
+                const result = SseServerConfigSchema.safeParse(invalidConfig);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_enum_value);
+                expect(result.error?.issues[0]?.path).toEqual(['connectionMode']);
             });
 
             it('should validate field types', () => {
-                const invalidConfigs = [
-                    { type: 'sse', url: 12345 }, // url must be string
-                    { type: 'sse', url: 'http://localhost', headers: 'not-object' }, // headers must be object
-                    { type: 'sse', url: 'http://localhost', timeout: 'slow' }, // timeout must be number
-                ];
+                // URL must be string
+                const invalidUrl = { type: 'sse', url: 12345 };
+                let result = SseServerConfigSchema.safeParse(invalidUrl);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['url']);
 
-                for (const config of invalidConfigs) {
-                    expect(() => SseServerConfigSchema.parse(config)).toThrow();
-                }
+                // Headers must be object
+                const invalidHeaders = {
+                    type: 'sse',
+                    url: 'http://localhost',
+                    headers: 'not-object',
+                };
+                result = SseServerConfigSchema.safeParse(invalidHeaders);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['headers']);
+
+                // Timeout must be positive number
+                const invalidTimeout = { type: 'sse', url: 'http://localhost', timeout: 'slow' };
+                result = SseServerConfigSchema.safeParse(invalidTimeout);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['timeout']);
             });
         });
 
@@ -229,7 +296,9 @@ describe('MCP Schemas', () => {
                     url: 'http://localhost:8080/events',
                     unknownField: 'should-fail',
                 };
-                expect(() => SseServerConfigSchema.parse(config)).toThrow();
+                const result = SseServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.unrecognized_keys);
             });
         });
     });
@@ -285,7 +354,10 @@ describe('MCP Schemas', () => {
                     type: 'http',
                     headers: {},
                 };
-                expect(() => HttpServerConfigSchema.parse(config)).toThrow();
+                const result = HttpServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['url']);
             });
 
             it('should validate URL format', () => {
@@ -297,14 +369,18 @@ describe('MCP Schemas', () => {
 
                 for (const url of validUrls) {
                     const config = { type: 'http', url };
-                    expect(() => HttpServerConfigSchema.parse(config)).not.toThrow();
+                    const result = HttpServerConfigSchema.safeParse(config);
+                    expect(result.success).toBe(true);
                 }
 
                 const invalidConfig = {
                     type: 'http',
                     url: 'invalid-url-format',
                 };
-                expect(() => HttpServerConfigSchema.parse(invalidConfig)).toThrow();
+                const result = HttpServerConfigSchema.safeParse(invalidConfig);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.custom);
+                expect(result.error?.issues[0]?.path).toEqual(['url']);
             });
 
             it('should validate connectionMode values', () => {
@@ -316,7 +392,8 @@ describe('MCP Schemas', () => {
                         url: 'http://localhost:9000/api',
                         connectionMode,
                     };
-                    expect(() => HttpServerConfigSchema.parse(config)).not.toThrow();
+                    const result = HttpServerConfigSchema.safeParse(config);
+                    expect(result.success).toBe(true);
                 }
 
                 const invalidConfig = {
@@ -324,19 +401,37 @@ describe('MCP Schemas', () => {
                     url: 'http://localhost:9000/api',
                     connectionMode: 'invalid',
                 };
-                expect(() => HttpServerConfigSchema.parse(invalidConfig)).toThrow();
+                const result = HttpServerConfigSchema.safeParse(invalidConfig);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_enum_value);
+                expect(result.error?.issues[0]?.path).toEqual(['connectionMode']);
             });
 
             it('should validate field types', () => {
-                const invalidConfigs = [
-                    { type: 'http', url: 'not-a-url' }, // url must be valid URL
-                    { type: 'http', url: 'http://localhost', headers: 'not-object' }, // headers must be object
-                    { type: 'http', url: 'http://localhost', timeout: false }, // timeout must be number
-                ];
+                // URL must be valid URL format
+                const invalidUrl = { type: 'http', url: 'not-a-url' };
+                let result = HttpServerConfigSchema.safeParse(invalidUrl);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.custom);
+                expect(result.error?.issues[0]?.path).toEqual(['url']);
 
-                for (const config of invalidConfigs) {
-                    expect(() => HttpServerConfigSchema.parse(config)).toThrow();
-                }
+                // Headers must be object
+                const invalidHeaders = {
+                    type: 'http',
+                    url: 'http://localhost',
+                    headers: 'not-object',
+                };
+                result = HttpServerConfigSchema.safeParse(invalidHeaders);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['headers']);
+
+                // Timeout must be positive number
+                const invalidTimeout = { type: 'http', url: 'http://localhost', timeout: false };
+                result = HttpServerConfigSchema.safeParse(invalidTimeout);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.too_small);
+                expect(result.error?.issues[0]?.path).toEqual(['timeout']);
             });
         });
 
@@ -347,7 +442,9 @@ describe('MCP Schemas', () => {
                     url: 'http://localhost:9000/api',
                     unknownField: 'should-fail',
                 };
-                expect(() => HttpServerConfigSchema.parse(config)).toThrow();
+                const result = HttpServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.unrecognized_keys);
             });
         });
     });
@@ -395,7 +492,12 @@ describe('MCP Schemas', () => {
                     command: 'node',
                     args: ['server.js'],
                 };
-                expect(() => McpServerConfigSchema.parse(config)).toThrow();
+                const result = McpServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(
+                    z.ZodIssueCode.invalid_union_discriminator
+                );
+                expect(result.error?.issues[0]?.path).toEqual(['type']);
             });
 
             it('should reject config with invalid type', () => {
@@ -403,7 +505,12 @@ describe('MCP Schemas', () => {
                     type: 'websocket', // Invalid type
                     url: 'ws://localhost:8080',
                 };
-                expect(() => McpServerConfigSchema.parse(config)).toThrow();
+                const result = McpServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(
+                    z.ZodIssueCode.invalid_union_discriminator
+                );
+                expect(result.error?.issues[0]?.path).toEqual(['type']);
             });
 
             it('should reject config with valid type but wrong fields', () => {
@@ -411,7 +518,10 @@ describe('MCP Schemas', () => {
                     type: 'stdio',
                     url: 'http://localhost', // Wrong field for stdio
                 };
-                expect(() => McpServerConfigSchema.parse(config)).toThrow();
+                const result = McpServerConfigSchema.safeParse(config);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['command']);
             });
         });
     });
@@ -481,7 +591,10 @@ describe('MCP Schemas', () => {
                     },
                 };
 
-                expect(() => ServerConfigsSchema.parse(configs)).toThrow();
+                const result = ServerConfigsSchema.safeParse(configs);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.invalid_type);
+                expect(result.error?.issues[0]?.path).toEqual(['invalidServer', 'command']);
             });
 
             it('should reject configs with invalid server types', () => {
@@ -496,7 +609,12 @@ describe('MCP Schemas', () => {
                     },
                 };
 
-                expect(() => ServerConfigsSchema.parse(configs)).toThrow();
+                const result = ServerConfigsSchema.safeParse(configs);
+                expect(result.success).toBe(false);
+                expect(result.error?.issues[0]?.code).toBe(
+                    z.ZodIssueCode.invalid_union_discriminator
+                );
+                expect(result.error?.issues[0]?.path).toEqual(['server2', 'type']);
             });
         });
 
