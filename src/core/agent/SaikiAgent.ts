@@ -12,7 +12,7 @@ import { Result, ok, fail } from '../utils/result.js';
 import type { LLMUpdateContext } from '../llm/types.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 import { validateInputForLLM } from '../llm/validation.js';
-import { SaikiValidationError, SaikiLLMError, SaikiMCPError, SaikiInputError } from './errors.js';
+import { SaikiLLMError, SaikiMCPError, SaikiInputError } from './errors.js';
 import { resolveAndValidateMcpServerConfig } from '../mcp/resolver.js';
 import type { McpServerConfig } from '../schemas/mcp.js';
 import {

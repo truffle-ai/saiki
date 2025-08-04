@@ -16,7 +16,7 @@ import {
     type McpTransportType,
 } from './mcp/mcp_handler.js';
 import { createAgentCard } from '@core/index.js';
-import { SaikiAgent } from '@core/index.js';
+import { SaikiAgent, SaikiValidationError } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
 import { resolveBundledScript } from '@core/index.js';
@@ -668,22 +668,37 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
         }
 
         const { sessionId, ...llmConfig } = validation.data;
-        const result = await agent.switchLLM(llmConfig, sessionId);
 
-        // Return appropriate status code based on result
-        if (result.ok) {
-            return res.status(200).json(result);
-        } else {
-            // Check if it's a validation error or server error
-            const hasValidationErrors = result.issues.some(
-                (issue) =>
-                    issue.code.includes('schema_validation') ||
-                    issue.code.includes('missing') ||
-                    issue.code.includes('invalid')
-            );
+        try {
+            const config = await agent.switchLLM(llmConfig, sessionId);
 
-            const statusCode = hasValidationErrors ? 400 : 500;
-            return res.status(statusCode).json(result);
+            return res.status(200).json({
+                ok: true,
+                data: config,
+                issues: [],
+            });
+        } catch (error) {
+            if (error instanceof SaikiValidationError) {
+                // User/validation errors -> 400
+                return res.status(400).json({
+                    ok: false,
+                    issues: error.issues,
+                });
+            } else {
+                // Infrastructure errors -> 500
+                logger.error('LLM switch failed:', error);
+                return res.status(500).json({
+                    ok: false,
+                    issues: [
+                        {
+                            code: 'internal_server_error',
+                            message: 'Internal server error during LLM switch',
+                            severity: 'error',
+                            context: {},
+                        },
+                    ],
+                });
+            }
         }
     });
 

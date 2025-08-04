@@ -14,7 +14,7 @@
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import { SaikiAgent } from '@core/index.js';
+import { SaikiAgent, SaikiLLMError } from '@core/index.js';
 import { CommandDefinition } from '../command-parser.js';
 
 /**
@@ -121,14 +121,18 @@ export const modelCommands: CommandDefinition = {
                     console.log(chalk.yellow(`🔄 Switching to ${model} (${provider})...`));
 
                     const llmConfig = { model, provider };
-                    const result = await agent.switchLLM(llmConfig);
+                    await agent.switchLLM(llmConfig);
 
-                    if (result.ok) {
-                        console.log(
-                            chalk.green(`✅ Successfully switched to ${model} (${provider})`)
-                        );
+                    console.log(chalk.green(`✅ Successfully switched to ${model} (${provider})`));
+                } catch (error) {
+                    if (error instanceof SaikiLLMError) {
+                        console.log(chalk.red('❌ Failed to switch model:'));
+                        const errors = error.issues.filter((issue) => issue.severity === 'error');
+                        for (const err of errors) {
+                            console.log(chalk.red(`   ${err.message}`));
+                        }
                         // Show warnings if any
-                        const warnings = result.issues.filter(
+                        const warnings = error.issues.filter(
                             (issue) => issue.severity === 'warning'
                         );
                         if (warnings.length > 0) {
@@ -137,16 +141,10 @@ export const modelCommands: CommandDefinition = {
                             }
                         }
                     } else {
-                        console.log(chalk.red('❌ Failed to switch model:'));
-                        const errors = result.issues.filter((issue) => issue.severity === 'error');
-                        for (const error of errors) {
-                            console.log(chalk.red(`   ${error.message}`));
-                        }
+                        logger.error(
+                            `Failed to switch model: ${error instanceof Error ? error.message : String(error)}`
+                        );
                     }
-                } catch (error) {
-                    logger.error(
-                        `Failed to switch model: ${error instanceof Error ? error.message : String(error)}`
-                    );
                 }
                 return true;
             },
