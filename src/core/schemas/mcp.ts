@@ -1,4 +1,4 @@
-// src/config/schemas.mcp.ts
+// src/core/schemas/mcp.ts
 import { z } from 'zod';
 import { SaikiErrorCode } from './errors.js';
 import { EnvExpandedString, RequiredEnvURL } from '../utils/result.js';
