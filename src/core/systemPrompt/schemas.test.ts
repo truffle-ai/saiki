@@ -117,14 +117,23 @@ You can help with:
             const validStatic = {
                 contributors: [{ id: 'test', type: 'static', priority: 0, content: 'hello world' }],
             };
-            expect(() => SystemPromptConfigSchema.parse(validStatic)).not.toThrow();
+            const validResult = SystemPromptConfigSchema.parse(validStatic);
+            expect(validResult.contributors[0]?.type).toBe('static');
 
             const invalidStatic = {
                 contributors: [
                     { id: 'test', type: 'static', priority: 0 }, // Missing content
                 ],
             };
-            expect(() => SystemPromptConfigSchema.parse(invalidStatic)).toThrow();
+            const result = SystemPromptConfigSchema.safeParse(invalidStatic);
+            expect(result.success).toBe(false);
+            // For union schemas, the actual error is in unionErrors[1] (second branch - the object branch)
+            // TODO: Fix typing - unionErrors not properly typed in Zod
+            const unionError = result.error?.issues[0] as any;
+            expect(unionError?.code).toBe('invalid_union');
+            const objectErrors = unionError?.unionErrors?.[1]?.issues;
+            expect(objectErrors?.[0]?.path).toEqual(['contributors', 0, 'content']);
+            expect(objectErrors?.[0]?.code).toBe('invalid_type');
         });
 
         it('should validate dynamic contributors', () => {
@@ -133,14 +142,23 @@ You can help with:
                     { id: 'dateTime', type: 'dynamic', priority: 10, source: 'dateTime' },
                 ],
             };
-            expect(() => SystemPromptConfigSchema.parse(validDynamic)).not.toThrow();
+            const validResult = SystemPromptConfigSchema.parse(validDynamic);
+            expect(validResult.contributors[0]?.type).toBe('dynamic');
 
             const invalidDynamic = {
                 contributors: [
                     { id: 'dateTime', type: 'dynamic', priority: 10 }, // Missing source
                 ],
             };
-            expect(() => SystemPromptConfigSchema.parse(invalidDynamic)).toThrow();
+            const result = SystemPromptConfigSchema.safeParse(invalidDynamic);
+            expect(result.success).toBe(false);
+            // For union schemas, the actual error is in unionErrors[1] (second branch - the object branch)
+            // TODO: Fix typing - unionErrors not properly typed in Zod
+            const unionError = result.error?.issues[0] as any;
+            expect(unionError?.code).toBe('invalid_union');
+            const objectErrors = unionError?.unionErrors?.[1]?.issues;
+            expect(objectErrors?.[0]?.path).toEqual(['contributors', 0, 'source']);
+            expect(objectErrors?.[0]?.code).toBe('invalid_type');
         });
 
         it('should validate dynamic contributor source enum', () => {
@@ -150,7 +168,8 @@ You can help with:
                 const validConfig = {
                     contributors: [{ id: 'test', type: 'dynamic', priority: 10, source }],
                 };
-                expect(() => SystemPromptConfigSchema.parse(validConfig)).not.toThrow();
+                const result = SystemPromptConfigSchema.parse(validConfig);
+                expect(result.contributors[0]?.type).toBe('dynamic');
             }
 
             const invalidSource = {
@@ -158,40 +177,57 @@ You can help with:
                     { id: 'test', type: 'dynamic', priority: 10, source: 'invalidSource' }, // Invalid enum value
                 ],
             };
-            expect(() => SystemPromptConfigSchema.parse(invalidSource)).toThrow();
+            const result = SystemPromptConfigSchema.safeParse(invalidSource);
+            expect(result.success).toBe(false);
+            // For union schemas, the actual error is in unionErrors[1] (second branch - the object branch)
+            // TODO: Fix typing - unionErrors not properly typed in Zod
+            const unionError = result.error?.issues[0] as any;
+            expect(unionError?.code).toBe('invalid_union');
+            const objectErrors = unionError?.unionErrors?.[1]?.issues;
+            expect(objectErrors?.[0]?.path).toEqual(['contributors', 0, 'source']);
+            expect(objectErrors?.[0]?.code).toBe('invalid_enum_value');
         });
 
         it('should validate file contributors', () => {
             const validFile = {
                 contributors: [{ id: 'docs', type: 'file', priority: 5, files: ['README.md'] }],
             };
-            expect(() => SystemPromptConfigSchema.parse(validFile)).not.toThrow();
+            const validResult = SystemPromptConfigSchema.parse(validFile);
+            expect(validResult.contributors[0]?.type).toBe('file');
 
             const invalidFile = {
                 contributors: [
                     { id: 'docs', type: 'file', priority: 5, files: [] }, // Empty files array
                 ],
             };
-            expect(() => SystemPromptConfigSchema.parse(invalidFile)).toThrow();
+            const result = SystemPromptConfigSchema.safeParse(invalidFile);
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.path).toEqual(['contributors', 0, 'files']);
         });
 
         it('should reject invalid contributor types', () => {
-            expect(() =>
-                SystemPromptConfigSchema.parse({
-                    contributors: [
-                        { id: 'invalid', type: 'invalid', priority: 0 }, // Invalid type
-                    ],
-                })
-            ).toThrow();
+            const result = SystemPromptConfigSchema.safeParse({
+                contributors: [
+                    { id: 'invalid', type: 'invalid', priority: 0 }, // Invalid type
+                ],
+            });
+            expect(result.success).toBe(false);
+            // For union schemas, the actual error is in unionErrors[1] (second branch - the object branch)
+            // TODO: Fix typing - unionErrors not properly typed in Zod
+            const unionError = result.error?.issues[0] as any;
+            expect(unionError?.code).toBe('invalid_union');
+            const objectErrors = unionError?.unionErrors?.[1]?.issues;
+            expect(objectErrors?.[0]?.path).toEqual(['contributors', 0, 'type']);
+            expect(objectErrors?.[0]?.code).toBe('invalid_union_discriminator');
         });
 
         it('should reject extra fields with strict validation', () => {
-            expect(() =>
-                SystemPromptConfigSchema.parse({
-                    contributors: [{ id: 'test', type: 'static', priority: 0, content: 'test' }],
-                    unknownField: 'should fail',
-                })
-            ).toThrow();
+            const result = SystemPromptConfigSchema.safeParse({
+                contributors: [{ id: 'test', type: 'static', priority: 0, content: 'test' }],
+                unknownField: 'should fail',
+            });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0]?.code).toBe('unrecognized_keys');
         });
     });
 
