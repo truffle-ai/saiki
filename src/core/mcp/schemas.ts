@@ -1,9 +1,9 @@
-// src/core/schemas/mcp.ts
+import { SaikiErrorCode } from '@core/schemas/errors.js';
+import { EnvExpandedString, RequiredEnvURL } from '@core/utils/result.js';
 import { z } from 'zod';
-import { SaikiErrorCode } from './errors.js';
-import { EnvExpandedString, RequiredEnvURL } from '../utils/result.js';
 
 // ---- stdio ----
+
 export const StdioServerConfigSchema = z
     .object({
         type: z.literal('stdio'),
@@ -33,8 +33,8 @@ export const StdioServerConfigSchema = z
 
 export type StdioServerConfig = z.input<typeof StdioServerConfigSchema>;
 export type ValidatedStdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
-
 // ---- sse ----
+
 export const SseServerConfigSchema = z
     .object({
         type: z.literal('sse'),
@@ -47,8 +47,8 @@ export const SseServerConfigSchema = z
 
 export type SseServerConfig = z.input<typeof SseServerConfigSchema>;
 export type ValidatedSseServerConfig = z.infer<typeof SseServerConfigSchema>;
-
 // ---- http ----
+
 export const HttpServerConfigSchema = z
     .object({
         type: z.literal('http'),
@@ -61,8 +61,8 @@ export const HttpServerConfigSchema = z
 
 export type HttpServerConfig = z.input<typeof HttpServerConfigSchema>;
 export type ValidatedHttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
-
 // ---- discriminated union ----
+
 export const McpServerConfigSchema = z
     .discriminatedUnion('type', [
         StdioServerConfigSchema,

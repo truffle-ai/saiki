@@ -33,7 +33,7 @@ import { dirname, resolve } from 'path';
 import { createStorageBackends, type StorageBackends, StorageManager } from '../storage/index.js';
 import { createAllowedToolsProvider } from '../tools/confirmation/allowed-tools-provider/factory.js';
 import { logger } from '../logger/index.js';
-import type { AgentConfig } from '../config/schemas.js';
+import type { AgentConfig } from '@core/agent/schemas.js';
 import { AgentEventBus } from '../events/index.js';
 
 /**

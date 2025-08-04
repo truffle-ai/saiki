@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentStateManager } from './agent-state-manager.js';
 import { AgentEventBus } from '../events/index.js';
-import { AgentConfigSchema } from './schemas.js';
-import { LLMConfigSchema } from '../schemas/llm.js';
-import type { AgentConfig } from './schemas.js';
+import { AgentConfigSchema } from '@core/agent/schemas.js';
+import { LLMConfigSchema } from '@core/llm/schemas.js';
+import type { AgentConfig } from '@core/agent/schemas.js';
 
 describe('AgentStateManager Events', () => {
     let stateManager: AgentStateManager;

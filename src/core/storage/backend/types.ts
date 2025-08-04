@@ -12,7 +12,7 @@ export type {
     RedisBackendConfig,
     SqliteBackendConfig,
     PostgresBackendConfig,
-} from '../../config/schemas.js';
+} from '../schemas.js';
 
 /**
  * Collection of storage backends for different use cases

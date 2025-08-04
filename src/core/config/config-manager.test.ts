@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { ConfigManager } from './config-manager.js';
-import type { AgentConfig } from './schemas.js';
+import type { AgentConfig } from '@core/agent/schemas.js';
 
 function clone<T>(obj: T): T {
     return JSON.parse(JSON.stringify(obj));

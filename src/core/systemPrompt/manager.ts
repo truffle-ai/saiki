@@ -1,4 +1,4 @@
-import type { ContributorConfig, SystemPromptConfig } from '../config/schemas.js';
+import type { ContributorConfig, SystemPromptConfig } from './schemas.js';
 import { StaticContributor, FileContributor } from './contributors.js';
 import { getPromptGenerator } from './registry.js';
 import { registerPromptGenerator } from './registry.js';

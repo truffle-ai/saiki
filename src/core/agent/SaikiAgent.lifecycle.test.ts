@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { AgentConfig } from '../config/schemas.js';
+import type { AgentConfig } from './schemas.js';
 import type { AgentServices } from '../utils/service-initializer.js';
 
 // Mock the createAgentServices function

@@ -1,12 +1,8 @@
 import { Result, Issue, hasErrors, splitIssues, ok, fail, zodToIssues } from '../utils/result.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 
-import {
-    LLMConfigSchema,
-    type ValidatedLLMConfig,
-    type LLMUpdates,
-    type LLMConfig,
-} from '../schemas/llm.js';
+import { type ValidatedLLMConfig, type LLMUpdates, type LLMConfig } from './schemas.js';
+import { LLMConfigSchema } from './schemas.js';
 import {
     getProviderFromModel,
     getSupportedRoutersForProvider,

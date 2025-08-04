@@ -1,21 +1,21 @@
-// schemas/llm.ts
+import { SaikiErrorCode } from '@core/schemas/errors.js';
+import { NonEmptyTrimmed, EnvExpandedString, OptionalURL } from '@core/utils/result.js';
 import { z } from 'zod';
 import {
-    getSupportedModels,
-    isValidProviderModel,
-    getMaxInputTokensForModel,
+    LLM_PROVIDERS,
+    LLM_ROUTERS,
     supportsBaseURL,
     requiresBaseURL,
     acceptsAnyModel,
+    getSupportedModels,
+    isValidProviderModel,
+    getMaxInputTokensForModel,
     isRouterSupportedForProvider,
     getSupportedRoutersForProvider,
-    LLM_PROVIDERS,
-    LLM_ROUTERS,
-} from '../llm/registry.js';
-import { NonEmptyTrimmed, OptionalURL, EnvExpandedString } from '../utils/result.js';
-import { SaikiErrorCode } from './errors.js';
+} from './registry.js';
 
 /** Core object with structural constraints and normalization */
+
 export const LLMConfigBaseSchema = z
     .object({
         provider: z
@@ -65,8 +65,8 @@ export const LLMConfigBaseSchema = z
             .describe('Randomness: 0 deterministic, 1 creative'),
     })
     .strict();
-
 /** Business rules + compatibility checks */
+
 export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
     const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
     const maxInputTokensIsSet = data.maxInputTokens != null;
@@ -148,14 +148,13 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
     }
 }) // Brand the validated type so it can be distinguished at compile time
     .brand<'ValidatedLLMConfig'>();
-
 // Input type and output types for the zod schema
+
 export type LLMConfig = z.input<typeof LLMConfigSchema>;
 export type ValidatedLLMConfig = z.infer<typeof LLMConfigSchema>;
-
 // PATCH-like schema for updates (switch flows)
+
 export const LLMUpdatesSchema = LLMConfigBaseSchema.partial().strict();
 export type LLMUpdates = z.input<typeof LLMUpdatesSchema>;
-
 // Re-export context type from llm module
 export type { LLMUpdateContext } from '../llm/types.js';

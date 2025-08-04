@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { ContributorConfigSchema, SystemPromptConfigSchema, AgentConfigSchema } from './schemas.js';
-import { LLMConfigSchema } from '../schemas/llm.js';
+import { AgentConfigSchema } from '@core/agent/schemas.js';
+import { ContributorConfigSchema, SystemPromptConfigSchema } from '@core/systemPrompt/schemas.js';
+import { LLMConfigSchema } from '@core/llm/schemas.js';
 import {
     StdioServerConfigSchema,
     SseServerConfigSchema,
     HttpServerConfigSchema,
     McpServerConfigSchema,
     ServerConfigsSchema,
-} from '../schemas/mcp.js';
+} from '@core/mcp/schemas.js';
 
 /**
  * This file contains tests for all of our top level configuration validations.

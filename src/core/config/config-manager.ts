@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { logger } from '../logger/index.js';
-import { AgentConfigSchema } from './schemas.js';
-import type { ValidatedAgentConfig, AgentConfig } from './schemas.js';
+import { AgentConfigSchema } from '@core/agent/schemas.js';
+import type { ValidatedAgentConfig, AgentConfig } from '@core/agent/schemas.js';
 
 /**
  * ConfigManager: Handles pure configuration validation and access for the core layer.

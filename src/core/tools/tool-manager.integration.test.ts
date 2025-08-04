@@ -4,7 +4,7 @@ import { MCPManager } from '../mcp/manager.js';
 import { NoOpConfirmationProvider } from './confirmation/noop-confirmation-provider.js';
 import { ToolExecutionDeniedError } from './confirmation/errors.js';
 import type { InternalToolsServices } from './internal-tools/registry.js';
-import type { InternalToolsConfig } from '../config/schemas.js';
+import type { InternalToolsConfig } from './schemas.js';
 import type { IMCPClient } from '../mcp/types.js';
 
 // Mock logger

@@ -1,7 +1,7 @@
 import { logger } from '../logger/index.js';
-import type { ValidatedAgentConfig } from '../config/schemas.js';
-import type { ValidatedLLMConfig } from '../schemas/llm.js';
-import type { ValidatedMcpServerConfig } from '../schemas/mcp.js';
+import type { ValidatedAgentConfig } from '@core/agent/schemas.js';
+import type { ValidatedLLMConfig } from '@core/llm/schemas.js';
+import type { ValidatedMcpServerConfig } from '@core/mcp/schemas.js';
 import type { AgentEventBus } from '../events/index.js';
 
 /**
