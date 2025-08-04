@@ -23,13 +23,19 @@ import { resolveBundledScript } from '@core/index.js';
 import {
     LLM_REGISTRY,
     getSupportedRoutersForProvider,
+    isValidProviderModel,
     supportsBaseURL,
 } from '@core/ai/llm/registry.js';
 import type { LLMConfig } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
 import { validateInputForLLM, createInputValidationError } from '@core/ai/llm/validation.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
-
+import {
+    ModelInfo,
+    getSupportedFileTypesForModel,
+    getMaxInputTokensForModel,
+    getMimeTypesForFileTypes,
+} from '@core/ai/llm/registry.js';
 /**
  * Helper function to send JSON response with optional pretty printing
  */
@@ -639,6 +645,84 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             return res.status(400).json({
                 success: false,
                 error: errorMessage,
+            });
+        }
+    });
+
+    const formatModels = (models: ModelInfo[]): Omit<ModelInfo, 'default'>[] => {
+        return models.map((model) => ({
+            name: model.name,
+            supportedFileTypes: model.supportedFileTypes,
+            maxInputTokens: model.maxInputTokens,
+        }));
+    };
+
+    app.get('/api/llm/registry', (req, res) => {
+        try {
+            // Use a more specific type assertion for the accumulator
+            const formattedRegistry = Object.entries(LLM_REGISTRY).reduce(
+                (acc, [provider, providerInfo]) => {
+                    acc.providers[provider] = {
+                        models: formatModels(providerInfo.models),
+                    };
+                    return acc;
+                },
+                { providers: {} } as {
+                    providers: Record<string, { models: Omit<ModelInfo, 'default'>[] }>;
+                }
+            );
+
+            res.status(200).json(formattedRegistry);
+        } catch (error) {
+            logger.error('Error in /api/llm/registry:', error);
+            res.status(500).json({ error: 'Failed to retrieve LLM registry data.' });
+        }
+    });
+
+    app.get('/api/llm/capabilities', (req, res) => {
+        // Define an interface for the expected query parameters for better type safety
+        interface CapabilitiesQuery {
+            provider: string;
+            model: string;
+        }
+
+        const { provider, model } = req.query as unknown as CapabilitiesQuery;
+
+        // Basic validation for the presence of query parameters
+        if (!provider || !model) {
+            return res.status(400).json({
+                error: 'Missing required query parameters: `provider` and `model`.',
+            });
+        }
+
+        try {
+            // Validate if the provider and model combination is supported
+            if (!isValidProviderModel(provider, model)) {
+                return res.status(404).json({
+                    error: `Provider '${provider}' or model '${model}' not found in registry.`,
+                });
+            }
+
+            // Retrieve the specific capabilities using your helper functions
+            const supportedFileTypes = getSupportedFileTypesForModel(provider, model);
+            const maxInputTokens = getMaxInputTokensForModel(provider, model);
+            const supportedMimeTypes = getMimeTypesForFileTypes(supportedFileTypes);
+
+            // Construct the final response object
+            const capabilities = {
+                model: model,
+                provider: provider,
+                supportedFileTypes: supportedFileTypes,
+                supportedMimeTypes: supportedMimeTypes,
+                maxInputTokens: maxInputTokens,
+            };
+
+            return res.status(200).json(capabilities);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error(`Error in /api/llm/capabilities: ${errorMessage}`);
+            return res.status(500).json({
+                error: `Failed to retrieve capabilities for model '${model}'.`,
             });
         }
     });

@@ -16,7 +16,7 @@ export interface ModelInfo {
     // Add other relevant metadata if needed, e.g., supported features, cost tier
 }
 
-export type SupportedFileType = 'audio' | 'pdf';
+export type SupportedFileType = 'audio' | 'pdf' | 'image';
 
 // Central MIME type to file type mapping
 export const MIME_TYPE_TO_FILE_TYPE: Record<string, SupportedFileType> = {
@@ -30,11 +30,23 @@ export const MIME_TYPE_TO_FILE_TYPE: Record<string, SupportedFileType> = {
     'audio/ogg': 'audio',
     'audio/m4a': 'audio',
     'audio/aac': 'audio',
+    'image/jpeg': 'image',
+    'image/png': 'image',
 };
 
 // Helper function to get array of allowed MIME types
 export function getAllowedMimeTypes(): string[] {
     return Object.keys(MIME_TYPE_TO_FILE_TYPE);
+}
+export function getMimeTypesForFileTypes(supportedFileTypes: SupportedFileType[]): string[] {
+    const mimeTypes: Set<string> = new Set();
+    Object.keys(MIME_TYPE_TO_FILE_TYPE).forEach((mimeType) => {
+        const fileType = MIME_TYPE_TO_FILE_TYPE[mimeType];
+        if (fileType && supportedFileTypes.includes(fileType)) {
+            mimeTypes.add(mimeType);
+        }
+    });
+    return Array.from(mimeTypes);
 }
 
 export interface ProviderInfo {
