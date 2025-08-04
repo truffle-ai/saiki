@@ -185,5 +185,20 @@ export function validateLLMConfig(
         ]);
     }
 
+    // Check for short API key (warning)
+    if (parsed.data.apiKey && parsed.data.apiKey.length < 10) {
+        warnings.push({
+            code: SaikiErrorCode.LLM_SHORT_API_KEY,
+            message: 'API key seems too short - please verify it is correct',
+            path: ['apiKey'],
+            severity: 'warning',
+            context: {
+                provider: candidate.provider,
+                model: candidate.model,
+                ...(candidate.router && { router: candidate.router }),
+            },
+        });
+    }
+
     return ok<ValidatedLLMConfig, LLMUpdateContext>(parsed.data, warnings);
 }

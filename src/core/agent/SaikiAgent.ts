@@ -12,9 +12,9 @@ import { Result, ok, fail } from '../utils/result.js';
 import type { LLMUpdateContext } from '../llm/types.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 import { validateInputForLLM } from '../llm/validation.js';
+import { SaikiValidationError, SaikiLLMError, SaikiMCPError, SaikiInputError } from './errors.js';
 import { resolveAndValidateMcpServerConfig } from '../mcp/resolver.js';
-import type { McpServerConfig, ValidatedMcpServerConfig } from '../schemas/mcp.js';
-import type { McpServerContext } from '../mcp/resolver.js';
+import type { McpServerConfig } from '../schemas/mcp.js';
 import {
     getSupportedProviders,
     getDefaultModelForProvider,
@@ -337,7 +337,10 @@ export class SaikiAgent {
                     model: llmConfig.model,
                 });
 
-                throw new Error(`Input validation failed: ${errorMessages.join('; ')}`);
+                throw new SaikiInputError(
+                    `Input validation failed: ${errorMessages.join('; ')}`,
+                    validation.issues
+                );
             }
 
             let session: ChatSession;
@@ -628,8 +631,8 @@ export class SaikiAgent {
      *
      * @param llmUpdates Partial LLM configuration object containing the updates to apply
      * @param sessionId Session ID to switch LLM for. If not provided, switches for default session. Use '*' for all sessions
-     * @returns Promise that resolves with the new configuration and validation results
-     * @throws Error if validation fails or switching fails
+     * @returns Promise that resolves with the validated LLM configuration
+     * @throws SaikiLLMError if validation fails or switching fails
      *
      * @example
      * ```typescript
@@ -649,12 +652,12 @@ export class SaikiAgent {
     public async switchLLM(
         llmUpdates: LLMUpdates,
         sessionId?: string
-    ): Promise<Result<ValidatedLLMConfig, LLMUpdateContext>> {
+    ): Promise<ValidatedLLMConfig> {
         this.ensureStarted();
 
         // Basic validation
         if (!llmUpdates.model && !llmUpdates.provider) {
-            return fail([
+            throw new SaikiLLMError('At least model or provider must be specified', [
                 {
                     code: SaikiErrorCode.AGENT_MISSING_LLM_INPUT,
                     message: 'At least model or provider must be specified',
@@ -669,22 +672,36 @@ export class SaikiAgent {
             ? this.stateManager.getRuntimeConfig(sessionId).llm
             : this.stateManager.getRuntimeConfig().llm;
 
-        // Build and validate the new configuration using new Result pattern
+        // Build and validate the new configuration using Result pattern internally
         const { candidate, warnings } = resolveLLMConfig(currentLLMConfig, llmUpdates);
         const result = validateLLMConfig(candidate, warnings);
 
         if (!result.ok) {
-            return result; // Pass through validation errors
+            // Convert Result to exception
+            const errorMessages = result.issues
+                .filter((i) => i.severity === 'error')
+                .map((i) => i.message);
+            throw new SaikiLLMError(errorMessages.join('; '), result.issues);
         }
 
         // Perform the actual LLM switch with validated config
-        const switchResult = await this.performLLMSwitch(result.data!, sessionId);
+        const switchResult = await this.performLLMSwitch(result.data, sessionId);
         if (!switchResult.ok) {
-            return fail(switchResult.issues); // Pass through switch errors
+            const errorMessages = switchResult.issues
+                .filter((i) => i.severity === 'error')
+                .map((i) => i.message);
+            throw new SaikiLLMError(errorMessages.join('; '), switchResult.issues);
         }
 
-        // Return success with validated config and any warnings
-        return ok(result.data!, result.issues);
+        // Log warnings if present
+        if (warnings.length > 0) {
+            logger.warn(
+                `LLM switch completed with warnings: ${warnings.map((w) => w.message).join(', ')}`
+            );
+        }
+
+        // Return the validated config directly
+        return result.data!;
     }
 
     /**
@@ -851,12 +868,9 @@ export class SaikiAgent {
      *
      * @param name The name of the server to connect.
      * @param config The configuration object for the server.
-     * @returns Result with validated config or validation errors
+     * @throws SaikiMCPError if validation fails or connection fails
      */
-    public async connectMcpServer(
-        name: string,
-        config: McpServerConfig
-    ): Promise<Result<ValidatedMcpServerConfig, McpServerContext>> {
+    public async connectMcpServer(name: string, config: McpServerConfig): Promise<void> {
         this.ensureStarted();
 
         // Validate the server configuration
@@ -864,7 +878,11 @@ export class SaikiAgent {
         const validation = resolveAndValidateMcpServerConfig(name, config, existingServerNames);
 
         if (!validation.ok) {
-            return validation; // Pass through validation errors
+            // Convert Result to exception
+            const errorMessages = validation.issues
+                .filter((i) => i.severity === 'error')
+                .map((i) => i.message);
+            throw new SaikiMCPError(errorMessages.join('; '), validation.issues);
         }
 
         // Add to runtime state (no validation needed - already validated)
@@ -885,8 +903,15 @@ export class SaikiAgent {
 
             logger.info(`SaikiAgent: Successfully added and connected to MCP server '${name}'.`);
 
-            // Return success with validated config and any warnings
-            return ok(validation.data!, validation.issues);
+            // Log warnings if present
+            const warnings = validation.issues.filter((i) => i.severity === 'warning');
+            if (warnings.length > 0) {
+                logger.warn(
+                    `MCP server connected with warnings: ${warnings.map((w) => w.message).join(', ')}`
+                );
+            }
+
+            // Connection successful - method completes without returning data
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(`SaikiAgent: Failed to connect to MCP server '${name}': ${errorMessage}`);
@@ -900,7 +925,7 @@ export class SaikiAgent {
                 error: errorMessage,
             });
 
-            return fail([
+            throw new SaikiMCPError(`Failed to connect to MCP server '${name}': ${errorMessage}`, [
                 {
                     code: SaikiErrorCode.AGENT_MCP_CONNECTION_FAILED,
                     message: errorMessage,
