@@ -24,7 +24,8 @@ import {
     ModelInfo,
 } from '../llm/registry.js';
 import { createAgentServices } from '../utils/service-initializer.js';
-import type { AgentConfig } from './schemas.js';
+import type { AgentConfig, ValidatedAgentConfig } from './schemas.js';
+import { AgentConfigSchema } from './schemas.js';
 import { AgentEventBus } from '../events/index.js';
 import type { IMCPClient } from '../mcp/types.js';
 import type { ToolSet } from '../tools/types.js';
@@ -119,13 +120,14 @@ export class SaikiAgent {
     private _isStopped: boolean = false;
 
     // Store config for async initialization
-    private config: AgentConfig;
+    private config: ValidatedAgentConfig;
 
     constructor(
         config: AgentConfig,
         private configPath?: string
     ) {
-        this.config = config;
+        // Validate and transform the input config
+        this.config = AgentConfigSchema.parse(config);
 
         // call start() to initialize services
         logger.info('SaikiAgent created.');

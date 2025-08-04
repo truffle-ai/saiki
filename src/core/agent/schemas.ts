@@ -87,11 +87,9 @@ export type ValidatedAgentCard = z.infer<typeof AgentCardSchema>;
 export const AgentConfigSchema = z
     .object({
         agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
-        systemPrompt: z
-            .union([z.string(), SystemPromptConfigSchema])
-            .describe(
-                'The system prompt content as a string, or a structured system prompt configuration'
-            ),
+        systemPrompt: SystemPromptConfigSchema.describe(
+            'System prompt: string shorthand or structured config'
+        ),
         mcpServers: McpServersConfigSchema.default({}).describe(
             'Configurations for MCP (Model Context Protocol) servers used by the agent'
         ),

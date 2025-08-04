@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PROMPT_GENERATOR_SOURCES } from './registry.js';
 
 // Define a base schema for common fields
 const BaseContributorSchema = z
@@ -25,7 +26,9 @@ const StaticContributorSchema = BaseContributorSchema.extend({
 // Schema for 'dynamic' contributors - only includes relevant fields
 const DynamicContributorSchema = BaseContributorSchema.extend({
     type: z.literal('dynamic'),
-    source: z.string().describe("Source identifier for dynamic content (REQUIRED for 'dynamic')"),
+    source: z
+        .enum(PROMPT_GENERATOR_SOURCES)
+        .describe("Source identifier for dynamic content (REQUIRED for 'dynamic')"),
     // No 'content' field here, as it's not relevant to dynamic contributors (source provides the content)
 }).strict();
 // Schema for 'file' contributors - includes file-specific configuration
@@ -99,13 +102,43 @@ export type ContributorConfig = z.input<typeof ContributorConfigSchema>;
 // Validated type for internal use (post-parsing)
 export type ValidatedContributorConfig = z.infer<typeof ContributorConfigSchema>;
 
-export const SystemPromptConfigSchema = z
+export const SystemPromptContributorsSchema = z
     .object({
         contributors: z
             .array(ContributorConfigSchema)
             .min(1)
+            .default([
+                {
+                    id: 'dateTime',
+                    type: 'dynamic',
+                    priority: 10,
+                    source: 'dateTime',
+                    enabled: true,
+                },
+                {
+                    id: 'resources',
+                    type: 'dynamic',
+                    priority: 20,
+                    source: 'resources',
+                    enabled: false,
+                },
+            ] as const)
             .describe('An array of contributor configurations that make up the system prompt'),
     })
     .strict();
 
-export type SystemPromptConfig = z.infer<typeof SystemPromptConfigSchema>;
+// Add the union with transform - handles string | object input
+export const SystemPromptConfigSchema = z
+    .union([
+        z.string().transform((str) => ({
+            contributors: [
+                { id: 'inline', type: 'static' as const, content: str, priority: 0, enabled: true },
+            ],
+        })),
+        SystemPromptContributorsSchema,
+    ])
+    .describe('Plain string or structured contributors object');
+
+// Type definitions
+export type SystemPromptConfig = z.input<typeof SystemPromptConfigSchema>; // string | object (user input)
+export type ValidatedSystemPromptConfig = z.output<typeof SystemPromptConfigSchema>; // object only (parsed output)

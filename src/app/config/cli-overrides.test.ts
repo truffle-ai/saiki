@@ -25,7 +25,17 @@ describe('CLI Overrides', () => {
 
     // Expected config after applying defaults through schema
     const expectedConfigWithDefaults = {
-        systemPrompt: 'hi',
+        systemPrompt: {
+            contributors: [
+                {
+                    id: 'inline',
+                    type: 'static' as const,
+                    content: 'hi',
+                    priority: 0,
+                    enabled: true,
+                },
+            ],
+        },
         mcpServers: {
             test: {
                 type: 'stdio' as const,
@@ -128,8 +138,12 @@ describe('CLI Overrides', () => {
 
         const result = applyCLIOverrides(clone(baseConfig), cliOverrides);
 
-        // Non-LLM fields should be preserved (with defaults applied)
-        expect(result.systemPrompt).toBe(baseConfig.systemPrompt);
+        // Non-LLM fields should be preserved (but systemPrompt gets transformed by schema)
+        expect(result.systemPrompt).toEqual({
+            contributors: [
+                { id: 'inline', type: 'static', content: 'hi', priority: 0, enabled: true },
+            ],
+        });
         expect(result.mcpServers?.test?.type).toBe('stdio');
         if (result.mcpServers?.test?.type === 'stdio') {
             expect(result.mcpServers.test.command).toBe('node');

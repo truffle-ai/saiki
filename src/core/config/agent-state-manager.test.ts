@@ -3,12 +3,13 @@ import { AgentStateManager } from './agent-state-manager.js';
 import { AgentEventBus } from '../events/index.js';
 import { AgentConfigSchema } from '@core/agent/schemas.js';
 import { LLMConfigSchema } from '@core/llm/schemas.js';
-import type { AgentConfig } from '@core/agent/schemas.js';
+import type { AgentConfig, ValidatedAgentConfig } from '@core/agent/schemas.js';
 
 describe('AgentStateManager Events', () => {
     let stateManager: AgentStateManager;
     let eventBus: AgentEventBus;
     let mockConfig: AgentConfig;
+    let validatedConfig: ValidatedAgentConfig;
 
     beforeEach(() => {
         eventBus = new AgentEventBus();
@@ -47,7 +48,7 @@ describe('AgentStateManager Events', () => {
             },
         };
         // Parse through schema to validate and apply defaults, converting input to ValidatedAgentConfig
-        const validatedConfig = AgentConfigSchema.parse(mockConfig);
+        validatedConfig = AgentConfigSchema.parse(mockConfig);
         stateManager = new AgentStateManager(validatedConfig, eventBus);
     });
 
@@ -145,7 +146,7 @@ describe('AgentStateManager Events', () => {
         stateManager.resetToBaseline();
 
         expect(eventSpy).toHaveBeenCalledWith({
-            toConfig: mockConfig,
+            toConfig: validatedConfig,
         });
     });
 

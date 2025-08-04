@@ -61,7 +61,7 @@ describe('Config Schemas', () => {
                 id: 'd2',
                 type: 'dynamic' as const,
                 priority: 1,
-                source: 's',
+                source: 'dateTime',
                 content: 'c', // Extraneous field for dynamic type
             };
             expect(() => ContributorConfigSchema.parse(dynamicWithExtraneousContent)).toThrow(
@@ -81,12 +81,17 @@ describe('Config Schemas', () => {
                 throw new Error('parsedStatic was not of type static');
             }
 
-            const validDynamic = { id: 'd3', type: 'dynamic' as const, priority: 1, source: 's' };
+            const validDynamic = {
+                id: 'd3',
+                type: 'dynamic' as const,
+                priority: 1,
+                source: 'dateTime',
+            };
             expect(() => ContributorConfigSchema.parse(validDynamic)).not.toThrow();
             const parsedDynamic = ContributorConfigSchema.parse(validDynamic);
             // Type guard for dynamic contributor
             if (parsedDynamic.type === 'dynamic') {
-                expect(parsedDynamic.source).toBe('s');
+                expect(parsedDynamic.source).toBe('dateTime');
                 // Explicitly check that content is not a property of the dynamic type after parsing
                 expect('content' in parsedDynamic).toBe(false);
             } else {
