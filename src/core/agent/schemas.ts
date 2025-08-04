@@ -82,7 +82,7 @@ export const AgentCardSchema = z
 
 export type AgentCard = z.input<typeof AgentCardSchema>;
 // Validated type for internal use (post-parsing)
-export type ValidatedAgentCard = z.infer<typeof AgentCardSchema>;
+export type ValidatedAgentCard = z.output<typeof AgentCardSchema>;
 
 export const AgentConfigSchema = z
     .object({
@@ -116,4 +116,4 @@ export const AgentConfigSchema = z
 
 export type AgentConfig = z.input<typeof AgentConfigSchema>;
 // Validated type for internal use (post-parsing) - all defaults applied
-export type ValidatedAgentConfig = z.infer<typeof AgentConfigSchema>;
+export type ValidatedAgentConfig = z.output<typeof AgentConfigSchema>;

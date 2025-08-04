@@ -10,7 +10,7 @@ export const InternalToolsSchema = z
         `Array of internal tool names to enable. Empty array = disabled. Available tools: ${INTERNAL_TOOL_NAMES.join(', ')}`
     );
 // Derive type from schema
-export type InternalToolsConfig = z.infer<typeof InternalToolsSchema>;
+export type InternalToolsConfig = z.output<typeof InternalToolsSchema>;
 
 export const ToolConfirmationConfigSchema = z
     .object({
@@ -39,4 +39,4 @@ export const ToolConfirmationConfigSchema = z
     .describe('Tool confirmation and approval configuration');
 
 export type ToolConfirmationConfig = z.input<typeof ToolConfirmationConfigSchema>;
-export type ValidatedToolConfirmationConfig = z.infer<typeof ToolConfirmationConfigSchema>;
+export type ValidatedToolConfirmationConfig = z.output<typeof ToolConfirmationConfigSchema>;

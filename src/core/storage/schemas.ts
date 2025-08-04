@@ -24,7 +24,7 @@ const InMemoryBackendSchema = BaseBackendSchema.extend({
     // In-memory backend doesn't need connection options, but inherits pool options for consistency
 }).strict();
 
-export type InMemoryBackendConfig = z.infer<typeof InMemoryBackendSchema>;
+export type InMemoryBackendConfig = z.output<typeof InMemoryBackendSchema>;
 // Redis backend configuration
 const RedisBackendSchema = BaseBackendSchema.extend({
     type: z.literal('redis'),
@@ -35,7 +35,7 @@ const RedisBackendSchema = BaseBackendSchema.extend({
     database: z.number().int().nonnegative().optional().describe('Redis database number'),
 }).strict();
 
-export type RedisBackendConfig = z.infer<typeof RedisBackendSchema>;
+export type RedisBackendConfig = z.output<typeof RedisBackendSchema>;
 // SQLite backend configuration
 const SqliteBackendSchema = BaseBackendSchema.extend({
     type: z.literal('sqlite'),
@@ -48,7 +48,7 @@ const SqliteBackendSchema = BaseBackendSchema.extend({
     database: z.string().optional().describe('Database filename (default: saiki.db)'),
 }).strict();
 
-export type SqliteBackendConfig = z.infer<typeof SqliteBackendSchema>;
+export type SqliteBackendConfig = z.output<typeof SqliteBackendSchema>;
 // PostgreSQL backend configuration
 const PostgresBackendSchema = BaseBackendSchema.extend({
     type: z.literal('postgres'),
@@ -60,7 +60,7 @@ const PostgresBackendSchema = BaseBackendSchema.extend({
     password: z.string().optional().describe('PostgreSQL password'),
 }).strict();
 
-export type PostgresBackendConfig = z.infer<typeof PostgresBackendSchema>;
+export type PostgresBackendConfig = z.output<typeof PostgresBackendSchema>;
 // Backend configuration using discriminated union
 const BackendConfigSchema = z
     .discriminatedUnion(
@@ -103,7 +103,7 @@ const BackendConfigSchema = z
         }
     });
 
-export type BackendConfig = z.infer<typeof BackendConfigSchema>;
+export type BackendConfig = z.output<typeof BackendConfigSchema>;
 // Storage configuration with cache and database backends
 
 export const StorageSchema = z
@@ -116,4 +116,4 @@ export const StorageSchema = z
     .strict()
     .describe('Storage configuration with cache and database backends');
 
-export type StorageConfig = z.infer<typeof StorageSchema>;
+export type StorageConfig = z.output<typeof StorageSchema>;

@@ -32,7 +32,7 @@ export const StdioServerConfigSchema = z
     .strict();
 
 export type StdioServerConfig = z.input<typeof StdioServerConfigSchema>;
-export type ValidatedStdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
+export type ValidatedStdioServerConfig = z.output<typeof StdioServerConfigSchema>;
 // ---- sse ----
 
 export const SseServerConfigSchema = z
@@ -46,7 +46,7 @@ export const SseServerConfigSchema = z
     .strict();
 
 export type SseServerConfig = z.input<typeof SseServerConfigSchema>;
-export type ValidatedSseServerConfig = z.infer<typeof SseServerConfigSchema>;
+export type ValidatedSseServerConfig = z.output<typeof SseServerConfigSchema>;
 // ---- http ----
 
 export const HttpServerConfigSchema = z
@@ -60,7 +60,7 @@ export const HttpServerConfigSchema = z
     .strict();
 
 export type HttpServerConfig = z.input<typeof HttpServerConfigSchema>;
-export type ValidatedHttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
+export type ValidatedHttpServerConfig = z.output<typeof HttpServerConfigSchema>;
 // ---- discriminated union ----
 
 export const McpServerConfigSchema = z
@@ -74,11 +74,11 @@ export const McpServerConfigSchema = z
     });
 
 export type McpServerConfig = z.input<typeof McpServerConfigSchema>;
-export type ValidatedMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
+export type ValidatedMcpServerConfig = z.output<typeof McpServerConfigSchema>;
 
 export const ServerConfigsSchema = z
     .record(McpServerConfigSchema)
     .describe('A dictionary of server configurations, keyed by server name');
 
 export type ServerConfigs = z.input<typeof ServerConfigsSchema>;
-export type ValidatedServerConfigs = z.infer<typeof ServerConfigsSchema>;
+export type ValidatedServerConfigs = z.output<typeof ServerConfigsSchema>;

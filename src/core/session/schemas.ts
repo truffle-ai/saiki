@@ -19,4 +19,4 @@ export const SessionConfigSchema = z
     .describe('Session management configuration');
 
 export type SessionConfig = z.input<typeof SessionConfigSchema>;
-export type ValidatedSessionConfig = z.infer<typeof SessionConfigSchema>;
+export type ValidatedSessionConfig = z.output<typeof SessionConfigSchema>;

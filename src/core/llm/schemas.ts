@@ -151,7 +151,7 @@ export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
 // Input type and output types for the zod schema
 
 export type LLMConfig = z.input<typeof LLMConfigSchema>;
-export type ValidatedLLMConfig = z.infer<typeof LLMConfigSchema>;
+export type ValidatedLLMConfig = z.output<typeof LLMConfigSchema>;
 // PATCH-like schema for updates (switch flows)
 
 export const LLMUpdatesSchema = LLMConfigBaseSchema.partial().strict();

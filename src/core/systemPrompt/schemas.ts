@@ -100,7 +100,7 @@ export const ContributorConfigSchema = z
 
 export type ContributorConfig = z.input<typeof ContributorConfigSchema>;
 // Validated type for internal use (post-parsing)
-export type ValidatedContributorConfig = z.infer<typeof ContributorConfigSchema>;
+export type ValidatedContributorConfig = z.output<typeof ContributorConfigSchema>;
 
 export const SystemPromptContributorsSchema = z
     .object({
