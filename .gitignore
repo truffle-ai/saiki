@@ -55,6 +55,7 @@ test-temp/
 # temporary storage
 .saiki/
 
+# Temporarily ignore module READMEs in src/core
+src/core/*/README.md
 
-# temp readmes
-src/core/**/README.md
+
