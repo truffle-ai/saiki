@@ -701,7 +701,7 @@ export class SaikiAgent {
         }
 
         // Return the validated config directly
-        return result.data!;
+        return result.data;
     }
 
     /**
@@ -886,7 +886,7 @@ export class SaikiAgent {
         }
 
         // Add to runtime state (no validation needed - already validated)
-        this.stateManager.addMcpServer(name, validation.data!);
+        this.stateManager.addMcpServer(name, validation.data);
 
         try {
             // Connect the server
