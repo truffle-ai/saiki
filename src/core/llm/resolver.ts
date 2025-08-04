@@ -1,4 +1,3 @@
-// TODO: move this to llm folder
 import { Result, Issue, hasErrors, splitIssues, ok, fail, zodToIssues } from '../utils/result.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 
