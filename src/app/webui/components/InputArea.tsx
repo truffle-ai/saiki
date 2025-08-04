@@ -311,19 +311,16 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
       
       const result = await response.json();
       
-      if (result.success) {
+      if (result.ok) {
         setCurrentModel(model.name);
         setModelSwitchError(null); // Clear any errors on success
       } else {
-        // Handle new structured error format
+        // Handle new validation error format
         let errorMessage = 'Failed to switch model';
-        if (result.errors && result.errors.length > 0) {
-          const primaryError = result.errors[0];
-          errorMessage = primaryError.message;
-          
-          // For API key errors, show the suggested action
-          if (primaryError.type === 'missing_api_key' && primaryError.suggestedAction) {
-            errorMessage += `. ${primaryError.suggestedAction}`;
+        if (result.issues && result.issues.length > 0) {
+          const errors = result.issues.filter((issue: any) => issue.severity === 'error');
+          if (errors.length > 0) {
+            errorMessage = errors[0].message;
           }
         } else if (result.error) {
           // Fallback to old format
