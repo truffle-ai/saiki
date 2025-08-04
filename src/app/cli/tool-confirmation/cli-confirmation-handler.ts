@@ -5,7 +5,7 @@ import boxen from 'boxen';
 import {
     ToolConfirmationEvent,
     ToolConfirmationResponse,
-} from '../../../core/client/tool-confirmation/types.js';
+} from '../../../core/tools/confirmation/types.js';
 import { AgentEventBus } from '../../../core/events/index.js';
 import { EventSubscriber } from '../../api/types.js';
 

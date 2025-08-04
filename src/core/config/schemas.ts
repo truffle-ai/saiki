@@ -1,13 +1,14 @@
+// LLM and MCP schemas moved, other schemas will also be moved to schemas folder
+
 import { z } from 'zod';
+import { INTERNAL_TOOL_NAMES } from '../tools/internal-tools/registry.js';
+import { LLMConfigSchema, type ValidatedLLMConfig } from '../schemas/llm.js';
 import {
-    getSupportedProviders,
-    getSupportedModels,
-    isValidProviderModel,
-    getMaxInputTokensForModel,
-    supportsBaseURL,
-    requiresBaseURL,
-    acceptsAnyModel,
-} from '../ai/llm/registry.js';
+    ServerConfigsSchema as McpServersConfigSchema,
+    type McpServerConfig,
+    type ValidatedMcpServerConfig,
+    type ServerConfigs,
+} from '../schemas/mcp.js';
 
 // (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
 
@@ -193,277 +194,6 @@ export const SystemPromptConfigSchema = z
 
 export type SystemPromptConfig = z.infer<typeof SystemPromptConfigSchema>;
 
-export const LLMConfigSchema = z
-    .object({
-        provider: z
-            .string()
-            .nonempty()
-            .describe("The LLM provider (e.g., 'openai', 'anthropic', 'google', 'groq')"),
-        model: z.string().nonempty().describe('The specific model name for the selected provider'),
-        apiKey: z
-            .string()
-            .min(1)
-            .describe(
-                'API key for the LLM provider (can also be set via environment variables using $VAR syntax)'
-            ),
-        maxIterations: z
-            .number()
-            .int()
-            .positive()
-            .default(50)
-            .describe(
-                'Maximum number of iterations for agentic loops or chained LLM calls, defaults to 50'
-            ),
-        router: z
-            .enum(['vercel', 'in-built'])
-            .default('vercel')
-            .describe('LLM router to use (vercel or in-built), defaults to vercel'),
-        baseURL: z
-            .string()
-            .url()
-            .optional()
-            .describe(
-                'Base URL for the LLM provider (e.g., https://api.openai.com/v1, https://api.anthropic.com/v1). \nCurrently only supported for OpenAI.'
-            ),
-        maxInputTokens: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                'Maximum number of input tokens for conversation history. Used for compression/truncation. Required for unknown models, defaults to maximum value for known models.'
-            ),
-        maxOutputTokens: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                'Maximum number of tokens the LLM can generate in its response. Controls the length of AI responses.'
-            ),
-        temperature: z
-            .number()
-            .min(0)
-            .max(1)
-            .optional()
-            .describe(
-                'Controls randomness in AI responses. 0 = deterministic, 1 = very creative. Default varies by provider.'
-            ),
-    })
-    .strict()
-    .superRefine((data, ctx) => {
-        const providerLower = data.provider?.toLowerCase();
-        const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
-        const maxInputTokensIsSet = data.maxInputTokens != null;
-
-        // Provider must be one of the supported list
-        const supportedProvidersList = getSupportedProviders();
-        if (!supportedProvidersList.includes(providerLower)) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                path: ['provider'],
-                message: `Provider '${data.provider}' is not supported. Supported: ${supportedProvidersList.join(', ')}`,
-            });
-        }
-
-        // When user provides a custom baseURL
-        if (baseURLIsSet) {
-            // 1. Check if provider supports baseURL using registry
-            if (!supportsBaseURL(providerLower)) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    path: ['provider'],
-                    message: `Provider '${data.provider}' does not support baseURL. Use 'openai-compatible' or corresponding name instead`,
-                });
-            }
-        }
-        // Check if provider requires baseURL but none is provided
-        else if (requiresBaseURL(providerLower)) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                path: ['baseURL'],
-                message: `Provider '${data.provider}' requires a 'baseURL' to be set`,
-            });
-        }
-        // If no base URL
-        else {
-            // 1. Model must be valid for the provider (skip for providers that accept any model)
-            if (supportedProvidersList.includes(providerLower) && !acceptsAnyModel(providerLower)) {
-                const supportedModelsList = getSupportedModels(providerLower);
-                if (!isValidProviderModel(providerLower, data.model)) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        path: ['model'],
-                        message: `Model '${data.model}' is not supported for provider '${data.provider}'. Supported: ${supportedModelsList.join(', ')}`,
-                    });
-                }
-            }
-            // 2. maxInputTokens must be within the model's limit (skip for providers that accept any model)
-            if (maxInputTokensIsSet && !acceptsAnyModel(providerLower)) {
-                try {
-                    const registryMaxInputTokens = getMaxInputTokensForModel(
-                        providerLower,
-                        data.model
-                    );
-                    // Check maxInputTokens field
-                    if (
-                        data.maxInputTokens != null &&
-                        data.maxInputTokens > registryMaxInputTokens
-                    ) {
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: ['maxInputTokens'],
-                            message: `Max input tokens for model '${data.model}' is ${registryMaxInputTokens}. You provided ${data.maxInputTokens}`,
-                        });
-                    }
-                    // Temperature validation is already handled by the Zod schema, so we don't need to validate it here
-                } catch (error: any) {
-                    // Handle ProviderNotFoundError and ModelNotFoundError specifically
-                    if (
-                        error.name === 'ProviderNotFoundError' ||
-                        error.name === 'ModelNotFoundError'
-                    ) {
-                        // This scenario should ideally be caught by the earlier provider/model validation checks.
-                        // However, if it still occurs, add an issue.
-                        // We might not have supportedModelsList here if provider was invalid.
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: ['model'], // Or ['provider', 'model']
-                            message: error.message, // The message from our custom error
-                        });
-                    } else {
-                        // For any other unexpected error, rethrow or handle as a generic validation issue
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: [], // General error
-                            message: `An unexpected error occurred while validating maxInputTokens: ${error.message}`,
-                        });
-                    }
-                }
-            }
-        }
-    });
-
-// Input type for user-facing API (pre-parsing)
-export type LLMConfig = z.input<typeof LLMConfigSchema>;
-// Validated type for internal use (post-parsing)
-export type ValidatedLLMConfig = z.infer<typeof LLMConfigSchema>;
-
-export const StdioServerConfigSchema = z
-    .object({
-        type: z.literal('stdio'),
-        command: z.string().describe("The shell command to launch the server (e.g., 'node')"),
-        args: z
-            .array(z.string())
-            .describe("Array of arguments for the command (e.g., ['script.js'])"),
-        env: z
-            .record(z.string())
-            .default({})
-            .describe(
-                'Optional environment variables for the server process, defaults to an empty object'
-            ),
-        timeout: z
-            .number()
-            .int()
-            .positive()
-            .default(30000)
-            .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
-        connectionMode: z
-            .enum(['strict', 'lenient'])
-            .default('lenient')
-            .describe(
-                'Connection mode: "strict" requires successful connection, "lenient" allows failures, defaults to "lenient"'
-            ),
-    })
-    .strict();
-// Input type for user-facing API (pre-parsing)
-export type StdioServerConfig = z.input<typeof StdioServerConfigSchema>;
-// Validated type for internal use (post-parsing)
-export type ValidatedStdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
-
-export const SseServerConfigSchema = z
-    .object({
-        type: z.literal('sse'),
-        url: z.string().url().describe('URL for the SSE server endpoint'),
-        headers: z
-            .record(z.string())
-            .default({})
-            .describe('Optional headers for the SSE connection, defaults to an empty object'),
-        timeout: z
-            .number()
-            .int()
-            .positive()
-            .default(30000)
-            .describe('Timeout in milliseconds for the server connection, defaults to 30000ms'),
-        connectionMode: z
-            .enum(['strict', 'lenient'])
-            .default('lenient')
-            .describe(
-                'Connection mode: "strict" requires successful connection, "lenient" allows failures, defaults to "lenient"'
-            ),
-    })
-    .strict();
-// Input type for user-facing API (pre-parsing)
-export type SseServerConfig = z.input<typeof SseServerConfigSchema>;
-// Validated type for internal use (post-parsing)
-export type ValidatedSseServerConfig = z.infer<typeof SseServerConfigSchema>;
-
-export const HttpServerConfigSchema = z
-    .object({
-        type: z.literal('http'),
-        url: z.string().url().describe('URL for the HTTP server'),
-        headers: z
-            .record(z.string())
-            .default({})
-            .describe('Optional headers for HTTP requests, defaults to an empty object'),
-        timeout: z
-            .number()
-            .int()
-            .positive()
-            .default(30000)
-            .describe('Timeout in milliseconds for HTTP requests, defaults to 30000ms'),
-        connectionMode: z
-            .enum(['strict', 'lenient'])
-            .default('lenient')
-            .describe(
-                'Connection mode: "strict" requires successful connection, "lenient" allows failures, defaults to "lenient"'
-            ),
-    })
-    .strict();
-// Input type for user-facing API (pre-parsing)
-export type HttpServerConfig = z.input<typeof HttpServerConfigSchema>;
-// Validated type for internal use (post-parsing)
-export type ValidatedHttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
-
-export const McpServerConfigSchema = z
-    .discriminatedUnion(
-        'type',
-        [StdioServerConfigSchema, SseServerConfigSchema, HttpServerConfigSchema],
-        {
-            errorMap: (issue, ctx) => {
-                if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
-                    return {
-                        message: `Invalid server type. Expected 'stdio', 'sse', or 'http'.`,
-                    };
-                }
-                return { message: ctx.defaultError };
-            },
-        }
-    )
-    .describe('Configuration for an MCP server connection (can be stdio, sse, or http)');
-// Input type for user-facing API (pre-parsing)
-export type McpServerConfig = z.input<typeof McpServerConfigSchema>;
-// Validated type for internal use (post-parsing)
-export type ValidatedMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
-
-export const ServerConfigsSchema = z
-    .record(McpServerConfigSchema)
-    .describe('A dictionary of server configurations, keyed by server name');
-// Input type for user-facing API (pre-parsing)
-export type ServerConfigs = z.input<typeof ServerConfigsSchema>;
-// Validated type for internal use (post-parsing)
-export type ValidatedServerConfigs = z.infer<typeof ServerConfigsSchema>;
-
 // ==== STORAGE CONFIGURATION ====
 // Base schema for common connection pool options
 const BaseBackendSchema = z.object({
@@ -587,6 +317,17 @@ export const StorageSchema = z
 
 export type StorageConfig = z.infer<typeof StorageSchema>;
 
+// Internal tools schema - separate for type derivation
+export const InternalToolsSchema = z
+    .array(z.enum(INTERNAL_TOOL_NAMES).describe('Available internal tool names'))
+    .default([])
+    .describe(
+        `Array of internal tool names to enable. Empty array = disabled. Available tools: ${INTERNAL_TOOL_NAMES.join(', ')}`
+    );
+
+// Derive type from schema
+export type InternalToolsConfig = z.infer<typeof InternalToolsSchema>;
+
 export const AgentConfigSchema = z
     .object({
         agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
@@ -595,16 +336,11 @@ export const AgentConfigSchema = z
             .describe(
                 'The system prompt content as a string, or a structured system prompt configuration'
             ),
-        mcpServers: ServerConfigsSchema.default({}).describe(
+        mcpServers: McpServersConfigSchema.default({}).describe(
             'Configurations for MCP (Model Context Protocol) servers used by the agent'
         ),
 
-        internalTools: z
-            .array(z.enum(['search_history']).describe('Available internal tool names'))
-            .default([])
-            .describe(
-                'Array of internal tool names to enable. Empty array = disabled. Available tools: search_history'
-            ),
+        internalTools: InternalToolsSchema,
 
         llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 
@@ -674,3 +410,6 @@ export const AgentConfigSchema = z
 export type AgentConfig = z.input<typeof AgentConfigSchema>;
 // Validated type for internal use (post-parsing) - all defaults applied
 export type ValidatedAgentConfig = z.infer<typeof AgentConfigSchema>;
+
+// Re-export types from other schemas for convenience
+export type { ValidatedLLMConfig, McpServerConfig, ValidatedMcpServerConfig, ServerConfigs };
