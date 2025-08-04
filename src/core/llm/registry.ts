@@ -365,7 +365,6 @@ export function getSupportedFileTypesForModel(
     // Find the specific model
     const modelInfo = providerInfo.models.find((m) => m.name.toLowerCase() === model.toLowerCase());
     if (!modelInfo) {
-        const availableModels = providerInfo.models.map((m) => m.name);
         throw new UnknownModelError(provider, model);
     }
 
