@@ -1,8 +1,16 @@
+/**
+ * Schema Defaults Conventions:
+ * – Field-level defaults live in the leaf schemas.
+ * – AgentConfig decides if a section is optional by adding `.default({})`.
+ *   It never duplicates per-field literal defaults.
+ */
+
 import { LLMConfigSchema } from '@core/llm/schemas.js';
 import { ServerConfigsSchema as McpServersConfigSchema } from '@core/mcp/schemas.js';
+import { SessionConfigSchema } from '@core/session/schemas.js';
 import { StorageSchema } from '@core/storage/schemas.js';
 import { SystemPromptConfigSchema } from '@core/systemPrompt/schemas.js';
-import { InternalToolsSchema } from '@core/tools/schemas.js';
+import { InternalToolsSchema, ToolConfirmationConfigSchema } from '@core/tools/schemas.js';
 import { z } from 'zod';
 
 // (agent card overrides are now represented as Partial<AgentCard> and processed via AgentCardSchema)
@@ -98,58 +106,11 @@ export const AgentConfigSchema = z
             database: { type: 'in-memory' },
         }).describe('Storage configuration for the agent using cache and database backends'),
 
-        sessions: z
-            .object({
-                maxSessions: z
-                    .number()
-                    .int()
-                    .positive()
-                    .default(100)
-                    .describe('Maximum number of concurrent sessions allowed, defaults to 100'),
-                sessionTTL: z
-                    .number()
-                    .int()
-                    .positive()
-                    .default(3600000)
-                    .describe(
-                        'Session time-to-live in milliseconds, defaults to 3600000ms (1 hour)'
-                    ),
-            })
-            .default({
-                maxSessions: 100,
-                sessionTTL: 3600000,
-            })
-            .describe('Session management configuration'),
+        sessions: SessionConfigSchema.default({}).describe('Session management configuration'),
 
-        toolConfirmation: z
-            .object({
-                mode: z
-                    .enum(['event-based', 'auto-approve', 'auto-deny'])
-                    .default('event-based')
-                    .describe(
-                        'Tool confirmation mode: event-based (interactive), auto-approve (all tools), auto-deny (no tools)'
-                    ),
-                timeout: z
-                    .number()
-                    .int()
-                    .positive()
-                    .default(30000)
-                    .describe(
-                        'Timeout for tool confirmation requests in milliseconds, defaults to 30000ms (30 seconds)'
-                    ),
-                allowedToolsStorage: z
-                    .enum(['memory', 'storage'])
-                    .default('storage')
-                    .describe(
-                        'Storage type for remembered tool approvals: memory (session-only) or storage (persistent)'
-                    ),
-            })
-            .default({
-                mode: 'event-based',
-                timeout: 30000,
-                allowedToolsStorage: 'storage',
-            })
-            .describe('Tool confirmation and approval configuration'),
+        toolConfirmation: ToolConfirmationConfigSchema.default({}).describe(
+            'Tool confirmation and approval configuration'
+        ),
     })
     .strict()
     .describe('Main configuration for an agent, including its LLM and server connections');
