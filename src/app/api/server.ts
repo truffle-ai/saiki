@@ -16,19 +16,21 @@ import {
     type McpTransportType,
 } from './mcp/mcp_handler.js';
 import { createAgentCard } from '@core/index.js';
-import { SaikiAgent } from '@core/index.js';
+import { SaikiAgent, SaikiValidationError } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
 import { resolveBundledScript } from '@core/index.js';
+import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
+import { z } from 'zod';
+import { LLMUpdatesSchema } from '@core/schemas/llm.js';
+import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
+import { validateInputForLLM } from '@core/llm/validation.js';
 import {
     LLM_REGISTRY,
+    LLM_PROVIDERS,
     getSupportedRoutersForProvider,
     supportsBaseURL,
-} from '@core/ai/llm/registry.js';
-import type { LLMConfig } from '@core/index.js';
-import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
-import { validateInputForLLM, createInputValidationError } from '@core/ai/llm/validation.js';
-import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
+} from '@core/llm/registry.js';
 
 /**
  * Helper function to send JSON response with optional pretty printing
@@ -43,6 +45,43 @@ function sendJsonResponse(res: any, data: any, statusCode = 200) {
     } else {
         res.json(data);
     }
+}
+
+/**
+ * Schema for LLM switch API requests
+ */
+const LLMSwitchRequestSchema = z
+    .object({
+        sessionId: z.string().optional(),
+    })
+    .merge(LLMUpdatesSchema);
+
+/**
+ * Helper function to validate request body and handle validation errors
+ */
+function validateBody<T>(
+    schema: z.ZodType<T>,
+    body: unknown
+): { success: true; data: T } | { success: false; response: any } {
+    const result = schema.safeParse(body);
+
+    if (!result.success) {
+        return {
+            success: false,
+            response: {
+                ok: false,
+                issues: result.error.errors.map((err) => ({
+                    code: 'schema_validation',
+                    message: err.message,
+                    path: err.path,
+                    severity: 'error',
+                    context: { field: err.path.join('.') },
+                })),
+            },
+        };
+    }
+
+    return { success: true, data: result.data };
 }
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
@@ -61,21 +100,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     logger.info('Setting up API event subscriptions...');
     webSubscriber.subscribe(agent.agentEventBus);
 
-    // —— Tool confirmation response handler ——
-    // Handle toolConfirmationResponse messages from WebUI by emitting them as AgentEventBus events
-    wss.on('connection', (ws: WebSocket) => {
-        ws.on('message', async (data) => {
-            try {
-                const msg = JSON.parse(data.toString());
-                if (msg?.type === 'toolConfirmationResponse' && msg.data) {
-                    // Emit confirmation response directly to AgentEventBus
-                    agent.agentEventBus.emit('saiki:toolConfirmationResponse', msg.data);
-                }
-            } catch (_err) {
-                // Ignore malformed messages
-            }
-        });
-    });
+    // Tool confirmation responses are handled by the main WebSocket handler below
 
     // HTTP endpoints
 
@@ -123,13 +148,17 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 }
             );
 
-            if (!validation.isValid) {
-                return res.status(400).send(
-                    createInputValidationError(validation, {
-                        provider: currentConfig.llm.provider,
-                        model: currentConfig.llm.model,
-                    })
-                );
+            if (!validation.ok) {
+                const errorMessages = validation.issues
+                    .filter((issue) => issue.severity === 'error')
+                    .map((issue) => issue.message);
+
+                return res.status(400).send({
+                    error: errorMessages.join('; '),
+                    provider: currentConfig.llm.provider,
+                    model: currentConfig.llm.model,
+                    issues: validation.issues,
+                });
             }
 
             await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);
@@ -182,13 +211,17 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 }
             );
 
-            if (!validation.isValid) {
-                return res.status(400).send(
-                    createInputValidationError(validation, {
-                        provider: currentConfig.llm.provider,
-                        model: currentConfig.llm.model,
-                    })
-                );
+            if (!validation.ok) {
+                const errorMessages = validation.issues
+                    .filter((issue) => issue.severity === 'error')
+                    .map((issue) => issue.message);
+
+                return res.status(400).send({
+                    error: errorMessages.join('; '),
+                    provider: currentConfig.llm.provider,
+                    model: currentConfig.llm.model,
+                    issues: validation.issues,
+                });
             }
 
             await agent.run(req.body.message, imageDataInput, fileDataInput, sessionId, stream);
@@ -402,11 +435,17 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                         }
                     );
 
-                    if (!validation.isValid) {
-                        const errorDetails = createInputValidationError(validation, {
+                    if (!validation.ok) {
+                        const errorMessages = validation.issues
+                            .filter((issue) => issue.severity === 'error')
+                            .map((issue) => issue.message);
+
+                        const errorDetails = {
+                            error: errorMessages.join('; '),
                             provider: currentConfig.llm.provider,
                             model: currentConfig.llm.model,
-                        });
+                            issues: validation.issues,
+                        };
 
                         ws.send(
                             JSON.stringify({
@@ -594,15 +633,16 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 }
             > = {};
 
-            for (const [providerKey, providerInfo] of Object.entries(LLM_REGISTRY)) {
+            for (const provider of LLM_PROVIDERS) {
+                const providerInfo = LLM_REGISTRY[provider];
                 // Convert provider key to display name
-                const displayName = providerKey.charAt(0).toUpperCase() + providerKey.slice(1);
+                const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
 
-                providers[providerKey] = {
+                providers[provider] = {
                     name: displayName,
                     models: providerInfo.models.map((model) => model.name),
-                    supportedRouters: getSupportedRoutersForProvider(providerKey),
-                    supportsBaseURL: supportsBaseURL(providerKey),
+                    supportedRouters: getSupportedRoutersForProvider(provider),
+                    supportsBaseURL: supportsBaseURL(provider),
                 };
             }
 
@@ -615,31 +655,45 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
 
     // Switch LLM configuration
     app.post('/api/llm/switch', express.json(), async (req, res) => {
+        // Validate request body
+        const validation = validateBody(LLMSwitchRequestSchema, req.body);
+        if (!validation.success) {
+            return res.status(400).json(validation.response);
+        }
+
+        const { sessionId, ...llmConfig } = validation.data;
+
         try {
-            // Thin wrapper - build LLMConfig object from request body
-            const { provider, model, apiKey, router, baseURL, sessionId, ...otherFields } =
-                req.body;
+            const config = await agent.switchLLM(llmConfig, sessionId);
 
-            // Build the LLMConfig object from the request parameters
-            const llmConfig: Partial<LLMConfig> = {};
-            if (provider !== undefined) llmConfig.provider = provider;
-            if (model !== undefined) llmConfig.model = model;
-            if (apiKey !== undefined) llmConfig.apiKey = apiKey;
-            if (router !== undefined) llmConfig.router = router;
-            if (baseURL !== undefined) llmConfig.baseURL = baseURL;
-
-            // Include any other LLMConfig fields that might be in the request
-            Object.assign(llmConfig, otherFields);
-
-            const result = await agent.switchLLM(llmConfig, sessionId);
-            return res.json(result);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error(`Error switching LLM: ${errorMessage}`);
-            return res.status(400).json({
-                success: false,
-                error: errorMessage,
+            return res.status(200).json({
+                ok: true,
+                data: config,
+                issues: [],
             });
+            // TODO: move this check to middleware
+        } catch (error) {
+            if (error instanceof SaikiValidationError) {
+                // User/validation errors -> 400
+                return res.status(400).json({
+                    ok: false,
+                    issues: error.issues,
+                });
+            } else {
+                // Infrastructure errors -> 500
+                logger.error('LLM switch failed:', error);
+                return res.status(500).json({
+                    ok: false,
+                    issues: [
+                        {
+                            code: 'internal_server_error',
+                            message: 'Internal server error during LLM switch',
+                            severity: 'error',
+                            context: {},
+                        },
+                    ],
+                });
+            }
         }
     });
 

@@ -1,15 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { ContributorConfigSchema, SystemPromptConfigSchema, AgentConfigSchema } from './schemas.js';
+import { LLMConfigSchema } from '../schemas/llm.js';
 import {
-    ContributorConfigSchema,
-    SystemPromptConfigSchema,
-    LLMConfigSchema,
     StdioServerConfigSchema,
     SseServerConfigSchema,
     HttpServerConfigSchema,
     McpServerConfigSchema,
     ServerConfigsSchema,
-    AgentConfigSchema,
-} from './schemas.js';
+} from '../schemas/mcp.js';
 
 /**
  * This file contains tests for all of our top level configuration validations.
@@ -201,20 +199,28 @@ describe('Config Schemas', () => {
             expect(() => LLMConfigSchema.parse(config)).toThrow();
         });
 
-        it('correctly validates case-insensitive provider names', () => {
+        it('requires exact case for provider names', () => {
             const configMixedCase = {
-                provider: 'OpenAI', // Mixed case
+                provider: 'OpenAI', // Mixed case - should fail
                 model: 'o4-mini',
                 apiKey: '123',
             };
-            expect(() => LLMConfigSchema.parse(configMixedCase)).not.toThrow();
+            expect(() => LLMConfigSchema.parse(configMixedCase)).toThrow();
 
             const configUpperCase = {
-                provider: 'ANTHROPIC', // Upper case
-                model: 'claude-3-opus-20240229', // Valid model for anthropic
+                provider: 'ANTHROPIC', // Upper case - should fail
+                model: 'claude-3-opus-20240229',
                 apiKey: '123',
             };
-            expect(() => LLMConfigSchema.parse(configUpperCase)).not.toThrow();
+            expect(() => LLMConfigSchema.parse(configUpperCase)).toThrow();
+
+            // But correct case should work
+            const configCorrectCase = {
+                provider: 'anthropic', // Correct case
+                model: 'claude-3-opus-20240229',
+                apiKey: '123',
+            };
+            expect(() => LLMConfigSchema.parse(configCorrectCase)).not.toThrow();
         });
 
         it('rejects if baseURL is set but provider does not support it', () => {
@@ -364,18 +370,19 @@ describe('Config Schemas', () => {
             expect(() => StdioServerConfigSchema.parse(invalidConfig as any)).toThrow();
         });
 
-        it('rejects missing required fields (command, args)', () => {
+        it('rejects missing required fields (command)', () => {
             const missingCommand = {
                 type: 'stdio',
                 args: ['server.js'],
             };
             expect(() => StdioServerConfigSchema.parse(missingCommand as any)).toThrow();
 
+            // args is optional with default [], so this should NOT throw
             const missingArgs = {
                 type: 'stdio',
                 command: 'node',
             };
-            expect(() => StdioServerConfigSchema.parse(missingArgs as any)).toThrow();
+            expect(() => StdioServerConfigSchema.parse(missingArgs as any)).not.toThrow();
         });
 
         it('rejects invalid types for fields', () => {

@@ -7,12 +7,8 @@ import { parseInput } from './interactive-commands/command-parser.js';
 import { executeCommand } from './interactive-commands/commands.js';
 import { getSaikiPath } from '@core/utils/path.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
-import {
-    LLMInputValidationError,
-    UnknownProviderError,
-    UnknownModelError,
-    ConfigurationError,
-} from '@core/error/index.js';
+import { ConfigurationError } from '@core/error/index.js';
+import { UnknownProviderError, UnknownModelError } from '@core/llm/errors.js';
 
 /**
  * Find and load the most recent session based on lastActivity.
@@ -215,9 +211,7 @@ export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promi
             await agent.run(prompt);
         }
     } catch (error) {
-        if (error instanceof LLMInputValidationError) {
-            logger.error(`Validation error: ${error.message}`, null, 'red');
-        } else if (error instanceof UnknownProviderError) {
+        if (error instanceof UnknownProviderError) {
             logger.error(`Provider error: ${error.message}`, null, 'red');
         } else if (error instanceof UnknownModelError) {
             logger.error(`Model error: ${error.message}`, null, 'red');

@@ -1,18 +1,15 @@
 import { logger } from '../logger/index.js';
-import type { ValidatedAgentConfig, ValidatedLLMConfig, McpServerConfig } from './schemas.js';
+import type { ValidatedAgentConfig } from '../config/schemas.js';
+import type { ValidatedLLMConfig } from '../schemas/llm.js';
+import type { ValidatedMcpServerConfig } from '../schemas/mcp.js';
 import type { AgentEventBus } from '../events/index.js';
-import {
-    validateMcpServerConfig,
-    type ValidationResult,
-    type McpServerValidationResult,
-} from './validation-utils.js';
 
 /**
  * Session-specific overrides that can differ from the global configuration
  */
 export interface SessionOverride {
-    /** Override LLM config for this session */
-    llm?: Partial<ValidatedLLMConfig>;
+    /** Override LLM config for this session - must be a complete validated config */
+    llm?: ValidatedLLMConfig;
 }
 
 /**
@@ -77,97 +74,65 @@ export class AgentStateManager {
 
     /**
      * Update the LLM configuration (globally or for a specific session)
+     *
+     * This method is a pure state updater - it assumes the input has already been validated
+     * by the caller (typically SaikiAgent.switchLLM). The ValidatedLLMConfig branded type
+     * ensures validation has occurred.
      */
-    public updateLLM(newConfig: Partial<ValidatedLLMConfig>, sessionId?: string): ValidationResult {
-        // Build the new effective config for validation
-        const currentConfig = sessionId ? this.getRuntimeConfig(sessionId) : this.runtimeConfig;
-        const _updatedConfig: ValidatedAgentConfig = {
-            ...currentConfig,
-            llm: { ...currentConfig.llm, ...newConfig },
-        };
-
-        // No additional validation needed - buildLLMConfig() already validated the LLM section
-        // and we're just merging it with the existing valid config
-
+    public updateLLM(validatedConfig: ValidatedLLMConfig, sessionId?: string): void {
         const oldValue = sessionId ? this.getRuntimeConfig(sessionId).llm : this.runtimeConfig.llm;
 
         if (sessionId) {
             this.setSessionOverride(sessionId, {
-                llm: { ...this.getSessionOverride(sessionId)?.llm, ...newConfig },
+                llm: validatedConfig,
             });
         } else {
-            this.runtimeConfig.llm = { ...this.runtimeConfig.llm, ...newConfig };
+            this.runtimeConfig.llm = validatedConfig;
         }
 
         this.agentEventBus.emit('saiki:stateChanged', {
             field: 'llm',
             oldValue,
-            newValue: sessionId ? this.getRuntimeConfig(sessionId).llm : this.runtimeConfig.llm,
+            newValue: validatedConfig,
             sessionId,
         });
 
         logger.info('LLM config updated', {
             sessionId,
-            updatedFields: Object.keys(newConfig),
+            provider: validatedConfig.provider,
+            model: validatedConfig.model,
             isSessionSpecific: !!sessionId,
         });
-
-        return {
-            isValid: true,
-            errors: [],
-            warnings: [],
-        };
     }
 
     // ============= MCP SERVER MANAGEMENT =============
 
     /**
      * Add or update an MCP server configuration at runtime.
+     *
+     * This method is a pure state updater - it assumes the input has already been validated
+     * by the caller (typically SaikiAgent.connectMcpServer). The ValidatedMcpServerConfig
+     * branded type ensures validation has occurred.
      */
-    public addMcpServer(
-        serverName: string,
-        serverConfig: McpServerConfig
-    ): McpServerValidationResult {
+    public addMcpServer(serverName: string, validatedConfig: ValidatedMcpServerConfig): void {
         logger.debug(`Adding/updating MCP server: ${serverName}`);
 
-        // Validate the server configuration
-        const existingServerNames = Object.keys(this.runtimeConfig.mcpServers);
-        const validation = validateMcpServerConfig(serverName, serverConfig, existingServerNames);
-
-        if (!validation.isValid) {
-            logger.warn('MCP server configuration validation failed', {
-                serverName,
-                errors: validation.errors.map((e) => e.message),
-                warnings: validation.warnings,
-            });
-            return validation;
-        }
-
-        // Log warnings if any
-        if (validation.warnings.length > 0) {
-            logger.warn('MCP server configuration warnings', {
-                serverName,
-                warnings: validation.warnings,
-            });
-        }
-
+        // Update state
         const isUpdate = serverName in this.runtimeConfig.mcpServers;
-        // Use the validated config with defaults applied from validation result
-        this.runtimeConfig.mcpServers[serverName] = validation.config!;
+        this.runtimeConfig.mcpServers[serverName] = validatedConfig;
 
+        // Emit events
         const eventName = isUpdate ? 'saiki:mcpServerUpdated' : 'saiki:mcpServerAdded';
-        this.agentEventBus.emit(eventName, { serverName, config: serverConfig });
+        this.agentEventBus.emit(eventName, { serverName, config: validatedConfig });
 
         this.agentEventBus.emit('saiki:stateChanged', {
             field: 'mcpServers',
             oldValue: isUpdate ? 'updated' : 'added',
-            newValue: serverConfig,
+            newValue: validatedConfig,
             sessionId: undefined, // MCP servers are global
         });
 
         logger.info(`MCP server '${serverName}' ${isUpdate ? 'updated' : 'added'} successfully`);
-
-        return validation;
     }
 
     /**
@@ -198,12 +163,7 @@ export class AgentStateManager {
     /**
      * Set a session-specific override
      */
-    private setSessionOverride(sessionId: string, partial: Partial<SessionOverride>): void {
-        const existing = this.sessionOverrides.get(sessionId);
-        const override: SessionOverride = {
-            llm: { ...existing?.llm, ...partial.llm },
-        };
-
+    private setSessionOverride(sessionId: string, override: SessionOverride): void {
         this.sessionOverrides.set(sessionId, override);
         this.agentEventBus.emit('saiki:sessionOverrideSet', {
             sessionId,

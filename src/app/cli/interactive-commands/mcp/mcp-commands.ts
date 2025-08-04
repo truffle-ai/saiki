@@ -41,7 +41,7 @@ async function handleMcpAddStdio(args: string[], agent: SaikiAgent): Promise<boo
     try {
         await agent.connectMcpServer(serverName, config);
         console.log(chalk.green(`✅ STDIO MCP server '${serverName}' added successfully`));
-        console.log(chalk.dim(`   Command: ${config.command} ${config.args.join(' ')}`));
+        console.log(chalk.dim(`   Command: ${config.command} ${config.args?.join(' ') ?? ''}`));
         console.log(chalk.dim(`   Connection mode: ${config.connectionMode}`));
     } catch (error) {
         logger.error(

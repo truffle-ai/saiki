@@ -17,6 +17,7 @@ import {
     getAllSupportedModels,
     SaikiAgent,
     loadAgentConfig,
+    LLMProvider,
 } from '@core/index.js';
 import { applyCLIOverrides, type CLIConfigOverrides } from './config/cli-overrides.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
@@ -268,7 +269,7 @@ program
 
         // ——— Infer provider & API key from model ———
         if (opts.model) {
-            let provider: string;
+            let provider: LLMProvider;
             try {
                 provider = getProviderFromModel(opts.model);
             } catch (err) {

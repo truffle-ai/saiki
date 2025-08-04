@@ -56,8 +56,8 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
     { name: 'Gemini 2.5 Pro', provider: 'google', model: 'gemini-2.5-pro' },
   ];
 
-  // File size limit (50MB)
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
+  // File size limit (64MB)
+  const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64MB in bytes
 
   const showUserError = (message: string) => {
     setFileUploadError(message);
@@ -136,7 +136,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
     // File size validation
     if (file.size > MAX_FILE_SIZE) {
-      showUserError('PDF file too large. Maximum size is 50MB.');
+      showUserError('PDF file too large. Maximum size is 64MB.');
       e.target.value = '';
       return;
     }
@@ -240,7 +240,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
     // File size validation
     if (file.size > MAX_FILE_SIZE) {
-      showUserError('Image file too large. Maximum size is 50MB.');
+      showUserError('Image file too large. Maximum size is 64MB.');
       e.target.value = '';
       return;
     }
@@ -311,19 +311,16 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
       
       const result = await response.json();
       
-      if (result.success) {
+      if (result.ok) {
         setCurrentModel(model.name);
         setModelSwitchError(null); // Clear any errors on success
       } else {
-        // Handle new structured error format
+        // Handle new validation error format
         let errorMessage = 'Failed to switch model';
-        if (result.errors && result.errors.length > 0) {
-          const primaryError = result.errors[0];
-          errorMessage = primaryError.message;
-          
-          // For API key errors, show the suggested action
-          if (primaryError.type === 'missing_api_key' && primaryError.suggestedAction) {
-            errorMessage += `. ${primaryError.suggestedAction}`;
+        if (result.issues && result.issues.length > 0) {
+          const errors = result.issues.filter((issue: any) => issue.severity === 'error');
+          if (errors.length > 0) {
+            errorMessage = errors[0].message;
           }
         } else if (result.error) {
           // Fallback to old format
@@ -366,7 +363,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
 
     // File size validation
     if (file.size > MAX_FILE_SIZE) {
-      showUserError('Audio file too large. Maximum size is 50MB.');
+      showUserError('Audio file too large. Maximum size is 64MB.');
       e.target.value = '';
       return;
     }

@@ -14,7 +14,7 @@
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import { SaikiAgent } from '@core/index.js';
+import { SaikiAgent, SaikiLLMError } from '@core/index.js';
 import { CommandDefinition } from '../command-parser.js';
 
 /**
@@ -121,30 +121,30 @@ export const modelCommands: CommandDefinition = {
                     console.log(chalk.yellow(`🔄 Switching to ${model} (${provider})...`));
 
                     const llmConfig = { model, provider };
-                    const result = await agent.switchLLM(llmConfig);
+                    await agent.switchLLM(llmConfig);
 
-                    if (result.success) {
-                        console.log(chalk.green(`✅ ${result.message}`));
-                        if (result.warnings && result.warnings.length > 0) {
-                            for (const warning of result.warnings) {
-                                console.log(chalk.yellow(`⚠️  ${warning}`));
+                    console.log(chalk.green(`✅ Successfully switched to ${model} (${provider})`));
+                } catch (error) {
+                    if (error instanceof SaikiLLMError) {
+                        console.log(chalk.red('❌ Failed to switch model:'));
+                        const errors = error.issues.filter((issue) => issue.severity === 'error');
+                        for (const err of errors) {
+                            console.log(chalk.red(`   ${err.message}`));
+                        }
+                        // Show warnings if any
+                        const warnings = error.issues.filter(
+                            (issue) => issue.severity === 'warning'
+                        );
+                        if (warnings.length > 0) {
+                            for (const warning of warnings) {
+                                console.log(chalk.yellow(`⚠️  ${warning.message}`));
                             }
                         }
                     } else {
-                        console.log(chalk.red('❌ Failed to switch model:'));
-                        if (result.errors) {
-                            for (const error of result.errors) {
-                                console.log(chalk.red(`   ${error.message}`));
-                                if (error.suggestedAction) {
-                                    console.log(chalk.dim(`   💡 ${error.suggestedAction}`));
-                                }
-                            }
-                        }
+                        logger.error(
+                            `Failed to switch model: ${error instanceof Error ? error.message : String(error)}`
+                        );
                     }
-                } catch (error) {
-                    logger.error(
-                        `Failed to switch model: ${error instanceof Error ? error.message : String(error)}`
-                    );
                 }
                 return true;
             },
