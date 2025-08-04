@@ -497,7 +497,7 @@ describe('AgentConfigSchema', () => {
                 llm: {
                     provider: 'openai',
                     model: 'gpt-4o',
-                    apiKey: '$OPENAI_API_KEY',
+                    apiKey: 'sk-prod-key-123',
                     router: 'vercel',
                     maxIterations: 30,
                     temperature: 0.3,
