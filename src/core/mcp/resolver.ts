@@ -1,4 +1,4 @@
-// src/config/mcp/validate-shim.ts
+// src/config/mcp/resolver.ts
 import { ok, fail, type Result, type Issue, hasErrors, zodToIssues } from '../utils/result.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 
@@ -8,10 +8,8 @@ import {
     type ValidatedMcpServerConfig,
 } from '../schemas/mcp.js';
 
-// New pipeline (from earlier message)
 export type McpServerContext = { serverName?: string };
 
-/** One-call convenience */
 export function resolveAndValidateMcpServerConfig(
     serverName: string,
     serverConfig: McpServerConfig,
