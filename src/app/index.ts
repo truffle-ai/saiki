@@ -18,6 +18,7 @@ import {
     DextoAgent,
     loadAgentConfig,
     LLMProvider,
+    getDefaultAgentRegistry,
 } from '@core/index.js';
 import { applyCLIOverrides, type CLIConfigOverrides } from './config/cli-overrides.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
@@ -49,7 +50,11 @@ program
     .name('dexto')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
     .version(pkg.version, '-v, --version', 'output the current version')
-    .option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
+    .option(
+        '-a, --agent <path>',
+        'Agent name (from registry) or path to agent config file',
+        DEFAULT_CONFIG_PATH
+    )
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .option('-m, --model <model>', 'Specify the LLM model to use. ')
@@ -132,7 +137,47 @@ program
         }
     });
 
-// 4) `mcp` SUB-COMMAND
+// 4) `list-agents` SUB-COMMAND
+program
+    .command('list-agents')
+    .description('List all available agents in the registry')
+    .action(async () => {
+        try {
+            const registry = getDefaultAgentRegistry();
+            const agents = await registry.listAgents();
+
+            if (agents.length === 0) {
+                console.log(chalk.yellow('No agents found in the registry.'));
+                return;
+            }
+
+            console.log(chalk.bold.cyan('\n📋 Available Agents:\n'));
+
+            agents.forEach((agent) => {
+                console.log(chalk.bold.green(`• ${agent.name}`));
+                console.log(chalk.dim(`  ${agent.description}`));
+                if (agent.tags && agent.tags.length > 0) {
+                    console.log(chalk.dim(`  Tags: ${agent.tags.join(', ')}`));
+                }
+                console.log(); // Empty line for spacing
+            });
+
+            console.log(chalk.dim(`Total: ${agents.length} agents available`));
+            console.log(chalk.dim('\nUsage examples:'));
+            console.log(chalk.dim(`  npx @truffle-ai/saiki ${agents[0]?.name || 'github-agent'}`));
+            console.log(
+                chalk.dim(`  npx @truffle-ai/saiki --agent ${agents[0]?.name || 'github-agent'}`)
+            );
+            console.log(chalk.dim('  npx @truffle-ai/saiki --agent /path/to/custom-agent.yml'));
+        } catch (error) {
+            console.error(
+                `❌ Failed to list agents: ${error instanceof Error ? error.message : String(error)}`
+            );
+            process.exit(1);
+        }
+    });
+
+// 5) `mcp` SUB-COMMAND
 // For now, this mode simply aggregates and re-expose tools from configured MCP servers (no agent)
 // dexto --mode mcp will be moved to this sub-command in the future
 program
@@ -217,6 +262,8 @@ program
             'build complex AI applications like Cursor, and more.\n\n' +
             // TODO: Add `dexto tell me about your cli` starter prompt
             'Run dexto interactive CLI with `dexto` or run a one-shot prompt with `dexto <prompt>`\n' +
+            'Use available agents: `saiki github-agent`, `saiki database-agent`, etc.\n' +
+            'List all available agents with `saiki list-agents`\n' +
             'Start with a new session using `dexto --new-session [sessionId]`\n' +
             'Run dexto web UI with `dexto --mode web`\n' +
             'Run dexto as a server (REST APIs + WebSockets) with `dexto --mode server`\n' +
@@ -271,7 +318,37 @@ program
         }
 
         const opts = program.opts();
-        const headlessInput = prompt.join(' ') || undefined;
+        let headlessInput = prompt.join(' ') || undefined;
+
+        // ——— Handle agent name as first argument ———
+        // Check if the first argument might be an agent name (not a regular prompt)
+        if (prompt.length > 0) {
+            const firstArg = prompt[0];
+            const registry = getDefaultAgentRegistry();
+
+            try {
+                // Check if the first argument is an agent name
+                if (firstArg && (await registry.hasAgent(firstArg))) {
+                    logger.debug(`Detected agent name '${firstArg}' as first argument`);
+
+                    // Override the agent option
+                    opts.agent = firstArg;
+
+                    // Remove the agent name from the prompt and reconstruct headlessInput
+                    const remainingPrompt = prompt.slice(1);
+                    headlessInput = remainingPrompt.join(' ') || undefined;
+
+                    logger.info(
+                        `Using agent '${firstArg}' with prompt: "${headlessInput || 'interactive mode'}"`
+                    );
+                }
+            } catch (_error) {
+                // If agent resolution fails, treat it as a regular prompt
+                logger.debug(
+                    `First argument '${firstArg}' is not an agent name, treating as prompt`
+                );
+            }
+        }
 
         // ——— Infer provider & API key from model ———
         if (opts.model) {
@@ -305,7 +382,21 @@ program
         let agent: DextoAgent;
         try {
             const configPath = opts.agent === DEFAULT_CONFIG_PATH ? undefined : opts.agent;
-            console.log(`🚀 Initializing Dexto with config: ${resolveConfigPath(configPath)}`);
+
+            // Resolve the actual config path for display (using the same logic as loadAgentConfig)
+            let displayPath: string;
+            if (configPath) {
+                try {
+                    const registry = getDefaultAgentRegistry();
+                    displayPath = await registry.resolveAgent(configPath);
+                } catch (_error) {
+                    displayPath = resolveConfigPath(configPath);
+                }
+            } else {
+                displayPath = resolveConfigPath(configPath);
+            }
+
+            console.log(`🚀 Initializing Saiki with config: ${displayPath}`);
             const cfg = await loadAgentConfig(configPath);
 
             // Apply CLI overrides to config before passing to core layer

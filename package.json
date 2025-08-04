@@ -64,6 +64,7 @@
         "dist/",
         "agents/agent.yml",
         "agents/agent-template.yml",
+        "agents/agent-registry.json",
         "public/"
     ],
     "dependencies": {

@@ -1,0 +1,132 @@
+{
+  "github-agent": {
+    "name": "github-agent",
+    "displayName": "GitHub Agent",
+    "description": "AI agent for GitHub repository management and operations",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["github", "git", "repository", "development"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/github.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "database-agent": {
+    "name": "database-agent",
+    "displayName": "Database Agent",
+    "description": "AI agent for database operations and SQL queries",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["database", "sql", "data", "queries"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/database-agent/database-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "research-agent": {
+    "name": "research-agent",
+    "displayName": "Research Agent",
+    "description": "AI agent specialized in research and information gathering",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["research", "information", "analysis"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/research-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "resume-agent": {
+    "name": "resume-agent",
+    "displayName": "Resume Agent",
+    "description": "AI agent for resume building and career assistance",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["resume", "career", "job-search", "hr"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/resume-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "sales-agent": {
+    "name": "sales-agent",
+    "displayName": "Sales Onboarding Agent",
+    "description": "AI agent for sales team onboarding and training",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["sales", "onboarding", "training", "crm"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/sales-onboarding-agent/sales-onboarding-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "stripe-agent": {
+    "name": "stripe-agent",
+    "displayName": "Stripe Agent",
+    "description": "AI agent for Stripe payment processing and management",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["stripe", "payments", "billing", "fintech"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/stripe-agent/stripe-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "talk2pdf-agent": {
+    "name": "talk2pdf-agent",
+    "displayName": "Talk2PDF Agent",
+    "description": "AI agent for PDF document analysis and conversation",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["pdf", "documents", "analysis", "conversation"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/talk2pdf-agent/talk2pdf-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "image-editor-agent": {
+    "name": "image-editor-agent",
+    "displayName": "Image Editor Agent",
+    "description": "AI agent for image editing and manipulation",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["images", "editing", "graphics", "visual"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/image-editor-agent/image-editor-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "music-agent": {
+    "name": "music-agent",
+    "displayName": "Music Agent",
+    "description": "AI agent for music creation and audio processing",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["music", "audio", "creation", "sound"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/music-agent/music-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "product-researcher": {
+    "name": "product-researcher",
+    "displayName": "Product Name Researcher",
+    "description": "AI agent for product name research and branding",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["product", "research", "branding", "naming"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/product-name-researcher/product-name-researcher.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "webapp-builder": {
+    "name": "webapp-builder",
+    "displayName": "Web App Builder Agent",
+    "description": "AI agent for building web applications",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["web", "development", "applications", "builder"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/webapp-builder.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "workflow-agent": {
+    "name": "workflow-agent",
+    "displayName": "Workflow Agent",
+    "description": "AI agent for workflow automation and process management",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["workflow", "automation", "process", "management"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/workflow-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  },
+  "triage-agent": {
+    "name": "triage-agent",
+    "displayName": "Support Triage Agent",
+    "description": "AI agent for customer support triage and routing",
+    "version": "1.0.0",
+    "author": "Truffle AI",
+    "tags": ["support", "triage", "customer-service", "routing"],
+    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/triage-demo/triage-agent.yml",
+    "lastUpdated": "2025-01-01T00:00:00Z"
+  }
+}
