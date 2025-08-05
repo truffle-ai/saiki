@@ -10,6 +10,11 @@ import { ConfigFileNotFoundError } from '@core/error/index.js';
 export const DEFAULT_CONFIG_PATH = 'agents/agent.yml';
 
 /**
+ * User's global config path (relative to home directory)
+ */
+export const USER_CONFIG_PATH = '.dexto/agent.yml';
+
+/**
  * Generic directory walker that searches up the directory tree
  * @param startPath Starting directory path
  * @param predicate Function that returns true when the desired condition is found
@@ -119,9 +124,9 @@ export function resolveConfigPath(configPath?: string, startPath?: string): stri
     if (projectRoot) {
         // In dexto project: Look for config in project (multiple possible locations)
         const configPaths = [
-            path.join(projectRoot, 'agents', 'agent.yml'), // Standard
-            path.join(projectRoot, 'src', 'agents', 'agent.yml'), // Common
-            path.join(projectRoot, 'src', 'dexto', 'agents', 'agent.yml'), // Test app structure
+            path.join(projectRoot, DEFAULT_CONFIG_PATH), // Standard
+            path.join(projectRoot, 'src', DEFAULT_CONFIG_PATH), // Common
+            path.join(projectRoot, 'src', 'dexto', DEFAULT_CONFIG_PATH), // Test app structure
             path.join(projectRoot, '.dexto', 'agent.yml'), // Hidden
             path.join(projectRoot, 'agent.yml'), // Root
         ];
@@ -136,9 +141,17 @@ export function resolveConfigPath(configPath?: string, startPath?: string): stri
             `No agent.yml found in project. Searched: ${configPaths.join(', ')}`
         );
     } else {
-        // Global CLI: Use bundled default config
+        // Global CLI mode
+
+        // Check for user's global config first
+        const userConfigPath = getUserConfigPath();
+        if (existsSync(userConfigPath)) {
+            return userConfigPath;
+        }
+
+        // Fall back to bundled default config
         try {
-            const bundledConfigPath = resolveBundledScript('agents/agent.yml');
+            const bundledConfigPath = getBundledConfigPath();
             if (existsSync(bundledConfigPath)) {
                 return bundledConfigPath;
             }
@@ -217,5 +230,34 @@ export function getDextoEnvPath(startPath: string = process.cwd()): string {
     } else {
         // Global usage: save to ~/.dexto/.env
         return path.join(homedir(), '.dexto', '.env');
+    }
+}
+
+/**
+ * Get the user's global config path
+ * @returns Absolute path to ~/.dexto/agent.yml
+ */
+export function getUserConfigPath(): string {
+    return path.join(homedir(), USER_CONFIG_PATH);
+}
+
+/**
+ * Get the bundled config path
+ * @returns Absolute path to bundled agent.yml
+ */
+export function getBundledConfigPath(): string {
+    return resolveBundledScript(DEFAULT_CONFIG_PATH);
+}
+
+/**
+ * Check if a config path is the bundled config
+ * @param configPath Path to check
+ * @returns True if this is the bundled config
+ */
+export function isUsingBundledConfig(configPath: string): boolean {
+    try {
+        return configPath === getBundledConfigPath();
+    } catch {
+        return false;
     }
 }

@@ -13,7 +13,6 @@ import pkg from '../../package.json' with { type: 'json' };
 
 import {
     logger,
-    DEFAULT_CONFIG_PATH,
     resolveConfigPath,
     getProviderFromModel,
     getAllSupportedModels,
@@ -30,6 +29,7 @@ import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
 import { validateAgentConfig } from './cli/utils/config-validation.js';
 import { applyCLIOverrides } from './config/cli-overrides.js';
+import { isFirstTimeUserScenario, handleFirstTimeSetup } from './cli/utils/first-time-setup.js';
 import { getPort } from '@core/utils/port-utils.js';
 import {
     createDextoProject,
@@ -54,7 +54,7 @@ program
     .name('dexto')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
     .version(pkg.version, '-v, --version', 'output the current version')
-    .option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
+    .option('-a, --agent <path>', 'Path to agent config file')
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .option('-m, --model <model>', 'Specify the LLM model to use. ')
@@ -167,8 +167,7 @@ program
             // Load and resolve config
             // Get the global agent option from the main program
             const globalOpts = program.opts();
-            const configPath =
-                globalOpts.agent === DEFAULT_CONFIG_PATH ? undefined : globalOpts.agent;
+            const configPath = globalOpts.agent;
 
             const config = await loadAgentConfig(configPath);
             console.log(`📄 Loading Dexto config from: ${resolveConfigPath(configPath)}`);
@@ -268,16 +267,26 @@ program
             handleCliOptionsError(err);
         }
 
-        // ——— VALIDATE CONFIG WITH INTERACTIVE SETUP ———
+        // ——— LOAD AND PREPARE CONFIG ———
         let validatedConfig: AgentConfig;
         try {
-            const configPath = opts.agent === DEFAULT_CONFIG_PATH ? undefined : opts.agent;
+            // Check for first-time user scenario BEFORE loading config
+            const resolvedPath = resolveConfigPath(opts.agent);
+            if (isFirstTimeUserScenario(resolvedPath)) {
+                // Handle first-time setup (provider selection, config creation, API key)
+                const setupComplete = await handleFirstTimeSetup();
+                if (!setupComplete) {
+                    console.log(chalk.dim('\n👋 Run dexto again when ready!'));
+                    process.exit(0);
+                }
+                // Config has been created, continue with normal flow
+            }
 
             // Load raw config and apply CLI overrides
-            const rawConfig = await loadAgentConfig(configPath);
+            const rawConfig = await loadAgentConfig(opts.agent);
             const mergedConfig = applyCLIOverrides(rawConfig, opts as CLIConfigOverrides);
 
-            // Validate with interactive setup if needed
+            // Validate with interactive setup if needed (for API key issues)
             validatedConfig = await validateAgentConfig(mergedConfig, true);
         } catch (err) {
             // Config loading failed completely
@@ -288,8 +297,7 @@ program
         // ——— CREATE AGENT ———
         let agent: DextoAgent;
         try {
-            const configPath = opts.agent === DEFAULT_CONFIG_PATH ? undefined : opts.agent;
-            console.log(`🚀 Initializing Dexto with config: ${resolveConfigPath(configPath)}`);
+            console.log(`🚀 Initializing Dexto with config: ${resolveConfigPath(opts.agent)}`);
 
             // Set run mode for tool confirmation provider
             process.env.DEXTO_RUN_MODE = opts.mode;
@@ -305,7 +313,7 @@ program
             }
 
             // DextoAgent will parse/validate again (parse-twice pattern)
-            agent = new DextoAgent(validatedConfig, configPath);
+            agent = new DextoAgent(validatedConfig, opts.agent);
 
             // Start the agent (initialize async services)
             await agent.start();

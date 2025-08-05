@@ -100,10 +100,10 @@ export async function interactiveApiKeySetup(provider: LLMProvider): Promise<boo
                 : 'your global dexto configuration (~/.dexto/.env)';
 
             p.outro(
-                chalk.green('🎉 Setup complete!') +
-                    '\n\n' +
-                    `Your ${getProviderDisplayName(provider)} API key has been saved to ${locationDesc}\n` +
-                    `Dexto will now be able to use ${getProviderDisplayName(provider)}.`
+                chalk.green('🎉 API Key Setup complete!')
+                // + '\n\n' +
+                // `Your ${getProviderDisplayName(provider)} API key has been saved to ${locationDesc}\n` +
+                // `Dexto will now be able to use ${getProviderDisplayName(provider)}.`
             );
 
             return true;
