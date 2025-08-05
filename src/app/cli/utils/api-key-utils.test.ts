@@ -1,23 +1,42 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
-import os from 'os';
+import { tmpdir, homedir } from 'os';
 import {
     updateProjectEnvFileWithLLMKeys,
     updateDetectedEnvFileWithLLMKeys,
 } from './api-key-utils.js';
 
+// Mock homedir to control global .dexto location
+vi.mock('os', async () => {
+    const actual = await vi.importActual('os');
+    return {
+        ...actual,
+        homedir: vi.fn(),
+    };
+});
+
 describe('API Key Utils', () => {
     let tempDir: string;
+    let mockHomeDir: string;
 
     beforeEach(async () => {
         // Create a temporary directory for testing
-        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dexto-api-key-test-'));
+        tempDir = await fs.mkdtemp(path.join(tmpdir(), 'dexto-api-key-test-'));
+
+        // Create mock home directory
+        mockHomeDir = await fs.mkdtemp(path.join(tmpdir(), 'dexto-mock-home-'));
+
+        // Mock homedir to return our test directory
+        vi.mocked(homedir).mockReturnValue(mockHomeDir);
     });
 
     afterEach(async () => {
-        // Cleanup the temporary directory
+        // Cleanup the temporary directories
         await fs.rm(tempDir, { recursive: true, force: true });
+        await fs.rm(mockHomeDir, { recursive: true, force: true });
+
+        vi.clearAllMocks();
     });
 
     describe('updateProjectEnvFileWithLLMKeys', () => {
@@ -180,8 +199,17 @@ describe('API Key Utils', () => {
                 .catch(() => false);
             expect(projectEnvExists).toBe(false);
 
-            // Note: We can't easily test the global ~/.dexto/.env file without mocking homedir
-            // The function should have succeeded without throwing
+            // Global ~/.dexto/.env should exist in mocked home directory
+            const globalEnvPath = path.join(mockHomeDir, '.dexto', '.env');
+            const globalEnvExists = await fs
+                .access(globalEnvPath)
+                .then(() => true)
+                .catch(() => false);
+            expect(globalEnvExists).toBe(true);
+
+            // Verify the content was written correctly
+            const globalEnvContent = await fs.readFile(globalEnvPath, 'utf8');
+            expect(globalEnvContent).toContain('OPENAI_API_KEY=global-key');
         });
     });
 });
