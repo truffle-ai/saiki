@@ -26,7 +26,7 @@ export const documentationCommands: CommandDefinition[] = [
         handler: async (_args: string[], _agent: DextoAgent): Promise<boolean> => {
             try {
                 const { spawn } = await import('child_process');
-                const url = 'https://truffle-ai.github.io/dexto/docs/category/getting-started/';
+                const url = 'https://docs.dexto.ai/category/getting-started/';
 
                 console.log(chalk.blue(`🌐 Opening Dexto documentation: ${url}`));
 
@@ -46,7 +46,7 @@ export const documentationCommands: CommandDefinition[] = [
                 );
                 console.log(
                     chalk.yellow(
-                        '💡 You can manually visit: https://truffle-ai.github.io/dexto/docs/category/getting-started/'
+                        '💡 You can manually visit: https://docs.dexto.ai/category/getting-started/'
                     )
                 );
             }
