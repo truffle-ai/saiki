@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { InternalToolsProvider } from './provider.js';
 import { NoOpConfirmationProvider } from '../confirmation/noop-confirmation-provider.js';
 import type { InternalToolsServices } from './registry.js';
-import type { InternalToolsConfig } from '../../config/schemas.js';
+import type { InternalToolsConfig } from '../schemas.js';
 import type { InternalTool } from '../types.js';
 
 // Mock logger

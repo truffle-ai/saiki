@@ -6,7 +6,7 @@ import {
     McpServerConfigSchema,
     type McpServerConfig,
     type ValidatedMcpServerConfig,
-} from '../schemas/mcp.js';
+} from './schemas.js';
 
 export type McpServerContext = { serverName?: string };
 

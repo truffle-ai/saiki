@@ -1,6 +1,6 @@
 import { Redis } from 'ioredis';
 import type { CacheBackend } from './cache-backend.js';
-import type { RedisBackendConfig } from '../../config/schemas.js';
+import type { RedisBackendConfig } from '../schemas.js';
 
 /**
  * Redis storage backend for production cache operations.

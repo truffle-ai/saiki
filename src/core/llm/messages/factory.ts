@@ -1,7 +1,7 @@
 import { ContextManager } from './manager.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { IConversationHistoryProvider } from './history/types.js';
-import { ValidatedLLMConfig } from '../../schemas/llm.js';
+import { ValidatedLLMConfig } from '../schemas.js';
 import { LLMRouter } from '../registry.js';
 import { createMessageFormatter } from './formatters/factory.js';
 import { createTokenizer } from '../tokenizer/factory.js';

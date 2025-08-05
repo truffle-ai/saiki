@@ -3,7 +3,7 @@ import { ToolConfirmationProvider } from '../confirmation/types.js';
 import { logger } from '../../logger/index.js';
 import { convertZodSchemaToJsonSchema } from '../../utils/schema.js';
 import { InternalToolsServices, KnownInternalTool, getInternalToolInfo } from './registry.js';
-import type { InternalToolsConfig } from '../../config/schemas.js';
+import type { InternalToolsConfig } from '../schemas.js';
 
 /**
  * Provider for built-in internal tools that are part of the core system

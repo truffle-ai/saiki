@@ -9,7 +9,7 @@ import type {
     StdioServerConfig,
     SseServerConfig,
     HttpServerConfig,
-} from '../schemas/mcp.js';
+} from './schemas.js';
 import { ToolSet } from '../tools/types.js';
 import { IMCPClient } from './types.js';
 import { resolveBundledScript } from '../utils/path.js';

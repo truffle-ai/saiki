@@ -8,7 +8,7 @@ import type { ContextManager } from '../llm/messages/manager.js';
 import type { ILLMService } from '../llm/services/types.js';
 import type { PromptManager } from '../systemPrompt/manager.js';
 import type { ToolManager } from '../tools/tool-manager.js';
-import type { ValidatedLLMConfig } from '../schemas/llm.js';
+import type { ValidatedLLMConfig } from '@core/llm/schemas.js';
 import type { AgentStateManager } from '../config/agent-state-manager.js';
 import type { StorageBackends } from '../storage/backend/types.js';
 import {

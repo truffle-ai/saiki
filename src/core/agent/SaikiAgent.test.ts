@@ -1,7 +1,8 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
 import { SaikiLLMError } from './errors.js';
-import type { LLMConfig, ValidatedLLMConfig, AgentConfig } from '../index.js';
+import type { AgentConfig } from '@core/agent/schemas.js';
+import type { LLMConfig, ValidatedLLMConfig } from '@core/llm/schemas.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 
 // Mock the dependencies

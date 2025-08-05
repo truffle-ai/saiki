@@ -1,9 +1,9 @@
-// src/core/schemas/mcp.ts
+import { SaikiErrorCode } from '@core/schemas/errors.js';
+import { EnvExpandedString, RequiredEnvURL } from '@core/utils/result.js';
 import { z } from 'zod';
-import { SaikiErrorCode } from './errors.js';
-import { EnvExpandedString, RequiredEnvURL } from '../utils/result.js';
 
 // ---- stdio ----
+
 export const StdioServerConfigSchema = z
     .object({
         type: z.literal('stdio'),
@@ -32,9 +32,9 @@ export const StdioServerConfigSchema = z
     .strict();
 
 export type StdioServerConfig = z.input<typeof StdioServerConfigSchema>;
-export type ValidatedStdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
-
+export type ValidatedStdioServerConfig = z.output<typeof StdioServerConfigSchema>;
 // ---- sse ----
+
 export const SseServerConfigSchema = z
     .object({
         type: z.literal('sse'),
@@ -46,9 +46,9 @@ export const SseServerConfigSchema = z
     .strict();
 
 export type SseServerConfig = z.input<typeof SseServerConfigSchema>;
-export type ValidatedSseServerConfig = z.infer<typeof SseServerConfigSchema>;
-
+export type ValidatedSseServerConfig = z.output<typeof SseServerConfigSchema>;
 // ---- http ----
+
 export const HttpServerConfigSchema = z
     .object({
         type: z.literal('http'),
@@ -60,9 +60,9 @@ export const HttpServerConfigSchema = z
     .strict();
 
 export type HttpServerConfig = z.input<typeof HttpServerConfigSchema>;
-export type ValidatedHttpServerConfig = z.infer<typeof HttpServerConfigSchema>;
-
+export type ValidatedHttpServerConfig = z.output<typeof HttpServerConfigSchema>;
 // ---- discriminated union ----
+
 export const McpServerConfigSchema = z
     .discriminatedUnion('type', [
         StdioServerConfigSchema,
@@ -71,14 +71,16 @@ export const McpServerConfigSchema = z
     ])
     .superRefine((_data, _ctx) => {
         // cross-type business rules if you ever need them
-    });
+    })
+    .brand<'ValidatedMcpServerConfig'>();
 
 export type McpServerConfig = z.input<typeof McpServerConfigSchema>;
-export type ValidatedMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
+export type ValidatedMcpServerConfig = z.output<typeof McpServerConfigSchema>;
 
 export const ServerConfigsSchema = z
     .record(McpServerConfigSchema)
-    .describe('A dictionary of server configurations, keyed by server name');
+    .describe('A dictionary of server configurations, keyed by server name')
+    .brand<'ValidatedServerConfigs'>();
 
 export type ServerConfigs = z.input<typeof ServerConfigsSchema>;
-export type ValidatedServerConfigs = z.infer<typeof ServerConfigsSchema>;
+export type ValidatedServerConfigs = z.output<typeof ServerConfigsSchema>;

@@ -1,7 +1,9 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SessionManager } from './session-manager.js';
 import { ChatSession } from './chat-session.js';
-import { LLMConfigSchema, type ValidatedLLMConfig } from '../schemas/llm.js';
+import { type ValidatedLLMConfig } from '@core/llm/schemas.js';
+import { LLMConfigSchema } from '@core/llm/schemas.js';
+import { StorageSchema } from '@core/storage/schemas.js';
 
 // Mock dependencies
 vi.mock('./chat-session.js');
@@ -962,10 +964,10 @@ describe('SessionManager', () => {
             // Create real storage backends for end-to-end testing
             const { createStorageBackends } = await import('../storage/index.js');
 
-            const storageConfig = {
+            const storageConfig = StorageSchema.parse({
                 cache: { type: 'in-memory' as const },
                 database: { type: 'in-memory' as const },
-            };
+            });
 
             const result = await createStorageBackends(storageConfig);
             realStorageBackends = result.backends;

@@ -1,7 +1,7 @@
 import { logger } from '../logger/index.js';
-import type { ValidatedAgentConfig } from '../config/schemas.js';
-import type { ValidatedLLMConfig } from '../schemas/llm.js';
-import type { ValidatedMcpServerConfig } from '../schemas/mcp.js';
+import type { ValidatedAgentConfig } from '@core/agent/schemas.js';
+import type { ValidatedLLMConfig } from '@core/llm/schemas.js';
+import type { ValidatedMcpServerConfig } from '@core/mcp/schemas.js';
 import type { AgentEventBus } from '../events/index.js';
 
 /**
@@ -31,9 +31,9 @@ export class AgentStateManager {
     private sessionOverrides: Map<string, SessionOverride> = new Map();
 
     /**
-     * Initialize AgentStateManager from a processed static configuration.
+     * Initialize AgentStateManager from a validated static configuration.
      *
-     * @param staticConfig The processed configuration from ConfigManager
+     * @param staticConfig The validated configuration from SaikiAgent
      * @param agentEventBus The agent event bus for emitting state change events
      */
     constructor(

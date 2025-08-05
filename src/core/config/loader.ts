@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import { AgentConfig } from './schemas.js';
+import { AgentConfig } from '@core/agent/schemas.js';
 import { logger } from '../logger/index.js';
 import { resolveConfigPath } from '../utils/path.js';
 import {

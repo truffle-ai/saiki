@@ -3,8 +3,12 @@
  * This file handles CLI argument processing and config merging logic
  */
 
-import { AgentConfigSchema } from '@core/index.js';
-import type { LLMConfig, ValidatedAgentConfig, AgentConfig } from '@core/index.js';
+import {
+    AgentConfigSchema,
+    type ValidatedAgentConfig,
+    type AgentConfig,
+} from '@core/agent/index.js';
+import type { LLMConfig } from '@core/llm/index.js';
 
 /**
  * CLI config override type for LLM fields that can be overridden via CLI

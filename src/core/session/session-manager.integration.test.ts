@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { SaikiAgent } from '../agent/SaikiAgent.js';
-import type { AgentConfig } from '../config/schemas.js';
+import type { AgentConfig } from '@core/agent/schemas.js';
 import type { SessionData } from './session-manager.js';
 
 /**

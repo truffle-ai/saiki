@@ -5,7 +5,7 @@ import { ToolManager } from '../tools/tool-manager.js';
 import { AgentEventBus } from '../events/index.js';
 import { logger } from '../logger/index.js';
 import type { AgentStateManager } from '../config/agent-state-manager.js';
-import type { ValidatedLLMConfig } from '../schemas/llm.js';
+import type { ValidatedLLMConfig } from '@core/llm/schemas.js';
 import type { StorageBackends } from '../storage/index.js';
 
 export interface SessionMetadata {

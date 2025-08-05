@@ -38,6 +38,7 @@ export type {
     StorageBackends,
     BackendConfig,
     StorageConfig,
+    ValidatedStorageConfig,
 } from './backend/types.js';
 
 // Backend implementations - always available

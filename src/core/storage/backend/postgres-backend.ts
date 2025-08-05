@@ -1,6 +1,6 @@
 import { Pool, PoolClient } from 'pg';
 import type { DatabaseBackend } from './database-backend.js';
-import type { PostgresBackendConfig } from '../../config/schemas.js';
+import type { PostgresBackendConfig } from '../schemas.js';
 
 /**
  * PostgreSQL storage backend for production database operations.

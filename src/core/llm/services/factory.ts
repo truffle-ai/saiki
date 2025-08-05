@@ -1,6 +1,6 @@
 import { ToolManager } from '../../tools/tool-manager.js';
 import { ILLMService } from './types.js';
-import { ValidatedLLMConfig } from '../../schemas/llm.js';
+import { ValidatedLLMConfig } from '../schemas.js';
 import { logger } from '../../logger/index.js';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';

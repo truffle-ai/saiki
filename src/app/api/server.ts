@@ -22,7 +22,7 @@ import os from 'os';
 import { resolveBundledScript } from '@core/index.js';
 import { expressRedactionMiddleware } from './middleware/expressRedactionMiddleware.js';
 import { z } from 'zod';
-import { LLMUpdatesSchema } from '@core/schemas/llm.js';
+import { LLMUpdatesSchema } from '@core/llm/schemas.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
 import { validateInputForLLM } from '@core/llm/validation.js';
 import {

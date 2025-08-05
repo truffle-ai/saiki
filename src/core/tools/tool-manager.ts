@@ -1,7 +1,7 @@
 import { MCPManager } from '../mcp/manager.js';
 import { InternalToolsProvider } from './internal-tools/provider.js';
 import { InternalToolsServices } from './internal-tools/registry.js';
-import type { InternalToolsConfig } from '../config/schemas.js';
+import type { InternalToolsConfig } from './schemas.js';
 import { ToolSet } from './types.js';
 import { ToolConfirmationProvider } from './confirmation/types.js';
 import { ToolExecutionDeniedError } from './confirmation/errors.js';

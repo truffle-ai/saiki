@@ -1,12 +1,8 @@
 import { Result, Issue, hasErrors, splitIssues, ok, fail, zodToIssues } from '../utils/result.js';
 import { SaikiErrorCode } from '../schemas/errors.js';
 
-import {
-    LLMConfigSchema,
-    type ValidatedLLMConfig,
-    type LLMUpdates,
-    type LLMConfig,
-} from '../schemas/llm.js';
+import { type ValidatedLLMConfig, type LLMUpdates, type LLMConfig } from './schemas.js';
+import { LLMConfigSchema } from './schemas.js';
 import {
     getProviderFromModel,
     getSupportedRoutersForProvider,
@@ -167,22 +163,7 @@ export function validateLLMConfig(
         return fail<ValidatedLLMConfig, LLMUpdateContext>(zodToIssues(parsed.error, 'error'));
     }
 
-    // Enforce final apiKey (hard error)
-    if (!parsed.data.apiKey?.trim()) {
-        return fail<ValidatedLLMConfig, LLMUpdateContext>([
-            {
-                code: SaikiErrorCode.LLM_MISSING_API_KEY,
-                message: 'Missing API key',
-                path: ['apiKey'],
-                severity: 'error',
-                context: {
-                    provider: candidate.provider,
-                    model: candidate.model,
-                    ...(candidate.router && { router: candidate.router }),
-                },
-            },
-        ]);
-    }
+    // Schema validation now handles apiKey non-empty validation
 
     // Check for short API key (warning)
     if (parsed.data.apiKey && parsed.data.apiKey.length < 10) {

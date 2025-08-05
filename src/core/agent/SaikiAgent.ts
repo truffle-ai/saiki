@@ -6,7 +6,7 @@ import { AgentStateManager } from '../config/agent-state-manager.js';
 import { SessionManager, SessionMetadata, ChatSession } from '../session/index.js';
 import { AgentServices } from '../utils/service-initializer.js';
 import { logger } from '../logger/index.js';
-import { ValidatedLLMConfig, LLMConfig, LLMUpdates } from '../schemas/llm.js';
+import { ValidatedLLMConfig, LLMConfig, LLMUpdates } from '@core/llm/schemas.js';
 import { resolveAndValidateLLMConfig } from '../llm/resolver.js';
 import { Result, ok, fail } from '../utils/result.js';
 import type { LLMUpdateContext } from '../llm/types.js';
@@ -14,7 +14,7 @@ import { SaikiErrorCode } from '../schemas/errors.js';
 import { validateInputForLLM } from '../llm/validation.js';
 import { SaikiLLMError, SaikiMCPError, SaikiInputError } from './errors.js';
 import { resolveAndValidateMcpServerConfig } from '../mcp/resolver.js';
-import type { McpServerConfig } from '../schemas/mcp.js';
+import type { McpServerConfig } from '@core/mcp/schemas.js';
 import {
     getSupportedProviders,
     getDefaultModelForProvider,
@@ -24,7 +24,8 @@ import {
     ModelInfo,
 } from '../llm/registry.js';
 import { createAgentServices } from '../utils/service-initializer.js';
-import type { AgentConfig } from '../config/schemas.js';
+import type { AgentConfig, ValidatedAgentConfig } from './schemas.js';
+import { AgentConfigSchema } from './schemas.js';
 import { AgentEventBus } from '../events/index.js';
 import type { IMCPClient } from '../mcp/types.js';
 import type { ToolSet } from '../tools/types.js';
@@ -119,13 +120,14 @@ export class SaikiAgent {
     private _isStopped: boolean = false;
 
     // Store config for async initialization
-    private config: AgentConfig;
+    private config: ValidatedAgentConfig;
 
     constructor(
         config: AgentConfig,
         private configPath?: string
     ) {
-        this.config = config;
+        // Validate and transform the input config
+        this.config = AgentConfigSchema.parse(config);
 
         // call start() to initialize services
         logger.info('SaikiAgent created.');

@@ -2,7 +2,7 @@ import { dirname } from 'path';
 import { mkdirSync } from 'fs';
 import type { DatabaseBackend } from './database-backend.js';
 import { logger } from '../../logger/index.js';
-import type { SqliteBackendConfig } from '../../config/schemas.js';
+import type { SqliteBackendConfig } from '../schemas.js';
 import { getSaikiPath } from '../../utils/path.js';
 import * as path from 'path';
 

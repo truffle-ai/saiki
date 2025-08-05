@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SaikiAgent } from './SaikiAgent.js';
-import type { AgentConfig } from '../config/schemas.js';
+import type { AgentConfig, ValidatedAgentConfig } from './schemas.js';
+import { AgentConfigSchema } from './schemas.js';
 import type { AgentServices } from '../utils/service-initializer.js';
 
 // Mock the createAgentServices function
@@ -13,6 +14,7 @@ const mockCreateAgentServices = vi.mocked(createAgentServices);
 
 describe('SaikiAgent Lifecycle Management', () => {
     let mockConfig: AgentConfig;
+    let mockValidatedConfig: ValidatedAgentConfig;
     let mockServices: AgentServices;
 
     beforeEach(() => {
@@ -39,6 +41,9 @@ describe('SaikiAgent Lifecycle Management', () => {
             },
         };
 
+        // Create the validated config that SaikiAgent actually uses
+        mockValidatedConfig = AgentConfigSchema.parse(mockConfig);
+
         mockServices = {
             mcpManager: {
                 disconnectAll: vi.fn(),
@@ -49,7 +54,7 @@ describe('SaikiAgent Lifecycle Management', () => {
             agentEventBus: {} as any,
             stateManager: {
                 getRuntimeConfig: vi.fn().mockReturnValue({
-                    llm: mockConfig.llm,
+                    llm: mockValidatedConfig.llm,
                     mcpServers: {},
                     storage: {
                         cache: { type: 'in-memory' },
@@ -60,7 +65,7 @@ describe('SaikiAgent Lifecycle Management', () => {
                         sessionTTL: 3600,
                     },
                 }),
-                getLLMConfig: vi.fn().mockReturnValue(mockConfig.llm),
+                getLLMConfig: vi.fn().mockReturnValue(mockValidatedConfig.llm),
             } as any,
             sessionManager: {
                 cleanup: vi.fn(),
@@ -99,7 +104,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             expect(agent.isStarted()).toBe(true);
             expect(agent.isStopped()).toBe(false);
-            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockConfig, undefined);
+            expect(mockCreateAgentServices).toHaveBeenCalledWith(mockValidatedConfig, undefined);
         });
 
         test('should start with per-server connection modes in config', async () => {
@@ -120,7 +125,11 @@ describe('SaikiAgent Lifecycle Management', () => {
 
             await agent.start();
 
-            expect(mockCreateAgentServices).toHaveBeenCalledWith(configWithServerModes, undefined);
+            const validatedConfigWithServerModes = AgentConfigSchema.parse(configWithServerModes);
+            expect(mockCreateAgentServices).toHaveBeenCalledWith(
+                validatedConfigWithServerModes,
+                undefined
+            );
         });
 
         test('should throw error when starting twice', async () => {
