@@ -2,7 +2,7 @@
   "database-agent": {
     "name": "database-agent",
     "displayName": "Database Agent",
-    "description": "AI agent for database operations and SQL queries",
+    "description": "Demo AI agent for database operations and SQL queries",
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["database", "sql", "data", "queries"],
