@@ -2,26 +2,25 @@
  * Agent registry types and interfaces
  */
 
-export interface AgentRegistryEntry {
-    /** Unique identifier for the agent */
-    name: string;
-    /** Human-readable display name */
-    displayName: string;
-    /** Brief description of the agent's purpose */
-    description: string;
-    /** Agent version */
-    version: string;
-    /** Author/maintainer information */
-    author?: string;
-    /** Tags for categorization */
-    tags?: string[];
-    /** URL or local path to the agent configuration */
-    configUrl: string;
-    /** Whether this is a registry agent or external */
-    source: 'registry' | 'remote' | 'local';
-    /** Last update timestamp */
-    lastUpdated?: string;
-}
+import { z } from 'zod';
+
+export const AgentRegistryEntrySchema = z
+    .object({
+        name: z.string().describe('Unique identifier for the agent'),
+        displayName: z.string().describe('Human-readable display name'),
+        description: z.string().describe("Brief description of the agent's purpose"),
+        version: z.string().describe('Agent version'),
+        author: z.string().optional().describe('Author/maintainer information'),
+        tags: z.array(z.string()).optional().describe('Tags for categorization'),
+        configUrl: z.string().describe('URL or local path to the agent configuration'),
+        source: z
+            .enum(['registry', 'remote', 'local'])
+            .describe('Whether this is a registry agent or external'),
+        lastUpdated: z.string().optional().describe('Last update timestamp'),
+    })
+    .strict();
+
+export type AgentRegistryEntry = z.infer<typeof AgentRegistryEntrySchema>;
 
 export interface AgentRegistry {
     /** Get all available agents */
@@ -37,13 +36,21 @@ export interface AgentRegistry {
     resolveAgent(nameOrPath: string): Promise<string>;
 }
 
-export interface AgentRegistryConfig {
-    /** Local registry agents */
-    registryAgents: Record<string, AgentRegistryEntry>;
+export const AgentRegistryConfigSchema = z
+    .object({
+        registryAgents: z
+            .record(z.string(), AgentRegistryEntrySchema)
+            .describe('Local registry agents'),
+        remoteRegistries: z
+            .array(z.string())
+            .optional()
+            .describe('Remote registry endpoints (for future use)'),
+        cacheTtl: z
+            .number()
+            .positive()
+            .optional()
+            .describe('Cache TTL for remote agents (in seconds)'),
+    })
+    .strict();
 
-    /** Remote registry endpoints (for future use) */
-    remoteRegistries?: string[];
-
-    /** Cache TTL for remote agents (in seconds) */
-    cacheTtl?: number;
-}
+export type AgentRegistryConfig = z.infer<typeof AgentRegistryConfigSchema>;

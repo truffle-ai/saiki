@@ -7,25 +7,18 @@ import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createHash } from 'crypto';
-import { z } from 'zod';
 import { logger } from '@core/logger/index.js';
 import { getSaikiPath } from '@core/utils/path.js';
-import { AgentRegistry, AgentRegistryEntry, AgentRegistryConfig } from './types.js';
+import {
+    AgentRegistry,
+    AgentRegistryEntry,
+    AgentRegistryConfig,
+    AgentRegistryConfigSchema,
+} from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '../../../');
-
-/**
- * Zod schema for AgentRegistryConfig validation
- */
-const AgentRegistryConfigSchema = z
-    .object({
-        registryAgents: z.record(z.string(), z.any()).default({}),
-        remoteRegistries: z.array(z.string()).optional(),
-        cacheTtl: z.number().positive().default(3600),
-    })
-    .strict();
 
 /**
  * Interface for the raw agent data from JSON file
@@ -51,7 +44,7 @@ export class LocalAgentRegistry implements AgentRegistry {
             cacheTtl: 3600, // 1 hour
             ...config,
         });
-        this.config = validatedConfig as AgentRegistryConfig;
+        this.config = validatedConfig;
     }
 
     /**
