@@ -272,7 +272,9 @@ See the **[MCP Manager Documentation](https://docs.dexto.ai/guides/mcp-manager)*
 ```
 Usage: dexto [options] [command] [prompt...]
 
-The Dexto CLI allows you to talk to Dexto, build custom AI Agents, and create complex AI applications. For full documentation, visit https://docs.dexto.ai.
+The Dexto CLI allows you to talk to Dexto, build custom AI Agents, and create complex AI applications.
+
+For full documentation, visit https://docs.dexto.ai.
 
 Arguments:
   prompt                    Natural-language prompt to run once. If empty, starts interactive CLI.
