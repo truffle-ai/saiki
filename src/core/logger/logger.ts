@@ -87,7 +87,7 @@ export interface LoggerOptions {
 
 // Helper to get default log level from environment or fallback to 'info'
 const getDefaultLogLevel = (): string => {
-    const envLevel = process.env.SAIKI_LOG_LEVEL;
+    const envLevel = process.env.DEXTO_LOG_LEVEL;
     if (envLevel && Object.keys(logLevels).includes(envLevel.toLowerCase())) {
         return envLevel.toLowerCase();
     }
@@ -125,7 +125,7 @@ export class Logger {
     private initializeTransports(options: LoggerOptions) {
         // Check if console logging should be enabled for Winston logs
         // Default to false (file-only logging), enable only when explicitly requested
-        const logToConsole = options.logToConsole ?? process.env.SAIKI_LOG_TO_CONSOLE === 'true';
+        const logToConsole = options.logToConsole ?? process.env.DEXTO_LOG_TO_CONSOLE === 'true';
         this.logToConsole = logToConsole;
 
         // Set up file logging path synchronously

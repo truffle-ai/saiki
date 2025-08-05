@@ -399,7 +399,7 @@ export async function updateEnvFile(
         'ANTHROPIC_API_KEY',
         'GOOGLE_GENERATIVE_AI_API_KEY',
         'GROQ_API_KEY',
-        'SAIKI_LOG_LEVEL',
+        'DEXTO_LOG_LEVEL',
     ];
 
     // Find project root and build .env file path
@@ -443,7 +443,7 @@ export async function updateEnvFile(
                 : (currentValues['GOOGLE_GENERATIVE_AI_API_KEY'] ?? ''),
         GROQ_API_KEY:
             llmProvider === 'groq' ? (llmApiKey ?? '') : (currentValues['GROQ_API_KEY'] ?? ''),
-        SAIKI_LOG_LEVEL: currentValues['SAIKI_LOG_LEVEL'] ?? 'info',
+        DEXTO_LOG_LEVEL: currentValues['DEXTO_LOG_LEVEL'] ?? 'info',
     };
 
     // Extract content before and after the Dexto section

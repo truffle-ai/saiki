@@ -29,7 +29,7 @@ describe('updateEnvFile', () => {
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -64,7 +64,7 @@ describe('updateEnvFile', () => {
             'ANTHROPIC_API_KEY=newAnthKey',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -95,7 +95,7 @@ describe('updateEnvFile', () => {
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -116,7 +116,7 @@ describe('updateEnvFile', () => {
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=gkey',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -134,7 +134,7 @@ describe('updateEnvFile', () => {
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -156,7 +156,7 @@ describe('updateEnvFile', () => {
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -178,7 +178,7 @@ describe('updateEnvFile', () => {
             'ANTHROPIC_API_KEY=test-key',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);

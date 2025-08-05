@@ -495,7 +495,7 @@ export async function initializeApi(agent: DextoAgent, agentCardOverride?: Parti
     // Apply agentCard overrides (if any)
     // TODO: This is a temporary solution to allow for agentCard overrides. Implement a more robust solution in the future.
     const overrides = agentCardOverride ?? {};
-    const baseApiUrl = process.env.SAIKI_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const baseApiUrl = process.env.DEXTO_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const agentCardData = createAgentCard(
         {
             defaultName: overrides.name ?? 'dexto',
@@ -514,7 +514,7 @@ export async function initializeApi(agent: DextoAgent, agentCardOverride?: Parti
     // --- Initialize and Setup MCP Server and Endpoints ---
     // Get transport type from environment variable or default to http
     try {
-        const transportType = (process.env.SAIKI_MCP_TRANSPORT_TYPE as McpTransportType) || 'http';
+        const transportType = (process.env.DEXTO_MCP_TRANSPORT_TYPE as McpTransportType) || 'http';
         const mcpTransport = await createMcpTransport(transportType);
 
         // TODO: Think of a better way to handle the MCP implementation

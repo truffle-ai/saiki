@@ -316,7 +316,7 @@ program
                 apiKey: opts.apiKey,
             };
             // Set run mode for tool confirmation provider
-            process.env.SAIKI_RUN_MODE = opts.mode;
+            process.env.DEXTO_RUN_MODE = opts.mode;
 
             // Apply CLI overrides
             const finalConfig = applyCLIOverrides(cfg, cliOverrides);

@@ -132,11 +132,11 @@ Check [Using Dexto to group MCP servers](./dexto-group-mcp-servers.md) to unders
 
 #### **Change log level for dexto CLI**
 
-To change the logging level, set environment variable `SAIKI_LOG_LEVEL` to 'info', 'debug', or 'silly'. Default is 'info'.
+To change the logging level, set environment variable `DEXTO_LOG_LEVEL` to 'info', 'debug', or 'silly'. Default is 'info'.
 
 ex: for debug logs:
 ```bash
-SAIKI_LOG_LEVEL=debug
+DEXTO_LOG_LEVEL=debug
 dexto what is the time
 ```
 
