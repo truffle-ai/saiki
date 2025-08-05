@@ -2,7 +2,6 @@ import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import { LLMProvider, logger } from '@core/index.js';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
-import { isDextoProject } from '@core/utils/path.js';
 import {
     updateDetectedEnvFileWithLLMKeys,
     getProviderDisplayName,
@@ -93,17 +92,11 @@ export async function interactiveApiKeySetup(provider: LLMProvider): Promise<boo
             await updateDetectedEnvFileWithLLMKeys(process.cwd(), provider, apiKey.trim());
             spinner.stop('API key saved successfully! ✨');
 
-            // Provide user-friendly description of where the API key was saved
-            const isInProject = isDextoProject(process.cwd());
-            const locationDesc = isInProject
-                ? "your project's .env file"
-                : 'your global dexto configuration (~/.dexto/.env)';
-
+            // Can append this with information about where the API key was saved if needed later
             p.outro(
-                chalk.green('🎉 API Key Setup complete!')
-                // + '\n\n' +
-                // `Your ${getProviderDisplayName(provider)} API key has been saved to ${locationDesc}\n` +
-                // `Dexto will now be able to use ${getProviderDisplayName(provider)}.`
+                chalk.green(
+                    '🎉 API Key Setup complete for ' + getProviderDisplayName(provider) + '!'
+                )
             );
 
             return true;

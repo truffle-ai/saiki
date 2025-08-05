@@ -8,8 +8,13 @@ describe('validateCliOptions', () => {
         expect(() => validateCliOptions(opts)).not.toThrow();
     });
 
-    it('throws ZodError for missing agent', () => {
+    it('does not throw for missing agent (now optional)', () => {
         const opts = { mode: 'cli', webPort: '8080' };
+        expect(() => validateCliOptions(opts)).not.toThrow();
+    });
+
+    it('throws ZodError for empty agent string', () => {
+        const opts = { agent: '', mode: 'cli', webPort: '8080' };
         expect(() => validateCliOptions(opts)).toThrow(ZodError);
     });
 });

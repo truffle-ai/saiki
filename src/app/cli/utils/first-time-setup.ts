@@ -1,4 +1,3 @@
-import { existsSync } from 'fs';
 import * as fs from 'fs/promises';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
