@@ -39,7 +39,7 @@ export interface InternalMessage {
     /**
      * Timestamp when the message was created (Unix timestamp in milliseconds).
      * TODO: Populate this field when messages are created. Currently not implemented.
-     * @see https://github.com/truffle-ai/saiki/issues/XXX
+     * @see https://github.com/truffle-ai/dexto/issues/XXX
      */
     timestamp?: number;
 

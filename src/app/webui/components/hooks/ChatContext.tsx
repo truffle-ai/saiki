@@ -254,14 +254,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('saiki:configChanged', handleConfigChange);
-      window.addEventListener('saiki:serversChanged', handleServersChange);
-      window.addEventListener('saiki:conversationReset', handleSessionReset);
+      window.addEventListener('dexto:configChanged', handleConfigChange);
+      window.addEventListener('dexto:serversChanged', handleServersChange);
+      window.addEventListener('dexto:conversationReset', handleSessionReset);
       
       return () => {
-        window.removeEventListener('saiki:configChanged', handleConfigChange);
-        window.removeEventListener('saiki:serversChanged', handleServersChange);
-        window.removeEventListener('saiki:conversationReset', handleSessionReset);
+        window.removeEventListener('dexto:configChanged', handleConfigChange);
+        window.removeEventListener('dexto:serversChanged', handleServersChange);
+        window.removeEventListener('dexto:conversationReset', handleSessionReset);
       };
     }
   }, [currentSessionId, setMessages]);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { SaikiErrorCode } from '@core/schemas/errors.js';
+import { DextoErrorCode } from '@core/schemas/errors.js';
 import { LLMConfigSchema, type LLMConfig, type ValidatedLLMConfig } from './schemas.js';
 import {
     LLM_PROVIDERS,
@@ -208,7 +208,7 @@ describe('LLMConfigSchema', () => {
             expect(result.success).toBe(false);
             expect(result.error?.issues[0]?.path).toEqual(['model']);
             expect((result.error?.issues[0] as any).params?.code).toBe(
-                SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER
+                DextoErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER
             );
         });
     });
@@ -257,7 +257,7 @@ describe('LLMConfigSchema', () => {
             expect(result.success).toBe(false);
             expect(result.error?.issues[0]?.path).toEqual(['router']);
             expect((result.error?.issues[0] as any).params?.code).toBe(
-                SaikiErrorCode.LLM_UNSUPPORTED_ROUTER
+                DextoErrorCode.LLM_UNSUPPORTED_ROUTER
             );
         });
     });
@@ -312,7 +312,7 @@ describe('LLMConfigSchema', () => {
             expect(result.success).toBe(false);
             expect(result.error?.issues[0]?.path).toEqual(['baseURL']);
             expect((result.error?.issues[0] as any).params?.code).toBe(
-                SaikiErrorCode.LLM_MISSING_BASE_URL
+                DextoErrorCode.LLM_MISSING_BASE_URL
             );
         });
 
@@ -343,7 +343,7 @@ describe('LLMConfigSchema', () => {
             expect(result.success).toBe(false);
             expect(result.error?.issues[0]?.path).toEqual(['provider']);
             expect((result.error?.issues[0] as any).params?.code).toBe(
-                SaikiErrorCode.LLM_INVALID_BASE_URL
+                DextoErrorCode.LLM_INVALID_BASE_URL
             );
         });
     });
@@ -390,7 +390,7 @@ describe('LLMConfigSchema', () => {
             expect(result.success).toBe(false);
             expect(result.error?.issues[0]?.path).toEqual(['maxInputTokens']);
             expect((result.error?.issues[0] as any).params?.code).toBe(
-                SaikiErrorCode.LLM_MAX_INPUT_TOKENS_EXCEEDED
+                DextoErrorCode.LLM_MAX_INPUT_TOKENS_EXCEEDED
             );
         });
 

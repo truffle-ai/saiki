@@ -96,7 +96,7 @@ describe('StorageSchema', () => {
         it('should accept SQLite backend with path', () => {
             const config: SqliteBackendConfig = {
                 type: 'sqlite',
-                path: '/tmp/saiki.db',
+                path: '/tmp/dexto.db',
             };
 
             const result = StorageSchema.parse({
@@ -105,14 +105,14 @@ describe('StorageSchema', () => {
             });
             expect(result.database.type).toBe('sqlite');
             if (result.database.type === 'sqlite') {
-                expect(result.database.path).toBe('/tmp/saiki.db');
+                expect(result.database.path).toBe('/tmp/dexto.db');
             }
         });
 
         it('should accept SQLite backend with database filename', () => {
             const config: SqliteBackendConfig = {
                 type: 'sqlite',
-                database: 'saiki.db',
+                database: 'dexto.db',
             };
 
             const result = StorageSchema.parse({
@@ -121,7 +121,7 @@ describe('StorageSchema', () => {
             });
             expect(result.database.type).toBe('sqlite');
             if (result.database.type === 'sqlite') {
-                expect(result.database.database).toBe('saiki.db');
+                expect(result.database.database).toBe('dexto.db');
             }
         });
 
@@ -140,7 +140,7 @@ describe('StorageSchema', () => {
         it('should accept PostgreSQL backend with URL', () => {
             const config: PostgresBackendConfig = {
                 type: 'postgres',
-                url: 'postgresql://user:pass@localhost:5432/saiki',
+                url: 'postgresql://user:pass@localhost:5432/dexto',
             };
 
             const result = StorageSchema.parse({
@@ -149,14 +149,14 @@ describe('StorageSchema', () => {
             });
             expect(result.database.type).toBe('postgres');
             if (result.database.type === 'postgres') {
-                expect(result.database.url).toBe('postgresql://user:pass@localhost:5432/saiki');
+                expect(result.database.url).toBe('postgresql://user:pass@localhost:5432/dexto');
             }
         });
 
         it('should accept PostgreSQL backend with connection string', () => {
             const config: PostgresBackendConfig = {
                 type: 'postgres',
-                connectionString: 'postgresql://user:pass@localhost:5432/saiki',
+                connectionString: 'postgresql://user:pass@localhost:5432/dexto',
             };
 
             const result = StorageSchema.parse({
@@ -166,7 +166,7 @@ describe('StorageSchema', () => {
             expect(result.database.type).toBe('postgres');
             if (result.database.type === 'postgres') {
                 expect(result.database.connectionString).toBe(
-                    'postgresql://user:pass@localhost:5432/saiki'
+                    'postgresql://user:pass@localhost:5432/dexto'
                 );
             }
         });
@@ -176,7 +176,7 @@ describe('StorageSchema', () => {
                 type: 'postgres',
                 host: 'localhost',
                 port: 5432,
-                database: 'saiki',
+                database: 'dexto',
                 password: 'secret',
             };
 
@@ -323,7 +323,7 @@ describe('StorageSchema', () => {
         it('should have correct type inference for different backends', () => {
             const config: StorageConfig = {
                 cache: { type: 'redis', url: 'redis://localhost:6379' },
-                database: { type: 'postgres', url: 'postgresql://localhost/saiki' },
+                database: { type: 'postgres', url: 'postgresql://localhost/dexto' },
             };
 
             const result = StorageSchema.safeParse(config);
@@ -376,7 +376,7 @@ describe('StorageSchema', () => {
                 },
                 database: {
                     type: 'postgres',
-                    url: 'postgresql://user:pass@db.example.com:5432/saiki',
+                    url: 'postgresql://user:pass@db.example.com:5432/dexto',
                     maxConnections: 20,
                     connectionTimeoutMillis: 5000,
                 },
@@ -402,7 +402,7 @@ describe('StorageSchema', () => {
                     type: 'postgres',
                     host: 'postgres-primary.example.com',
                     port: 5432,
-                    database: 'saiki_prod',
+                    database: 'dexto_prod',
                     password: 'db-secret',
                     maxConnections: 50,
                 },

@@ -1,4 +1,4 @@
-# Saiki Development Guidelines for AI Assistants
+# Dexto Development Guidelines for AI Assistants
 
 ## Code Quality Requirements
 
@@ -19,8 +19,8 @@
 ## Architecture & Design Patterns
 
 ### API Layer Design
-- **APIs are thin wrappers around SaikiAgent class** - Keep business logic in core layer
-- **No direct service communication** - API layer communicates only with SaikiAgent
+- **APIs are thin wrappers around DextoAgent class** - Keep business logic in core layer
+- **No direct service communication** - API layer communicates only with DextoAgent
 - APIs should resemble code that users could write with public libraries
 
 ### Service Initialization
@@ -39,16 +39,16 @@
 ### Result Pattern & Validation Architecture
 
 #### Core Principles
-1. **SaikiAgent as Validation Boundary** - All input validation happens at SaikiAgent level
+1. **DextoAgent as Validation Boundary** - All input validation happens at DextoAgent level
    - Public SDK methods validate all inputs before processing
    - Internal layers can assume data is already validated
    - Creates clear contract between public API and internal implementation
 
-2. **Result<T,C> for Validation Layers** - Internal validation helpers return Result<T,C>; SaikiAgent converts failures into typed exceptions (e.g. SaikiLLMError) before exposing them
+2. **Result<T,C> for Validation Layers** - Internal validation helpers return Result<T,C>; DextoAgent converts failures into typed exceptions (e.g. DextoLLMError) before exposing them
 
 
 3. **API Layer Error Mapping** - Centralised Express error middleware  
-   - `SaikiValidationError` (or any subclass) → 400  
+   - `DextoValidationError` (or any subclass) → 400  
    - `ToolExecutionDeniedError` → 403  
    - Any other uncaught exception → 500  
    - Successful calls → 200 (may include warnings in `issues`)
@@ -75,18 +75,18 @@ export function validateLLMUpdates(
 ): Result<ValidatedLLMConfig, LLMUpdateContext> {
   if (!updates.model && !updates.provider) {
     return fail([
-      { code: SaikiErrorCode.AGENT_MISSING_LLM_INPUT, message: '...', severity: 'error', context: {} }
+      { code: DextoErrorCode.AGENT_MISSING_LLM_INPUT, message: '...', severity: 'error', context: {} }
     ]);
   }
   // … additional validation …
   return ok(validatedConfig, warnings);
 }
 
-// SaikiAgent public method – converts Result to exception
+// DextoAgent public method – converts Result to exception
 public async switchLLM(updates: LLMUpdates, sessionId?: string): Promise<ValidatedLLMConfig> {
   const result = validateLLMUpdates(updates);
   if (!result.ok) {
-    throw new SaikiLLMError('Validation failed', result.issues);
+    throw new DextoLLMError('Validation failed', result.issues);
   }
   // ... perform switch ...
   return result.data;
@@ -173,7 +173,7 @@ app.post('/api/llm/switch', express.json(), async (req, res, next) => {
 
 ### Layer Interaction Flow
 ```
-User Input → WebUI → WebSocket/REST → API → SaikiAgent → Core Services
+User Input → WebUI → WebSocket/REST → API → DextoAgent → Core Services
                 ← WebSocket Events ← Agent Event Bus ← Core Services
 ```
 

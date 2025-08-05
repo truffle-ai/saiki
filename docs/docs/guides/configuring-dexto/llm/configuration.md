@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Configuration Reference
 
-This page covers all the technical details of configuring LLMs in Saiki.
+This page covers all the technical details of configuring LLMs in Dexto.
 
 ## Type Definition
 
@@ -149,7 +149,7 @@ llm:
 
 ## Router Configuration
 
-Saiki offers two router options:
+Dexto offers two router options:
 
 ### Vercel Router (Default)
 ```yaml
@@ -207,5 +207,5 @@ llm:
 ## Next Steps
 
 - **Learn about providers**: Check the [Providers Guide](./providers) for specific setup instructions
-- **Start building**: Head to [Building with Saiki](../../../tutorials/index.md) to put this configuration to use
+- **Start building**: Head to [Building with Dexto](../../../tutorials/index.md) to put this configuration to use
 - **Explore MCP**: Learn about [MCP Server Configuration](../mcpServers) to add tools to your agents 

@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { SaikiAgent } from './SaikiAgent.js';
+import { DextoAgent } from './DextoAgent.js';
 import type { AgentConfig, ValidatedAgentConfig } from './schemas.js';
 import { AgentConfigSchema } from './schemas.js';
 import type { AgentServices } from '../utils/service-initializer.js';
@@ -12,7 +12,7 @@ vi.mock('../utils/service-initializer.js', () => ({
 import { createAgentServices } from '../utils/service-initializer.js';
 const mockCreateAgentServices = vi.mocked(createAgentServices);
 
-describe('SaikiAgent Lifecycle Management', () => {
+describe('DextoAgent Lifecycle Management', () => {
     let mockConfig: AgentConfig;
     let mockValidatedConfig: ValidatedAgentConfig;
     let mockServices: AgentServices;
@@ -41,7 +41,7 @@ describe('SaikiAgent Lifecycle Management', () => {
             },
         };
 
-        // Create the validated config that SaikiAgent actually uses
+        // Create the validated config that DextoAgent actually uses
         mockValidatedConfig = AgentConfigSchema.parse(mockConfig);
 
         mockServices = {
@@ -89,7 +89,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
     describe('Constructor Patterns', () => {
         test('should create agent with config (new pattern)', () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
 
             expect(agent.isStarted()).toBe(false);
             expect(agent.isStopped()).toBe(false);
@@ -98,7 +98,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
     describe('start() Method', () => {
         test('should start successfully with valid config', async () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
 
             await agent.start();
 
@@ -121,7 +121,7 @@ describe('SaikiAgent Lifecycle Management', () => {
                     },
                 },
             };
-            const agent = new SaikiAgent(configWithServerModes);
+            const agent = new DextoAgent(configWithServerModes);
 
             await agent.start();
 
@@ -133,7 +133,7 @@ describe('SaikiAgent Lifecycle Management', () => {
         });
 
         test('should throw error when starting twice', async () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
 
             await agent.start();
 
@@ -141,7 +141,7 @@ describe('SaikiAgent Lifecycle Management', () => {
         });
 
         test('should handle start failure gracefully', async () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
             mockCreateAgentServices.mockRejectedValue(new Error('Service initialization failed'));
 
             await expect(agent.start()).rejects.toThrow('Service initialization failed');
@@ -151,7 +151,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
     describe('stop() Method', () => {
         test('should stop successfully after start', async () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
             await agent.start();
 
             await agent.stop();
@@ -164,7 +164,7 @@ describe('SaikiAgent Lifecycle Management', () => {
         });
 
         test('should throw error when stopping before start', async () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
 
             await expect(agent.stop()).rejects.toThrow(
                 'Agent must be started before it can be stopped'
@@ -172,7 +172,7 @@ describe('SaikiAgent Lifecycle Management', () => {
         });
 
         test('should warn when stopping twice but not throw', async () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
             await agent.start();
             await agent.stop();
 
@@ -181,7 +181,7 @@ describe('SaikiAgent Lifecycle Management', () => {
         });
 
         test('should handle partial cleanup failures gracefully', async () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
             await agent.start();
 
             // Make session cleanup fail
@@ -214,11 +214,11 @@ describe('SaikiAgent Lifecycle Management', () => {
         ];
 
         test.each(testMethods)('$name should throw before start()', async ({ name, args }) => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
 
             let thrownError: Error | undefined;
             try {
-                const method = agent[name as keyof SaikiAgent] as Function;
+                const method = agent[name as keyof DextoAgent] as Function;
                 await method.apply(agent, args);
             } catch (error) {
                 thrownError = error as Error;
@@ -231,13 +231,13 @@ describe('SaikiAgent Lifecycle Management', () => {
         });
 
         test.each(testMethods)('$name should throw after stop()', async ({ name, args }) => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
             await agent.start();
             await agent.stop();
 
             let thrownError: Error | undefined;
             try {
-                const method = agent[name as keyof SaikiAgent] as Function;
+                const method = agent[name as keyof DextoAgent] as Function;
                 await method.apply(agent, args);
             } catch (error) {
                 thrownError = error as Error;
@@ -248,13 +248,13 @@ describe('SaikiAgent Lifecycle Management', () => {
         });
 
         test('getCurrentSessionId should work without start() (read-only)', () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
 
             expect(() => agent.getCurrentSessionId()).not.toThrow();
         });
 
         test('isStarted and isStopped should work without start() (read-only)', () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
 
             expect(() => agent.isStarted()).not.toThrow();
             expect(() => agent.isStopped()).not.toThrow();
@@ -263,7 +263,7 @@ describe('SaikiAgent Lifecycle Management', () => {
 
     describe('Integration Tests', () => {
         test('should handle complete lifecycle without errors', async () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
 
             // Initial state
             expect(agent.isStarted()).toBe(false);
@@ -284,7 +284,7 @@ describe('SaikiAgent Lifecycle Management', () => {
         });
 
         test('should handle resource cleanup in correct order', async () => {
-            const agent = new SaikiAgent(mockConfig);
+            const agent = new DextoAgent(mockConfig);
             await agent.start();
 
             const cleanupOrder: string[] = [];

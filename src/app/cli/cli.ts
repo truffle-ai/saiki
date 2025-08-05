@@ -2,10 +2,10 @@ import readline from 'readline';
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
 import { CLISubscriber } from './cli-subscriber.js';
-import { SaikiAgent } from '@core/index.js';
+import { DextoAgent } from '@core/index.js';
 import { parseInput } from './interactive-commands/command-parser.js';
 import { executeCommand } from './interactive-commands/commands.js';
-import { getSaikiPath } from '@core/utils/path.js';
+import { getDextoPath } from '@core/utils/path.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
 import { ConfigurationError } from '@core/error/index.js';
 import { UnknownProviderError, UnknownModelError } from '@core/llm/errors.js';
@@ -14,7 +14,7 @@ import { UnknownProviderError, UnknownModelError } from '@core/llm/errors.js';
  * Find and load the most recent session based on lastActivity.
  * This provides better UX than always loading the "default" session.
  */
-async function loadMostRecentSession(agent: SaikiAgent): Promise<void> {
+async function loadMostRecentSession(agent: DextoAgent): Promise<void> {
     try {
         const sessionIds = await agent.listSessions();
 
@@ -52,9 +52,9 @@ async function loadMostRecentSession(agent: SaikiAgent): Promise<void> {
 
 /**
  * Initializes common CLI setup: logging, event subscriptions, tool loading.
- * @param agent The SaikiAgent instance providing access to all required services
+ * @param agent The DextoAgent instance providing access to all required services
  */
-async function _initCli(agent: SaikiAgent): Promise<void> {
+async function _initCli(agent: DextoAgent): Promise<void> {
     await loadMostRecentSession(agent);
     registerGracefulShutdown(agent);
     // Log connection info
@@ -90,19 +90,19 @@ async function _initCli(agent: SaikiAgent): Promise<void> {
     logger.info(`CLI initialized successfully. Ready for input.`, null, 'green');
 
     // Show welcome message with slash command instructions
-    console.log(chalk.bold.cyan('\n🚀 Welcome to Saiki CLI!'));
+    console.log(chalk.bold.cyan('\n🚀 Welcome to Dexto CLI!'));
     console.log(chalk.dim('• Type your message normally to chat with the AI'));
     console.log(chalk.dim('• Use /command for system commands (e.g., /help, /session, /model)'));
     console.log(chalk.dim('• Type /help to see all available commands'));
-    const logPath = getSaikiPath('logs', 'saiki.log');
+    const logPath = getDextoPath('logs', 'dexto.log');
     console.log(chalk.dim(`• Logs available in ${logPath}\n`));
 }
 
 /**
  * Run the AI CLI with the given LLM service
- * @param agent Saiki agent instance
+ * @param agent Dexto agent instance
  */
-export async function startAiCli(agent: SaikiAgent) {
+export async function startAiCli(agent: DextoAgent) {
     try {
         // Common initialization
         await _initCli(agent);
@@ -184,10 +184,10 @@ export async function startAiCli(agent: SaikiAgent) {
 
 /**
  * Run a single headless command via CLI without interactive prompt
- * @param agent The SaikiAgent instance providing access to all required services
+ * @param agent The DextoAgent instance providing access to all required services
  * @param prompt The user input to process
  */
-export async function startHeadlessCli(agent: SaikiAgent, prompt: string): Promise<void> {
+export async function startHeadlessCli(agent: DextoAgent, prompt: string): Promise<void> {
     // Common initialization
     await _initCli(agent);
     try {

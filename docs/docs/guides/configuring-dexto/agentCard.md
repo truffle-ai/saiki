@@ -17,7 +17,7 @@ Learn more about Agent-to-Agent communication: [A2A: A new era of agent interope
 
 ```yaml
 agentCard:
-  name: "My Saiki Agent"
+  name: "My Dexto Agent"
   description: "A helpful AI assistant with specialized capabilities"
   url: "https://my-agent.example.com"
   version: "1.0.0"
@@ -60,7 +60,7 @@ agentCard:
 
 ### `description`
 - **Type:** String
-- **Default:** "Saiki is an AI assistant capable of chat and task delegation, accessible via multiple protocols."
+- **Default:** "Dexto is an AI assistant capable of chat and task delegation, accessible via multiple protocols."
 - **Description:** Brief description of your agent's capabilities
 
 ### `documentationUrl`
@@ -182,5 +182,5 @@ The agent card enables:
 
 ## Default Behavior
 
-If no agent card is specified, Saiki will generate basic metadata based on your configuration. For A2A communication, it's recommended to configure your agent card explicitly.
+If no agent card is specified, Dexto will generate basic metadata based on your configuration. For A2A communication, it's recommended to configure your agent card explicitly.
 

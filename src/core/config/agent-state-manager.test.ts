@@ -53,9 +53,9 @@ describe('AgentStateManager Events', () => {
         stateManager = new AgentStateManager(validatedConfig, eventBus);
     });
 
-    it('emits saiki:stateChanged when LLM config is updated', () => {
+    it('emits dexto:stateChanged when LLM config is updated', () => {
         const eventSpy = vi.fn();
-        eventBus.on('saiki:stateChanged', eventSpy);
+        eventBus.on('dexto:stateChanged', eventSpy);
 
         const updatedConfig = LLMConfigSchema.parse({
             ...mockConfig.llm,
@@ -71,9 +71,9 @@ describe('AgentStateManager Events', () => {
         });
     });
 
-    it('emits saiki:mcpServerAdded when adding a new MCP server', () => {
+    it('emits dexto:mcpServerAdded when adding a new MCP server', () => {
         const eventSpy = vi.fn();
-        eventBus.on('saiki:mcpServerAdded', eventSpy);
+        eventBus.on('dexto:mcpServerAdded', eventSpy);
 
         const newServerConfig = McpServerConfigSchema.parse({
             type: 'stdio' as const,
@@ -92,9 +92,9 @@ describe('AgentStateManager Events', () => {
         });
     });
 
-    it('emits saiki:mcpServerRemoved when removing an MCP server', () => {
+    it('emits dexto:mcpServerRemoved when removing an MCP server', () => {
         const eventSpy = vi.fn();
-        eventBus.on('saiki:mcpServerRemoved', eventSpy);
+        eventBus.on('dexto:mcpServerRemoved', eventSpy);
 
         stateManager.removeMcpServer('test');
 
@@ -103,9 +103,9 @@ describe('AgentStateManager Events', () => {
         });
     });
 
-    it('emits saiki:sessionOverrideSet when setting session overrides', () => {
+    it('emits dexto:sessionOverrideSet when setting session overrides', () => {
         const eventSpy = vi.fn();
-        eventBus.on('saiki:sessionOverrideSet', eventSpy);
+        eventBus.on('dexto:sessionOverrideSet', eventSpy);
 
         const sessionConfig = LLMConfigSchema.parse({
             ...mockConfig.llm,
@@ -121,9 +121,9 @@ describe('AgentStateManager Events', () => {
         });
     });
 
-    it('emits saiki:sessionOverrideCleared when clearing session overrides', () => {
+    it('emits dexto:sessionOverrideCleared when clearing session overrides', () => {
         const eventSpy = vi.fn();
-        eventBus.on('saiki:sessionOverrideCleared', eventSpy);
+        eventBus.on('dexto:sessionOverrideCleared', eventSpy);
 
         // First set an override
         const sessionConfig = LLMConfigSchema.parse({
@@ -140,9 +140,9 @@ describe('AgentStateManager Events', () => {
         });
     });
 
-    it('emits saiki:stateReset when resetting to baseline', () => {
+    it('emits dexto:stateReset when resetting to baseline', () => {
         const eventSpy = vi.fn();
-        eventBus.on('saiki:stateReset', eventSpy);
+        eventBus.on('dexto:stateReset', eventSpy);
 
         stateManager.resetToBaseline();
 
@@ -151,9 +151,9 @@ describe('AgentStateManager Events', () => {
         });
     });
 
-    it('emits saiki:stateExported when exporting state as config', () => {
+    it('emits dexto:stateExported when exporting state as config', () => {
         const eventSpy = vi.fn();
-        eventBus.on('saiki:stateExported', eventSpy);
+        eventBus.on('dexto:stateExported', eventSpy);
 
         const exported = stateManager.exportAsConfig();
 

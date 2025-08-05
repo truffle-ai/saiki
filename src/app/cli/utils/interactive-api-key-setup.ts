@@ -1,6 +1,6 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
-import { updateEnvFile, updateSaikiConfigFile } from '../project-commands/init.js';
+import { updateEnvFile, updateDextoConfigFile } from '../project-commands/init.js';
 import { LLMProvider, logger, resolveConfigPath, DEFAULT_CONFIG_PATH } from '@core/index.js';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
 
@@ -21,7 +21,7 @@ export async function interactiveApiKeySetup(): Promise<ApiKeySetupResult> {
 
         // Show informative message about API keys
         p.note(
-            `Saiki needs an API key to work with AI models. You can:\n\n` +
+            `Dexto needs an API key to work with AI models. You can:\n\n` +
                 `• ${chalk.green('Google Gemini')} - Free tier available (15 requests/minute)\n` +
                 `• ${chalk.blue('OpenAI')} - Most popular, requires payment\n` +
                 `• ${chalk.magenta('Anthropic')} - High quality models, requires payment\n` +
@@ -47,13 +47,13 @@ export async function interactiveApiKeySetup(): Promise<ApiKeySetupResult> {
                 {
                     value: 'exit',
                     label: 'Exit',
-                    hint: 'Quit Saiki for now',
+                    hint: 'Quit Dexto for now',
                 },
             ],
         });
 
         if (action === 'exit') {
-            p.cancel('Setup cancelled. Run saiki again when you have an API key!');
+            p.cancel('Setup cancelled. Run dexto again when you have an API key!');
             return { success: false, skipSetup: true };
         }
 
@@ -122,7 +122,7 @@ export async function interactiveApiKeySetup(): Promise<ApiKeySetupResult> {
             // Update agent configuration if it exists and is different from the selected provider
             try {
                 const configPath = resolveConfigPath(DEFAULT_CONFIG_PATH);
-                await updateSaikiConfigFile(configPath, provider);
+                await updateDextoConfigFile(configPath, provider);
                 spinner.stop('Configuration updated successfully! ✨');
             } catch (configError) {
                 // If config update fails, still proceed but show a warning
@@ -143,7 +143,7 @@ export async function interactiveApiKeySetup(): Promise<ApiKeySetupResult> {
                 chalk.green('🎉 Setup complete!') +
                     '\n\n' +
                     `Your ${getProviderDisplayName(provider)} API key has been saved to .env\n` +
-                    `Saiki is now configured to use ${getProviderDisplayName(provider)}.`
+                    `Dexto is now configured to use ${getProviderDisplayName(provider)}.`
             );
 
             return { success: true, provider };
@@ -157,7 +157,7 @@ export async function interactiveApiKeySetup(): Promise<ApiKeySetupResult> {
                     `2. Add this line: ${getPrimaryApiKeyEnvVar(provider)}=${apiKey}\n` +
                     `3. Update your agent.yml llm.provider to "${provider}"\n` +
                     `4. Update your agent.yml llm.apiKey to "$${getPrimaryApiKeyEnvVar(provider)}"\n` +
-                    `5. Run saiki again`,
+                    `5. Run dexto again`,
                 chalk.yellow('Save this API key manually')
             );
 
@@ -190,8 +190,8 @@ function showManualSetupInstructions(): void {
         `   # ANTHROPIC_API_KEY=your_key_here`,
         `   # GROQ_API_KEY=your_key_here`,
         ``,
-        `${chalk.bold('3. Run saiki again:')}`,
-        `   npx saiki`,
+        `${chalk.bold('3. Run dexto again:')}`,
+        `   npx dexto`,
         ``,
         `${chalk.dim('💡 Tip: Start with Google Gemini for a free experience!')}`,
     ].join('\n');

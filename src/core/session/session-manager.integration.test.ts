@@ -1,14 +1,14 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { SaikiAgent } from '../agent/SaikiAgent.js';
+import { DextoAgent } from '../agent/DextoAgent.js';
 import type { AgentConfig } from '@core/agent/schemas.js';
 import type { SessionData } from './session-manager.js';
 
 /**
  * Full end-to-end integration tests for chat history preservation.
- * Tests the complete flow from SaikiAgent -> SessionManager -> ChatSession -> Storage
+ * Tests the complete flow from DextoAgent -> SessionManager -> ChatSession -> Storage
  */
 describe('Session Integration: Chat History Preservation', () => {
-    let agent: SaikiAgent;
+    let agent: DextoAgent;
 
     const testConfig: AgentConfig = {
         systemPrompt: 'You are a helpful assistant.',
@@ -29,7 +29,7 @@ describe('Session Integration: Chat History Preservation', () => {
     };
 
     beforeEach(async () => {
-        agent = new SaikiAgent(testConfig);
+        agent = new DextoAgent(testConfig);
         await agent.start();
     });
 
@@ -39,10 +39,10 @@ describe('Session Integration: Chat History Preservation', () => {
         }
     });
 
-    test('full integration: chat history survives session expiry through SaikiAgent', async () => {
+    test('full integration: chat history survives session expiry through DextoAgent', async () => {
         const sessionId = 'integration-test-session';
 
-        // Step 1: Create session through SaikiAgent
+        // Step 1: Create session through DextoAgent
         const session = await agent.createSession(sessionId);
         expect(session.id).toBe(sessionId);
 
@@ -92,7 +92,7 @@ describe('Session Integration: Chat History Preservation', () => {
         expect(await storage.database.get(sessionKey)).toBeDefined();
         expect(await storage.database.get(messagesKey)).toEqual(chatHistory);
 
-        // Step 6: Access session again through SaikiAgent - should restore seamlessly
+        // Step 6: Access session again through DextoAgent - should restore seamlessly
         const restoredSession = await agent.getSession(sessionId);
         expect(restoredSession).toBeDefined();
         expect(restoredSession!.id).toBe(sessionId);
@@ -132,7 +132,7 @@ describe('Session Integration: Chat History Preservation', () => {
         expect(await storage.database.get(sessionKey)).toBeDefined();
         expect(await storage.database.get(messagesKey)).toEqual(history);
 
-        // Delete session through SaikiAgent
+        // Delete session through DextoAgent
         await agent.deleteSession(sessionId);
 
         // Everything should be gone including chat history

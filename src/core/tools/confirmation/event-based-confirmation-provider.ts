@@ -38,7 +38,7 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
 
         // Listen for confirmation responses from application layers
         this.agentEventBus.on(
-            'saiki:toolConfirmationResponse',
+            'dexto:toolConfirmationResponse',
             this.handleConfirmationResponse.bind(this)
         );
     }
@@ -91,7 +91,7 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
 
                 // Notify application layers – this will hit handleConfirmationResponse but
                 // pending entry is already gone so it will be ignored.
-                this.agentEventBus.emit('saiki:toolConfirmationResponse', timeoutResponse);
+                this.agentEventBus.emit('dexto:toolConfirmationResponse', timeoutResponse);
 
                 reject(new Error(`Tool confirmation timeout for ${details.toolName}`));
             }, this.confirmationTimeout);
@@ -113,7 +113,7 @@ export class EventBasedConfirmationProvider implements ToolConfirmationProvider 
             });
 
             // Emit the confirmation request event via AgentEventBus
-            this.agentEventBus.emit('saiki:toolConfirmationRequest', event);
+            this.agentEventBus.emit('dexto:toolConfirmationRequest', event);
         });
     }
 

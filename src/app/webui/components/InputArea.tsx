@@ -551,7 +551,7 @@ export default function InputArea({ onSend, isSending }: InputAreaProps) {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask Saiki anything..."
+              placeholder="Ask Dexto anything..."
               rows={1}
               className="resize-none min-h-[42px] w-full border-input bg-transparent focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 rounded-lg p-2.5 pr-32 text-sm"
             />

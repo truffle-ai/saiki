@@ -14,7 +14,7 @@
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import { SaikiAgent, SaikiLLMError } from '@core/index.js';
+import { DextoAgent, DextoLLMError } from '@core/index.js';
 import { CommandDefinition } from '../command-parser.js';
 
 /**
@@ -31,7 +31,7 @@ export const modelCommands: CommandDefinition = {
             name: 'list',
             description: 'List all supported providers and models',
             usage: '/model list',
-            handler: async (_args: string[], agent: SaikiAgent) => {
+            handler: async (_args: string[], agent: DextoAgent) => {
                 try {
                     console.log(chalk.bold.blue('\n🤖 Supported Models and Providers:\n'));
 
@@ -70,7 +70,7 @@ export const modelCommands: CommandDefinition = {
             name: 'current',
             description: 'Show current model configuration',
             usage: '/model current',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     const config = agent.getEffectiveConfig();
                     console.log(chalk.blue('\n🤖 Current Model Configuration:\n'));
@@ -101,7 +101,7 @@ export const modelCommands: CommandDefinition = {
             name: 'switch',
             description: 'Switch to a different model',
             usage: '/model switch <model>',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 if (args.length === 0) {
                     console.log(chalk.red('❌ Model required. Usage: /model switch <model>'));
                     return true;
@@ -125,7 +125,7 @@ export const modelCommands: CommandDefinition = {
 
                     console.log(chalk.green(`✅ Successfully switched to ${model} (${provider})`));
                 } catch (error) {
-                    if (error instanceof SaikiLLMError) {
+                    if (error instanceof DextoLLMError) {
                         console.log(chalk.red('❌ Failed to switch model:'));
                         const errors = error.issues.filter((issue) => issue.severity === 'error');
                         for (const err of errors) {
@@ -153,7 +153,7 @@ export const modelCommands: CommandDefinition = {
             name: 'help',
             description: 'Show detailed help for model commands',
             usage: '/model help',
-            handler: async (_args: string[], _agent: SaikiAgent) => {
+            handler: async (_args: string[], _agent: DextoAgent) => {
                 console.log(chalk.bold.blue('\n🤖 Model Management Commands:\n'));
 
                 console.log(chalk.cyan('Available subcommands:'));
@@ -183,7 +183,7 @@ export const modelCommands: CommandDefinition = {
             },
         },
     ],
-    handler: async (args: string[], agent: SaikiAgent) => {
+    handler: async (args: string[], agent: DextoAgent) => {
         // Default to help if no subcommand
         if (args.length === 0) {
             const helpSubcommand = modelCommands.subcommands?.find((s) => s.name === 'help');

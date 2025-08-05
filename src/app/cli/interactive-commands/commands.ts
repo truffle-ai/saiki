@@ -19,7 +19,7 @@
  * into a single CLI_COMMANDS array for the command execution system.
  */
 
-import type { SaikiAgent } from '@core/index.js';
+import type { DextoAgent } from '@core/index.js';
 import type { CommandDefinition } from './command-parser.js';
 
 // Import modular command definitions
@@ -92,7 +92,7 @@ CLI_COMMANDS.push(...baseCommands);
 export async function executeCommand(
     command: string,
     args: string[],
-    agent: SaikiAgent
+    agent: DextoAgent
 ): Promise<boolean> {
     // Find the command (including aliases)
     const cmd = CLI_COMMANDS.find(

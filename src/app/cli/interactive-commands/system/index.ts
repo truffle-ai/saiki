@@ -1,7 +1,7 @@
 /**
  * System Commands Module Index
  *
- * This module exports all system-level CLI commands for the Saiki interactive interface.
+ * This module exports all system-level CLI commands for the Dexto interactive interface.
  * System commands provide functionality for configuration, logging, and statistics.
  *
  * Available commands:

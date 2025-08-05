@@ -159,7 +159,7 @@ export async function writeConfigFile(
         await fs.writeFile(absolutePath, yamlContent, 'utf-8');
 
         // Log a debug message indicating successful file write.
-        logger.debug(`Wrote saiki config to: ${absolutePath}`);
+        logger.debug(`Wrote dexto config to: ${absolutePath}`);
     } catch (error: any) {
         // Catch any errors that occur during YAML stringification or file writing.
         // Throw a specific `ConfigFileWriteError` for better error categorization.

@@ -1,7 +1,7 @@
 /**
  * General Commands Module
  *
- * This module defines general-purpose slash commands for the Saiki CLI interface.
+ * This module defines general-purpose slash commands for the Dexto CLI interface.
  * These are basic commands that don't fit into specific categories.
  *
  * Available General Commands:
@@ -12,7 +12,7 @@
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import type { SaikiAgent } from '@core/index.js';
+import type { DextoAgent } from '@core/index.js';
 import type { CommandDefinition } from './command-parser.js';
 import { displayAllCommands, formatCommandHelp } from './command-parser.js';
 
@@ -26,7 +26,7 @@ export function createHelpCommand(getAllCommands: () => CommandDefinition[]): Co
         usage: '/help [command]',
         category: 'General',
         aliases: ['h', '?'],
-        handler: async (args: string[], _agent: SaikiAgent) => {
+        handler: async (args: string[], _agent: DextoAgent) => {
             const allCommands = getAllCommands();
 
             if (args.length === 0) {
@@ -97,7 +97,7 @@ export const generalCommands: CommandDefinition[] = [
         usage: '/exit',
         category: 'General',
         aliases: ['quit', 'q'],
-        handler: async (_args: string[], _agent: SaikiAgent) => {
+        handler: async (_args: string[], _agent: DextoAgent) => {
             logger.warn('Exiting AI CLI. Goodbye!');
             process.exit(0);
         },
@@ -108,7 +108,7 @@ export const generalCommands: CommandDefinition[] = [
         usage: '/clear',
         category: 'General',
         aliases: ['reset'],
-        handler: async (_args: string[], agent: SaikiAgent) => {
+        handler: async (_args: string[], agent: DextoAgent) => {
             try {
                 await agent.resetConversation();
                 logger.info('🔄 Conversation history cleared.', null, 'green');

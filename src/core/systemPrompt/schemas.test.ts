@@ -32,7 +32,7 @@ describe('SystemPromptConfigSchema', () => {
         });
 
         it('should handle multiline string', () => {
-            const multilinePrompt = `You are Saiki, an AI assistant.
+            const multilinePrompt = `You are Dexto, an AI assistant.
 
 You can help with:
 - Coding tasks
@@ -94,7 +94,7 @@ You can help with:
                         id: 'main',
                         type: 'static' as const,
                         priority: 0,
-                        content: 'You are Saiki',
+                        content: 'You are Dexto',
                         enabled: true,
                     },
                     {
@@ -281,7 +281,7 @@ You can help with:
                         id: 'main',
                         type: 'static' as const,
                         priority: 0,
-                        content: 'You are Saiki, an advanced AI assistant.',
+                        content: 'You are Dexto, an advanced AI assistant.',
                         enabled: true,
                     },
                     {
@@ -318,7 +318,7 @@ You can help with:
                         type: 'static' as const,
                         priority: 0,
                         content:
-                            "You are a helpful AI assistant demonstrating Saiki's capabilities.",
+                            "You are a helpful AI assistant demonstrating Dexto's capabilities.",
                     },
                     {
                         id: 'dateTime',

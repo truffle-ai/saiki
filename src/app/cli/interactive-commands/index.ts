@@ -7,13 +7,13 @@
  * Future phases will gradually migrate commands from commands.ts into this registry system.
  */
 
-import type { SaikiAgent } from '@core/index.js';
+import type { DextoAgent } from '@core/index.js';
 
 /**
  * Base interface for command handlers
  */
 export interface CommandHandler {
-    (args: string[], agent: SaikiAgent): Promise<boolean>;
+    (args: string[], agent: DextoAgent): Promise<boolean>;
 }
 
 /**

@@ -29,7 +29,7 @@ describe('AgentCardSchema', () => {
             const result = AgentCardSchema.parse(validAgentCard);
 
             expect(result.description).toBe(
-                'Saiki is an AI assistant capable of chat and task delegation, accessible via multiple protocols.'
+                'Dexto is an AI assistant capable of chat and task delegation, accessible via multiple protocols.'
             );
             expect(result.capabilities.streaming).toBe(true);
             expect(result.capabilities.stateTransitionHistory).toBe(false);

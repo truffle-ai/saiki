@@ -490,7 +490,7 @@ describe('SessionManager', () => {
             expect(result.message).toContain('Successfully switched to anthropic/claude-3-opus');
             expect(result.warnings).toEqual([]);
             expect(mockServices.agentEventBus.emit).toHaveBeenCalledWith(
-                'saiki:llmSwitched',
+                'dexto:llmSwitched',
                 expect.objectContaining({
                     newConfig: newLLMConfig,
                     router: newLLMConfig.router,

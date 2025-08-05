@@ -21,7 +21,7 @@ export const AgentCardSchema = z
         description: z
             .string()
             .default(
-                'Saiki is an AI assistant capable of chat and task delegation, accessible via multiple protocols.'
+                'Dexto is an AI assistant capable of chat and task delegation, accessible via multiple protocols.'
             ),
         url: z.string().url(), // No default, must be provided by context
         provider: z

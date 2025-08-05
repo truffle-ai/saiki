@@ -1,4 +1,4 @@
-export const enum SaikiErrorCode {
+export const enum DextoErrorCode {
     SCHEMA_VALIDATION = 'schema_validation',
 
     // Agent-level errors

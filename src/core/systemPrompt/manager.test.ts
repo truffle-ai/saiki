@@ -62,7 +62,7 @@ describe('PromptManager', () => {
                         id: 'main',
                         type: 'static',
                         priority: 0,
-                        content: 'You are Saiki',
+                        content: 'You are Dexto',
                         enabled: true,
                     },
                     {
@@ -137,7 +137,7 @@ describe('PromptManager', () => {
                         id: 'greeting',
                         type: 'static',
                         priority: 0,
-                        content: 'Hello, I am Saiki!',
+                        content: 'Hello, I am Dexto!',
                     },
                 ],
             });
@@ -145,11 +145,11 @@ describe('PromptManager', () => {
             const manager = new PromptManager(config);
             const result = await manager.build(mockContext);
 
-            expect(result).toBe('Hello, I am Saiki!');
+            expect(result).toBe('Hello, I am Dexto!');
         });
 
         it('should handle multiline static content', async () => {
-            const multilineContent = `You are Saiki, an AI assistant.
+            const multilineContent = `You are Dexto, an AI assistant.
 
 You can help with:
 - Coding tasks
@@ -468,7 +468,7 @@ You can help with:
                         id: 'intro',
                         type: 'static',
                         priority: 0,
-                        content: 'You are Saiki, an advanced AI assistant.',
+                        content: 'You are Dexto, an advanced AI assistant.',
                     },
                     {
                         id: 'context',

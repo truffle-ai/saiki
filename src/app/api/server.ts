@@ -16,7 +16,7 @@ import {
     type McpTransportType,
 } from './mcp/mcp_handler.js';
 import { createAgentCard } from '@core/index.js';
-import { SaikiAgent, SaikiValidationError } from '@core/index.js';
+import { DextoAgent, DextoValidationError } from '@core/index.js';
 import { stringify as yamlStringify } from 'yaml';
 import os from 'os';
 import { resolveBundledScript } from '@core/index.js';
@@ -85,7 +85,7 @@ function validateBody<T>(
 }
 
 // TODO: API endpoint names are work in progress and might be refactored/renamed in future versions
-export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Partial<AgentCard>) {
+export async function initializeApi(agent: DextoAgent, agentCardOverride?: Partial<AgentCard>) {
     const app = express();
     registerGracefulShutdown(agent);
     // this will apply middleware to all /api/llm/* routes
@@ -393,7 +393,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
                 const data = JSON.parse(messageString);
                 if (data.type === 'toolConfirmationResponse' && data.data) {
                     // Route confirmation back via AgentEventBus and do not broadcast an error
-                    agent.agentEventBus.emit('saiki:toolConfirmationResponse', data.data);
+                    agent.agentEventBus.emit('dexto:toolConfirmationResponse', data.data);
                     return;
                 } else if (
                     data.type === 'message' &&
@@ -495,10 +495,10 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // Apply agentCard overrides (if any)
     // TODO: This is a temporary solution to allow for agentCard overrides. Implement a more robust solution in the future.
     const overrides = agentCardOverride ?? {};
-    const baseApiUrl = process.env.SAIKI_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const baseApiUrl = process.env.DEXTO_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const agentCardData = createAgentCard(
         {
-            defaultName: overrides.name ?? 'saiki',
+            defaultName: overrides.name ?? 'dexto',
             defaultVersion: overrides.version ?? '1.0.0',
             defaultBaseUrl: baseApiUrl,
             webSubscriber,
@@ -514,7 +514,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
     // --- Initialize and Setup MCP Server and Endpoints ---
     // Get transport type from environment variable or default to http
     try {
-        const transportType = (process.env.SAIKI_MCP_TRANSPORT_TYPE as McpTransportType) || 'http';
+        const transportType = (process.env.DEXTO_MCP_TRANSPORT_TYPE as McpTransportType) || 'http';
         const mcpTransport = await createMcpTransport(transportType);
 
         // TODO: Think of a better way to handle the MCP implementation
@@ -673,7 +673,7 @@ export async function initializeApi(agent: SaikiAgent, agentCardOverride?: Parti
             });
             // TODO: move this check to middleware
         } catch (error) {
-            if (error instanceof SaikiValidationError) {
+            if (error instanceof DextoValidationError) {
                 // User/validation errors -> 400
                 return res.status(400).json({
                     ok: false,
@@ -1069,7 +1069,7 @@ export function startLegacyWebUI(app: Express) {
 
 // TODO: Refactor this when we get rid of the legacy web UI
 export async function startApiAndLegacyWebUIServer(
-    agent: SaikiAgent,
+    agent: DextoAgent,
     port = 3000,
     serveLegacyWebUI?: boolean,
     agentCardOverride?: Partial<AgentCard>

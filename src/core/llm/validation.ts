@@ -2,7 +2,7 @@ import { validateModelFileSupport, getAllowedMimeTypes, LLMProvider } from './re
 import { logger } from '../logger/index.js';
 import type { ImageData, FileData } from './messages/types.js';
 import { Result, ok, fail, Issue } from '../utils/result.js';
-import { SaikiErrorCode } from '../schemas/errors.js';
+import { DextoErrorCode } from '../schemas/errors.js';
 
 export interface ValidationLLMConfig {
     provider: LLMProvider;
@@ -72,7 +72,7 @@ export function validateInputForLLM(
 
             if (!fileValidation.isSupported) {
                 issues.push({
-                    code: SaikiErrorCode.FILE_VALIDATION,
+                    code: DextoErrorCode.FILE_VALIDATION,
                     message: fileValidation.error || 'File type not supported by current LLM',
                     severity: 'error',
                     context: {
@@ -93,7 +93,7 @@ export function validateInputForLLM(
 
             if (!imageValidation.isSupported) {
                 issues.push({
-                    code: SaikiErrorCode.IMAGE_VALIDATION,
+                    code: DextoErrorCode.IMAGE_VALIDATION,
                     message: imageValidation.error || 'Image format not supported by current LLM',
                     severity: 'error',
                     context: {
@@ -113,7 +113,7 @@ export function validateInputForLLM(
         logger.error(`Error during input validation: ${error}`);
         return fail([
             {
-                code: SaikiErrorCode.VALIDATION_ERROR,
+                code: DextoErrorCode.VALIDATION_ERROR,
                 message: 'Failed to validate input',
                 severity: 'error',
                 context: {

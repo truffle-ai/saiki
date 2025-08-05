@@ -9,7 +9,7 @@ describe('updateEnvFile', () => {
 
     beforeEach(async () => {
         // Create a temporary directory for testing
-        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'saiki-test-'));
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dexto-test-'));
         // Create a dummy package.json file so findPackageRoot locates the tempDir
         await fs.writeFile(path.join(tempDir, 'package.json'), '{}');
     });
@@ -19,29 +19,29 @@ describe('updateEnvFile', () => {
         await fs.rm(tempDir, { recursive: true, force: true });
     });
 
-    it('creates a new .env file with the Saiki env section when none exists', async () => {
+    it('creates a new .env file with the Dexto env section when none exists', async () => {
         await updateEnvFile(tempDir, 'openai', 'key1');
         const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
         const expected = [
             '',
-            '## Saiki env variables',
+            '## Dexto env variables',
             'OPENAI_API_KEY=key1',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
     });
 
-    it('updates existing .env preserving unrelated lines and replacing Saiki section', async () => {
-        // Prepare an existing .env with unrelated and old Saiki section
+    it('updates existing .env preserving unrelated lines and replacing Dexto section', async () => {
+        // Prepare an existing .env with unrelated and old Dexto section
         const initial = [
             'FOO=bar',
             'BAZ=qux',
             '',
-            '## Saiki env variables',
+            '## Dexto env variables',
             'OPENAI_API_KEY=oldKey',
             'ANTHROPIC_API_KEY=oldAnth',
             '',
@@ -59,12 +59,12 @@ describe('updateEnvFile', () => {
             '',
             'OTHER=123',
             '',
-            '## Saiki env variables',
+            '## Dexto env variables',
             'OPENAI_API_KEY=oldKey',
             'ANTHROPIC_API_KEY=newAnthKey',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -80,7 +80,7 @@ describe('updateEnvFile', () => {
         await fs.rm(noLockDir, { recursive: true, force: true });
     });
 
-    // Case 1: key exists and not passed -> skip it in Saiki section
+    // Case 1: key exists and not passed -> skip it in Dexto section
     it('skips keys originally present and not passed', async () => {
         const initial = ['OPENAI_API_KEY=foo', 'OTHER=1', ''].join('\n');
         await fs.writeFile(path.join(tempDir, '.env'), initial, 'utf8');
@@ -91,11 +91,11 @@ describe('updateEnvFile', () => {
             'OPENAI_API_KEY=foo',
             'OTHER=1',
             '',
-            '## Saiki env variables',
+            '## Dexto env variables',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -111,12 +111,12 @@ describe('updateEnvFile', () => {
         const expected = [
             'FOO=bar',
             '',
-            '## Saiki env variables',
+            '## Dexto env variables',
             'OPENAI_API_KEY=',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=gkey',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -129,18 +129,18 @@ describe('updateEnvFile', () => {
         const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
         const expected = [
             '',
-            '## Saiki env variables',
+            '## Dexto env variables',
             'OPENAI_API_KEY=',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
     });
 
-    // Case 4: key exists and is passed -> override in Saiki section, keep old value
+    // Case 4: key exists and is passed -> override in Dexto section, keep old value
     it('overrides originally present key when passed', async () => {
         const initial = ['OPENAI_API_KEY=foo', 'OTHER=1', ''].join('\n');
         await fs.writeFile(path.join(tempDir, '.env'), initial, 'utf8');
@@ -151,12 +151,12 @@ describe('updateEnvFile', () => {
             'OPENAI_API_KEY=foo',
             'OTHER=1',
             '',
-            '## Saiki env variables',
+            '## Dexto env variables',
             'OPENAI_API_KEY=bar',
             'ANTHROPIC_API_KEY=',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);
@@ -173,12 +173,12 @@ describe('updateEnvFile', () => {
 
         const expected = [
             '',
-            '## Saiki env variables',
+            '## Dexto env variables',
             'OPENAI_API_KEY=',
             'ANTHROPIC_API_KEY=test-key',
             'GOOGLE_GENERATIVE_AI_API_KEY=',
             'GROQ_API_KEY=',
-            'SAIKI_LOG_LEVEL=info',
+            'DEXTO_LOG_LEVEL=info',
             '',
         ].join('\n');
         expect(result).toBe(expected);

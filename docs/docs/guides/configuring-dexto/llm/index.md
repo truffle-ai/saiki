@@ -4,11 +4,11 @@ sidebar_position: 3
 
 # LLM Configuration
 
-Large Language Models (LLMs) are the brain of your Saiki agents. This section covers everything you need to know about configuring LLMs for your agents.
+Large Language Models (LLMs) are the brain of your Dexto agents. This section covers everything you need to know about configuring LLMs for your agents.
 
 ## Overview
 
-Saiki supports multiple LLM providers out-of-the-box via the Vercel AI SDK. You can also use any OpenAI SDK-compatible provider. You can easily switch between different models and providers without changing your application code.
+Dexto supports multiple LLM providers out-of-the-box via the Vercel AI SDK. You can also use any OpenAI SDK-compatible provider. You can easily switch between different models and providers without changing your application code.
 
 ## Quick Start
 
@@ -54,7 +54,7 @@ Detailed guide to all supported LLM providers:
 System prompts define how your agent behaves. See the [System Prompt Configuration](../systemPrompt) guide for details on simple strings and advanced contributor configurations.
 
 ### Routers
-Saiki uses routers to handle LLM requests:
+Dexto uses routers to handle LLM requests:
 - **Vercel router** (default): Optimized for performance and reliability
 - **In-built router**: Direct communication with providers
 
@@ -62,4 +62,4 @@ Saiki uses routers to handle LLM requests:
 
 1. **New to LLMs?** Start with the [Configuration Reference](./configuration) to understand the basics
 2. **Looking for a specific provider?** Check the [Providers Guide](./providers) for setup instructions
-3. **Building an agent?** Head to [Building with Saiki](../../../tutorials/index.md) for implementation patterns 
+3. **Building an agent?** Head to [Building with Dexto](../../../tutorials/index.md) for implementation patterns 

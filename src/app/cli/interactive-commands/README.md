@@ -1,6 +1,6 @@
 # Interactive CLI Commands
 
-This directory contains the modular CLI command system for Saiki. The architecture has been designed to be maintainable, extensible, and well-organized.
+This directory contains the modular CLI command system for Dexto. The architecture has been designed to be maintainable, extensible, and well-organized.
 
 ## Architecture Overview
 
@@ -126,7 +126,7 @@ Each folder has an `index.ts` that re-exports the main command definitions for c
 ### Command Handler Pattern
 All command handlers follow the same signature:
 ```typescript
-handler: async (args: string[], agent: SaikiAgent) => Promise<boolean>
+handler: async (args: string[], agent: DextoAgent) => Promise<boolean>
 ```
 
 ## Adding New Commands
@@ -177,7 +177,7 @@ handler: async (args: string[], agent: SaikiAgent) => Promise<boolean>
 ## Dependencies
 
 The CLI system depends on:
-- `@core/index.js` - Core Saiki agent functionality
+- `@core/index.js` - Core Dexto agent functionality
 - `chalk` - Terminal color formatting
 - Various MCP and session management utilities
 

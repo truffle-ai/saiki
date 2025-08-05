@@ -20,7 +20,7 @@
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import { SaikiAgent } from '@core/index.js';
+import { DextoAgent } from '@core/index.js';
 import type { SessionMetadata } from '@core/index.js';
 import { CommandDefinition } from '../command-parser.js';
 import { formatSessionInfo, formatHistoryMessage } from './helpers/formatters.js';
@@ -29,7 +29,7 @@ import { formatSessionInfo, formatHistoryMessage } from './helpers/formatters.js
  * Helper to get current session info
  */
 async function getCurrentSessionInfo(
-    agent: SaikiAgent
+    agent: DextoAgent
 ): Promise<{ id: string; metadata: SessionMetadata | undefined }> {
     const currentId = agent.getCurrentSessionId();
     const metadata = await agent.getSessionMetadata(currentId);
@@ -39,7 +39,7 @@ async function getCurrentSessionInfo(
 /**
  * Helper to display session history with consistent formatting
  */
-async function displaySessionHistory(sessionId: string, agent: SaikiAgent): Promise<void> {
+async function displaySessionHistory(sessionId: string, agent: DextoAgent): Promise<void> {
     console.log(chalk.blue(`\n💬 Session History for: ${chalk.bold(sessionId)}\n`));
 
     const history = await agent.getSessionHistory(sessionId);
@@ -74,7 +74,7 @@ export const sessionCommand: CommandDefinition = {
             name: 'list',
             description: 'List all sessions',
             usage: '/session list',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     console.log(chalk.bold.blue('\n📋 Sessions:\n'));
 
@@ -108,7 +108,7 @@ export const sessionCommand: CommandDefinition = {
             name: 'new',
             description: 'Create a new session',
             usage: '/session new [id]',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     const sessionId = args[0]; // Optional custom ID
                     const session = await agent.createSession(sessionId);
@@ -130,7 +130,7 @@ export const sessionCommand: CommandDefinition = {
             name: 'switch',
             description: 'Switch to a different session',
             usage: '/session switch <id>',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 if (args.length === 0) {
                     console.log(chalk.red('❌ Session ID required. Usage: /session switch <id>'));
                     return true;
@@ -161,7 +161,7 @@ export const sessionCommand: CommandDefinition = {
             name: 'current',
             description: 'Show current session',
             usage: '/session current',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     const current = await getCurrentSessionInfo(agent);
                     console.log(chalk.blue('\n📍 Current Session:\n'));
@@ -180,7 +180,7 @@ export const sessionCommand: CommandDefinition = {
             description: 'Show session history for current session',
             usage: '/session history [sessionId]',
             aliases: ['h'],
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 try {
                     // Use provided session ID or current session
                     const sessionId =
@@ -204,7 +204,7 @@ export const sessionCommand: CommandDefinition = {
             name: 'delete',
             description: 'Delete a session',
             usage: '/session delete <id>',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 if (args.length === 0) {
                     console.log(chalk.red('❌ Session ID required. Usage: /session delete <id>'));
                     return true;
@@ -240,7 +240,7 @@ export const sessionCommand: CommandDefinition = {
             name: 'help',
             description: 'Show detailed help for session commands',
             usage: '/session help',
-            handler: async (_args: string[], _agent: SaikiAgent) => {
+            handler: async (_args: string[], _agent: DextoAgent) => {
                 console.log(chalk.bold.blue('\n📋 Session Management Commands:\n'));
 
                 console.log(chalk.cyan('Available subcommands:'));
@@ -274,7 +274,7 @@ export const sessionCommand: CommandDefinition = {
             },
         },
     ],
-    handler: async (args: string[], agent: SaikiAgent) => {
+    handler: async (args: string[], agent: DextoAgent) => {
         // Default to help if no subcommand
         if (args.length === 0) {
             const helpSubcommand = sessionCommand.subcommands?.find((s) => s.name === 'help');
@@ -311,7 +311,7 @@ export const historyCommand: CommandDefinition = {
     usage: '/history [sessionId]',
     category: 'Session Management',
     aliases: ['hist'],
-    handler: async (args: string[], agent: SaikiAgent) => {
+    handler: async (args: string[], agent: DextoAgent) => {
         try {
             // Use provided session ID or current session
             const sessionId = args.length > 0 && args[0] ? args[0] : agent.getCurrentSessionId();
@@ -340,7 +340,7 @@ export const searchCommand: CommandDefinition = {
     usage: '/search <query> [options]',
     category: 'Session Management',
     aliases: ['find'],
-    handler: async (args: string[], agent: SaikiAgent) => {
+    handler: async (args: string[], agent: DextoAgent) => {
         if (args.length === 0) {
             console.log(chalk.red('❌ Search query is required'));
             console.log(

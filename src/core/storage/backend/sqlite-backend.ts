@@ -3,7 +3,7 @@ import { mkdirSync } from 'fs';
 import type { DatabaseBackend } from './database-backend.js';
 import { logger } from '../../logger/index.js';
 import type { SqliteBackendConfig } from '../schemas.js';
-import { getSaikiPath } from '../../utils/path.js';
+import { getDextoPath } from '../../utils/path.js';
 import * as path from 'path';
 
 // Dynamic import for better-sqlite3
@@ -26,7 +26,7 @@ export class SQLiteBackend implements DatabaseBackend {
 
     private resolveDefaultPath(dbName: string): string {
         // Use reliable path resolution
-        const storageDir = getSaikiPath('database');
+        const storageDir = getDextoPath('database');
         const finalPath = path.join(storageDir, dbName);
 
         logger.info(`SQLite storage directory: ${storageDir}`);
@@ -89,7 +89,7 @@ export class SQLiteBackend implements DatabaseBackend {
             this.dbPath = this.config.path;
             logger.info(`SQLite using custom path: ${this.dbPath}`);
         } else {
-            this.dbPath = this.resolveDefaultPath(this.config.database || 'saiki.db');
+            this.dbPath = this.resolveDefaultPath(this.config.database || 'dexto.db');
         }
 
         // Ensure directory exists

@@ -1,7 +1,7 @@
 /**
  * Tool Commands Module
  *
- * This module defines tool management slash commands for the Saiki CLI interface.
+ * This module defines tool management slash commands for the Dexto CLI interface.
  * These commands provide functionality for listing and managing MCP tools.
  *
  * Available Tool Commands:
@@ -10,7 +10,7 @@
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import type { SaikiAgent } from '@core/index.js';
+import type { DextoAgent } from '@core/index.js';
 import type { CommandDefinition } from './command-parser.js';
 
 /**
@@ -22,7 +22,7 @@ export const toolCommands: CommandDefinition[] = [
         description: 'List all available tools (MCP and internal tools)',
         usage: '/tools',
         category: 'Tool Management',
-        handler: async (args: string[], agent: SaikiAgent): Promise<boolean> => {
+        handler: async (args: string[], agent: DextoAgent): Promise<boolean> => {
             try {
                 const allTools = await agent.getAllTools();
                 const mcpTools = await agent.getAllMcpTools();

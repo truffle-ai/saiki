@@ -7,7 +7,7 @@
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import { SaikiAgent } from '@core/index.js';
+import { DextoAgent } from '@core/index.js';
 import { CommandDefinition } from '../command-parser.js';
 import {
     parseStdioArgs,
@@ -20,7 +20,7 @@ import {
 /**
  * Handler for /mcp add stdio command
  */
-async function handleMcpAddStdio(args: string[], agent: SaikiAgent): Promise<boolean> {
+async function handleMcpAddStdio(args: string[], agent: DextoAgent): Promise<boolean> {
     const { serverName, config, errors } = parseStdioArgs(args);
 
     if (errors.length > 0) {
@@ -54,7 +54,7 @@ async function handleMcpAddStdio(args: string[], agent: SaikiAgent): Promise<boo
 /**
  * Handler for /mcp add http command
  */
-async function handleMcpAddHttp(args: string[], agent: SaikiAgent): Promise<boolean> {
+async function handleMcpAddHttp(args: string[], agent: DextoAgent): Promise<boolean> {
     const { serverName, config, errors } = parseHttpArgs(args);
 
     if (errors.length > 0) {
@@ -91,7 +91,7 @@ async function handleMcpAddHttp(args: string[], agent: SaikiAgent): Promise<bool
 /**
  * Handler for /mcp add sse command
  */
-async function handleMcpAddSse(args: string[], agent: SaikiAgent): Promise<boolean> {
+async function handleMcpAddSse(args: string[], agent: DextoAgent): Promise<boolean> {
     const { serverName, config, errors } = parseSseArgs(args);
 
     if (errors.length > 0) {
@@ -137,7 +137,7 @@ export const mcpCommands: CommandDefinition = {
             name: 'list',
             description: 'List all available MCP servers',
             usage: '/mcp list',
-            handler: async (_args: string[], agent: SaikiAgent) => {
+            handler: async (_args: string[], agent: DextoAgent) => {
                 try {
                     const clients = agent.getMcpClients();
                     const failedConnections = agent.getMcpFailedConnections();
@@ -205,7 +205,7 @@ export const mcpCommands: CommandDefinition = {
                 },
                 // TODO: Add preset subcommand when implemented
             ],
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 if (args.length === 0) {
                     showMcpAddHelp();
                     return true;
@@ -230,7 +230,7 @@ export const mcpCommands: CommandDefinition = {
             name: 'remove',
             description: 'Remove an MCP server',
             usage: '/mcp remove <name>',
-            handler: async (args: string[], agent: SaikiAgent) => {
+            handler: async (args: string[], agent: DextoAgent) => {
                 if (args.length === 0) {
                     console.log(chalk.red('❌ Usage: /mcp remove <name>'));
                     return true;
@@ -252,7 +252,7 @@ export const mcpCommands: CommandDefinition = {
             name: 'help',
             description: 'Show detailed help for MCP commands',
             usage: '/mcp help',
-            handler: async (_args: string[], _agent: SaikiAgent) => {
+            handler: async (_args: string[], _agent: DextoAgent) => {
                 console.log(chalk.bold.blue('\n🔌 MCP Management Commands:\n'));
                 console.log(chalk.cyan('Available subcommands:'));
                 console.log(`  ${chalk.yellow('/mcp list')} - List all configured MCP servers`);
@@ -322,7 +322,7 @@ export const mcpCommands: CommandDefinition = {
             },
         },
     ],
-    handler: async (args: string[], agent: SaikiAgent) => {
+    handler: async (args: string[], agent: DextoAgent) => {
         if (args.length === 0) {
             const helpSubcommand = mcpCommands.subcommands?.find((s) => s.name === 'help');
             if (helpSubcommand) {
