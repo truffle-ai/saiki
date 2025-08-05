@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import { updateEnvFile } from '../utils/api-key-utils.js';
+import { updateDetectedEnvFileWithLLMKeys } from '../utils/api-key-utils.js';
 
 describe('updateEnvFile', () => {
     let tempDir: string;
@@ -20,7 +20,7 @@ describe('updateEnvFile', () => {
     });
 
     it('creates a new .env file with the Dexto env section when none exists', async () => {
-        await updateEnvFile(tempDir, 'openai', 'key1');
+        await updateDetectedEnvFileWithLLMKeys(tempDir, 'openai', 'key1');
         const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
         const expected = [
             '',
@@ -50,7 +50,7 @@ describe('updateEnvFile', () => {
         ].join('\n');
         await fs.writeFile(path.join(tempDir, '.env'), initial, 'utf8');
 
-        await updateEnvFile(tempDir, 'anthropic', 'newAnthKey');
+        await updateDetectedEnvFileWithLLMKeys(tempDir, 'anthropic', 'newAnthKey');
         const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
 
         const expected = [
@@ -74,7 +74,7 @@ describe('updateEnvFile', () => {
         // Use a directory without a lock file
         const noLockDir = path.join(os.tmpdir(), 'no-lock-dir');
         await fs.mkdir(noLockDir, { recursive: true });
-        await expect(updateEnvFile(noLockDir, 'openai', 'key')).rejects.toThrow(
+        await expect(updateDetectedEnvFileWithLLMKeys(noLockDir, 'openai', 'key')).rejects.toThrow(
             'Could not find project root'
         );
         await fs.rm(noLockDir, { recursive: true, force: true });
@@ -85,7 +85,7 @@ describe('updateEnvFile', () => {
         const initial = ['OPENAI_API_KEY=foo', 'OTHER=1', ''].join('\n');
         await fs.writeFile(path.join(tempDir, '.env'), initial, 'utf8');
 
-        await updateEnvFile(tempDir);
+        await updateDetectedEnvFileWithLLMKeys(tempDir);
         const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
         const expected = [
             'OPENAI_API_KEY=foo',
@@ -106,7 +106,7 @@ describe('updateEnvFile', () => {
         const initial = ['FOO=bar', ''].join('\n');
         await fs.writeFile(path.join(tempDir, '.env'), initial, 'utf8');
 
-        await updateEnvFile(tempDir, 'google', 'gkey');
+        await updateDetectedEnvFileWithLLMKeys(tempDir, 'google', 'gkey');
         const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
         const expected = [
             'FOO=bar',
@@ -125,7 +125,7 @@ describe('updateEnvFile', () => {
     // Case 3: key does not exist and not passed -> add empty entry
     it('adds empty entries for keys not passed and not originally present', async () => {
         // No initial .env file
-        await updateEnvFile(tempDir);
+        await updateDetectedEnvFileWithLLMKeys(tempDir);
         const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
         const expected = [
             '',
@@ -145,7 +145,7 @@ describe('updateEnvFile', () => {
         const initial = ['OPENAI_API_KEY=foo', 'OTHER=1', ''].join('\n');
         await fs.writeFile(path.join(tempDir, '.env'), initial, 'utf8');
 
-        await updateEnvFile(tempDir, 'openai', 'bar');
+        await updateDetectedEnvFileWithLLMKeys(tempDir, 'openai', 'bar');
         const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
         const expected = [
             'OPENAI_API_KEY=foo',
@@ -168,7 +168,7 @@ describe('updateEnvFile', () => {
         // that might not exist yet (like "src/")
 
         // The tempDir already has a lock file from beforeEach
-        await updateEnvFile(tempDir, 'anthropic', 'test-key');
+        await updateDetectedEnvFileWithLLMKeys(tempDir, 'anthropic', 'test-key');
         const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
 
         const expected = [

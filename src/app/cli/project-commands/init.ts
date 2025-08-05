@@ -7,7 +7,7 @@ import { getPackageManager, getPackageManagerInstallCommand } from '../utils/pac
 import { executeWithTimeout } from '../utils/execute.js';
 import { createRequire } from 'module';
 import { LLMProvider, logger } from '@core/index.js';
-import { updateProjectEnvFile, updateDextoConfigFile } from '../utils/api-key-utils.js';
+import { updateProjectEnvFileWithLLMKeys, updateDextoConfigFile } from '../utils/api-key-utils.js';
 
 const require = createRequire(import.meta.url);
 
@@ -179,7 +179,7 @@ export async function initDexto(
         logger.debug(
             `Updating .env file with dexto env variables: directory ${directory}, llmProvider: ${llmProvider}, llmApiKey: [REDACTED]`
         );
-        await updateProjectEnvFile(process.cwd(), llmProvider, llmApiKey);
+        await updateProjectEnvFileWithLLMKeys(process.cwd(), llmProvider, llmApiKey);
         spinner.stop('Updated .env file with dexto env variables...');
         return { success: true };
     } catch (err) {

@@ -1,20 +1,9 @@
 #!/usr/bin/env node
 // Load environment variables FIRST with layered loading
-import { applyLayeredEnvironmentLoading } from '../core/utils/path.js';
+import { applyLayeredEnvironmentLoading } from '../core/utils/env.js';
 
 // Apply layered environment loading before any other imports
 await applyLayeredEnvironmentLoading();
-
-// Debug: Show environment loading results
-console.log('DEBUG: Current working directory:', process.cwd());
-console.log(
-    'DEBUG: ANTHROPIC_API_KEY after layered loading:',
-    process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET'
-);
-console.log(
-    'DEBUG: OPENAI_API_KEY after layered loading:',
-    process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET'
-);
 
 import { existsSync } from 'fs';
 import { Command } from 'commander';

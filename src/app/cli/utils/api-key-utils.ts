@@ -4,7 +4,8 @@ import { parseDocument } from 'yaml';
 import chalk from 'chalk';
 import { LLMProvider, getDefaultModelForProvider } from '@core/index.js';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
-import { getEnvFilePath } from '@core/utils/path.js';
+import { getDextoEnvPath } from '@core/utils/path.js';
+import { updateEnvFile } from '@core/utils/env.js';
 import { logger } from '@core/logger/index.js';
 
 /**
@@ -130,135 +131,24 @@ export async function updateDextoConfigFile(
 }
 
 /**
- * Core logic to update an .env file with Dexto environment variables.
- * This is the shared implementation used by both project and interactive env file updates.
- *
- * @param envFilePath - Absolute path to the .env file to update
- * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
- * @param llmApiKey - The API key for the specified LLM provider.
+ * Helper to build environment variable updates for API key providers
  */
-async function updateEnvFileCore(
+async function updateEnvFileWithLLMKeys(
     envFilePath: string,
     llmProvider?: LLMProvider,
     llmApiKey?: string
 ): Promise<void> {
-    const dextoEnvKeys = [
-        'OPENAI_API_KEY',
-        'ANTHROPIC_API_KEY',
-        'GOOGLE_GENERATIVE_AI_API_KEY',
-        'GROQ_API_KEY',
-        'DEXTO_LOG_LEVEL',
-    ];
-
     logger.debug(`Updating .env file with dexto env variables: envFilePath ${envFilePath}`);
 
-    // Ensure directory exists (especially for global ~/.dexto/.env)
-    await fs.mkdir(path.dirname(envFilePath), { recursive: true });
-
-    // Read existing .env if present
-    let envLines: string[] = [];
-    try {
-        const existingEnv = await fs.readFile(envFilePath, 'utf8');
-        envLines = existingEnv.split('\n');
-    } catch {
-        // File may not exist, start with empty array
+    // Build updates object for the specific provider
+    const updates: Record<string, string> = {};
+    if (llmProvider && llmApiKey) {
+        const envVar = getPrimaryApiKeyEnvVar(llmProvider);
+        updates[envVar] = llmApiKey;
     }
 
-    // Extract current values for Dexto environment variables
-    const currentValues: Record<string, string> = {};
-    envLines.forEach((line) => {
-        const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && match[1] && match[2] !== undefined && dextoEnvKeys.includes(match[1])) {
-            currentValues[match[1]] = match[2];
-        }
-    });
-
-    const passedKey = llmProvider ? getPrimaryApiKeyEnvVar(llmProvider) : undefined;
-
-    // Prepare updated values for Dexto environment variables
-    const updatedValues: Record<string, string> = {
-        OPENAI_API_KEY:
-            llmProvider === 'openai' ? (llmApiKey ?? '') : (currentValues['OPENAI_API_KEY'] ?? ''),
-        ANTHROPIC_API_KEY:
-            llmProvider === 'anthropic'
-                ? (llmApiKey ?? '')
-                : (currentValues['ANTHROPIC_API_KEY'] ?? ''),
-        GOOGLE_GENERATIVE_AI_API_KEY:
-            llmProvider === 'google'
-                ? (llmApiKey ?? '')
-                : (currentValues['GOOGLE_GENERATIVE_AI_API_KEY'] ?? ''),
-        GROQ_API_KEY:
-            llmProvider === 'groq' ? (llmApiKey ?? '') : (currentValues['GROQ_API_KEY'] ?? ''),
-        DEXTO_LOG_LEVEL: currentValues['DEXTO_LOG_LEVEL'] ?? 'info',
-    };
-
-    // Extract content before and after the Dexto section
-    const sectionHeader = '## Dexto env variables';
-    const headerIndex = envLines.findIndex((line) => line.trim() === sectionHeader);
-
-    let contentLines: string[];
-
-    if (headerIndex !== -1) {
-        // Extract lines before the section header
-        const beforeSection = envLines.slice(0, headerIndex);
-
-        // Find the end of the section
-        let sectionEnd = headerIndex + 1;
-        while (sectionEnd < envLines.length && envLines[sectionEnd]?.trim() !== '') {
-            sectionEnd++;
-        }
-
-        // Skip the blank line after the section if present
-        if (sectionEnd < envLines.length && envLines[sectionEnd]?.trim() === '') {
-            sectionEnd++;
-        }
-
-        // Extract lines after the section
-        const afterSection = envLines.slice(sectionEnd);
-
-        // Combine sections
-        contentLines = [...beforeSection, ...afterSection];
-    } else {
-        contentLines = envLines;
-    }
-
-    // Identify env variables already present outside the Dexto section
-    const existingEnvVars: Record<string, string> = {};
-    contentLines.forEach((line) => {
-        const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && match[1] && match[2] !== undefined && dextoEnvKeys.includes(match[1])) {
-            existingEnvVars[match[1]] = match[2];
-        }
-    });
-
-    // Ensure exactly one blank line before adding the new section
-    if (contentLines.length > 0) {
-        // If the last line is not blank, add a blank line
-        if (contentLines[contentLines.length - 1]?.trim() !== '') {
-            contentLines.push('');
-        }
-    } else {
-        // If the file was empty, add a blank line at the start
-        contentLines.push('');
-    }
-
-    // Add the section header
-    contentLines.push(sectionHeader);
-
-    // Add environment variables that should be included
-    for (const key of dextoEnvKeys) {
-        // Skip keys already present outside Dexto section (unless it's the passed key)
-        if (key in existingEnvVars && key !== passedKey) {
-            continue;
-        }
-        contentLines.push(`${key}=${updatedValues[key]}`);
-    }
-
-    // End with a blank line
-    contentLines.push('');
-
-    // Write the updated content
-    await fs.writeFile(envFilePath, contentLines.join('\n'), 'utf8');
+    // Use the generic env file writer
+    await updateEnvFile(envFilePath, updates);
 
     // Log where the API key was written for visibility
     if (llmProvider && llmApiKey) {
@@ -276,13 +166,13 @@ async function updateEnvFileCore(
  * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
  * @param llmApiKey - The API key for the specified LLM provider.
  */
-export async function updateProjectEnvFile(
+export async function updateProjectEnvFileWithLLMKeys(
     directory: string,
     llmProvider?: LLMProvider,
     llmApiKey?: string
 ): Promise<void> {
     const envFilePath = path.join(directory, '.env');
-    await updateEnvFileCore(envFilePath, llmProvider, llmApiKey);
+    await updateEnvFileWithLLMKeys(envFilePath, llmProvider, llmApiKey);
 }
 
 /**
@@ -294,11 +184,11 @@ export async function updateProjectEnvFile(
  * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
  * @param llmApiKey - The API key for the specified LLM provider.
  */
-export async function updateEnvFile(
+export async function updateDetectedEnvFileWithLLMKeys(
     startPath: string,
     llmProvider?: LLMProvider,
     llmApiKey?: string
 ): Promise<void> {
-    const envFilePath = getEnvFilePath(startPath);
-    await updateEnvFileCore(envFilePath, llmProvider, llmApiKey);
+    const envFilePath = getDextoEnvPath(startPath);
+    await updateEnvFileWithLLMKeys(envFilePath, llmProvider, llmApiKey);
 }

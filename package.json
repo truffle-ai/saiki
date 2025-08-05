@@ -56,7 +56,8 @@
         "cli",
         "natural-language",
         "openai",
-        "truffle-ai"
+        "truffle-ai",
+        "dexto"
     ],
     "author": "",
     "license": "Elastic-2.0",

@@ -5,7 +5,7 @@ import { loadAgentConfig } from '@core/config/loader.js';
 import { applyCLIOverrides, type CLIConfigOverrides } from '../../config/cli-overrides.js';
 import { interactiveApiKeySetup } from './interactive-api-key-setup.js';
 import { DextoErrorCode } from '@core/schemas/errors.js';
-import { applyLayeredEnvironmentLoading } from '@core/utils/path.js';
+import { applyLayeredEnvironmentLoading } from '@core/utils/env.js';
 import type { LLMProvider } from '@core/index.js';
 
 /**
@@ -23,12 +23,6 @@ export async function validateConfigWithInteractiveSetup(
     // Apply CLI overrides
     const mergedConfig = applyCLIOverrides(rawConfig, cliOverrides);
 
-    // Debug: Check environment variables before validation
-    console.log('DEBUG: Environment variables:');
-    console.log(`ANTHROPIC_API_KEY: ${process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET'}`);
-    console.log(`OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET'}`);
-    console.log('DEBUG: Merged config LLM:', JSON.stringify(mergedConfig.llm, null, 2));
-
     // Parse with schema to detect issues
     const parseResult = AgentConfigSchema.safeParse(mergedConfig);
 
@@ -42,22 +36,14 @@ export async function validateConfigWithInteractiveSetup(
             );
 
             // Run interactive setup for the specific provider that failed
-            const setupResult = await interactiveApiKeySetup(apiKeyError.provider);
+            const setupSucceeded = await interactiveApiKeySetup(apiKeyError.provider);
 
-            if (!setupResult.success) {
-                if (setupResult.skipSetup) {
-                    console.log(
-                        chalk.dim('\n👋 Run dexto again once you have set up your API key!')
-                    );
-                } else {
-                    console.error(chalk.red('\n❌ API key setup required to continue.'));
-                }
+            if (!setupSucceeded) {
                 process.exit(0);
             }
 
             // Reload environment variables with layered loading and retry
             await applyLayeredEnvironmentLoading();
-            console.log(chalk.green('\n✨ API key configured! Continuing...\n'));
             return validateConfigWithInteractiveSetup(cliOverrides, configPath);
         }
 
