@@ -1,4 +1,4 @@
-# Dexto
+# Dexto (formerly Saiki)
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Beta-yellow">
