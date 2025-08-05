@@ -6,10 +6,8 @@ import path from 'node:path';
 import { getPackageManager, getPackageManagerInstallCommand } from '../utils/package-mgmt.js';
 import { executeWithTimeout } from '../utils/execute.js';
 import { createRequire } from 'module';
-import { findPackageRoot } from '../../../core/utils/path.js';
-import { getDefaultModelForProvider, LLMProvider, logger } from '@core/index.js';
-import { parseDocument } from 'yaml';
-import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
+import { LLMProvider, logger } from '@core/index.js';
+import { updateEnvFile, updateDextoConfigFile } from '../utils/api-key-utils.js';
 
 const require = createRequire(import.meta.url);
 
@@ -267,21 +265,6 @@ export async function createDextoConfigFile(directory: string): Promise<string> 
 }
 
 /**
- * Updates the LLM provider information in the dexto config file
- * Based on the LLM provider, the config file is updated with the correct API key and default model configured in registry
- * @param filepath - The path to the dexto config file
- * @param llmProvider - The LLM provider to use
- */
-export async function updateDextoConfigFile(filepath: string, llmProvider: LLMProvider) {
-    const fileContent = await fs.readFile(filepath, 'utf8');
-    const doc = parseDocument(fileContent);
-    doc.setIn(['llm', 'provider'], llmProvider);
-    doc.setIn(['llm', 'apiKey'], '$' + getPrimaryApiKeyEnvVar(llmProvider));
-    doc.setIn(['llm', 'model'], getDefaultModelForProvider(llmProvider));
-    await fs.writeFile(filepath, doc.toString(), 'utf8');
-}
-
-/**
  * Creates an example file in the given directory showing how to use Dexto in code. This file has example code to get you started.
  * @param directory - The directory to create the example index file in
  * @returns The path to the created example index file
@@ -364,153 +347,4 @@ export async function createDextoExampleFile(directory: string): Promise<string>
     // Ensure the directory exists before writing the file
     await fs.writeFile(outputPath, indexTsContent);
     return outputPath;
-}
-
-/**
- * Updates or creates a .env file by adding or updating a Dexto environment variables section.
- * The function handles these scenarios:
- *
- * 1. Finding the project root by searching for a lock file.
- * 2. Reading any existing .env file, preserving unrelated environment variables.
- * 3. Removing any existing '## Dexto env variables' section to avoid duplication.
- * 4. Adding a new '## Dexto env variables' section at the end of the file.
- *
- * For each environment variable (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.), the function handles four cases:
- * 1. If the variable already exists elsewhere in .env and was passed as parameter:
- *    Add a duplicate entry in the Dexto section with the new value.
- * 2. If the variable already exists elsewhere in .env and wasn't passed:
- *    Skip adding it to the Dexto section to avoid duplication.
- * 3. If the variable doesn't exist in .env and was passed:
- *    Add it to the Dexto section with the provided value.
- * 4. If the variable doesn't exist in .env and wasn't passed:
- *    Add it to the Dexto section with an empty string value.
- *
- * @param directory - The directory to start searching for the project root. Should be an existing directory, typically the current working directory or project root.
- * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
- * @param llmApiKey - The API key for the specified LLM provider.
- */
-export async function updateEnvFile(
-    directory: string,
-    llmProvider?: LLMProvider,
-    llmApiKey?: string
-) {
-    const dextoEnvKeys = [
-        'OPENAI_API_KEY',
-        'ANTHROPIC_API_KEY',
-        'GOOGLE_GENERATIVE_AI_API_KEY',
-        'GROQ_API_KEY',
-        'DEXTO_LOG_LEVEL',
-    ];
-
-    // Find project root and build .env file path
-    const projectRoot = findPackageRoot(directory);
-    if (!projectRoot) {
-        throw new Error('Could not find project root (no lock file found)');
-    }
-    const envFilePath = path.join(projectRoot, '.env');
-    logger.debug(`Updating .env file with dexto env variables: envFilePath ${envFilePath}`);
-    // Read existing .env if present
-    let envLines: string[] = [];
-    try {
-        const existingEnv = await fs.readFile(envFilePath, 'utf8');
-        envLines = existingEnv.split('\n');
-    } catch {
-        // File may not exist, start with empty array
-    }
-
-    // Extract current values for Dexto environment variables
-    const currentValues: Record<string, string> = {};
-    envLines.forEach((line) => {
-        const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && match[1] && match[2] !== undefined && dextoEnvKeys.includes(match[1])) {
-            currentValues[match[1]] = match[2];
-        }
-    });
-
-    const passedKey = llmProvider ? getPrimaryApiKeyEnvVar(llmProvider) : undefined;
-
-    // Prepare updated values for Dexto environment variables
-    const updatedValues: Record<string, string> = {
-        OPENAI_API_KEY:
-            llmProvider === 'openai' ? (llmApiKey ?? '') : (currentValues['OPENAI_API_KEY'] ?? ''),
-        ANTHROPIC_API_KEY:
-            llmProvider === 'anthropic'
-                ? (llmApiKey ?? '')
-                : (currentValues['ANTHROPIC_API_KEY'] ?? ''),
-        GOOGLE_GENERATIVE_AI_API_KEY:
-            llmProvider === 'google'
-                ? (llmApiKey ?? '')
-                : (currentValues['GOOGLE_GENERATIVE_AI_API_KEY'] ?? ''),
-        GROQ_API_KEY:
-            llmProvider === 'groq' ? (llmApiKey ?? '') : (currentValues['GROQ_API_KEY'] ?? ''),
-        DEXTO_LOG_LEVEL: currentValues['DEXTO_LOG_LEVEL'] ?? 'info',
-    };
-
-    // Extract content before and after the Dexto section
-    const sectionHeader = '## Dexto env variables';
-    const headerIndex = envLines.findIndex((line) => line.trim() === sectionHeader);
-
-    let contentLines: string[];
-
-    if (headerIndex !== -1) {
-        // Extract lines before the section header
-        const beforeSection = envLines.slice(0, headerIndex);
-
-        // Find the end of the section
-        let sectionEnd = headerIndex + 1;
-        while (sectionEnd < envLines.length && envLines[sectionEnd]?.trim() !== '') {
-            sectionEnd++;
-        }
-
-        // Skip the blank line after the section if present
-        if (sectionEnd < envLines.length && envLines[sectionEnd]?.trim() === '') {
-            sectionEnd++;
-        }
-
-        // Extract lines after the section
-        const afterSection = envLines.slice(sectionEnd);
-
-        // Combine sections
-        contentLines = [...beforeSection, ...afterSection];
-    } else {
-        contentLines = envLines;
-    }
-
-    // Identify env variables already present outside the Dexto section
-    const existingEnvVars: Record<string, string> = {};
-    contentLines.forEach((line) => {
-        const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && match[1] && match[2] !== undefined && dextoEnvKeys.includes(match[1])) {
-            existingEnvVars[match[1]] = match[2];
-        }
-    });
-
-    // Ensure exactly one blank line before adding the new section
-    if (contentLines.length > 0) {
-        // If the last line is not blank, add a blank line
-        if (contentLines[contentLines.length - 1]?.trim() !== '') {
-            contentLines.push('');
-        }
-    } else {
-        // If the file was empty, add a blank line at the start
-        contentLines.push('');
-    }
-
-    // Add the section header
-    contentLines.push(sectionHeader);
-
-    // Add environment variables that should be included
-    for (const key of dextoEnvKeys) {
-        // Skip keys already present outside Dexto section (unless it's the passed key)
-        if (key in existingEnvVars && key !== passedKey) {
-            continue;
-        }
-        contentLines.push(`${key}=${updatedValues[key]}`);
-    }
-
-    // End with a blank line
-    contentLines.push('');
-
-    // Write the updated content
-    await fs.writeFile(envFilePath, contentLines.join('\n'), 'utf8');
 }

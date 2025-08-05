@@ -1,8 +1,15 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
-import { updateEnvFile, updateDextoConfigFile } from '../project-commands/init.js';
 import { LLMProvider, logger, resolveConfigPath, DEFAULT_CONFIG_PATH } from '@core/index.js';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
+import {
+    updateEnvFile,
+    updateDextoConfigFile,
+    getProviderDisplayName,
+    getApiKeyPlaceholder,
+    isValidApiKeyFormat,
+    getProviderInstructions,
+} from './api-key-utils.js';
 
 interface ApiKeySetupResult {
     success: boolean;
@@ -13,22 +20,37 @@ interface ApiKeySetupResult {
 /**
  * Interactively prompts the user to set up an API key when none are found.
  * Provides options for different providers, including information about free tiers.
+ * @param requiredProvider - Optional specific provider that needs setup (skips provider selection)
  */
-export async function interactiveApiKeySetup(): Promise<ApiKeySetupResult> {
+export async function interactiveApiKeySetup(
+    requiredProvider?: LLMProvider
+): Promise<ApiKeySetupResult> {
     try {
         // Welcome message
         p.intro(chalk.cyan('🔑 API Key Setup'));
 
-        // Show informative message about API keys
-        p.note(
-            `Dexto needs an API key to work with AI models. You can:\n\n` +
-                `• ${chalk.green('Google Gemini')} - Free tier available (15 requests/minute)\n` +
-                `• ${chalk.blue('OpenAI')} - Most popular, requires payment\n` +
-                `• ${chalk.magenta('Anthropic')} - High quality models, requires payment\n` +
-                `• ${chalk.yellow('Groq')} - Fast inference, free tier available\n\n` +
-                `Don't have an API key? Get a free one from Google AI Studio!`,
-            chalk.bold('Choose your AI provider')
-        );
+        // Show targeted message based on whether we have a specific provider requirement
+        if (requiredProvider) {
+            const instructions = getProviderInstructions(requiredProvider);
+            p.note(
+                `Your configuration requires a ${getProviderDisplayName(requiredProvider)} API key.\n\n` +
+                    (instructions
+                        ? instructions.content
+                        : 'Please get an API key for this provider.'),
+                chalk.bold(`${getProviderDisplayName(requiredProvider)} API Key Required`)
+            );
+        } else {
+            // Show general message for provider selection
+            p.note(
+                `Dexto needs an API key to work with AI models. You can:\n\n` +
+                    `• ${chalk.green('Google Gemini')} - Free tier available (15 requests/minute)\n` +
+                    `• ${chalk.blue('OpenAI')} - Most popular, requires payment\n` +
+                    `• ${chalk.magenta('Anthropic')} - High quality models, requires payment\n` +
+                    `• ${chalk.yellow('Groq')} - Fast inference, free tier available\n\n` +
+                    `Don't have an API key? Get a free one from Google AI Studio!`,
+                chalk.bold('Choose your AI provider')
+            );
+        }
 
         // First, ask what they want to do
         const action = await p.select({
@@ -62,35 +84,42 @@ export async function interactiveApiKeySetup(): Promise<ApiKeySetupResult> {
             return { success: false, skipSetup: true };
         }
 
-        // Interactive setup flow
-        const provider = (await p.select({
-            message: 'Select your AI provider',
-            options: [
-                {
-                    value: 'google',
-                    label: 'Google Gemini',
-                    hint: '🆓 Free tier available - get key from aistudio.google.com',
-                },
-                {
-                    value: 'openai',
-                    label: 'OpenAI',
-                    hint: '💰 Requires payment - get key from platform.openai.com',
-                },
-                {
-                    value: 'anthropic',
-                    label: 'Anthropic Claude',
-                    hint: '💰 Requires payment - get key from console.anthropic.com',
-                },
-                {
-                    value: 'groq',
-                    label: 'Groq',
-                    hint: '🆓 Free tier available - get key from console.groq.com',
-                },
-            ],
-        })) as LLMProvider;
+        // Determine the provider - either use the required one or let user select
+        let provider: LLMProvider;
 
-        // Show provider-specific instructions
-        showProviderInstructions(provider);
+        if (requiredProvider) {
+            provider = requiredProvider;
+        } else {
+            // Interactive provider selection
+            provider = (await p.select({
+                message: 'Select your AI provider',
+                options: [
+                    {
+                        value: 'google',
+                        label: 'Google Gemini',
+                        hint: '🆓 Free tier available - get key from aistudio.google.com',
+                    },
+                    {
+                        value: 'openai',
+                        label: 'OpenAI',
+                        hint: '💰 Requires payment - get key from platform.openai.com',
+                    },
+                    {
+                        value: 'anthropic',
+                        label: 'Anthropic Claude',
+                        hint: '💰 Requires payment - get key from console.anthropic.com',
+                    },
+                    {
+                        value: 'groq',
+                        label: 'Groq',
+                        hint: '🆓 Free tier available - get key from console.groq.com',
+                    },
+                ],
+            })) as LLMProvider;
+
+            // Show provider-specific instructions for user-selected provider
+            showProviderInstructions(provider);
+        }
 
         const apiKey = await p.text({
             message: `Enter your ${getProviderDisplayName(provider)} API key`,
@@ -206,109 +235,5 @@ function showProviderInstructions(provider: LLMProvider): void {
     const instructions = getProviderInstructions(provider);
     if (instructions) {
         p.note(instructions.content, instructions.title);
-    }
-}
-
-/**
- * Gets provider-specific instructions for API key setup
- */
-function getProviderInstructions(provider: LLMProvider): { title: string; content: string } | null {
-    switch (provider) {
-        case 'google':
-            return {
-                title: chalk.green('Google Gemini - Free API Key'),
-                content:
-                    `1. Visit: ${chalk.cyan('https://aistudio.google.com/apikey')}\n` +
-                    `2. Sign in with your Google account\n` +
-                    `3. Click "Create API Key"\n` +
-                    `4. Copy the key (starts with "AIza...")\n\n` +
-                    `${chalk.dim('✨ Free tier: 15 requests/minute, 1500 requests/day')}`,
-            };
-        case 'openai':
-            return {
-                title: chalk.blue('OpenAI API Key'),
-                content:
-                    `1. Visit: ${chalk.cyan('https://platform.openai.com/api-keys')}\n` +
-                    `2. Sign in to your OpenAI account\n` +
-                    `3. Click "Create new secret key"\n` +
-                    `4. Copy the key (starts with "sk-...")\n\n` +
-                    `${chalk.dim('💰 Requires payment - $5 minimum credit')}`,
-            };
-        case 'anthropic':
-            return {
-                title: chalk.magenta('Anthropic API Key'),
-                content:
-                    `1. Visit: ${chalk.cyan('https://console.anthropic.com/keys')}\n` +
-                    `2. Sign in to your Anthropic account\n` +
-                    `3. Click "Create Key"\n` +
-                    `4. Copy the key (starts with "sk-ant-...")\n\n` +
-                    `${chalk.dim('💰 Requires payment - $5 minimum credit')}`,
-            };
-        case 'groq':
-            return {
-                title: chalk.yellow('Groq API Key'),
-                content:
-                    `1. Visit: ${chalk.cyan('https://console.groq.com/keys')}\n` +
-                    `2. Sign in with your account\n` +
-                    `3. Click "Create API Key"\n` +
-                    `4. Copy the key (starts with "gsk_...")\n\n` +
-                    `${chalk.dim('🆓 Free tier: 30 requests/minute')}`,
-            };
-        default:
-            return null;
-    }
-}
-
-/**
- * Gets display name for a provider
- */
-function getProviderDisplayName(provider: LLMProvider): string {
-    switch (provider) {
-        case 'google':
-            return 'Google Gemini';
-        case 'openai':
-            return 'OpenAI';
-        case 'anthropic':
-            return 'Anthropic';
-        case 'groq':
-            return 'Groq';
-        default:
-            return provider;
-    }
-}
-
-/**
- * Gets API key placeholder for a provider
- */
-function getApiKeyPlaceholder(provider: LLMProvider): string {
-    switch (provider) {
-        case 'google':
-            return 'AIza...';
-        case 'openai':
-            return 'sk-...';
-        case 'anthropic':
-            return 'sk-ant-...';
-        case 'groq':
-            return 'gsk_...';
-        default:
-            return 'your-api-key';
-    }
-}
-
-/**
- * Validates API key format for a provider
- */
-function isValidApiKeyFormat(apiKey: string, provider: LLMProvider): boolean {
-    switch (provider) {
-        case 'google':
-            return apiKey.startsWith('AIza') && apiKey.length > 20;
-        case 'openai':
-            return apiKey.startsWith('sk-') && apiKey.length > 40;
-        case 'anthropic':
-            return apiKey.startsWith('sk-ant-') && apiKey.length > 40;
-        case 'groq':
-            return apiKey.startsWith('gsk_') && apiKey.length > 40;
-        default:
-            return apiKey.length > 10; // Basic length check
     }
 }
