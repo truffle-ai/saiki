@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import { updateEnvFile } from './init.js';
+import { updateEnvFile } from '../utils/api-key-utils.js';
 
 describe('updateEnvFile', () => {
     let tempDir: string;

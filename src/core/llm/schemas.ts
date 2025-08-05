@@ -26,7 +26,7 @@ export const LLMConfigBaseSchema = z
         model: NonEmptyTrimmed.describe('Specific model name for the selected provider'),
 
         // Expand $ENV refs and trim; validation moved to superRefine with provider context
-        apiKey: EnvExpandedString(process.env).describe(
+        apiKey: EnvExpandedString().describe(
             'API key for provider; can be given directly or via $ENV reference'
         ),
 

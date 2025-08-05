@@ -75,8 +75,8 @@ export function getProviderInstructions(
                     `1. Visit: ${chalk.cyan('https://aistudio.google.com/apikey')}\n` +
                     `2. Sign in with your Google account\n` +
                     `3. Click "Create API Key"\n` +
-                    `4. Copy the key (starts with "AIza...")\n\n` +
-                    `${chalk.dim('✨ Free tier: 15 requests/minute, 1500 requests/day')}`,
+                    `4. Copy the key\n\n` +
+                    `${chalk.dim('✨ Free tier included')}`,
             };
         case 'openai':
             return {
@@ -85,18 +85,18 @@ export function getProviderInstructions(
                     `1. Visit: ${chalk.cyan('https://platform.openai.com/api-keys')}\n` +
                     `2. Sign in to your OpenAI account\n` +
                     `3. Click "Create new secret key"\n` +
-                    `4. Copy the key (starts with "sk-...")\n\n` +
-                    `${chalk.dim('💰 Requires payment - $5 minimum credit')}`,
+                    `4. Copy the key\n\n` +
+                    `${chalk.dim('💰 Requires payment')}`,
             };
         case 'anthropic':
             return {
                 title: chalk.magenta('Anthropic API Key'),
                 content:
-                    `1. Visit: ${chalk.cyan('https://console.anthropic.com/keys')}\n` +
+                    `1. Visit: ${chalk.cyan('https://console.anthropic.com/settings/keys')}\n` +
                     `2. Sign in to your Anthropic account\n` +
                     `3. Click "Create Key"\n` +
-                    `4. Copy the key (starts with "sk-ant-...")\n\n` +
-                    `${chalk.dim('💰 Requires payment - $5 minimum credit')}`,
+                    `4. Copy the key\n\n` +
+                    `${chalk.dim('💰 Requires payment')}`,
             };
         case 'groq':
             return {
@@ -105,8 +105,8 @@ export function getProviderInstructions(
                     `1. Visit: ${chalk.cyan('https://console.groq.com/keys')}\n` +
                     `2. Sign in with your account\n` +
                     `3. Click "Create API Key"\n` +
-                    `4. Copy the key (starts with "gsk_...")\n\n` +
-                    `${chalk.dim('🆓 Free tier: 30 requests/minute')}`,
+                    `4. Copy the key\n\n` +
+                    `${chalk.dim('🆓 Free tier included')}`,
             };
         default:
             return null;

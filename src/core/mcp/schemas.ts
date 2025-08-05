@@ -8,7 +8,7 @@ export const StdioServerConfigSchema = z
     .object({
         type: z.literal('stdio'),
         // allow env in command & args if you want; remove EnvExpandedString if not desired
-        command: EnvExpandedString(process.env).superRefine((s, ctx) => {
+        command: EnvExpandedString().superRefine((s, ctx) => {
             if (s.length === 0) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
@@ -19,11 +19,11 @@ export const StdioServerConfigSchema = z
             }
         }),
         args: z
-            .array(EnvExpandedString(process.env))
+            .array(EnvExpandedString())
             .default([])
             .describe("Array of arguments for the command (e.g., ['script.js'])"),
         env: z
-            .record(EnvExpandedString(process.env))
+            .record(EnvExpandedString())
             .default({})
             .describe('Optional environment variables for the server process'),
         timeout: z.coerce.number().int().positive().default(30000),
@@ -39,7 +39,7 @@ export const SseServerConfigSchema = z
     .object({
         type: z.literal('sse'),
         url: RequiredEnvURL(process.env).describe('URL for the SSE server endpoint'),
-        headers: z.record(EnvExpandedString(process.env)).default({}),
+        headers: z.record(EnvExpandedString()).default({}),
         timeout: z.coerce.number().int().positive().default(30000),
         connectionMode: z.enum(['strict', 'lenient']).default('lenient'),
     })
@@ -53,7 +53,7 @@ export const HttpServerConfigSchema = z
     .object({
         type: z.literal('http'),
         url: RequiredEnvURL(process.env).describe('URL for the HTTP server'),
-        headers: z.record(EnvExpandedString(process.env)).default({}),
+        headers: z.record(EnvExpandedString()).default({}),
         timeout: z.coerce.number().int().positive().default(30000),
         connectionMode: z.enum(['strict', 'lenient']).default('lenient'),
     })

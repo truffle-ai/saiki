@@ -1,7 +1,18 @@
 #!/usr/bin/env node
 // Load environment variables FIRST, before any other imports
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+// Debug: Check what directory we're loading .env from
+console.log('DEBUG: Current working directory:', process.cwd());
+console.log('DEBUG: Looking for .env at:', path.resolve(process.cwd(), '.env'));
+
+const result = dotenv.config();
+console.log('DEBUG: dotenv.config() result:', result);
+console.log(
+    'DEBUG: ANTHROPIC_API_KEY after dotenv:',
+    process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET'
+);
 
 import { existsSync } from 'fs';
 import { Command } from 'commander';
@@ -42,6 +53,7 @@ import { startNextJsWebServer } from './web.js';
 import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
 import { createAgentCard } from '@core/config/agentCard.js';
 import { initializeMcpToolAggregationServer } from './api/mcp/tool-aggregation-handler.js';
+import { CLIConfigOverrides } from './config/cli-overrides.js';
 
 const program = new Command();
 
@@ -268,7 +280,10 @@ program
         let validatedConfig: AgentConfig;
         try {
             const configPath = opts.agent === DEFAULT_CONFIG_PATH ? undefined : opts.agent;
-            validatedConfig = await validateConfigWithInteractiveSetup(opts, configPath);
+            validatedConfig = await validateConfigWithInteractiveSetup(
+                opts as CLIConfigOverrides,
+                configPath
+            );
         } catch (err) {
             // Config loading failed completely
             console.error(`❌ Failed to load configuration: ${err}`);

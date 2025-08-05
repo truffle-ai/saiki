@@ -7,7 +7,6 @@ import { applyCLIOverrides, type CLIConfigOverrides } from '../../config/cli-ove
 import { interactiveApiKeySetup } from './interactive-api-key-setup.js';
 import { DextoErrorCode } from '@core/schemas/errors.js';
 import type { LLMProvider } from '@core/index.js';
-import type { CLIOptions } from './options.js';
 
 /**
  * Validates config with interactive fixes for user experience.
@@ -15,20 +14,20 @@ import type { CLIOptions } from './options.js';
  * Returns raw AgentConfig that will be validated again by DextoAgent.
  */
 export async function validateConfigWithInteractiveSetup(
-    opts: CLIOptions,
+    cliOverrides: CLIConfigOverrides,
     configPath?: string
 ): Promise<AgentConfig> {
     // Load raw config
     const rawConfig = await loadAgentConfig(configPath);
 
     // Apply CLI overrides
-    const cliOverrides: CLIConfigOverrides = {
-        model: opts.model,
-        provider: opts.provider,
-        router: opts.router,
-        apiKey: opts.apiKey,
-    };
     const mergedConfig = applyCLIOverrides(rawConfig, cliOverrides);
+
+    // Debug: Check environment variables before validation
+    console.log('DEBUG: Environment variables:');
+    console.log(`ANTHROPIC_API_KEY: ${process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET'}`);
+    console.log(`OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET'}`);
+    console.log('DEBUG: Merged config LLM:', JSON.stringify(mergedConfig.llm, null, 2));
 
     // Parse with schema to detect issues
     const parseResult = AgentConfigSchema.safeParse(mergedConfig);
@@ -59,7 +58,7 @@ export async function validateConfigWithInteractiveSetup(
             // Reload environment variables and retry
             dotenv.config();
             console.log(chalk.green('\n✨ API key configured! Continuing...\n'));
-            return validateConfigWithInteractiveSetup(opts, configPath);
+            return validateConfigWithInteractiveSetup(cliOverrides, configPath);
         }
 
         // Other validation errors - show user-friendly message
