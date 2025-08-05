@@ -134,7 +134,7 @@ await agent.stop();
 
 Everything in the CLI is powered by this same class—so whatever the CLI can do, your code can too.
 
-Check out our [Typescript SDK docs](https://truffle-ai.github.io/dexto/api/category/typescript-sdk) for a complete guide.
+Check out our [Typescript SDK docs](https://docs.dexto.ai/api/category/typescript-sdk) for a complete guide.
 
 ---
 
@@ -164,7 +164,7 @@ systemPrompt: |
 
 Change the file, reload the agent, and chat—the conversation state, memory, and tools will update.
 
-Check out our [Configuration guide](https://truffle-ai.github.io/dexto/docs/category/dexto-configuration-guide) for the complete reference.
+Check out our [Configuration guide](https://docs.dexto.ai/category/dexto-configuration-guide) for the complete reference.
 
 ---
 
@@ -188,7 +188,7 @@ dexto --agent ./agents/examples/email_slack.yml
 ```
 <img src="assets/email_slack_demo.gif" alt="Email to Slack Demo" width="600">
 
-More ready-to-run recipes live in [`agents/examples`](agents/examples) and the [docs site](https://truffle-ai.github.io/dexto/).
+More ready-to-run recipes live in [`agents/examples`](agents/examples) and the [docs site](https://docs.dexto.ai/).
 
 ---
 
@@ -227,7 +227,7 @@ dexto -m claude-3.5-sonnet-20240620
 dexto -m gemini-1.5-flash-latest
 ```
 
-For comprehensive setup instructions, see our **[LLM Providers Guide](https://truffle-ai.github.io/dexto/docs/guides/configuring-dexto/llm/providers)**.
+For comprehensive setup instructions, see our **[LLM Providers Guide](https://docs.dexto.ai/guides/configuring-dexto/llm/providers)**.
 
 ---
 
@@ -260,7 +260,7 @@ console.log('File contents:', result);
 await manager.disconnectAll();
 ```
 
-See the **[MCP Manager Documentation](https://truffle-ai.github.io/dexto/docs/guides/mcp-manager)** for the complete API reference.
+See the **[MCP Manager Documentation](https://docs.dexto.ai/guides/mcp-manager)** for the complete API reference.
 
 ---
 
@@ -272,7 +272,9 @@ See the **[MCP Manager Documentation](https://truffle-ai.github.io/dexto/docs/gu
 ```
 Usage: dexto [options] [command] [prompt...]
 
-The Dexto CLI allows you to talk to Dexto, build custom AI Agents, and create complex AI applications. For full documentation, visit https://github.com/truffle-ai/dexto.
+The Dexto CLI allows you to talk to Dexto, build custom AI Agents, and create complex AI applications.
+
+For full documentation, visit https://docs.dexto.ai.
 
 Arguments:
   prompt                    Natural-language prompt to run once. If empty, starts interactive CLI.
@@ -299,10 +301,10 @@ Commands:
 
 ## Next Steps
 
-* **[Quick Start](https://truffle-ai.github.io/dexto/docs/getting-started/intro)** – Get up and running in minutes.
-* **[Configuration Guide](https://truffle-ai.github.io/dexto/docs/category/guides)** – Configure agents, LLMs, and tools.
-* **[Building with Dexto](https://truffle-ai.github.io/dexto/docs/category/tutorials)** – Developer guides and patterns.
-* **[API Reference](https://truffle-ai.github.io/dexto/api)** – REST APIs, WebSocket, and SDKs.
+* **[Quick Start](https://docs.dexto.ai/getting-started/intro)** – Get up and running in minutes.
+* **[Configuration Guide](https://docs.dexto.ai/category/guides)** – Configure agents, LLMs, and tools.
+* **[Building with Dexto](https://docs.dexto.ai/category/tutorials)** – Developer guides and patterns.
+* **[API Reference](https://docs.dexto.ai/api)** – REST APIs, WebSocket, and SDKs.
 
 ---
 

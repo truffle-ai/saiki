@@ -24,11 +24,11 @@ export const documentationCommands: CommandDefinition[] = [
         category: 'Documentation',
         aliases: ['doc'],
         handler: async (_args: string[], _agent: DextoAgent): Promise<boolean> => {
+            const docsUrl = 'https://docs.dexto.ai/category/getting-started/';
             try {
                 const { spawn } = await import('child_process');
-                const url = 'https://truffle-ai.github.io/dexto/docs/category/getting-started/';
 
-                console.log(chalk.blue(`🌐 Opening Dexto documentation: ${url}`));
+                console.log(chalk.blue(`🌐 Opening Dexto documentation: ${docsUrl}`));
 
                 // Cross-platform browser opening
                 const command =
@@ -38,17 +38,13 @@ export const documentationCommands: CommandDefinition[] = [
                           ? 'start'
                           : 'xdg-open';
 
-                spawn(command, [url], { detached: true, stdio: 'ignore' });
+                spawn(command, [docsUrl], { detached: true, stdio: 'ignore' });
                 console.log(chalk.green('✅ Documentation opened in browser'));
             } catch (error) {
                 logger.error(
                     `Failed to open documentation: ${error instanceof Error ? error.message : String(error)}`
                 );
-                console.log(
-                    chalk.yellow(
-                        '💡 You can manually visit: https://truffle-ai.github.io/dexto/docs/category/getting-started/'
-                    )
-                );
+                console.log(chalk.yellow(`💡 You can manually visit: ${docsUrl}`));
             }
             return true;
         },
