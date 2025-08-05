@@ -6,8 +6,8 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["database", "sql", "data", "queries"],
-    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/database-agent/database-agent.yml",
-    "lastUpdated": "2025-01-01T00:00:00Z"
+    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/database-agent/database-agent.yml",
+    "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "talk2pdf-agent": {
     "name": "talk2pdf-agent",
@@ -16,8 +16,8 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["pdf", "documents", "analysis", "conversation"],
-    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/talk2pdf-agent/talk2pdf-agent.yml",
-    "lastUpdated": "2025-01-01T00:00:00Z"
+    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/talk2pdf-agent/talk2pdf-agent.yml",
+    "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "image-editor-agent": {
     "name": "image-editor-agent",
@@ -26,8 +26,8 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["images", "editing", "graphics", "visual"],
-    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/image-editor-agent/image-editor-agent.yml",
-    "lastUpdated": "2025-01-01T00:00:00Z"
+    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/image-editor-agent/image-editor-agent.yml",
+    "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "music-agent": {
     "name": "music-agent",
@@ -36,18 +36,18 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["music", "audio", "creation", "sound"],
-    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/music-agent/music-agent.yml",
-    "lastUpdated": "2025-01-01T00:00:00Z"
+    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/music-agent/music-agent.yml",
+    "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "product-researcher": {
-    "name": "product-researcher",
+    "name": "product-name-researcher",
     "displayName": "Product Name Researcher",
     "description": "AI agent for product name research and branding",
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["product", "research", "branding", "naming"],
-    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/product-name-researcher/product-name-researcher.yml",
-    "lastUpdated": "2025-01-01T00:00:00Z"
+    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/product-name-researcher/product-name-researcher.yml",
+    "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "triage-agent": {
     "name": "triage-agent",
@@ -56,7 +56,7 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["support", "triage", "customer-service", "routing"],
-    "configPath": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/triage-demo/triage-agent.yml",
-    "lastUpdated": "2025-01-01T00:00:00Z"
+    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/triage-demo/triage-agent.yml",
+    "lastUpdated": "2025-08-04T12:44:11Z"
   }
 }

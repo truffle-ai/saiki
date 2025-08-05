@@ -6,6 +6,8 @@
 import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createHash } from 'crypto';
+import { z } from 'zod';
 import { logger } from '@core/logger/index.js';
 import { getSaikiPath } from '@core/utils/path.js';
 import { AgentRegistry, AgentRegistryEntry, AgentRegistryConfig } from './types.js';
@@ -13,6 +15,17 @@ import { AgentRegistry, AgentRegistryEntry, AgentRegistryConfig } from './types.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '../../../');
+
+/**
+ * Zod schema for AgentRegistryConfig validation
+ */
+const AgentRegistryConfigSchema = z
+    .object({
+        registryAgents: z.record(z.string(), z.any()).default({}),
+        remoteRegistries: z.array(z.string()).optional(),
+        cacheTtl: z.number().positive().default(3600),
+    })
+    .strict();
 
 /**
  * Interface for the raw agent data from JSON file
@@ -24,7 +37,7 @@ interface RawAgentData {
     version: string;
     author?: string;
     tags?: string[];
-    configPath: string;
+    configUrl: string;
     lastUpdated?: string;
 }
 
@@ -33,11 +46,12 @@ export class LocalAgentRegistry implements AgentRegistry {
     private _registryAgents: Record<string, AgentRegistryEntry> | null = null;
 
     constructor(config?: Partial<AgentRegistryConfig>) {
-        this.config = {
+        const validatedConfig = AgentRegistryConfigSchema.parse({
             registryAgents: {}, // Will be loaded lazily
             cacheTtl: 3600, // 1 hour
             ...config,
-        };
+        });
+        this.config = validatedConfig as AgentRegistryConfig;
     }
 
     /**
@@ -67,10 +81,10 @@ export class LocalAgentRegistry implements AgentRegistry {
                     displayName: rawAgent.displayName,
                     description: rawAgent.description,
                     version: rawAgent.version,
-                    // Use configPath directly if it's a URL, otherwise resolve as local path
-                    configUrl: rawAgent.configPath.startsWith('http')
-                        ? rawAgent.configPath
-                        : path.join(PROJECT_ROOT, rawAgent.configPath),
+                    // Use configUrl directly if it's a URL, otherwise resolve as local path
+                    configUrl: rawAgent.configUrl.startsWith('http')
+                        ? rawAgent.configUrl
+                        : path.join(PROJECT_ROOT, rawAgent.configUrl),
                     source: 'registry' as const,
                 };
 
@@ -120,8 +134,8 @@ export class LocalAgentRegistry implements AgentRegistry {
                 mkdirSync(cacheDir, { recursive: true });
             }
 
-            // Generate cache filename from URL
-            const urlHash = Buffer.from(url).toString('base64').replace(/[/+=]/g, '_');
+            // Generate cache filename from URL using SHA-256 hash
+            const urlHash = createHash('sha256').update(url).digest('hex');
             const cacheFile = path.join(cacheDir, `${urlHash}.yml`);
             const metaFile = path.join(cacheDir, `${urlHash}.meta.json`);
 
