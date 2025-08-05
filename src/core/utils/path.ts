@@ -1,7 +1,9 @@
 import * as path from 'path';
 import { existsSync, readFileSync } from 'fs';
+import { promises as fs } from 'fs';
 import { homedir } from 'os';
 import { createRequire } from 'module';
+import dotenv from 'dotenv';
 import { ConfigFileNotFoundError } from '@core/error/index.js';
 /**
  * Default config file path (relative to package root)
@@ -183,4 +185,107 @@ export function resolveBundledScript(scriptPath: string): string {
         }
         return path.resolve(packageRoot, scriptPath);
     }
+}
+
+/**
+ * Ensure ~/.dexto directory exists for global storage
+ */
+async function ensureDextoGlobalDirectory(): Promise<void> {
+    const dextoDir = path.join(homedir(), '.dexto');
+    try {
+        await fs.mkdir(dextoDir, { recursive: true });
+    } catch (error) {
+        // Directory might already exist, ignore EEXIST errors
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+            throw error;
+        }
+    }
+}
+
+/**
+ * Multi-layer environment variable loading with context awareness.
+ * Loads environment variables in priority order:
+ * 1. Shell environment (highest priority)
+ * 2. Project .env (if in dexto project)
+ * 3. Global ~/.dexto/.env (fallback)
+ *
+ * @param startPath Starting directory for project detection
+ * @returns Combined environment variables object
+ */
+export async function loadEnvironmentVariables(
+    startPath: string = process.cwd()
+): Promise<Record<string, string>> {
+    const projectRoot = getDextoProjectRoot(startPath);
+    const env: Record<string, string> = {};
+
+    // Layer 3: Global ~/.dexto/.env (lowest priority)
+    const globalEnvPath = path.join(homedir(), '.dexto', '.env');
+    try {
+        const globalResult = dotenv.config({ path: globalEnvPath });
+        if (globalResult.parsed) {
+            Object.assign(env, globalResult.parsed);
+        }
+    } catch {
+        // Global .env is optional, ignore errors
+    }
+
+    // Layer 2: Project .env (medium priority)
+    if (projectRoot) {
+        const projectEnvPath = path.join(projectRoot, '.env');
+        try {
+            const projectResult = dotenv.config({ path: projectEnvPath });
+            if (projectResult.parsed) {
+                Object.assign(env, projectResult.parsed);
+            }
+        } catch {
+            // Project .env is optional, ignore errors
+        }
+    }
+
+    // Layer 1: Shell environment (highest priority)
+    // Filter to only include defined values (not undefined)
+    for (const [key, value] of Object.entries(process.env)) {
+        if (value !== undefined) {
+            env[key] = value;
+        }
+    }
+
+    return env;
+}
+
+/**
+ * Get the appropriate .env file path for saving API keys.
+ * Returns project .env if in dexto project, otherwise global ~/.dexto/.env
+ *
+ * @param startPath Starting directory for project detection
+ * @returns Absolute path to .env file for saving
+ */
+export function getEnvFilePath(startPath: string = process.cwd()): string {
+    const projectRoot = getDextoProjectRoot(startPath);
+
+    if (projectRoot) {
+        // In dexto project: save to project .env
+        return path.join(projectRoot, '.env');
+    } else {
+        // Global usage: save to ~/.dexto/.env
+        return path.join(homedir(), '.dexto', '.env');
+    }
+}
+
+/**
+ * Apply layered environment loading to process.env.
+ * This replaces the simple dotenv.config() with multi-layer loading.
+ * Should be called at CLI startup before any schema validation.
+ *
+ * @param startPath Starting directory for project detection
+ */
+export async function applyLayeredEnvironmentLoading(
+    startPath: string = process.cwd()
+): Promise<void> {
+    // Ensure global directory exists for saving later
+    await ensureDextoGlobalDirectory();
+
+    // Load layered environment and apply to process.env
+    const layeredEnv = await loadEnvironmentVariables(startPath);
+    Object.assign(process.env, layeredEnv);
 }

@@ -1,17 +1,19 @@
 #!/usr/bin/env node
-// Load environment variables FIRST, before any other imports
-import dotenv from 'dotenv';
-import path from 'path';
+// Load environment variables FIRST with layered loading
+import { applyLayeredEnvironmentLoading } from '../core/utils/path.js';
 
-// Debug: Check what directory we're loading .env from
+// Apply layered environment loading before any other imports
+await applyLayeredEnvironmentLoading();
+
+// Debug: Show environment loading results
 console.log('DEBUG: Current working directory:', process.cwd());
-console.log('DEBUG: Looking for .env at:', path.resolve(process.cwd(), '.env'));
-
-const result = dotenv.config();
-console.log('DEBUG: dotenv.config() result:', result);
 console.log(
-    'DEBUG: ANTHROPIC_API_KEY after dotenv:',
+    'DEBUG: ANTHROPIC_API_KEY after layered loading:',
     process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET'
+);
+console.log(
+    'DEBUG: OPENAI_API_KEY after layered loading:',
+    process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET'
 );
 
 import { existsSync } from 'fs';

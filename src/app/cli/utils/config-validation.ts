@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import dotenv from 'dotenv';
 import chalk from 'chalk';
 import { AgentConfigSchema, type AgentConfig } from '@core/agent/schemas.js';
 import { loadAgentConfig } from '@core/config/loader.js';
 import { applyCLIOverrides, type CLIConfigOverrides } from '../../config/cli-overrides.js';
 import { interactiveApiKeySetup } from './interactive-api-key-setup.js';
 import { DextoErrorCode } from '@core/schemas/errors.js';
+import { applyLayeredEnvironmentLoading } from '@core/utils/path.js';
 import type { LLMProvider } from '@core/index.js';
 
 /**
@@ -55,8 +55,8 @@ export async function validateConfigWithInteractiveSetup(
                 process.exit(0);
             }
 
-            // Reload environment variables and retry
-            dotenv.config();
+            // Reload environment variables with layered loading and retry
+            await applyLayeredEnvironmentLoading();
             console.log(chalk.green('\n✨ API key configured! Continuing...\n'));
             return validateConfigWithInteractiveSetup(cliOverrides, configPath);
         }

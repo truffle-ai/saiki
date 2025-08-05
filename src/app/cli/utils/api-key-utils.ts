@@ -4,7 +4,7 @@ import { parseDocument } from 'yaml';
 import chalk from 'chalk';
 import { LLMProvider, getDefaultModelForProvider } from '@core/index.js';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
-import { findPackageRoot } from '@core/utils/path.js';
+import { getEnvFilePath } from '@core/utils/path.js';
 import { logger } from '@core/logger/index.js';
 
 /**
@@ -130,30 +130,15 @@ export async function updateDextoConfigFile(
 }
 
 /**
- * Updates or creates a .env file by adding or updating a Dexto environment variables section.
- * The function handles these scenarios:
+ * Core logic to update an .env file with Dexto environment variables.
+ * This is the shared implementation used by both project and interactive env file updates.
  *
- * 1. Finding the project root by searching for a lock file.
- * 2. Reading any existing .env file, preserving unrelated environment variables.
- * 3. Removing any existing '## Dexto env variables' section to avoid duplication.
- * 4. Adding a new '## Dexto env variables' section at the end of the file.
- *
- * For each environment variable (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.), the function handles four cases:
- * 1. If the variable already exists elsewhere in .env and was passed as parameter:
- *    Add a duplicate entry in the Dexto section with the new value.
- * 2. If the variable already exists elsewhere in .env and wasn't passed:
- *    Skip adding it to the Dexto section to avoid duplication.
- * 3. If the variable doesn't exist in .env and was passed:
- *    Add it to the Dexto section with the provided value.
- * 4. If the variable doesn't exist in .env and wasn't passed:
- *    Add it to the Dexto section with an empty string value.
- *
- * @param directory - The directory to start searching for the project root. Should be an existing directory, typically the current working directory or project root.
+ * @param envFilePath - Absolute path to the .env file to update
  * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
  * @param llmApiKey - The API key for the specified LLM provider.
  */
-export async function updateEnvFile(
-    directory: string,
+async function updateEnvFileCore(
+    envFilePath: string,
     llmProvider?: LLMProvider,
     llmApiKey?: string
 ): Promise<void> {
@@ -165,13 +150,10 @@ export async function updateEnvFile(
         'DEXTO_LOG_LEVEL',
     ];
 
-    // Find project root and build .env file path
-    const projectRoot = findPackageRoot(directory);
-    if (!projectRoot) {
-        throw new Error('Could not find project root (no lock file found)');
-    }
-    const envFilePath = path.join(projectRoot, '.env');
     logger.debug(`Updating .env file with dexto env variables: envFilePath ${envFilePath}`);
+
+    // Ensure directory exists (especially for global ~/.dexto/.env)
+    await fs.mkdir(path.dirname(envFilePath), { recursive: true });
 
     // Read existing .env if present
     let envLines: string[] = [];
@@ -277,4 +259,46 @@ export async function updateEnvFile(
 
     // Write the updated content
     await fs.writeFile(envFilePath, contentLines.join('\n'), 'utf8');
+
+    // Log where the API key was written for visibility
+    if (llmProvider && llmApiKey) {
+        console.log(chalk.green(`✓ Wrote ${llmProvider.toUpperCase()} API key to: ${envFilePath}`));
+    }
+}
+
+/**
+ * Updates or creates a project .env file during init command.
+ * Always saves to the current directory (for new project initialization).
+ * This function is specifically for the init command where project structure
+ * is being created and project detection won't work yet.
+ *
+ * @param directory - The directory to create .env file in (current directory for init)
+ * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
+ * @param llmApiKey - The API key for the specified LLM provider.
+ */
+export async function updateProjectEnvFile(
+    directory: string,
+    llmProvider?: LLMProvider,
+    llmApiKey?: string
+): Promise<void> {
+    const envFilePath = path.join(directory, '.env');
+    await updateEnvFileCore(envFilePath, llmProvider, llmApiKey);
+}
+
+/**
+ * Updates or creates an .env file using smart file selection for interactive setup.
+ * Uses layered environment logic: saves to project .env if in dexto project,
+ * otherwise saves to global ~/.dexto/.env for CLI-wide usage.
+ *
+ * @param startPath - Starting directory for project detection
+ * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
+ * @param llmApiKey - The API key for the specified LLM provider.
+ */
+export async function updateEnvFile(
+    startPath: string,
+    llmProvider?: LLMProvider,
+    llmApiKey?: string
+): Promise<void> {
+    const envFilePath = getEnvFilePath(startPath);
+    await updateEnvFileCore(envFilePath, llmProvider, llmApiKey);
 }
