@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Supported Providers
 
-Saiki supports multiple LLM providers out-of-the-box, plus the ability to use any OpenAI SDK-compatible provider.
+Dexto supports multiple LLM providers out-of-the-box, plus the ability to use any OpenAI SDK-compatible provider.
 
 ## Default Providers
 
@@ -282,5 +282,5 @@ apiKey: $OPENAI_API_KEY  # Not: OPENAI_API_KEY
 ## Next Steps
 
 - **Configure your chosen provider**: Use the [Configuration Reference](./configuration) for detailed setup
-- **Start building**: Head to [Building with Saiki](../../../tutorials/index.md) to create your first agent
+- **Start building**: Head to [Building with Dexto](../../../tutorials/index.md) to create your first agent
 - **Add tools**: Learn about [MCP Server Configuration](../mcpServers) to give your agent capabilities 

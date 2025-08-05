@@ -11,13 +11,13 @@ import {
 import { logger } from '@core/index.js';
 
 /**
- * Creates basic scaffolding for a Saiki project
+ * Creates basic scaffolding for a Dexto project
  * sets up git and gitignore, and sets up initial dependencies
  * Does not add scripts to package.json or create tsconfig.json which require the directory name
  * @param name - The name of the project
  * @returns The absolute path to the created project directory
  */
-export async function createSaikiProject(name?: string): Promise<string> {
+export async function createDextoProject(name?: string): Promise<string> {
     // Basic regex: must start with a letter, contain only letters, numbers, hyphens or underscores
     const nameRegex = /^[a-zA-Z][a-zA-Z0-9-_]*$/;
 
@@ -37,9 +37,9 @@ export async function createSaikiProject(name?: string): Promise<string> {
         let input;
         do {
             input = await p.text({
-                message: 'What do you want to name your Saiki project?',
-                placeholder: 'my-saiki-project',
-                defaultValue: 'my-saiki-project',
+                message: 'What do you want to name your Dexto project?',
+                placeholder: 'my-dexto-project',
+                defaultValue: 'my-dexto-project',
             });
 
             if (p.isCancel(input)) {
@@ -61,7 +61,7 @@ export async function createSaikiProject(name?: string): Promise<string> {
     const spinner = p.spinner();
     const projectPath = path.resolve(process.cwd(), projectName);
 
-    spinner.start(`Creating saiki project in ${projectPath}...`);
+    spinner.start(`Creating dexto project in ${projectPath}...`);
     try {
         await fs.mkdir(projectPath);
     } catch (error) {
@@ -87,7 +87,7 @@ export async function createSaikiProject(name?: string): Promise<string> {
     // initialize git repository
     await executeWithTimeout('git', ['init'], { cwd: projectPath });
     // add .gitignore
-    await fs.writeFile('.gitignore', 'node_modules\n.env\ndist\n.saiki\n*.log');
+    await fs.writeFile('.gitignore', 'node_modules\n.env\ndist\n.dexto\n*.log');
 
     // update package.json module type
     const packageJson = JSON.parse(await fs.readFile('package.json', 'utf8'));
@@ -118,17 +118,17 @@ export async function createSaikiProject(name?: string): Promise<string> {
 }
 
 /**
- * Adds the saiki scripts to the package.json. Assumes the package.json already exists and is accessible
+ * Adds the dexto scripts to the package.json. Assumes the package.json already exists and is accessible
  * @param directory - The directory of the project
  */
-export async function addSaikiScriptsToPackageJson(directory: string, projectPath: string) {
-    logger.debug(`Adding saiki scripts to package.json in ${projectPath}`);
+export async function addDextoScriptsToPackageJson(directory: string, projectPath: string) {
+    logger.debug(`Adding dexto scripts to package.json in ${projectPath}`);
     await addScriptsToPackageJson({
         build: 'tsc',
-        start: `node dist/${path.join('saiki', 'saiki-example.js')}`,
-        dev: `node --loader ts-node/esm ${path.join(directory, 'saiki', 'saiki-example.ts')}`,
+        start: `node dist/${path.join('dexto', 'dexto-example.js')}`,
+        dev: `node --loader ts-node/esm ${path.join(directory, 'dexto', 'dexto-example.ts')}`,
     });
-    logger.debug(`Successfully added saiki scripts to package.json in ${projectPath}`);
+    logger.debug(`Successfully added dexto scripts to package.json in ${projectPath}`);
 }
 
 /** Creates a tsconfig.json file in the project directory */
@@ -148,21 +148,21 @@ export async function createTsconfigJson(projectPath: string, directory: string)
             rootDir: directory,
         },
         include: [`${directory}/**/*.ts`],
-        exclude: ['node_modules', 'dist', '.saiki'],
+        exclude: ['node_modules', 'dist', '.dexto'],
     };
     await fs.writeJSON(path.join(projectPath, 'tsconfig.json'), tsconfig, { spaces: 4 });
     logger.debug(`Successfully created tsconfig.json in ${projectPath}`);
 }
 
-/** Adds notes for users to get started with their new initialized Saiki project */
-export async function postCreateSaiki(projectPath: string, directory: string) {
+/** Adds notes for users to get started with their new initialized Dexto project */
+export async function postCreateDexto(projectPath: string, directory: string) {
     const nextSteps = [
         `1. Go to the project directory: ${chalk.cyan(`cd ${projectPath}`)}`,
         `2. Run the example: ${chalk.cyan(`npm run dev`)}`,
         `3. Add/update your API key(s) in ${chalk.cyan('.env')}`,
-        `4. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'agent.yml'))}`,
+        `4. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'dexto', 'agents', 'agent.yml'))}`,
         `5. Try out different LLMs and MCP servers in the agent.yml file`,
-        `6. Read more about Saiki: ${chalk.cyan('https://github.com/truffle-ai/saiki')}`,
+        `6. Read more about Dexto: ${chalk.cyan('https://github.com/truffle-ai/dexto')}`,
     ].join('\n');
     p.note(nextSteps, chalk.yellow('Next steps:'));
 }

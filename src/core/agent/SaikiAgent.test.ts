@@ -1,9 +1,9 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { SaikiAgent } from './SaikiAgent.js';
-import { SaikiLLMError } from './errors.js';
+import { DextoAgent } from './DextoAgent.js';
+import { DextoLLMError } from './errors.js';
 import type { AgentConfig } from '@core/agent/schemas.js';
 import type { LLMConfig, ValidatedLLMConfig } from '@core/llm/schemas.js';
-import { SaikiErrorCode } from '../schemas/errors.js';
+import { DextoErrorCode } from '../schemas/errors.js';
 
 // Mock the dependencies
 vi.mock('../logger/index.js');
@@ -16,8 +16,8 @@ const mockCreateAgentServices = vi.mocked(createAgentServices);
 const mockResolveAndValidateLLMConfig = vi.mocked(resolveAndValidateLLMConfig);
 
 //TODO: potentially reducing mocking and have real tests
-describe('SaikiAgent.switchLLM', () => {
-    let agent: SaikiAgent;
+describe('DextoAgent.switchLLM', () => {
+    let agent: DextoAgent;
     let mockStateManager: any;
     let mockSessionManager: any;
     let mockEventBus: any;
@@ -141,8 +141,8 @@ describe('SaikiAgent.switchLLM', () => {
             },
         };
 
-        // Create SaikiAgent with config and start it
-        agent = new SaikiAgent(mockConfig);
+        // Create DextoAgent with config and start it
+        agent = new DextoAgent(mockConfig);
         await agent.start();
 
         // Mock the LLM resolver function
@@ -174,7 +174,7 @@ describe('SaikiAgent.switchLLM', () => {
 
     describe('Basic Validation', () => {
         test('should require model or provider parameter', async () => {
-            await expect(agent.switchLLM({})).rejects.toThrow(SaikiLLMError);
+            await expect(agent.switchLLM({})).rejects.toThrow(DextoLLMError);
         });
 
         test('should handle validation failure', async () => {
@@ -182,7 +182,7 @@ describe('SaikiAgent.switchLLM', () => {
                 ok: false,
                 issues: [
                     {
-                        code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
+                        code: DextoErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Invalid model',
                         severity: 'error',
                         context: {},
@@ -191,7 +191,7 @@ describe('SaikiAgent.switchLLM', () => {
             });
 
             await expect(agent.switchLLM({ model: 'invalid-model' })).rejects.toThrow(
-                SaikiLLMError
+                DextoLLMError
             );
         });
     });
@@ -227,7 +227,7 @@ describe('SaikiAgent.switchLLM', () => {
                 data: { ...mockLLMConfig, model: 'gpt-4o' } as ValidatedLLMConfig,
                 issues: [
                     {
-                        code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
+                        code: DextoErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Config warning',
                         severity: 'warning',
                         context: {},
@@ -317,12 +317,12 @@ describe('SaikiAgent.switchLLM', () => {
 
             try {
                 await agent.switchLLM({ model: 'gpt-4o' }, 'nonexistent');
-                expect.fail('Should have thrown SaikiLLMError');
+                expect.fail('Should have thrown DextoLLMError');
             } catch (error) {
-                expect(error).toBeInstanceOf(SaikiLLMError);
-                const llmError = error as SaikiLLMError;
+                expect(error).toBeInstanceOf(DextoLLMError);
+                const llmError = error as DextoLLMError;
                 expect(llmError.issues).toHaveLength(1);
-                expect(llmError.issues[0]?.code).toBe(SaikiErrorCode.AGENT_SESSION_NOT_FOUND);
+                expect(llmError.issues[0]?.code).toBe(DextoErrorCode.AGENT_SESSION_NOT_FOUND);
                 expect(llmError.issues[0]?.message).toBe('Session nonexistent not found');
             }
         });
@@ -420,7 +420,7 @@ describe('SaikiAgent.switchLLM', () => {
                 data: { ...mockLLMConfig, model: 'gpt-4o-mini' } as ValidatedLLMConfig,
                 issues: [
                     {
-                        code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
+                        code: DextoErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Config warning',
                         severity: 'warning',
                         context: {},
@@ -447,7 +447,7 @@ describe('SaikiAgent.switchLLM', () => {
                 ok: false,
                 issues: [
                     {
-                        code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
+                        code: DextoErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
                         message: 'Validation failed',
                         severity: 'error',
                         context: {},
@@ -457,13 +457,13 @@ describe('SaikiAgent.switchLLM', () => {
 
             try {
                 await agent.switchLLM({ model: 'gpt-4o' });
-                expect.fail('Should have thrown SaikiLLMError');
+                expect.fail('Should have thrown DextoLLMError');
             } catch (error) {
-                expect(error).toBeInstanceOf(SaikiLLMError);
-                const llmError = error as SaikiLLMError;
+                expect(error).toBeInstanceOf(DextoLLMError);
+                const llmError = error as DextoLLMError;
                 expect(llmError.issues).toHaveLength(1);
                 expect(llmError.issues[0]?.code).toBe(
-                    SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER
+                    DextoErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER
                 );
                 expect(llmError.issues[0]?.message).toBe('Validation failed');
                 expect(llmError.issues[0]?.severity).toBe('error');

@@ -6,23 +6,23 @@ import type { Issue } from '../utils/result.js';
  * Agent-level event names - events that occur at the agent/global level
  */
 export const AGENT_EVENT_NAMES = [
-    'saiki:conversationReset',
-    'saiki:mcpServerConnected',
-    'saiki:availableToolsUpdated',
-    'saiki:inputValidationFailed',
-    'saiki:llmSwitched',
+    'dexto:conversationReset',
+    'dexto:mcpServerConnected',
+    'dexto:availableToolsUpdated',
+    'dexto:inputValidationFailed',
+    'dexto:llmSwitched',
     // Agent state manager events
-    'saiki:stateChanged',
-    'saiki:stateExported',
-    'saiki:stateReset',
-    'saiki:sessionOverrideSet',
-    'saiki:sessionOverrideCleared',
-    'saiki:mcpServerAdded',
-    'saiki:mcpServerRemoved',
-    'saiki:mcpServerUpdated',
+    'dexto:stateChanged',
+    'dexto:stateExported',
+    'dexto:stateReset',
+    'dexto:sessionOverrideSet',
+    'dexto:sessionOverrideCleared',
+    'dexto:mcpServerAdded',
+    'dexto:mcpServerRemoved',
+    'dexto:mcpServerUpdated',
     // Tool confirmation events
-    'saiki:toolConfirmationRequest',
-    'saiki:toolConfirmationResponse',
+    'dexto:toolConfirmationRequest',
+    'dexto:toolConfirmationResponse',
 ] as const;
 
 /**
@@ -50,26 +50,26 @@ export const EVENT_NAMES = [...AGENT_EVENT_NAMES, ...SESSION_EVENT_NAMES] as con
  */
 export interface AgentEventMap {
     // Agent-level events
-    /** Fired when Saiki conversation is reset */
-    'saiki:conversationReset': {
+    /** Fired when Dexto conversation is reset */
+    'dexto:conversationReset': {
         sessionId: string;
     };
 
     /** Fired when MCP server connection succeeds or fails */
-    'saiki:mcpServerConnected': {
+    'dexto:mcpServerConnected': {
         name: string;
         success: boolean;
         error?: string;
     };
 
     /** Fired when available tools list updates */
-    'saiki:availableToolsUpdated': {
+    'dexto:availableToolsUpdated': {
         tools: string[];
         source: 'mcp' | 'builtin';
     };
 
     /** Fired when input validation fails */
-    'saiki:inputValidationFailed': {
+    'dexto:inputValidationFailed': {
         sessionId: string;
         issues: Issue<Record<string, unknown>>[];
         provider: LLMProvider;
@@ -77,7 +77,7 @@ export interface AgentEventMap {
     };
 
     /** Fired when LLM service switched */
-    'saiki:llmSwitched': {
+    'dexto:llmSwitched': {
         newConfig: any; // LLMConfig type
         router?: string;
         historyRetained?: boolean;
@@ -150,7 +150,7 @@ export interface AgentEventMap {
 
     // Agent state manager events
     /** Fired when agent runtime state changes */
-    'saiki:stateChanged': {
+    'dexto:stateChanged': {
         field: string; // keyof AgentRuntimeState
         oldValue: any;
         newValue: any;
@@ -158,46 +158,46 @@ export interface AgentEventMap {
     };
 
     /** Fired when agent state is exported as config */
-    'saiki:stateExported': {
+    'dexto:stateExported': {
         config: any; // AgentConfig type
         runtimeSettings: any;
     };
 
     /** Fired when agent state is reset to baseline */
-    'saiki:stateReset': {
+    'dexto:stateReset': {
         toConfig: any; // AgentConfig type
     };
 
     /** Fired when session override is set */
-    'saiki:sessionOverrideSet': {
+    'dexto:sessionOverrideSet': {
         sessionId: string;
         override: any; // SessionOverride type
     };
 
     /** Fired when session override is cleared */
-    'saiki:sessionOverrideCleared': {
+    'dexto:sessionOverrideCleared': {
         sessionId: string;
     };
 
     /** Fired when MCP server is added to runtime state */
-    'saiki:mcpServerAdded': {
+    'dexto:mcpServerAdded': {
         serverName: string;
         config: any; // McpServerConfig type
     };
 
     /** Fired when MCP server is removed from runtime state */
-    'saiki:mcpServerRemoved': {
+    'dexto:mcpServerRemoved': {
         serverName: string;
     };
 
     /** Fired when MCP server is updated in runtime state */
-    'saiki:mcpServerUpdated': {
+    'dexto:mcpServerUpdated': {
         serverName: string;
         config: any; // McpServerConfig type
     };
 
     /** Fired when tool confirmation is requested */
-    'saiki:toolConfirmationRequest': {
+    'dexto:toolConfirmationRequest': {
         toolName: string;
         args: Record<string, any>;
         description?: string;
@@ -207,7 +207,7 @@ export interface AgentEventMap {
     };
 
     /** Fired when tool confirmation response is received */
-    'saiki:toolConfirmationResponse': {
+    'dexto:toolConfirmationResponse': {
         executionId: string;
         approved: boolean;
         rememberChoice?: boolean;

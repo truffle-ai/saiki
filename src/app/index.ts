@@ -15,7 +15,7 @@ import {
     resolveConfigPath,
     getProviderFromModel,
     getAllSupportedModels,
-    SaikiAgent,
+    DextoAgent,
     loadAgentConfig,
     LLMProvider,
 } from '@core/index.js';
@@ -28,13 +28,13 @@ import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
 import { getPort } from '@core/utils/port-utils.js';
 import {
-    createSaikiProject,
+    createDextoProject,
     createTsconfigJson,
-    addSaikiScriptsToPackageJson,
-    postCreateSaiki,
-    initSaiki,
-    postInitSaiki,
-    getUserInputToInitSaikiApp,
+    addDextoScriptsToPackageJson,
+    postCreateDexto,
+    initDexto,
+    postInitDexto,
+    getUserInputToInitDextoApp,
 } from './cli/project-commands/index.js';
 import { checkForFileInCurrentDirectory, FileNotFoundError } from './cli/utils/package-mgmt.js';
 import { startNextJsWebServer } from './web.js';
@@ -46,7 +46,7 @@ const program = new Command();
 
 // 1) GLOBAL OPTIONS
 program
-    .name('saiki')
+    .name('dexto')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
     .version(pkg.version, '-v, --version', 'output the current version')
     .option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
@@ -57,7 +57,7 @@ program
     .option('--new-session [sessionId]', 'Start with a new session (optionally specify session ID)')
     .option(
         '--mode <mode>',
-        'The application in which saiki should talk to you - cli | web | server | discord | telegram | mcp',
+        'The application in which dexto should talk to you - cli | web | server | discord | telegram | mcp',
         'cli'
     )
     .option('--web-port <port>', 'optional port for the web UI', '3000');
@@ -65,34 +65,34 @@ program
 // 2) `create-app` SUB-COMMAND
 program
     .command('create-app')
-    .description('Scaffold a new Saiki Typescript app')
+    .description('Scaffold a new Dexto Typescript app')
     .action(async () => {
         try {
-            p.intro(chalk.inverse('Saiki Create App'));
+            p.intro(chalk.inverse('Dexto Create App'));
             // first setup the initial files in the project and get the project path
-            const appPath = await createSaikiProject();
+            const appPath = await createDextoProject();
 
             // then get user inputs for directory, llm etc.
-            const userInput = await getUserInputToInitSaikiApp();
+            const userInput = await getUserInputToInitDextoApp();
 
-            // move to project directory, then add the saiki scripts to the package.json and create the tsconfig.json
+            // move to project directory, then add the dexto scripts to the package.json and create the tsconfig.json
             process.chdir(appPath);
-            await addSaikiScriptsToPackageJson(userInput.directory, appPath);
+            await addDextoScriptsToPackageJson(userInput.directory, appPath);
             await createTsconfigJson(appPath, userInput.directory);
 
             // then initialize the other parts of the project
-            await initSaiki(
+            await initDexto(
                 userInput.directory,
                 userInput.createExampleFile,
                 userInput.llmProvider,
                 userInput.llmApiKey
             );
-            p.outro(chalk.greenBright('Saiki app created and initialized successfully!'));
-            // add notes for users to get started with their newly created Saiki project
-            await postCreateSaiki(appPath, userInput.directory);
+            p.outro(chalk.greenBright('Dexto app created and initialized successfully!'));
+            // add notes for users to get started with their newly created Dexto project
+            await postCreateDexto(appPath, userInput.directory);
             process.exit(0);
         } catch (err) {
-            console.error(`❌ saiki create-app command failed: ${err}`);
+            console.error(`❌ dexto create-app command failed: ${err}`);
             process.exit(1);
         }
     });
@@ -100,7 +100,7 @@ program
 // 3) `init-app` SUB-COMMAND
 program
     .command('init-app')
-    .description('Initialize an existing Typescript app with Saiki')
+    .description('Initialize an existing Typescript app with Dexto')
     .action(async () => {
         try {
             // pre-condition: check that package.json and tsconfig.json exist in current directory to know that project is valid
@@ -108,23 +108,23 @@ program
             await checkForFileInCurrentDirectory('tsconfig.json');
 
             // start intro
-            p.intro(chalk.inverse('Saiki Init App'));
-            const userInput = await getUserInputToInitSaikiApp();
-            await initSaiki(
+            p.intro(chalk.inverse('Dexto Init App'));
+            const userInput = await getUserInputToInitDextoApp();
+            await initDexto(
                 userInput.directory,
                 userInput.createExampleFile,
                 userInput.llmProvider,
                 userInput.llmApiKey
             );
-            p.outro(chalk.greenBright('Saiki app initialized successfully!'));
+            p.outro(chalk.greenBright('Dexto app initialized successfully!'));
 
-            // add notes for users to get started with their new initialized Saiki project
-            await postInitSaiki(userInput.directory);
+            // add notes for users to get started with their new initialized Dexto project
+            await postInitDexto(userInput.directory);
             process.exit(0);
         } catch (err) {
             // if the package.json or tsconfig.json is not found, we give instructions to create a new project
             if (err instanceof FileNotFoundError) {
-                console.error(`❌ ${err.message} Run "saiki create-app" to create a new app`);
+                console.error(`❌ ${err.message} Run "dexto create-app" to create a new app`);
                 process.exit(1);
             }
             console.error(`❌ Initialization failed: ${err}`);
@@ -134,11 +134,11 @@ program
 
 // 4) `mcp` SUB-COMMAND
 // For now, this mode simply aggregates and re-expose tools from configured MCP servers (no agent)
-// saiki --mode mcp will be moved to this sub-command in the future
+// dexto --mode mcp will be moved to this sub-command in the future
 program
     .command('mcp')
     .description(
-        'Start Saiki as an MCP server. Use --group-servers to aggregate and re-expose tools from configured MCP servers. \
+        'Start Dexto as an MCP server. Use --group-servers to aggregate and re-expose tools from configured MCP servers. \
         In the future, this command will expose the agent as an MCP server by default.'
     )
     .option('-s, --strict', 'Require all MCP server connections to succeed')
@@ -146,7 +146,7 @@ program
         '--group-servers',
         'Aggregate and re-expose tools from configured MCP servers (required for now)'
     )
-    .option('--name <n>', 'Name for the MCP server', 'saiki-tools')
+    .option('--name <n>', 'Name for the MCP server', 'dexto-tools')
     .option('--version <version>', 'Version for the MCP server', '1.0.0')
     .action(async (options) => {
         try {
@@ -155,7 +155,7 @@ program
                 console.error(
                     '❌ The --group-servers flag is required. This command currently only supports aggregating and re-exposing tools from configured MCP servers.'
                 );
-                console.error('Usage: saiki mcp --group-servers');
+                console.error('Usage: dexto mcp --group-servers');
                 process.exit(1);
             }
 
@@ -166,7 +166,7 @@ program
                 globalOpts.agent === DEFAULT_CONFIG_PATH ? undefined : globalOpts.agent;
 
             const config = await loadAgentConfig(configPath);
-            console.log(`📄 Loading Saiki config from: ${resolveConfigPath(configPath)}`);
+            console.log(`📄 Loading Dexto config from: ${resolveConfigPath(configPath)}`);
 
             // Validate that MCP servers are configured
             if (!config.mcpServers || Object.keys(config.mcpServers).length === 0) {
@@ -178,7 +178,7 @@ program
 
             // Logs are already redirected to file by default to prevent interference with stdio transport
             const currentLogPath = logger.getLogFilePath();
-            logger.info(`MCP mode using log file: ${currentLogPath || 'default .saiki location'}`);
+            logger.info(`MCP mode using log file: ${currentLogPath || 'default .dexto location'}`);
 
             logger.info(
                 `Starting MCP tool aggregation server: ${options.name} v${options.version}`
@@ -205,26 +205,26 @@ program
         }
     });
 
-// 5) Main saiki CLI - Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
+// 5) Main dexto CLI - Interactive/One shot (CLI/HEADLESS) or run in other modes (--mode web/discord/telegram)
 program
     .argument(
         '[prompt...]',
-        'Natural-language prompt to run once. If not passed, saiki will start as an interactive CLI'
+        'Natural-language prompt to run once. If not passed, dexto will start as an interactive CLI'
     )
     // Main customer facing description
     .description(
-        'Saiki CLI allows you to talk to Saiki, build custom AI Agents, ' +
+        'Dexto CLI allows you to talk to Dexto, build custom AI Agents, ' +
             'build complex AI applications like Cursor, and more.\n\n' +
-            // TODO: Add `saiki tell me about your cli` starter prompt
-            'Run saiki interactive CLI with `saiki` or run a one-shot prompt with `saiki <prompt>`\n' +
-            'Start with a new session using `saiki --new-session [sessionId]`\n' +
-            'Run saiki web UI with `saiki --mode web`\n' +
-            'Run saiki as a server (REST APIs + WebSockets) with `saiki --mode server`\n' +
-            'Run saiki as a discord bot with `saiki --mode discord`\n' +
-            'Run saiki as a telegram bot with `saiki --mode telegram`\n' +
-            'Run saiki agent as an MCP server with `saiki --mode mcp`\n' +
-            'Run saiki as an MCP server aggregator with `saiki mcp --group-servers`\n\n' +
-            'Check subcommands for more features. Check https://github.com/truffle-ai/saiki for documentation on how to customize saiki and other examples'
+            // TODO: Add `dexto tell me about your cli` starter prompt
+            'Run dexto interactive CLI with `dexto` or run a one-shot prompt with `dexto <prompt>`\n' +
+            'Start with a new session using `dexto --new-session [sessionId]`\n' +
+            'Run dexto web UI with `dexto --mode web`\n' +
+            'Run dexto as a server (REST APIs + WebSockets) with `dexto --mode server`\n' +
+            'Run dexto as a discord bot with `dexto --mode discord`\n' +
+            'Run dexto as a telegram bot with `dexto --mode telegram`\n' +
+            'Run dexto agent as an MCP server with `dexto --mode mcp`\n' +
+            'Run dexto as an MCP server aggregator with `dexto mcp --group-servers`\n\n' +
+            'Check subcommands for more features. Check https://github.com/truffle-ai/dexto for documentation on how to customize dexto and other examples'
     )
     .action(async (prompt: string[] = []) => {
         // ——— ENV & API-KEY VALIDATION ———
@@ -255,7 +255,7 @@ program
                 if (setupResult.skipSetup) {
                     // User chose manual setup - show message and exit gracefully
                     console.log(
-                        chalk.dim('\n👋 Run saiki again once you have set up your API key!')
+                        chalk.dim('\n👋 Run dexto again once you have set up your API key!')
                     );
                 } else {
                     // Setup failed or was cancelled
@@ -267,7 +267,7 @@ program
             // Reload environment variables after setup
             dotenv.config();
 
-            console.log(chalk.green('\n✨ API key configured! Starting Saiki...\n'));
+            console.log(chalk.green('\n✨ API key configured! Starting Dexto...\n'));
         }
 
         const opts = program.opts();
@@ -302,10 +302,10 @@ program
         }
 
         // ——— Load config & create agent ———
-        let agent: SaikiAgent;
+        let agent: DextoAgent;
         try {
             const configPath = opts.agent === DEFAULT_CONFIG_PATH ? undefined : opts.agent;
-            console.log(`🚀 Initializing Saiki with config: ${resolveConfigPath(configPath)}`);
+            console.log(`🚀 Initializing Dexto with config: ${resolveConfigPath(configPath)}`);
             const cfg = await loadAgentConfig(configPath);
 
             // Apply CLI overrides to config before passing to core layer
@@ -329,7 +329,7 @@ program
                 }
             }
 
-            agent = new SaikiAgent(finalConfig, configPath);
+            agent = new DextoAgent(finalConfig, configPath);
 
             // Start the agent (initialize async services)
             await agent.start();
@@ -403,7 +403,7 @@ program
             }
 
             // Start server with REST APIs and WebSockets on port 3001
-            // This also enables saiki to be used as a remote mcp server at localhost:3001/mcp
+            // This also enables dexto to be used as a remote mcp server at localhost:3001/mcp
             case 'server': {
                 // Start server with REST APIs and WebSockets only
                 const agentCard = agent.getEffectiveConfig().agentCard ?? {};
@@ -443,13 +443,13 @@ program
                 break;
 
             // TODO: Remove if server mode is stable and supports mcp
-            // Starts saiki as a local mcp server
-            // Use `saiki --mode mcp` to start saiki as a local mcp server
-            // Use `saiki --mode server` to start saiki as a remote server
+            // Starts dexto as a local mcp server
+            // Use `dexto --mode mcp` to start dexto as a local mcp server
+            // Use `dexto --mode server` to start dexto as a remote server
             case 'mcp': {
                 // Start stdio mcp server only
                 const agentCardConfig = agent.getEffectiveConfig().agentCard || {
-                    name: 'saiki',
+                    name: 'dexto',
                     version: '1.0.0',
                 };
 
@@ -458,9 +458,9 @@ program
 
                     const agentCardData = createAgentCard(
                         {
-                            defaultName: agentCardConfig.name ?? 'saiki',
+                            defaultName: agentCardConfig.name ?? 'dexto',
                             defaultVersion: agentCardConfig.version ?? '1.0.0',
-                            defaultBaseUrl: 'stdio://local-saiki',
+                            defaultBaseUrl: 'stdio://local-dexto',
                         },
                         agentCardConfig // preserve overrides from agent.yml
                     );

@@ -1,16 +1,16 @@
 /**
  * Documentation Commands Module
  *
- * This module defines documentation-related slash commands for the Saiki CLI interface.
+ * This module defines documentation-related slash commands for the Dexto CLI interface.
  * These commands provide functionality for accessing documentation and help resources.
  *
  * Available Documentation Commands:
- * - /docs, /doc - Open Saiki documentation in browser
+ * - /docs, /doc - Open Dexto documentation in browser
  */
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import type { SaikiAgent } from '@core/index.js';
+import type { DextoAgent } from '@core/index.js';
 import type { CommandDefinition } from './command-parser.js';
 
 /**
@@ -19,16 +19,16 @@ import type { CommandDefinition } from './command-parser.js';
 export const documentationCommands: CommandDefinition[] = [
     {
         name: 'docs',
-        description: 'Open Saiki documentation in browser',
+        description: 'Open Dexto documentation in browser',
         usage: '/docs',
         category: 'Documentation',
         aliases: ['doc'],
-        handler: async (_args: string[], _agent: SaikiAgent): Promise<boolean> => {
+        handler: async (_args: string[], _agent: DextoAgent): Promise<boolean> => {
             try {
                 const { spawn } = await import('child_process');
-                const url = 'https://truffle-ai.github.io/saiki/docs/category/getting-started/';
+                const url = 'https://truffle-ai.github.io/dexto/docs/category/getting-started/';
 
-                console.log(chalk.blue(`🌐 Opening Saiki documentation: ${url}`));
+                console.log(chalk.blue(`🌐 Opening Dexto documentation: ${url}`));
 
                 // Cross-platform browser opening
                 const command =
@@ -46,7 +46,7 @@ export const documentationCommands: CommandDefinition[] = [
                 );
                 console.log(
                     chalk.yellow(
-                        '💡 You can manually visit: https://truffle-ai.github.io/saiki/docs/category/getting-started/'
+                        '💡 You can manually visit: https://truffle-ai.github.io/dexto/docs/category/getting-started/'
                     )
                 );
             }

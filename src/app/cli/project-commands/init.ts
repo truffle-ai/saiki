@@ -14,10 +14,10 @@ import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
 const require = createRequire(import.meta.url);
 
 /**
- * Get user preferences needed to initialize a Saiki app
+ * Get user preferences needed to initialize a Dexto app
  * @returns The user preferences
  */
-export async function getUserInputToInitSaikiApp(): Promise<{
+export async function getUserInputToInitDextoApp(): Promise<{
     llmProvider: LLMProvider;
     llmApiKey: string;
     directory: string;
@@ -56,19 +56,19 @@ export async function getUserInputToInitSaikiApp(): Promise<{
             },
             directory: () =>
                 p.text({
-                    message: 'Enter the directory to add the saiki files in',
+                    message: 'Enter the directory to add the dexto files in',
                     placeholder: 'src/',
                     defaultValue: 'src/',
                 }),
             createExampleFile: () =>
                 p.confirm({
-                    message: 'Create a saiki example file? [Recommended]',
+                    message: 'Create a dexto example file? [Recommended]',
                     initialValue: true,
                 }),
         },
         {
             onCancel: () => {
-                p.cancel('Saiki initialization cancelled');
+                p.cancel('Dexto initialization cancelled');
                 process.exit(0);
             },
         }
@@ -84,13 +84,13 @@ export async function getUserInputToInitSaikiApp(): Promise<{
 }
 
 /**
- * Initializes an existing project with Saiki in the given directory.
- * @param directory - The directory to initialize the Saiki project in
+ * Initializes an existing project with Dexto in the given directory.
+ * @param directory - The directory to initialize the Dexto project in
  * @param llmProvider - The LLM provider to use
  * @param llmApiKey - The API key for the LLM provider
- * @returns The path to the created Saiki project
+ * @returns The path to the created Dexto project
  */
-export async function initSaiki(
+export async function initDexto(
     directory: string,
     createExampleFile = true,
     llmProvider?: LLMProvider,
@@ -99,29 +99,25 @@ export async function initSaiki(
     const spinner = p.spinner();
 
     try {
-        // install saiki
+        // install dexto
         const packageManager = getPackageManager();
         const installCommand = getPackageManagerInstallCommand(packageManager);
-        spinner.start('Installing Saiki...');
+        spinner.start('Installing Dexto...');
         const label = 'latest';
         logger.debug(
-            `Installing Saiki using ${packageManager} with install command: ${installCommand} and label: ${label}`
+            `Installing Dexto using ${packageManager} with install command: ${installCommand} and label: ${label}`
         );
         try {
-            await executeWithTimeout(
-                packageManager,
-                [installCommand, `@truffle-ai/saiki@${label}`],
-                {
-                    cwd: process.cwd(),
-                }
-            );
+            await executeWithTimeout(packageManager, [installCommand, `dexto@${label}`], {
+                cwd: process.cwd(),
+            });
         } catch (installError) {
             // Handle pnpm workspace error specifically
             logger.debug(`Install error: ${installError}`);
             if (packageManager === 'pnpm' && 'ERR_PNPM_ADDING_TO_ROOT') {
                 spinner.stop(chalk.red('Error: Cannot install in pnpm workspace root'));
                 p.note(
-                    'You are initializing saiki in a pnpm workspace root. Go to a specific package in the workspace and run "pnpm add @truffle-ai/saiki" instead.',
+                    'You are initializing dexto in a pnpm workspace root. Go to a specific package in the workspace and run "pnpm add dexto" instead.',
                     chalk.yellow('Workspace Error')
                 );
                 return { success: false };
@@ -129,20 +125,20 @@ export async function initSaiki(
             throw installError; // Re-throw other errors
         }
 
-        spinner.stop('Saiki installed successfully!');
+        spinner.stop('Dexto installed successfully!');
 
-        spinner.start('Creating Saiki files...');
-        // create saiki directories (saiki, saiki/agents)
-        const result = await createSaikiDirectories(directory);
+        spinner.start('Creating Dexto files...');
+        // create dexto directories (dexto, dexto/agents)
+        const result = await createDextoDirectories(directory);
 
         if (!result.ok) {
             spinner.stop(
                 chalk.inverse(
-                    `Saiki already initialized in ${path.join(directory, 'saiki')}. Would you like to overwrite it?`
+                    `Dexto already initialized in ${path.join(directory, 'dexto')}. Would you like to overwrite it?`
                 )
             );
             const overwrite = await p.confirm({
-                message: 'Overwrite Saiki?',
+                message: 'Overwrite Dexto?',
                 initialValue: false,
             });
             if (!overwrite) {
@@ -150,15 +146,15 @@ export async function initSaiki(
             }
         }
 
-        // create saiki config file
-        logger.debug('Creating saiki config file...');
-        const saikiDir = path.join(directory, 'saiki');
-        const agentsDir = path.join(saikiDir, 'agents');
+        // create dexto config file
+        logger.debug('Creating dexto config file...');
+        const dextoDir = path.join(directory, 'dexto');
+        const agentsDir = path.join(dextoDir, 'agents');
 
         let configPath: string;
         try {
-            configPath = await createSaikiConfigFile(agentsDir);
-            logger.debug(`Saiki config file created at ${configPath}`);
+            configPath = await createDextoConfigFile(agentsDir);
+            logger.debug(`Dexto config file created at ${configPath}`);
         } catch (configError) {
             spinner.stop(chalk.red('Failed to create agent config file'));
             logger.error(`Config creation error: ${configError}`);
@@ -167,55 +163,55 @@ export async function initSaiki(
             );
         }
 
-        // update saiki config file based on llmProvider
+        // update dexto config file based on llmProvider
         if (llmProvider) {
-            logger.debug(`Updating saiki config file based on llmProvider: ${llmProvider}`);
-            await updateSaikiConfigFile(configPath, llmProvider);
-            logger.debug(`Saiki config file updated with llmProvider: ${llmProvider}`);
+            logger.debug(`Updating dexto config file based on llmProvider: ${llmProvider}`);
+            await updateDextoConfigFile(configPath, llmProvider);
+            logger.debug(`Dexto config file updated with llmProvider: ${llmProvider}`);
         }
-        // create saiki example file if requested
+        // create dexto example file if requested
         if (createExampleFile) {
-            logger.debug('Creating saiki example file...');
-            await createSaikiExampleFile(saikiDir);
-            logger.debug('Saiki example file created successfully!');
+            logger.debug('Creating dexto example file...');
+            await createDextoExampleFile(dextoDir);
+            logger.debug('Dexto example file created successfully!');
         }
 
         // add/update .env file
-        spinner.start('Updating .env file with saiki env variables...');
+        spinner.start('Updating .env file with dexto env variables...');
         logger.debug(
-            `Updating .env file with saiki env variables: directory ${directory}, llmProvider: ${llmProvider}, llmApiKey: [REDACTED]`
+            `Updating .env file with dexto env variables: directory ${directory}, llmProvider: ${llmProvider}, llmApiKey: [REDACTED]`
         );
         await updateEnvFile(process.cwd(), llmProvider, llmApiKey);
-        spinner.stop('Updated .env file with saiki env variables...');
+        spinner.stop('Updated .env file with dexto env variables...');
         return { success: true };
     } catch (err) {
-        spinner.stop(chalk.inverse('An error occurred initializing Saiki project'));
+        spinner.stop(chalk.inverse('An error occurred initializing Dexto project'));
         logger.debug(`Error: ${err}`);
         return { success: false };
     }
 }
 
-/** Adds notes for users to get started with their new initialized Saiki project */
-export async function postInitSaiki(directory: string) {
+/** Adds notes for users to get started with their new initialized Dexto project */
+export async function postInitDexto(directory: string) {
     const nextSteps = [
-        `1. Run the example: ${chalk.cyan(`node --loader ts-node/esm ${path.join(directory, 'saiki', 'saiki-example.ts')}`)}`,
+        `1. Run the example: ${chalk.cyan(`node --loader ts-node/esm ${path.join(directory, 'dexto', 'dexto-example.ts')}`)}`,
         `2. Add/update your API key(s) in ${chalk.cyan('.env')}`,
-        `3. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'saiki', 'agents', 'agent.yml'))}`,
+        `3. Check out the agent configuration file ${chalk.cyan(path.join(directory, 'dexto', 'agents', 'agent.yml'))}`,
         `4. Try out different LLMs and MCP servers in the agent.yml file`,
-        `5. Read more about Saiki: ${chalk.cyan('https://github.com/truffle-ai/saiki')}`,
+        `5. Read more about Dexto: ${chalk.cyan('https://github.com/truffle-ai/dexto')}`,
     ].join('\n');
     p.note(nextSteps, chalk.yellow('Next steps:'));
 }
 /**
- * Creates the saiki directories (saiki, saiki/agents) in the given directory.
- * @param directory - The directory to create the saiki directories in
- * @returns The path to the created saiki directory
+ * Creates the dexto directories (dexto, dexto/agents) in the given directory.
+ * @param directory - The directory to create the dexto directories in
+ * @returns The path to the created dexto directory
  */
-export async function createSaikiDirectories(
+export async function createDextoDirectories(
     directory: string
 ): Promise<{ ok: true; dirPath: string } | { ok: false }> {
-    const dirPath = path.join(directory, 'saiki');
-    const agentsPath = path.join(directory, 'saiki', 'agents');
+    const dirPath = path.join(directory, 'dexto');
+    const agentsPath = path.join(directory, 'dexto', 'agents');
 
     try {
         await fs.access(dirPath);
@@ -229,17 +225,17 @@ export async function createSaikiDirectories(
 }
 
 /**
- * Creates a saiki config file in the given directory. Pulls the config file from the installed Saiki package.
+ * Creates a dexto config file in the given directory. Pulls the config file from the installed Dexto package.
  * @param directory - The directory to create the config file in
  * @returns The path to the created config file
  */
-export async function createSaikiConfigFile(directory: string): Promise<string> {
+export async function createDextoConfigFile(directory: string): Promise<string> {
     // Ensure the directory exists
     await fsExtra.ensureDir(directory);
 
     try {
-        // Locate the Saiki package installation directory
-        const pkgJsonPath = require.resolve('@truffle-ai/saiki/package.json');
+        // Locate the Dexto package installation directory
+        const pkgJsonPath = require.resolve('dexto/package.json');
         const pkgDir = path.dirname(pkgJsonPath);
         logger.debug(`Package directory: ${pkgDir}`);
 
@@ -259,24 +255,24 @@ export async function createSaikiConfigFile(directory: string): Promise<string> 
         const destConfigPath = path.join(directory, 'agent.yml');
         logger.debug(`Copying template to: ${destConfigPath}`);
 
-        // Copy the config file from the Saiki package
+        // Copy the config file from the Dexto package
         await fsExtra.copy(templateConfigSrc, destConfigPath);
         logger.debug(`Successfully created config file at: ${destConfigPath}`);
 
         return destConfigPath;
     } catch (error) {
-        logger.error(`Failed to create Saiki config file: ${error}`);
+        logger.error(`Failed to create Dexto config file: ${error}`);
         throw error;
     }
 }
 
 /**
- * Updates the LLM provider information in the saiki config file
+ * Updates the LLM provider information in the dexto config file
  * Based on the LLM provider, the config file is updated with the correct API key and default model configured in registry
- * @param filepath - The path to the saiki config file
+ * @param filepath - The path to the dexto config file
  * @param llmProvider - The LLM provider to use
  */
-export async function updateSaikiConfigFile(filepath: string, llmProvider: LLMProvider) {
+export async function updateDextoConfigFile(filepath: string, llmProvider: LLMProvider) {
     const fileContent = await fs.readFile(filepath, 'utf8');
     const doc = parseDocument(fileContent);
     doc.setIn(['llm', 'provider'], llmProvider);
@@ -286,28 +282,28 @@ export async function updateSaikiConfigFile(filepath: string, llmProvider: LLMPr
 }
 
 /**
- * Creates an example file in the given directory showing how to use Saiki in code. This file has example code to get you started.
+ * Creates an example file in the given directory showing how to use Dexto in code. This file has example code to get you started.
  * @param directory - The directory to create the example index file in
  * @returns The path to the created example index file
  */
-export async function createSaikiExampleFile(directory: string): Promise<string> {
-    // Extract the base directory from the given path (e.g., "src" from "src/saiki")
+export async function createDextoExampleFile(directory: string): Promise<string> {
+    // Extract the base directory from the given path (e.g., "src" from "src/dexto")
     const baseDir = path.dirname(directory);
 
-    const configPath = `./${path.join(baseDir, 'saiki/agents/agent.yml')}`;
+    const configPath = `./${path.join(baseDir, 'dexto/agents/agent.yml')}`;
 
     const indexTsLines = [
         "import 'dotenv/config';",
-        "import { SaikiAgent, loadAgentConfig } from '@truffle-ai/saiki';",
+        "import { DextoAgent, loadAgentConfig } from 'dexto';",
         '',
-        "console.log('🚀 Starting Saiki Basic Example\\n');",
+        "console.log('🚀 Starting Dexto Basic Example\\n');",
         '',
         'try {',
         '  // Load the agent configuration',
         `  const config = await loadAgentConfig('${configPath}');`,
         '',
-        '  // Create a new SaikiAgent instance',
-        '  const agent = new SaikiAgent(config);',
+        '  // Create a new DextoAgent instance',
+        '  const agent = new DextoAgent(config);',
         '',
         '  // Start the agent (connects to MCP servers)',
         "  console.log('🔗 Connecting to MCP servers...');",
@@ -322,14 +318,14 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
         '',
         '  // Example 2: File operation',
         "  console.log('📄 Example 2: File creation');",
-        '  const response2 = await agent.run(\'Create a file called test-output.txt with the content "Hello from Saiki!"\');',
+        '  const response2 = await agent.run(\'Create a file called test-output.txt with the content "Hello from Dexto!"\');',
         "  console.log('Response:', response2);",
         "  console.log('\\n——\\n');",
         '',
         '  // Example 3: Multi-step conversation',
         "  console.log('🗣️ Example 3: Multi-step conversation');",
-        '  await agent.run(\'Create a simple HTML file called demo.html with a heading that says "Saiki Demo"\');',
-        "  const response3 = await agent.run('Now add a paragraph to that HTML file explaining what Saiki is');",
+        '  await agent.run(\'Create a simple HTML file called demo.html with a heading that says "Dexto Demo"\');',
+        "  const response3 = await agent.run('Now add a paragraph to that HTML file explaining what Dexto is');",
         "  console.log('Response:', response3);",
         "  console.log('\\n——\\n');",
         '',
@@ -355,10 +351,10 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
         "  console.error('❌ Error:', error);",
         '}',
         '',
-        "console.log('\\n📖 Read Saiki documentation to understand more about using Saiki: https://github.com/truffle-ai/saiki');",
+        "console.log('\\n📖 Read Dexto documentation to understand more about using Dexto: https://github.com/truffle-ai/dexto');",
     ];
     const indexTsContent = indexTsLines.join('\n');
-    const outputPath = path.join(directory, 'saiki-example.ts');
+    const outputPath = path.join(directory, 'dexto-example.ts');
 
     // Log the generated file content and paths for debugging
     logger.debug(`Creating example file with config path: ${configPath}`);
@@ -371,23 +367,23 @@ export async function createSaikiExampleFile(directory: string): Promise<string>
 }
 
 /**
- * Updates or creates a .env file by adding or updating a Saiki environment variables section.
+ * Updates or creates a .env file by adding or updating a Dexto environment variables section.
  * The function handles these scenarios:
  *
  * 1. Finding the project root by searching for a lock file.
  * 2. Reading any existing .env file, preserving unrelated environment variables.
- * 3. Removing any existing '## Saiki env variables' section to avoid duplication.
- * 4. Adding a new '## Saiki env variables' section at the end of the file.
+ * 3. Removing any existing '## Dexto env variables' section to avoid duplication.
+ * 4. Adding a new '## Dexto env variables' section at the end of the file.
  *
  * For each environment variable (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.), the function handles four cases:
  * 1. If the variable already exists elsewhere in .env and was passed as parameter:
- *    Add a duplicate entry in the Saiki section with the new value.
+ *    Add a duplicate entry in the Dexto section with the new value.
  * 2. If the variable already exists elsewhere in .env and wasn't passed:
- *    Skip adding it to the Saiki section to avoid duplication.
+ *    Skip adding it to the Dexto section to avoid duplication.
  * 3. If the variable doesn't exist in .env and was passed:
- *    Add it to the Saiki section with the provided value.
+ *    Add it to the Dexto section with the provided value.
  * 4. If the variable doesn't exist in .env and wasn't passed:
- *    Add it to the Saiki section with an empty string value.
+ *    Add it to the Dexto section with an empty string value.
  *
  * @param directory - The directory to start searching for the project root. Should be an existing directory, typically the current working directory or project root.
  * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
@@ -398,7 +394,7 @@ export async function updateEnvFile(
     llmProvider?: LLMProvider,
     llmApiKey?: string
 ) {
-    const saikiEnvKeys = [
+    const dextoEnvKeys = [
         'OPENAI_API_KEY',
         'ANTHROPIC_API_KEY',
         'GOOGLE_GENERATIVE_AI_API_KEY',
@@ -412,7 +408,7 @@ export async function updateEnvFile(
         throw new Error('Could not find project root (no lock file found)');
     }
     const envFilePath = path.join(projectRoot, '.env');
-    logger.debug(`Updating .env file with saiki env variables: envFilePath ${envFilePath}`);
+    logger.debug(`Updating .env file with dexto env variables: envFilePath ${envFilePath}`);
     // Read existing .env if present
     let envLines: string[] = [];
     try {
@@ -422,18 +418,18 @@ export async function updateEnvFile(
         // File may not exist, start with empty array
     }
 
-    // Extract current values for Saiki environment variables
+    // Extract current values for Dexto environment variables
     const currentValues: Record<string, string> = {};
     envLines.forEach((line) => {
         const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && match[1] && match[2] !== undefined && saikiEnvKeys.includes(match[1])) {
+        if (match && match[1] && match[2] !== undefined && dextoEnvKeys.includes(match[1])) {
             currentValues[match[1]] = match[2];
         }
     });
 
     const passedKey = llmProvider ? getPrimaryApiKeyEnvVar(llmProvider) : undefined;
 
-    // Prepare updated values for Saiki environment variables
+    // Prepare updated values for Dexto environment variables
     const updatedValues: Record<string, string> = {
         OPENAI_API_KEY:
             llmProvider === 'openai' ? (llmApiKey ?? '') : (currentValues['OPENAI_API_KEY'] ?? ''),
@@ -450,8 +446,8 @@ export async function updateEnvFile(
         SAIKI_LOG_LEVEL: currentValues['SAIKI_LOG_LEVEL'] ?? 'info',
     };
 
-    // Extract content before and after the Saiki section
-    const sectionHeader = '## Saiki env variables';
+    // Extract content before and after the Dexto section
+    const sectionHeader = '## Dexto env variables';
     const headerIndex = envLines.findIndex((line) => line.trim() === sectionHeader);
 
     let contentLines: string[];
@@ -480,11 +476,11 @@ export async function updateEnvFile(
         contentLines = envLines;
     }
 
-    // Identify env variables already present outside the Saiki section
+    // Identify env variables already present outside the Dexto section
     const existingEnvVars: Record<string, string> = {};
     contentLines.forEach((line) => {
         const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (match && match[1] && match[2] !== undefined && saikiEnvKeys.includes(match[1])) {
+        if (match && match[1] && match[2] !== undefined && dextoEnvKeys.includes(match[1])) {
             existingEnvVars[match[1]] = match[2];
         }
     });
@@ -504,8 +500,8 @@ export async function updateEnvFile(
     contentLines.push(sectionHeader);
 
     // Add environment variables that should be included
-    for (const key of saikiEnvKeys) {
-        // Skip keys already present outside Saiki section (unless it's the passed key)
+    for (const key of dextoEnvKeys) {
+        // Skip keys already present outside Dexto section (unless it's the passed key)
         if (key in existingEnvVars && key !== passedKey) {
             continue;
         }

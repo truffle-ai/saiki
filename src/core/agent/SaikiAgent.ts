@@ -1,4 +1,4 @@
-// src/agent/SaikiAgent.ts
+// src/agent/DextoAgent.ts
 import { MCPManager } from '../mcp/manager.js';
 import { ToolManager } from '../tools/tool-manager.js';
 import { PromptManager } from '../systemPrompt/manager.js';
@@ -10,9 +10,9 @@ import { ValidatedLLMConfig, LLMConfig, LLMUpdates } from '@core/llm/schemas.js'
 import { resolveAndValidateLLMConfig } from '../llm/resolver.js';
 import { Result, ok, fail } from '../utils/result.js';
 import type { LLMUpdateContext } from '../llm/types.js';
-import { SaikiErrorCode } from '../schemas/errors.js';
+import { DextoErrorCode } from '../schemas/errors.js';
 import { validateInputForLLM } from '../llm/validation.js';
-import { SaikiLLMError, SaikiMCPError, SaikiInputError } from './errors.js';
+import { DextoLLMError, DextoMCPError, DextoInputError } from './errors.js';
 import { resolveAndValidateMcpServerConfig } from '../mcp/resolver.js';
 import type { McpServerConfig } from '@core/mcp/schemas.js';
 import {
@@ -31,7 +31,7 @@ import type { IMCPClient } from '../mcp/types.js';
 import type { ToolSet } from '../tools/types.js';
 import { SearchService } from '../search/index.js';
 import type { SearchOptions, SearchResponse, SessionSearchResponse } from '../search/index.js';
-import { getSaikiPath } from '../utils/path.js';
+import { getDextoPath } from '../utils/path.js';
 
 const requiredServices: (keyof AgentServices)[] = [
     'mcpManager',
@@ -43,9 +43,9 @@ const requiredServices: (keyof AgentServices)[] = [
 ];
 
 /**
- * The main entry point into Saiki's core functionality.
+ * The main entry point into Dexto's core functionality.
  *
- * SaikiAgent is a high-level abstraction layer that provides a clean, user-facing API
+ * DextoAgent is a high-level abstraction layer that provides a clean, user-facing API
  * for building AI agents. It coordinates multiple internal services to deliver core
  * capabilities including conversation management, LLM switching, MCP server integration,
  * and multi-session support.
@@ -61,14 +61,14 @@ const requiredServices: (keyof AgentServices)[] = [
  *
  * Design Principles:
  * - Thin wrapper around internal services with high-level methods
- * - Primary API for applications building on Saiki
+ * - Primary API for applications building on Dexto
  * - Internal services exposed as public readonly properties for advanced usage
  * - Backward compatibility through default session management
  *
  * @example
  * ```typescript
  * // Create and start agent
- * const agent = new SaikiAgent(config);
+ * const agent = new DextoAgent(config);
  * await agent.start();
  *
  * // Process user messages
@@ -92,7 +92,7 @@ const requiredServices: (keyof AgentServices)[] = [
  * await agent.stop();
  * ```
  */
-export class SaikiAgent {
+export class DextoAgent {
     /**
      * These services are public for use by the outside world
      * This gives users the option to use methods of the services directly if they know what they are doing
@@ -130,7 +130,7 @@ export class SaikiAgent {
         this.config = AgentConfigSchema.parse(config);
 
         // call start() to initialize services
-        logger.info('SaikiAgent created.');
+        logger.info('DextoAgent created.');
     }
 
     /**
@@ -146,7 +146,7 @@ export class SaikiAgent {
         }
 
         try {
-            logger.info('Starting SaikiAgent...');
+            logger.info('Starting DextoAgent...');
 
             // Initialize all services asynchronously
             const services = await createAgentServices(this.config, this.configPath);
@@ -173,13 +173,13 @@ export class SaikiAgent {
             this.searchService = services.searchService;
 
             this._isStarted = true;
-            logger.info('SaikiAgent started successfully.');
+            logger.info('DextoAgent started successfully.');
 
             // Show log location for SDK users
-            const logPath = getSaikiPath('logs', 'saiki.log');
+            const logPath = getDextoPath('logs', 'dexto.log');
             console.log(`📋 Logs available at: ${logPath}`);
         } catch (error) {
-            logger.error('Failed to start SaikiAgent', error);
+            logger.error('Failed to start DextoAgent', error);
             throw error;
         }
     }
@@ -202,7 +202,7 @@ export class SaikiAgent {
         }
 
         try {
-            logger.info('Stopping SaikiAgent...');
+            logger.info('Stopping DextoAgent...');
 
             const shutdownErrors: Error[] = [];
 
@@ -244,13 +244,13 @@ export class SaikiAgent {
 
             if (shutdownErrors.length > 0) {
                 const errorMessages = shutdownErrors.map((e) => e.message).join('; ');
-                logger.warn(`SaikiAgent stopped with some errors: ${errorMessages}`);
+                logger.warn(`DextoAgent stopped with some errors: ${errorMessages}`);
                 // Still consider it stopped, but log the errors
             } else {
-                logger.info('SaikiAgent stopped successfully.');
+                logger.info('DextoAgent stopped successfully.');
             }
         } catch (error) {
-            logger.error('Failed to stop SaikiAgent', error);
+            logger.error('Failed to stop DextoAgent', error);
             throw error;
         }
     }
@@ -332,14 +332,14 @@ export class SaikiAgent {
                     .map((issue) => issue.message);
 
                 // Emit event for monitoring/webhooks
-                this.agentEventBus.emit('saiki:inputValidationFailed', {
+                this.agentEventBus.emit('dexto:inputValidationFailed', {
                     sessionId: targetSessionId,
                     issues: validation.issues,
                     provider: llmConfig.provider,
                     model: llmConfig.model,
                 });
 
-                throw new SaikiInputError(
+                throw new DextoInputError(
                     `Input validation failed: ${errorMessages.join('; ')}`,
                     validation.issues
                 );
@@ -362,14 +362,14 @@ export class SaikiAgent {
                         this.currentDefaultSessionId
                     );
                     logger.debug(
-                        `SaikiAgent.run: created/loaded default session ${this.defaultSession.id}`
+                        `DextoAgent.run: created/loaded default session ${this.defaultSession.id}`
                     );
                 }
                 session = this.defaultSession;
             }
 
             logger.debug(
-                `SaikiAgent.run: textInput: ${textInput}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
+                `DextoAgent.run: textInput: ${textInput}, imageDataInput: ${imageDataInput}, fileDataInput: ${fileDataInput}, sessionId: ${sessionId || this.currentDefaultSessionId}`
             );
             const response = await session.run(textInput, imageDataInput, fileDataInput, stream);
 
@@ -384,7 +384,7 @@ export class SaikiAgent {
             return null;
         } catch (error) {
             logger.error(
-                `Error during SaikiAgent.run: ${error instanceof Error ? error.message : String(error)}`
+                `Error during DextoAgent.run: ${error instanceof Error ? error.message : String(error)}`
             );
             throw error;
         }
@@ -591,13 +591,13 @@ export class SaikiAgent {
             // Use SessionManager's resetSession method for better consistency
             await this.sessionManager.resetSession(targetSessionId);
 
-            logger.info(`SaikiAgent conversation reset for session: ${targetSessionId}`);
-            this.agentEventBus.emit('saiki:conversationReset', {
+            logger.info(`DextoAgent conversation reset for session: ${targetSessionId}`);
+            this.agentEventBus.emit('dexto:conversationReset', {
                 sessionId: targetSessionId,
             });
         } catch (error) {
             logger.error(
-                `Error during SaikiAgent.resetConversation: ${error instanceof Error ? error.message : String(error)}`
+                `Error during DextoAgent.resetConversation: ${error instanceof Error ? error.message : String(error)}`
             );
             throw error;
         }
@@ -634,7 +634,7 @@ export class SaikiAgent {
      * @param llmUpdates Partial LLM configuration object containing the updates to apply
      * @param sessionId Session ID to switch LLM for. If not provided, switches for default session. Use '*' for all sessions
      * @returns Promise that resolves with the validated LLM configuration
-     * @throws SaikiLLMError if validation fails or switching fails
+     * @throws DextoLLMError if validation fails or switching fails
      *
      * @example
      * ```typescript
@@ -659,9 +659,9 @@ export class SaikiAgent {
 
         // Basic validation
         if (!llmUpdates.model && !llmUpdates.provider) {
-            throw new SaikiLLMError('At least model or provider must be specified', [
+            throw new DextoLLMError('At least model or provider must be specified', [
                 {
-                    code: SaikiErrorCode.AGENT_MISSING_LLM_INPUT,
+                    code: DextoErrorCode.AGENT_MISSING_LLM_INPUT,
                     message: 'At least model or provider must be specified',
                     severity: 'error',
                     context: {},
@@ -682,7 +682,7 @@ export class SaikiAgent {
             const errorMessages = result.issues
                 .filter((i) => i.severity === 'error')
                 .map((i) => i.message);
-            throw new SaikiLLMError(errorMessages.join('; '), result.issues);
+            throw new DextoLLMError(errorMessages.join('; '), result.issues);
         }
 
         // Perform the actual LLM switch with validated config
@@ -691,7 +691,7 @@ export class SaikiAgent {
             const errorMessages = switchResult.issues
                 .filter((i) => i.severity === 'error')
                 .map((i) => i.message);
-            throw new SaikiLLMError(errorMessages.join('; '), switchResult.issues);
+            throw new DextoLLMError(errorMessages.join('; '), switchResult.issues);
         }
 
         // Log warnings if present
@@ -729,7 +729,7 @@ export class SaikiAgent {
             if (!session) {
                 return fail([
                     {
-                        code: SaikiErrorCode.AGENT_SESSION_NOT_FOUND,
+                        code: DextoErrorCode.AGENT_SESSION_NOT_FOUND,
                         message: `Session ${sessionScope} not found`,
                         severity: 'error',
                         context: {
@@ -870,7 +870,7 @@ export class SaikiAgent {
      *
      * @param name The name of the server to connect.
      * @param config The configuration object for the server.
-     * @throws SaikiMCPError if validation fails or connection fails
+     * @throws DextoMCPError if validation fails or connection fails
      */
     public async connectMcpServer(name: string, config: McpServerConfig): Promise<void> {
         this.ensureStarted();
@@ -884,7 +884,7 @@ export class SaikiAgent {
             const errorMessages = validation.issues
                 .filter((i) => i.severity === 'error')
                 .map((i) => i.message);
-            throw new SaikiMCPError(errorMessages.join('; '), validation.issues);
+            throw new DextoMCPError(errorMessages.join('; '), validation.issues);
         }
 
         // Add to runtime state (no validation needed - already validated)
@@ -894,16 +894,16 @@ export class SaikiAgent {
             // Connect the server
             await this.mcpManager.connectServer(name, config);
 
-            this.agentEventBus.emit('saiki:mcpServerConnected', {
+            this.agentEventBus.emit('dexto:mcpServerConnected', {
                 name,
                 success: true,
             });
-            this.agentEventBus.emit('saiki:availableToolsUpdated', {
+            this.agentEventBus.emit('dexto:availableToolsUpdated', {
                 tools: Object.keys(await this.toolManager.getAllTools()),
                 source: 'mcp',
             });
 
-            logger.info(`SaikiAgent: Successfully added and connected to MCP server '${name}'.`);
+            logger.info(`DextoAgent: Successfully added and connected to MCP server '${name}'.`);
 
             // Log warnings if present
             const warnings = validation.issues.filter((i) => i.severity === 'warning');
@@ -916,20 +916,20 @@ export class SaikiAgent {
             // Connection successful - method completes without returning data
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error(`SaikiAgent: Failed to connect to MCP server '${name}': ${errorMessage}`);
+            logger.error(`DextoAgent: Failed to connect to MCP server '${name}': ${errorMessage}`);
 
             // Clean up state if connection failed
             this.stateManager.removeMcpServer(name);
 
-            this.agentEventBus.emit('saiki:mcpServerConnected', {
+            this.agentEventBus.emit('dexto:mcpServerConnected', {
                 name,
                 success: false,
                 error: errorMessage,
             });
 
-            throw new SaikiMCPError(`Failed to connect to MCP server '${name}': ${errorMessage}`, [
+            throw new DextoMCPError(`Failed to connect to MCP server '${name}': ${errorMessage}`, [
                 {
-                    code: SaikiErrorCode.AGENT_MCP_CONNECTION_FAILED,
+                    code: DextoErrorCode.AGENT_MCP_CONNECTION_FAILED,
                     message: errorMessage,
                     severity: 'error',
                     context: { serverName: name },

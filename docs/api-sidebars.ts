@@ -9,7 +9,7 @@ const sidebars: SidebarsConfig = {
             link: {
                 type: 'generated-index',
                 title: 'REST API',
-                description: 'Explore the Saiki REST API endpoints for programmatic interaction.',
+                description: 'Explore the Dexto REST API endpoints for programmatic interaction.',
             },
             items: [
                 {
@@ -26,9 +26,9 @@ const sidebars: SidebarsConfig = {
                 type: 'generated-index',
                 title: 'TypeScript SDK API Reference',
                 description:
-                    'Complete technical API reference for the Saiki TypeScript/JavaScript SDK.',
+                    'Complete technical API reference for the Dexto TypeScript/JavaScript SDK.',
             },
-            items: ['saiki-agent', 'mcp-manager', 'events', 'types'],
+            items: ['dexto-agent', 'mcp-manager', 'events', 'types'],
         },
     ],
 };

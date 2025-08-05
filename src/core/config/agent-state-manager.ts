@@ -33,7 +33,7 @@ export class AgentStateManager {
     /**
      * Initialize AgentStateManager from a validated static configuration.
      *
-     * @param staticConfig The validated configuration from SaikiAgent
+     * @param staticConfig The validated configuration from DextoAgent
      * @param agentEventBus The agent event bus for emitting state change events
      */
     constructor(
@@ -76,7 +76,7 @@ export class AgentStateManager {
      * Update the LLM configuration (globally or for a specific session)
      *
      * This method is a pure state updater - it assumes the input has already been validated
-     * by the caller (typically SaikiAgent.switchLLM). The ValidatedLLMConfig branded type
+     * by the caller (typically DextoAgent.switchLLM). The ValidatedLLMConfig branded type
      * ensures validation has occurred.
      */
     public updateLLM(validatedConfig: ValidatedLLMConfig, sessionId?: string): void {
@@ -90,7 +90,7 @@ export class AgentStateManager {
             this.runtimeConfig.llm = validatedConfig;
         }
 
-        this.agentEventBus.emit('saiki:stateChanged', {
+        this.agentEventBus.emit('dexto:stateChanged', {
             field: 'llm',
             oldValue,
             newValue: validatedConfig,
@@ -111,7 +111,7 @@ export class AgentStateManager {
      * Add or update an MCP server configuration at runtime.
      *
      * This method is a pure state updater - it assumes the input has already been validated
-     * by the caller (typically SaikiAgent.connectMcpServer). The ValidatedMcpServerConfig
+     * by the caller (typically DextoAgent.connectMcpServer). The ValidatedMcpServerConfig
      * branded type ensures validation has occurred.
      */
     public addMcpServer(serverName: string, validatedConfig: ValidatedMcpServerConfig): void {
@@ -122,10 +122,10 @@ export class AgentStateManager {
         this.runtimeConfig.mcpServers[serverName] = validatedConfig;
 
         // Emit events
-        const eventName = isUpdate ? 'saiki:mcpServerUpdated' : 'saiki:mcpServerAdded';
+        const eventName = isUpdate ? 'dexto:mcpServerUpdated' : 'dexto:mcpServerAdded';
         this.agentEventBus.emit(eventName, { serverName, config: validatedConfig });
 
-        this.agentEventBus.emit('saiki:stateChanged', {
+        this.agentEventBus.emit('dexto:stateChanged', {
             field: 'mcpServers',
             oldValue: isUpdate ? 'updated' : 'added',
             newValue: validatedConfig,
@@ -144,8 +144,8 @@ export class AgentStateManager {
         if (serverName in this.runtimeConfig.mcpServers) {
             delete this.runtimeConfig.mcpServers[serverName];
 
-            this.agentEventBus.emit('saiki:mcpServerRemoved', { serverName });
-            this.agentEventBus.emit('saiki:stateChanged', {
+            this.agentEventBus.emit('dexto:mcpServerRemoved', { serverName });
+            this.agentEventBus.emit('dexto:stateChanged', {
                 field: 'mcpServers',
                 oldValue: 'removed',
                 newValue: undefined,
@@ -165,7 +165,7 @@ export class AgentStateManager {
      */
     private setSessionOverride(sessionId: string, override: SessionOverride): void {
         this.sessionOverrides.set(sessionId, override);
-        this.agentEventBus.emit('saiki:sessionOverrideSet', {
+        this.agentEventBus.emit('dexto:sessionOverrideSet', {
             sessionId,
             override: structuredClone(override),
         });
@@ -186,7 +186,7 @@ export class AgentStateManager {
         this.sessionOverrides.delete(sessionId);
 
         if (hadOverride) {
-            this.agentEventBus.emit('saiki:sessionOverrideCleared', { sessionId });
+            this.agentEventBus.emit('dexto:sessionOverrideCleared', { sessionId });
             logger.info('Session override cleared', { sessionId });
         }
     }
@@ -199,7 +199,7 @@ export class AgentStateManager {
         this.sessionOverrides.clear();
 
         sessionIds.forEach((sessionId) => {
-            this.agentEventBus.emit('saiki:sessionOverrideCleared', { sessionId });
+            this.agentEventBus.emit('dexto:sessionOverrideCleared', { sessionId });
         });
 
         if (sessionIds.length > 0) {
@@ -221,7 +221,7 @@ export class AgentStateManager {
             mcpServers: structuredClone(this.runtimeConfig.mcpServers),
         };
 
-        this.agentEventBus.emit('saiki:stateExported', { config: exportedConfig });
+        this.agentEventBus.emit('dexto:stateExported', { config: exportedConfig });
 
         logger.info('Runtime state exported as config', {
             exportedConfig,
@@ -237,7 +237,7 @@ export class AgentStateManager {
         this.runtimeConfig = structuredClone(this.baselineConfig);
 
         this.clearAllSessionOverrides();
-        this.agentEventBus.emit('saiki:stateReset', { toConfig: this.baselineConfig });
+        this.agentEventBus.emit('dexto:stateReset', { toConfig: this.baselineConfig });
 
         logger.info('Runtime state reset to baseline config');
     }

@@ -12,7 +12,7 @@ import {
     type McpServerConfig,
     type ServerConfigs,
 } from './schemas.js';
-import { SaikiErrorCode } from '@core/schemas/errors.js';
+import { DextoErrorCode } from '@core/schemas/errors.js';
 
 describe('MCP Schemas', () => {
     describe('StdioServerConfigSchema', () => {
@@ -82,7 +82,7 @@ describe('MCP Schemas', () => {
                 expect(result.success).toBe(false);
                 expect(result.error?.issues[0]?.code).toBe(z.ZodIssueCode.custom);
                 expect((result.error?.issues[0] as any)?.params?.code).toBe(
-                    SaikiErrorCode.MCP_MISSING_COMMAND
+                    DextoErrorCode.MCP_MISSING_COMMAND
                 );
             });
 
@@ -628,7 +628,7 @@ describe('MCP Schemas', () => {
                         url: 'https://analytics.company.com/mcp/endpoint',
                         headers: {
                             Authorization: 'Bearer prod-token-xyz',
-                            'X-Service': 'saiki-agent',
+                            'X-Service': 'dexto-agent',
                         },
                         timeout: 30000,
                         connectionMode: 'strict',

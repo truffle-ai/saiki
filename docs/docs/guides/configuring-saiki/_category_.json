@@ -1,9 +1,9 @@
 {
-    "label": "Saiki Configuration Guide",
+    "label": "Dexto Configuration Guide",
     "position": 3,
     "link": {
       "type": "generated-index",
-      "title": "Configuring Saiki",
-      "description": "Configure Saiki using YML to suit your needs."
+      "title": "Configuring Dexto",
+      "description": "Configure Dexto using YML to suit your needs."
     }
   } 

@@ -4,11 +4,11 @@ sidebar_position: 3
 
 # Events Reference
 
-Complete event system documentation for monitoring and integrating with Saiki agents.
+Complete event system documentation for monitoring and integrating with Dexto agents.
 
 ## Overview
 
-The Saiki SDK provides a comprehensive event system through two main event buses:
+The Dexto SDK provides a comprehensive event system through two main event buses:
 - **AgentEventBus**: Agent-level events that occur across the entire agent instance
 - **SessionEventBus**: Session-specific events that occur within individual conversation sessions
 
@@ -18,7 +18,7 @@ These events are emitted by the `AgentEventBus` and provide insight into agent-w
 
 ### Conversation Events
 
-#### `saiki:conversationReset`
+#### `dexto:conversationReset`
 
 Fired when a conversation history is reset for a session.
 
@@ -30,14 +30,14 @@ Fired when a conversation history is reset for a session.
 
 **Example:**
 ```typescript
-agent.agentEventBus.on('saiki:conversationReset', (data) => {
+agent.agentEventBus.on('dexto:conversationReset', (data) => {
   console.log(`Conversation reset for session: ${data.sessionId}`);
 });
 ```
 
 ### MCP Server Events
 
-#### `saiki:mcpServerConnected`
+#### `dexto:mcpServerConnected`
 
 Fired when an MCP server connection attempt completes (success or failure).
 
@@ -49,7 +49,7 @@ Fired when an MCP server connection attempt completes (success or failure).
 }
 ```
 
-#### `saiki:mcpServerAdded`
+#### `dexto:mcpServerAdded`
 
 Fired when an MCP server is added to the runtime state.
 
@@ -60,7 +60,7 @@ Fired when an MCP server is added to the runtime state.
 }
 ```
 
-#### `saiki:mcpServerRemoved`
+#### `dexto:mcpServerRemoved`
 
 Fired when an MCP server is removed from the runtime state.
 
@@ -70,7 +70,7 @@ Fired when an MCP server is removed from the runtime state.
 }
 ```
 
-#### `saiki:mcpServerUpdated`
+#### `dexto:mcpServerUpdated`
 
 Fired when an MCP server configuration is updated.
 
@@ -81,7 +81,7 @@ Fired when an MCP server configuration is updated.
 }
 ```
 
-#### `saiki:availableToolsUpdated`
+#### `dexto:availableToolsUpdated`
 
 Fired when the available tools list is updated.
 
@@ -94,7 +94,7 @@ Fired when the available tools list is updated.
 
 ### Validation Events
 
-#### `saiki:inputValidationFailed`
+#### `dexto:inputValidationFailed`
 
 Fired when input validation fails for an LLM request.
 
@@ -109,7 +109,7 @@ Fired when input validation fails for an LLM request.
 
 **Example:**
 ```typescript
-agent.agentEventBus.on('saiki:inputValidationFailed', (data) => {
+agent.agentEventBus.on('dexto:inputValidationFailed', (data) => {
   console.log(`Input validation failed for ${data.provider}/${data.model} in session ${data.sessionId}`);
   data.issues.forEach(issue => {
     console.log(`  - ${issue.severity}: ${issue.message}`);
@@ -119,7 +119,7 @@ agent.agentEventBus.on('saiki:inputValidationFailed', (data) => {
 
 ### Configuration Events
 
-#### `saiki:llmSwitched`
+#### `dexto:llmSwitched`
 
 Fired when the LLM configuration is changed.
 
@@ -132,7 +132,7 @@ Fired when the LLM configuration is changed.
 }
 ```
 
-#### `saiki:stateChanged`
+#### `dexto:stateChanged`
 
 Fired when agent runtime state changes.
 
@@ -145,7 +145,7 @@ Fired when agent runtime state changes.
 }
 ```
 
-#### `saiki:stateExported`
+#### `dexto:stateExported`
 
 Fired when agent state is exported as configuration.
 
@@ -156,7 +156,7 @@ Fired when agent state is exported as configuration.
 }
 ```
 
-#### `saiki:stateReset`
+#### `dexto:stateReset`
 
 Fired when agent state is reset to baseline.
 
@@ -168,7 +168,7 @@ Fired when agent state is reset to baseline.
 
 ### Session Override Events
 
-#### `saiki:sessionOverrideSet`
+#### `dexto:sessionOverrideSet`
 
 Fired when session-specific configuration is set.
 
@@ -179,7 +179,7 @@ Fired when session-specific configuration is set.
 }
 ```
 
-#### `saiki:sessionOverrideCleared`
+#### `dexto:sessionOverrideCleared`
 
 Fired when session-specific configuration is cleared.
 
@@ -294,17 +294,17 @@ Fired when a tool execution completes.
 ### Basic Event Listening
 
 ```typescript
-import { SaikiAgent } from '@truffle-ai/saiki';
+import { DextoAgent } from 'dexto';
 
-const agent = new SaikiAgent(config);
+const agent = new DextoAgent(config);
 await agent.start();
 
 // Listen to agent-level events
-agent.agentEventBus.on('saiki:conversationReset', (data) => {
+agent.agentEventBus.on('dexto:conversationReset', (data) => {
   console.log(`Conversation reset: ${data.sessionId}`);
 });
 
-agent.agentEventBus.on('saiki:mcpServerConnected', (data) => {
+agent.agentEventBus.on('dexto:mcpServerConnected', (data) => {
   if (data.success) {
     console.log(`✅ MCP server '${data.name}' connected`);
   } else {
@@ -375,7 +375,7 @@ agent.agentEventBus.on('llmservice:error', (data) => {
 });
 
 // Handle MCP connection failures
-agent.agentEventBus.on('saiki:mcpServerConnected', (data) => {
+agent.agentEventBus.on('dexto:mcpServerConnected', (data) => {
   if (!data.success) {
     console.error(`Failed to connect to MCP server '${data.name}': ${data.error}`);
     // Implement retry logic or fallback behavior
@@ -400,14 +400,14 @@ controller.abort();
 ### Standalone Event Bus Usage
 
 ```typescript
-import { AgentEventBus, SessionEventBus } from '@truffle-ai/saiki';
+import { AgentEventBus, SessionEventBus } from 'dexto';
 
 // Create standalone event buses
 const agentBus = new AgentEventBus();
 const sessionBus = new SessionEventBus();
 
 // Use them independently
-agentBus.on('saiki:llmSwitched', (data) => {
+agentBus.on('dexto:llmSwitched', (data) => {
   console.log('LLM configuration changed:', data.newConfig);
 });
 
@@ -416,7 +416,7 @@ sessionBus.on('llmservice:thinking', () => {
 });
 
 // Emit custom events
-agentBus.emit('saiki:conversationReset', { sessionId: 'test-session' });
+agentBus.emit('dexto:conversationReset', { sessionId: 'test-session' });
 
 // Don't forget to clean up when done
 // agentBus.removeAllListeners();
@@ -431,10 +431,10 @@ agentBus.emit('saiki:conversationReset', { sessionId: 'test-session' });
 
 ```typescript
 interface AgentEventMap {
-  'saiki:conversationReset': { sessionId: string };
-  'saiki:mcpServerConnected': { name: string; success: boolean; error?: string };
-  'saiki:availableToolsUpdated': { tools: string[]; source: string };
-  'saiki:llmSwitched': { newConfig: LLMConfig; router?: string; historyRetained?: boolean; sessionIds: string[] };
+  'dexto:conversationReset': { sessionId: string };
+  'dexto:mcpServerConnected': { name: string; success: boolean; error?: string };
+  'dexto:availableToolsUpdated': { tools: string[]; source: string };
+  'dexto:llmSwitched': { newConfig: LLMConfig; router?: string; historyRetained?: boolean; sessionIds: string[] };
   // ... other events
 }
 

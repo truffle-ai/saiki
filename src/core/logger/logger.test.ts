@@ -25,7 +25,7 @@ describe('Logger utilities', () => {
     beforeEach(() => {
         spyLog = vi.spyOn(console, 'log').mockImplementation(() => {});
         _spyStdErrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true) as any;
-        tempDir = fs.mkdtempSync(path.join(tmpdir(), 'saiki-logger-test-'));
+        tempDir = fs.mkdtempSync(path.join(tmpdir(), 'dexto-logger-test-'));
     });
 
     afterEach(() => {

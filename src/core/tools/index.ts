@@ -1,5 +1,5 @@
 /**
- * Tools System for Saiki
+ * Tools System for Dexto
  *
  * This module provides the unified tool management system that handles
  * MCP servers and internal tools.

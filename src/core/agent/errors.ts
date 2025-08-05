@@ -1,21 +1,21 @@
 import type { Issue } from '../utils/result.js';
-import { SaikiErrorCode } from '../schemas/errors.js';
+import { DextoErrorCode } from '../schemas/errors.js';
 
 /**
- * Base class for SaikiAgent validation errors that occurred during Result->Exception conversion
+ * Base class for DextoAgent validation errors that occurred during Result->Exception conversion
  * Preserves rich validation context from internal Result pattern for advanced error handling
  */
-export class SaikiValidationError extends Error {
+export class DextoValidationError extends Error {
     public readonly issues: Issue[];
-    public readonly code: SaikiErrorCode;
+    public readonly code: DextoErrorCode;
 
     constructor(
         message: string,
         issues: Issue[],
-        code: SaikiErrorCode = SaikiErrorCode.VALIDATION_ERROR
+        code: DextoErrorCode = DextoErrorCode.VALIDATION_ERROR
     ) {
         super(message);
-        this.name = 'SaikiValidationError';
+        this.name = 'DextoValidationError';
         this.issues = issues;
         this.code = code;
     }
@@ -23,33 +23,33 @@ export class SaikiValidationError extends Error {
 
 /**
  * LLM configuration and switching errors
- * Thrown by SaikiAgent.switchLLM() when validation or switching fails
+ * Thrown by DextoAgent.switchLLM() when validation or switching fails
  */
-export class SaikiLLMError extends SaikiValidationError {
+export class DextoLLMError extends DextoValidationError {
     constructor(message: string, issues: Issue[]) {
-        super(message, issues, SaikiErrorCode.AGENT_LLM_SWITCH_FAILED);
-        this.name = 'SaikiLLMError';
+        super(message, issues, DextoErrorCode.AGENT_LLM_SWITCH_FAILED);
+        this.name = 'DextoLLMError';
     }
 }
 
 /**
  * MCP server configuration and connection errors
- * Thrown by SaikiAgent.connectMcpServer() when validation or connection fails
+ * Thrown by DextoAgent.connectMcpServer() when validation or connection fails
  */
-export class SaikiMCPError extends SaikiValidationError {
+export class DextoMCPError extends DextoValidationError {
     constructor(message: string, issues: Issue[]) {
-        super(message, issues, SaikiErrorCode.AGENT_MCP_CONNECTION_FAILED);
-        this.name = 'SaikiMCPError';
+        super(message, issues, DextoErrorCode.AGENT_MCP_CONNECTION_FAILED);
+        this.name = 'DextoMCPError';
     }
 }
 
 /**
  * Input validation errors (text/image/file)
- * Thrown by SaikiAgent.run() when input validation fails
+ * Thrown by DextoAgent.run() when input validation fails
  */
-export class SaikiInputError extends SaikiValidationError {
+export class DextoInputError extends DextoValidationError {
     constructor(message: string, issues: Issue[]) {
-        super(message, issues, SaikiErrorCode.VALIDATION_ERROR);
-        this.name = 'SaikiInputError';
+        super(message, issues, DextoErrorCode.VALIDATION_ERROR);
+        this.name = 'DextoInputError';
     }
 }

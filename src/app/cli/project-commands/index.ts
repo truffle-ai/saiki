@@ -1,18 +1,18 @@
 // Project setup commands - run once and exit
 export {
-    createSaikiProject,
+    createDextoProject,
     createTsconfigJson,
-    addSaikiScriptsToPackageJson,
-    postCreateSaiki,
+    addDextoScriptsToPackageJson,
+    postCreateDexto,
 } from './create.js';
 
 export {
-    getUserInputToInitSaikiApp,
-    initSaiki,
-    postInitSaiki,
-    createSaikiDirectories,
-    createSaikiConfigFile,
-    updateSaikiConfigFile,
-    createSaikiExampleFile,
+    getUserInputToInitDextoApp,
+    initDexto,
+    postInitDexto,
+    createDextoDirectories,
+    createDextoConfigFile,
+    updateDextoConfigFile,
+    createDextoExampleFile,
     updateEnvFile,
 } from './init.js';

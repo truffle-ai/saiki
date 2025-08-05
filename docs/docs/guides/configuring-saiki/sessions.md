@@ -5,11 +5,11 @@ sidebar_label: "Sessions"
 
 # Sessions Configuration
 
-Configure session management for your Saiki agent, including maximum concurrent sessions and session timeouts.
+Configure session management for your Dexto agent, including maximum concurrent sessions and session timeouts.
 
 ## Overview
 
-Sessions in Saiki represent individual conversation contexts or user interactions. Each session maintains its own message history, tool approvals, and state.
+Sessions in Dexto represent individual conversation contexts or user interactions. Each session maintains its own message history, tool approvals, and state.
 
 ## Configuration
 
@@ -63,7 +63,7 @@ sessions:
 
 ## Default Configuration
 
-If not specified, Saiki uses:
+If not specified, Dexto uses:
 ```yaml
 sessions:
   maxSessions: 100

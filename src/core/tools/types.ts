@@ -18,7 +18,7 @@ export interface ToolExecutionContext {
 // ============================================================================
 
 /**
- * Internal tool interface - for tools implemented within Saiki
+ * Internal tool interface - for tools implemented within Dexto
  */
 export interface InternalTool {
     /** Unique identifier for the tool */

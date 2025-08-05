@@ -229,7 +229,7 @@ describe('ChatSession', () => {
             });
         });
 
-        test('should emit saiki:conversationReset event when conversation is reset', async () => {
+        test('should emit dexto:conversationReset event when conversation is reset', async () => {
             await chatSession.init();
 
             await chatSession.reset();
@@ -237,9 +237,9 @@ describe('ChatSession', () => {
             // Should call resetConversation on message manager
             expect(mockContextManager.resetConversation).toHaveBeenCalled();
 
-            // Should emit saiki:conversationReset event with session context
+            // Should emit dexto:conversationReset event with session context
             expect(mockServices.agentEventBus.emit).toHaveBeenCalledWith(
-                'saiki:conversationReset',
+                'dexto:conversationReset',
                 { sessionId }
             );
         });

@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getSaikiPath } from '../utils/path.js';
+import { getDextoPath } from '../utils/path.js';
 
 // Winston logger configuration
 const logLevels = {
@@ -132,7 +132,7 @@ export class Logger {
         if (options.customLogPath) {
             this.logFilePath = options.customLogPath;
         } else {
-            this.logFilePath = getSaikiPath('logs', 'saiki.log');
+            this.logFilePath = getDextoPath('logs', 'dexto.log');
         }
     }
 

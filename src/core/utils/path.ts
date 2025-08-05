@@ -32,70 +32,70 @@ export function walkUpDirectories(
 }
 
 /**
- * Check if directory has saiki as dependency (MOST RELIABLE)
+ * Check if directory has dexto as dependency (MOST RELIABLE)
  * @param dirPath Directory to check
- * @returns True if directory contains saiki as dependency
+ * @returns True if directory contains dexto as dependency
  */
-function hasSaikiDependency(dirPath: string): boolean {
+function hasDextoDependency(dirPath: string): boolean {
     const packageJsonPath = path.join(dirPath, 'package.json');
 
     try {
         const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 
-        // Case 1: This IS the saiki package itself (local testing)
-        if (pkg.name === '@truffle-ai/saiki') {
+        // Case 1: This IS the dexto package itself (local testing)
+        if (pkg.name === 'dexto') {
             return true;
         }
 
-        // Case 2: Project using saiki as dependency (SDK/CLI in project)
+        // Case 2: Project using dexto as dependency (SDK/CLI in project)
         const allDeps = {
             ...pkg.dependencies,
             ...pkg.devDependencies,
             ...pkg.peerDependencies,
         };
 
-        return '@truffle-ai/saiki' in allDeps;
+        return 'dexto' in allDeps;
     } catch {
         return false;
     }
 }
 
 /**
- * Check if we're currently in a saiki project
+ * Check if we're currently in a dexto project
  * @param startPath Starting directory path
- * @returns True if in a saiki project
+ * @returns True if in a dexto project
  */
-export function isSaikiProject(startPath: string = process.cwd()): boolean {
-    return getSaikiProjectRoot(startPath) !== null;
+export function isDextoProject(startPath: string = process.cwd()): boolean {
+    return getDextoProjectRoot(startPath) !== null;
 }
 
 /**
- * Get saiki project root (or null if not in project)
+ * Get dexto project root (or null if not in project)
  * @param startPath Starting directory path
  * @returns Project root directory or null
  */
-export function getSaikiProjectRoot(startPath: string = process.cwd()): string | null {
-    return walkUpDirectories(startPath, hasSaikiDependency);
+export function getDextoProjectRoot(startPath: string = process.cwd()): string | null {
+    return walkUpDirectories(startPath, hasDextoDependency);
 }
 
 /**
- * Standard path resolver for logs/db/config/anything in saiki projects
+ * Standard path resolver for logs/db/config/anything in dexto projects
  * @param type Path type (logs, database, config, etc.)
  * @param filename Optional filename to append
  * @param startPath Starting directory for project detection
  * @returns Absolute path to the requested location
  */
-export function getSaikiPath(type: string, filename?: string, startPath?: string): string {
-    const projectRoot = getSaikiProjectRoot(startPath);
+export function getDextoPath(type: string, filename?: string, startPath?: string): string {
+    const projectRoot = getDextoProjectRoot(startPath);
 
     let basePath: string;
 
     if (projectRoot) {
-        // In saiki project: /project/.saiki/logs/
-        basePath = path.join(projectRoot, '.saiki', type);
+        // In dexto project: /project/.dexto/logs/
+        basePath = path.join(projectRoot, '.dexto', type);
     } else {
-        // Global: ~/.saiki/logs/
-        basePath = path.join(homedir(), '.saiki', type);
+        // Global: ~/.dexto/logs/
+        basePath = path.join(homedir(), '.dexto', type);
     }
 
     return filename ? path.join(basePath, filename) : basePath;
@@ -113,15 +113,15 @@ export function resolveConfigPath(configPath?: string, startPath?: string): stri
         return path.resolve(configPath);
     }
 
-    const projectRoot = getSaikiProjectRoot(startPath);
+    const projectRoot = getDextoProjectRoot(startPath);
 
     if (projectRoot) {
-        // In saiki project: Look for config in project (multiple possible locations)
+        // In dexto project: Look for config in project (multiple possible locations)
         const configPaths = [
             path.join(projectRoot, 'agents', 'agent.yml'), // Standard
             path.join(projectRoot, 'src', 'agents', 'agent.yml'), // Common
-            path.join(projectRoot, 'src', 'saiki', 'agents', 'agent.yml'), // Test app structure
-            path.join(projectRoot, '.saiki', 'agent.yml'), // Hidden
+            path.join(projectRoot, 'src', 'dexto', 'agents', 'agent.yml'), // Test app structure
+            path.join(projectRoot, '.dexto', 'agent.yml'), // Hidden
             path.join(projectRoot, 'agent.yml'), // Root
         ];
 
@@ -172,7 +172,7 @@ export function resolveBundledScript(scriptPath: string): string {
     try {
         // Try to resolve from the installed package
         const require = createRequire(import.meta.url);
-        const packageJsonPath = require.resolve('@truffle-ai/saiki/package.json');
+        const packageJsonPath = require.resolve('dexto/package.json');
         const packageRoot = path.dirname(packageJsonPath);
         return path.resolve(packageRoot, scriptPath);
     } catch {

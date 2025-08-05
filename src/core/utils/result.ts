@@ -1,6 +1,6 @@
 // schemas/helpers.ts
 import { z, type ZodError, type ZodIssue } from 'zod';
-import { SaikiErrorCode } from '../schemas/errors.js';
+import { DextoErrorCode } from '../schemas/errors.js';
 
 /** Trim and require non-empty after trim */
 export const NonEmptyTrimmed = z
@@ -62,7 +62,7 @@ export type Severity = 'error' | 'warning';
 
 /** Generic issue type for validation results */
 export interface Issue<C = unknown> {
-    code: SaikiErrorCode;
+    code: DextoErrorCode;
     message: string;
     path?: Array<string | number>;
     severity: Severity;
@@ -85,7 +85,7 @@ export type Result<T, C = unknown> =
  * **Usage Guidelines:**
  * - Use for operations that completed successfully, even with warnings
  * - Include warnings for non-blocking issues (API key too short, fallback model used, etc.)
- * - SaikiAgent methods should prefer this over throwing exceptions
+ * - DextoAgent methods should prefer this over throwing exceptions
  * - API layer maps this to 2xx status codes
  *
  * @param data - The successfully validated/processed data
@@ -126,7 +126,7 @@ export const ok = <T, C = unknown>(data: T, issues: Issue<C>[] = []): Result<T, 
  * // Validation failure
  * return fail([
  *   {
- *     code: SaikiErrorCode.AGENT_MISSING_LLM_INPUT,
+ *     code: DextoErrorCode.AGENT_MISSING_LLM_INPUT,
  *     message: 'At least model or provider must be specified',
  *     severity: 'error',
  *     context: {}
@@ -233,7 +233,7 @@ export function splitIssues<C>(issues: Issue<C>[]) {
  * // Custom error codes in Zod schema
  * const schema = z.string().refine(val => val.length > 0, {
  *   message: 'Field is required',
- *   params: { code: SaikiErrorCode.LLM_MISSING_API_KEY }
+ *   params: { code: DextoErrorCode.LLM_MISSING_API_KEY }
  * });
  * ```
  */
@@ -242,7 +242,7 @@ export function zodToIssues<C = unknown>(
     severity: 'error' | 'warning' = 'error'
 ): Issue<C>[] {
     return err.errors.map((e: ZodIssue) => ({
-        code: ((e as any).params?.code ?? SaikiErrorCode.SCHEMA_VALIDATION) as SaikiErrorCode,
+        code: ((e as any).params?.code ?? DextoErrorCode.SCHEMA_VALIDATION) as DextoErrorCode,
         message: e.message,
         path: e.path,
         severity,

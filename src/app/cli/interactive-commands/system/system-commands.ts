@@ -1,7 +1,7 @@
 /**
  * System Commands Module
  *
- * This module defines system-level slash commands for the Saiki CLI interface.
+ * This module defines system-level slash commands for the Dexto CLI interface.
  * These commands provide system configuration, logging, and statistics functionality.
  *
  * Available System Commands:
@@ -12,7 +12,7 @@
 
 import chalk from 'chalk';
 import { logger } from '@core/index.js';
-import type { SaikiAgent } from '@core/index.js';
+import type { DextoAgent } from '@core/index.js';
 import type { CommandDefinition } from '../command-parser.js';
 
 /**
@@ -25,7 +25,7 @@ export const systemCommands: CommandDefinition[] = [
         usage: '/log [level]',
         category: 'System',
         aliases: [],
-        handler: async (args: string[], _agent: SaikiAgent) => {
+        handler: async (args: string[], _agent: DextoAgent) => {
             const validLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
             const level = args[0];
 
@@ -58,7 +58,7 @@ export const systemCommands: CommandDefinition[] = [
         description: 'Show current configuration',
         usage: '/config',
         category: 'System',
-        handler: async (_args: string[], agent: SaikiAgent) => {
+        handler: async (_args: string[], agent: DextoAgent) => {
             try {
                 const config = agent.getEffectiveConfig();
                 console.log(chalk.blue('\n⚙️  Current Configuration:\n'));
@@ -103,7 +103,7 @@ export const systemCommands: CommandDefinition[] = [
         description: 'Show system statistics',
         usage: '/stats',
         category: 'System',
-        handler: async (_args: string[], agent: SaikiAgent) => {
+        handler: async (_args: string[], agent: DextoAgent) => {
             try {
                 console.log(chalk.blue('\n📊 System Statistics:\n'));
 

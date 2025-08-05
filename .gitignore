@@ -53,7 +53,7 @@ logs/
 test-temp/
 
 # temporary storage
-.saiki/
+.dexto/
 
 # Temporarily ignore module READMEs in src/core
 src/core/*/README.md

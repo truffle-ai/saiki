@@ -1,4 +1,4 @@
-import { SaikiErrorCode } from '@core/schemas/errors.js';
+import { DextoErrorCode } from '@core/schemas/errors.js';
 import { EnvExpandedString, RequiredEnvURL } from '@core/utils/result.js';
 import { z } from 'zod';
 
@@ -13,7 +13,7 @@ export const StdioServerConfigSchema = z
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: 'Stdio server requires a non-empty command',
-                    params: { code: SaikiErrorCode.MCP_MISSING_COMMAND },
+                    params: { code: DextoErrorCode.MCP_MISSING_COMMAND },
                     path: ['command'],
                 });
             }

@@ -45,7 +45,7 @@ const SqliteBackendSchema = BaseBackendSchema.extend({
         .describe(
             'SQLite database file path (optional, will auto-detect using path resolver if not provided)'
         ),
-    database: z.string().optional().describe('Database filename (default: saiki.db)'),
+    database: z.string().optional().describe('Database filename (default: dexto.db)'),
 }).strict();
 
 export type SqliteBackendConfig = z.output<typeof SqliteBackendSchema>;

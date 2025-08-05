@@ -1,5 +1,5 @@
 import { Result, Issue, hasErrors, splitIssues, ok, fail, zodToIssues } from '../utils/result.js';
-import { SaikiErrorCode } from '../schemas/errors.js';
+import { DextoErrorCode } from '../schemas/errors.js';
 
 import { type ValidatedLLMConfig, type LLMUpdates, type LLMConfig } from './schemas.js';
 import { LLMConfigSchema } from './schemas.js';
@@ -66,14 +66,14 @@ export function resolveLLMConfig(
         updates.apiKey ?? (provider !== previous.provider ? envKey : previous.apiKey) ?? '';
     if (!apiKey) {
         warnings.push({
-            code: SaikiErrorCode.LLM_MISSING_API_KEY_CANDIDATE,
+            code: DextoErrorCode.LLM_MISSING_API_KEY_CANDIDATE,
             message: 'API key not provided or found in environment',
             severity: 'warning',
             context: { provider },
         });
     } else if (typeof apiKey === 'string' && apiKey.length < 10) {
         warnings.push({
-            code: SaikiErrorCode.LLM_SHORT_API_KEY,
+            code: DextoErrorCode.LLM_SHORT_API_KEY,
             message: 'API key looks unusually short',
             severity: 'warning',
             context: { provider },
@@ -94,7 +94,7 @@ export function resolveLLMConfig(
             // if no routers supported, throw error
             if (supported.length === 0) {
                 warnings.push({
-                    code: SaikiErrorCode.LLM_UNSUPPORTED_ROUTER,
+                    code: DextoErrorCode.LLM_UNSUPPORTED_ROUTER,
                     message: `No routers supported for provider '${provider}'`,
                     severity: 'error',
                     context: router ? { provider, router } : { provider },
@@ -103,7 +103,7 @@ export function resolveLLMConfig(
             } else {
                 router = supported.includes('vercel') ? 'vercel' : supported[0]!;
                 warnings.push({
-                    code: SaikiErrorCode.LLM_UNSUPPORTED_ROUTER,
+                    code: DextoErrorCode.LLM_UNSUPPORTED_ROUTER,
                     message: `Router changed to '${router}' for provider '${provider}'`,
                     severity: 'warning',
                     context: { provider, router },
@@ -124,7 +124,7 @@ export function resolveLLMConfig(
     ) {
         model = getDefaultModelForProvider(provider) ?? previous.model;
         warnings.push({
-            code: SaikiErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
+            code: DextoErrorCode.LLM_INCOMPATIBLE_MODEL_PROVIDER,
             message: `Model set to default '${model}' for provider '${provider}'`,
             severity: 'warning',
             context: { provider, model },
@@ -168,7 +168,7 @@ export function validateLLMConfig(
     // Check for short API key (warning)
     if (parsed.data.apiKey && parsed.data.apiKey.length < 10) {
         warnings.push({
-            code: SaikiErrorCode.LLM_SHORT_API_KEY,
+            code: DextoErrorCode.LLM_SHORT_API_KEY,
             message: 'API key seems too short - please verify it is correct',
             path: ['apiKey'],
             severity: 'warning',
