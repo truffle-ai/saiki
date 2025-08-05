@@ -1,36 +1,28 @@
 import { z } from 'zod';
 import chalk from 'chalk';
 import { AgentConfigSchema, type AgentConfig } from '@core/agent/schemas.js';
-import { loadAgentConfig } from '@core/config/loader.js';
-import { applyCLIOverrides, type CLIConfigOverrides } from '../../config/cli-overrides.js';
 import { interactiveApiKeySetup } from './interactive-api-key-setup.js';
 import { DextoErrorCode } from '@core/schemas/errors.js';
 import { applyLayeredEnvironmentLoading } from '@core/utils/env.js';
 import type { LLMProvider } from '@core/index.js';
 
 /**
- * Validates config with interactive fixes for user experience.
+ * Validates agent config with optional interactive fixes for user experience.
  * Uses schema parsing to detect API key issues and provides targeted setup.
- * Returns raw AgentConfig that will be validated again by DextoAgent.
+ * Returns validated AgentConfig.
  */
-export async function validateConfigWithInteractiveSetup(
-    cliOverrides: CLIConfigOverrides,
-    configPath?: string
+export async function validateAgentConfig(
+    config: AgentConfig,
+    allowInteractive: boolean = false
 ): Promise<AgentConfig> {
-    // Load raw config
-    const rawConfig = await loadAgentConfig(configPath);
-
-    // Apply CLI overrides
-    const mergedConfig = applyCLIOverrides(rawConfig, cliOverrides);
-
     // Parse with schema to detect issues
-    const parseResult = AgentConfigSchema.safeParse(mergedConfig);
+    const parseResult = AgentConfigSchema.safeParse(config);
 
     if (!parseResult.success) {
         // Check for API key validation errors using raw Zod error (preserves params)
-        const apiKeyError = findApiKeyError(parseResult.error, mergedConfig);
+        const apiKeyError = findApiKeyError(parseResult.error, config);
 
-        if (apiKeyError) {
+        if (apiKeyError && allowInteractive) {
             console.log(
                 chalk.yellow(`\n🔑 API key required for ${apiKeyError.provider} provider\n`)
             );
@@ -44,17 +36,18 @@ export async function validateConfigWithInteractiveSetup(
 
             // Reload environment variables with layered loading and retry
             await applyLayeredEnvironmentLoading();
-            return validateConfigWithInteractiveSetup(cliOverrides, configPath);
+            // Same config, but EnvExpandedString will now find the API key
+            return validateAgentConfig(config, allowInteractive);
         }
 
-        // Other validation errors - show user-friendly message
+        // API key error in non-interactive mode or other validation errors
         console.error(chalk.red('❌ Configuration Error:'));
         formatZodError(parseResult.error);
         process.exit(1);
     }
 
-    // Return the raw config (will be parsed again by DextoAgent)
-    return mergedConfig;
+    // Return the validated config
+    return parseResult.data;
 }
 
 /**

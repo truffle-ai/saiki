@@ -28,7 +28,8 @@ import { startApiAndLegacyWebUIServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
-import { validateConfigWithInteractiveSetup } from './cli/utils/config-validation.js';
+import { validateAgentConfig } from './cli/utils/config-validation.js';
+import { applyCLIOverrides } from './config/cli-overrides.js';
 import { getPort } from '@core/utils/port-utils.js';
 import {
     createDextoProject,
@@ -271,10 +272,13 @@ program
         let validatedConfig: AgentConfig;
         try {
             const configPath = opts.agent === DEFAULT_CONFIG_PATH ? undefined : opts.agent;
-            validatedConfig = await validateConfigWithInteractiveSetup(
-                opts as CLIConfigOverrides,
-                configPath
-            );
+
+            // Load raw config and apply CLI overrides
+            const rawConfig = await loadAgentConfig(configPath);
+            const mergedConfig = applyCLIOverrides(rawConfig, opts as CLIConfigOverrides);
+
+            // Validate with interactive setup if needed
+            validatedConfig = await validateAgentConfig(mergedConfig, true);
         } catch (err) {
             // Config loading failed completely
             console.error(`❌ Failed to load configuration: ${err}`);
