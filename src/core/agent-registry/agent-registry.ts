@@ -39,12 +39,7 @@ export class LocalAgentRegistry implements AgentRegistry {
     private _registryAgents: Record<string, AgentRegistryEntry> | null = null;
 
     constructor(config?: Partial<AgentRegistryConfig>) {
-        const validatedConfig = AgentRegistryConfigSchema.parse({
-            registryAgents: {}, // Will be loaded lazily
-            cacheTtl: 3600, // 1 hour
-            ...config,
-        });
-        this.config = validatedConfig;
+        this.config = AgentRegistryConfigSchema.parse(config);
     }
 
     /**

@@ -40,7 +40,8 @@ export const AgentRegistryConfigSchema = z
     .object({
         registryAgents: z
             .record(z.string(), AgentRegistryEntrySchema)
-            .describe('Local registry agents'),
+            .describe('Local registry agents')
+            .default({}),
         remoteRegistries: z
             .array(z.string())
             .optional()
@@ -48,8 +49,8 @@ export const AgentRegistryConfigSchema = z
         cacheTtl: z
             .number()
             .positive()
-            .optional()
-            .describe('Cache TTL for remote agents (in seconds)'),
+            .describe('Cache TTL for remote agents (in seconds)')
+            .default(3600),
     })
     .strict();
 
