@@ -233,7 +233,14 @@ program
         }
 
         // Check if any API key is available for common providers
-        const commonProviders = ['openai', 'google', 'anthropic', 'groq'];
+        const commonProviders: LLMProvider[] = [
+            'openai',
+            'google',
+            'anthropic',
+            'groq',
+            'xai',
+            'cohere',
+        ];
         const hasApiKey = commonProviders.some((provider) => resolveApiKeyForProvider(provider));
 
         if (!hasApiKey) {
@@ -258,7 +265,6 @@ program
             }
 
             // Reload environment variables after setup
-            const dotenv = await import('dotenv');
             dotenv.config();
 
             console.log(chalk.green('\n✨ API key configured! Starting Saiki...\n'));

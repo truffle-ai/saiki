@@ -54,7 +54,7 @@ export async function interactiveApiKeySetup(): Promise<ApiKeySetupResult> {
 
         if (action === 'exit') {
             p.cancel('Setup cancelled. Run saiki again when you have an API key!');
-            process.exit(0);
+            return { success: false, skipSetup: true };
         }
 
         if (action === 'manual') {
