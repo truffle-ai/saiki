@@ -3,12 +3,13 @@ import chalk from 'chalk';
 import { LLMProvider, logger } from '@core/index.js';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
 import {
-    updateDetectedEnvFileWithLLMKeys,
+    updateEnvFileWithLLMKeys,
     getProviderDisplayName,
     getApiKeyPlaceholder,
     isValidApiKeyFormat,
     getProviderInstructions,
 } from './api-key-utils.js';
+import { getDextoEnvPath } from '@core/utils/path.js';
 
 /**
  * Interactively prompts the user to set up an API key for a specific provider.
@@ -88,8 +89,9 @@ export async function interactiveApiKeySetup(provider: LLMProvider): Promise<boo
         spinner.start('Saving API key and updating configuration...');
 
         try {
-            // Update .env file with the API key
-            await updateDetectedEnvFileWithLLMKeys(process.cwd(), provider, apiKey.trim());
+            // Update .env file with the API key using smart path detection
+            const envFilePath = getDextoEnvPath(process.cwd());
+            await updateEnvFileWithLLMKeys(envFilePath, provider, apiKey.trim());
             spinner.stop('API key saved successfully! ✨');
 
             // Can append this with information about where the API key was saved if needed later

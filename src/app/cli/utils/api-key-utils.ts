@@ -1,10 +1,8 @@
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import { parseDocument } from 'yaml';
 import chalk from 'chalk';
 import { LLMProvider, getDefaultModelForProvider } from '@core/index.js';
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
-import { getDextoEnvPath } from '@core/utils/path.js';
 import { updateEnvFile } from '@core/utils/env.js';
 import { logger } from '@core/logger/index.js';
 
@@ -133,7 +131,7 @@ export async function updateDextoConfigFile(
 /**
  * Helper to build environment variable updates for API key providers
  */
-async function updateEnvFileWithLLMKeys(
+export async function updateEnvFileWithLLMKeys(
     envFilePath: string,
     llmProvider?: LLMProvider,
     llmApiKey?: string
@@ -154,41 +152,4 @@ async function updateEnvFileWithLLMKeys(
     if (llmProvider && llmApiKey) {
         console.log(chalk.green(`✓ Wrote ${llmProvider.toUpperCase()} API key to: ${envFilePath}`));
     }
-}
-
-/**
- * Updates or creates a project .env file during init command.
- * Always saves to the current directory (for new project initialization).
- * This function is specifically for the init command where project structure
- * is being created and project detection won't work yet.
- *
- * @param directory - The directory to create .env file in (current directory for init)
- * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
- * @param llmApiKey - The API key for the specified LLM provider.
- */
-export async function updateProjectEnvFileWithLLMKeys(
-    directory: string,
-    llmProvider?: LLMProvider,
-    llmApiKey?: string
-): Promise<void> {
-    const envFilePath = path.join(directory, '.env');
-    await updateEnvFileWithLLMKeys(envFilePath, llmProvider, llmApiKey);
-}
-
-/**
- * Updates or creates an .env file using smart file selection for interactive setup.
- * Uses layered environment logic: saves to project .env if in dexto project,
- * otherwise saves to global ~/.dexto/.env for CLI-wide usage.
- *
- * @param startPath - Starting directory for project detection
- * @param llmProvider - The LLM provider to use (openai, anthropic, google, groq, etc.).
- * @param llmApiKey - The API key for the specified LLM provider.
- */
-export async function updateDetectedEnvFileWithLLMKeys(
-    startPath: string,
-    llmProvider?: LLMProvider,
-    llmApiKey?: string
-): Promise<void> {
-    const envFilePath = getDextoEnvPath(startPath);
-    await updateEnvFileWithLLMKeys(envFilePath, llmProvider, llmApiKey);
 }

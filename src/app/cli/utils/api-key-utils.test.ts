@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { tmpdir, homedir } from 'os';
-import {
-    updateProjectEnvFileWithLLMKeys,
-    updateDetectedEnvFileWithLLMKeys,
-} from './api-key-utils.js';
+import { updateEnvFileWithLLMKeys } from './api-key-utils.js';
 
 // Mock homedir to control global .dexto location
 vi.mock('os', async () => {
@@ -39,9 +36,10 @@ describe('API Key Utils', () => {
         vi.clearAllMocks();
     });
 
-    describe('updateProjectEnvFileWithLLMKeys', () => {
+    describe('updateEnvFileWithLLMKeys', () => {
         it('creates a new .env file with the Dexto env section when none exists', async () => {
-            await updateProjectEnvFileWithLLMKeys(tempDir, 'openai', 'key1');
+            const envFilePath = path.join(tempDir, '.env');
+            await updateEnvFileWithLLMKeys(envFilePath, 'openai', 'key1');
             const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
             const expected = [
                 '',
@@ -71,7 +69,8 @@ describe('API Key Utils', () => {
             ].join('\n');
             await fs.writeFile(path.join(tempDir, '.env'), initial, 'utf8');
 
-            await updateProjectEnvFileWithLLMKeys(tempDir, 'anthropic', 'newAnthKey');
+            const envFilePath = path.join(tempDir, '.env');
+            await updateEnvFileWithLLMKeys(envFilePath, 'anthropic', 'newAnthKey');
             const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
 
             const expected = [
@@ -95,7 +94,8 @@ describe('API Key Utils', () => {
             const initial = ['OPENAI_API_KEY=foo', 'OTHER=1', ''].join('\n');
             await fs.writeFile(path.join(tempDir, '.env'), initial, 'utf8');
 
-            await updateProjectEnvFileWithLLMKeys(tempDir, 'google', 'gkey');
+            const envFilePath = path.join(tempDir, '.env');
+            await updateEnvFileWithLLMKeys(envFilePath, 'google', 'gkey');
             const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
             const expected = [
                 'OPENAI_API_KEY=foo',
@@ -113,7 +113,8 @@ describe('API Key Utils', () => {
 
         it('adds empty entries for keys not passed and not originally present', async () => {
             // No initial .env file, no keys passed
-            await updateProjectEnvFileWithLLMKeys(tempDir);
+            const envFilePath = path.join(tempDir, '.env');
+            await updateEnvFileWithLLMKeys(envFilePath);
             const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
             const expected = [
                 '',
@@ -132,7 +133,8 @@ describe('API Key Utils', () => {
             const initial = ['OPENAI_API_KEY=foo', 'OTHER=1', ''].join('\n');
             await fs.writeFile(path.join(tempDir, '.env'), initial, 'utf8');
 
-            await updateProjectEnvFileWithLLMKeys(tempDir, 'openai', 'bar');
+            const envFilePath = path.join(tempDir, '.env');
+            await updateEnvFileWithLLMKeys(envFilePath, 'openai', 'bar');
             const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
             const expected = [
                 'OPENAI_API_KEY=foo',
@@ -150,11 +152,13 @@ describe('API Key Utils', () => {
         });
 
         it('handles multiple providers correctly', async () => {
+            const envFilePath = path.join(tempDir, '.env');
+
             // First add openai key
-            await updateProjectEnvFileWithLLMKeys(tempDir, 'openai', 'openai-key');
+            await updateEnvFileWithLLMKeys(envFilePath, 'openai', 'openai-key');
 
             // Then add anthropic key
-            await updateProjectEnvFileWithLLMKeys(tempDir, 'anthropic', 'anthropic-key');
+            await updateEnvFileWithLLMKeys(envFilePath, 'anthropic', 'anthropic-key');
 
             const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
             const expected = [
@@ -168,48 +172,6 @@ describe('API Key Utils', () => {
                 '',
             ].join('\n');
             expect(result).toBe(expected);
-        });
-    });
-
-    describe('updateDetectedEnvFileWithLLMKeys', () => {
-        it('uses project .env when in dexto project', async () => {
-            // Create a package.json with dexto dependency to make it a dexto project
-            await fs.writeFile(
-                path.join(tempDir, 'package.json'),
-                JSON.stringify({ dependencies: { dexto: '^1.0.0' } })
-            );
-
-            await updateDetectedEnvFileWithLLMKeys(tempDir, 'openai', 'project-key');
-
-            // Should write to project .env
-            const result = await fs.readFile(path.join(tempDir, '.env'), 'utf8');
-            expect(result).toContain('OPENAI_API_KEY=project-key');
-        });
-
-        it('uses global ~/.dexto/.env when not in dexto project', async () => {
-            // Don't create package.json with dexto dependency - not a dexto project
-
-            // This should write to global ~/.dexto/.env instead of project .env
-            await updateDetectedEnvFileWithLLMKeys(tempDir, 'openai', 'global-key');
-
-            // Project .env should not exist
-            const projectEnvExists = await fs
-                .access(path.join(tempDir, '.env'))
-                .then(() => true)
-                .catch(() => false);
-            expect(projectEnvExists).toBe(false);
-
-            // Global ~/.dexto/.env should exist in mocked home directory
-            const globalEnvPath = path.join(mockHomeDir, '.dexto', '.env');
-            const globalEnvExists = await fs
-                .access(globalEnvPath)
-                .then(() => true)
-                .catch(() => false);
-            expect(globalEnvExists).toBe(true);
-
-            // Verify the content was written correctly
-            const globalEnvContent = await fs.readFile(globalEnvPath, 'utf8');
-            expect(globalEnvContent).toContain('OPENAI_API_KEY=global-key');
         });
     });
 });
