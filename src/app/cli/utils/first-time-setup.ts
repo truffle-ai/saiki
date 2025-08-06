@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import * as path from 'path';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import { parseDocument } from 'yaml';
@@ -80,7 +81,7 @@ export async function copyBundledConfigWithProvider(provider: LLMProvider): Prom
     }
 
     // Ensure ~/.dexto directory exists
-    const dir = getUserConfigPath().replace('/agent.yml', '');
+    const dir = path.dirname(getUserConfigPath());
     await fs.mkdir(dir, { recursive: true });
 
     // Write the complete config
