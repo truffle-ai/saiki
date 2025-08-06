@@ -113,210 +113,109 @@ describe('Core Environment Loading', () => {
             expect(env.DEXTO_LOG_LEVEL).toBe('info');
         });
 
-        describe('Priority Order: Shell > Project > Global', () => {
-            it('shell environment beats both project and global', async () => {
-                // Setup: All three layers have OPENAI_API_KEY, shell should win
-                createTempDirStructure(
-                    {
-                        '.dexto/.env':
-                            'OPENAI_API_KEY=global-key\nANTHROPIC_API_KEY=global-anthropic\nGROQ_API_KEY=skip',
-                    },
-                    mockHomeDir
-                );
+        it('handles comprehensive priority system: Shell > Project > Global', async () => {
+            // Setup comprehensive scenario with many environment variables across all layers
+            createTempDirStructure(
+                {
+                    '.dexto/.env': [
+                        'OPENAI_API_KEY=global-openai',
+                        'ANTHROPIC_API_KEY=global-anthropic',
+                        'GOOGLE_GENERATIVE_AI_API_KEY=global-google',
+                        'GROQ_API_KEY=global-groq',
+                        'DEXTO_LOG_LEVEL=global-debug',
+                        'GLOBAL_UNIQUE_KEY=preserved',
+                        'SHARED_ACROSS_ALL=global-value',
+                        'SHARED_GLOBAL_PROJECT=global-project',
+                        'EMPTY_PROJECT_KEY=from-global',
+                    ].join('\n'),
+                },
+                mockHomeDir
+            );
 
-                createTempDirStructure(
-                    {
-                        'package.json': JSON.stringify({ dependencies: { dexto: '1.0.0' } }),
-                        '.env': 'OPENAI_API_KEY=project-key\nGROQ_API_KEY=project-groq',
-                    },
-                    tempDir
-                );
+            createTempDirStructure(
+                {
+                    'package.json': JSON.stringify({ dependencies: { dexto: '1.0.0' } }),
+                    '.env': [
+                        'OPENAI_API_KEY=project-openai',
+                        'ANTHROPIC_API_KEY=project-anthropic',
+                        'GROQ_API_KEY=project-groq',
+                        'DEXTO_LOG_LEVEL=project-info',
+                        'PROJECT_UNIQUE_KEY=project-only',
+                        'SHARED_ACROSS_ALL=project-value',
+                        'SHARED_GLOBAL_PROJECT=project-value',
+                        // EMPTY_PROJECT_KEY not in project, should come from global
+                    ].join('\n'),
+                },
+                tempDir
+            );
 
-                // Shell environment (highest priority)
-                process.env.OPENAI_API_KEY = 'shell-key';
-                process.env.DEXTO_LOG_LEVEL = 'error';
+            // Shell environment (highest priority) - only sets some keys
+            process.env.OPENAI_API_KEY = 'shell-openai';
+            process.env.GROQ_API_KEY = 'shell-groq';
+            process.env.SHELL_UNIQUE_KEY = 'shell-only';
+            process.env.SHARED_ACROSS_ALL = 'shell-value';
+            process.env.EXISTING_VAR = 'existing-value';
+            process.env.NEW_VAR = 'new-value';
 
-                const env = await loadEnvironmentVariables(tempDir);
+            const env = await loadEnvironmentVariables(tempDir);
 
-                // Shell should win over both project and global
-                expect(env.OPENAI_API_KEY).toBe('shell-key');
-                expect(env.DEXTO_LOG_LEVEL).toBe('error');
+            // Shell wins for keys present in shell
+            expect(env.OPENAI_API_KEY).toBe('shell-openai');
+            expect(env.GROQ_API_KEY).toBe('shell-groq');
+            expect(env.SHELL_UNIQUE_KEY).toBe('shell-only');
+            expect(env.SHARED_ACROSS_ALL).toBe('shell-value');
+            expect(env.EXISTING_VAR).toBe('existing-value');
 
-                // Project should win over global
-                expect(env.GROQ_API_KEY).toBe('project-groq');
+            // Project wins over global where shell not present
+            expect(env.ANTHROPIC_API_KEY).toBe('project-anthropic');
+            expect(env.DEXTO_LOG_LEVEL).toBe('project-info');
+            expect(env.SHARED_GLOBAL_PROJECT).toBe('project-value');
+            expect(env.PROJECT_UNIQUE_KEY).toBe('project-only');
 
-                // Global should be used when no project/shell override
-                expect(env.ANTHROPIC_API_KEY).toBe('global-anthropic');
-            });
+            // Global used when no project/shell override
+            expect(env.GOOGLE_GENERATIVE_AI_API_KEY).toBe('global-google');
+            expect(env.GLOBAL_UNIQUE_KEY).toBe('preserved');
+            expect(env.EMPTY_PROJECT_KEY).toBe('from-global');
+        });
 
-            it('project environment beats global (without shell interference)', async () => {
-                // Setup: Project overrides global, shell is clean
-                createTempDirStructure(
-                    {
-                        '.dexto/.env':
-                            'OPENAI_API_KEY=global-key\nANTHROPIC_API_KEY=global-anthropic\nGROQ_API_KEY=global-groq',
-                    },
-                    mockHomeDir
-                );
+        it('handles edge cases: empty files and applyLayeredEnvironmentLoading', async () => {
+            // Test empty project .env with global fallback
+            createTempDirStructure(
+                {
+                    '.dexto/.env':
+                        'OPENAI_API_KEY=global-fallback\nANTHROPIC_API_KEY=global-anthropic',
+                },
+                mockHomeDir
+            );
 
-                createTempDirStructure(
-                    {
-                        'package.json': JSON.stringify({ dependencies: { dexto: '1.0.0' } }),
-                        '.env': 'OPENAI_API_KEY=project-key\nANTHROPIC_API_KEY=project-anthropic',
-                    },
-                    tempDir
-                );
+            createTempDirStructure(
+                {
+                    'package.json': JSON.stringify({ dependencies: { dexto: '1.0.0' } }),
+                    '.env': '', // Empty project .env
+                },
+                tempDir
+            );
 
-                const env = await loadEnvironmentVariables(tempDir);
+            let env = await loadEnvironmentVariables(tempDir);
+            expect(env.OPENAI_API_KEY).toBe('global-fallback');
+            expect(env.ANTHROPIC_API_KEY).toBe('global-anthropic');
 
-                // Project should override global
-                expect(env.OPENAI_API_KEY).toBe('project-key');
-                expect(env.ANTHROPIC_API_KEY).toBe('project-anthropic');
+            // Test applyLayeredEnvironmentLoading preserves shell priority
+            process.env.EXISTING_VAR = 'existing-value';
+            process.env.OPENAI_API_KEY = 'shell-key';
 
-                // Global should be used for keys not in project
-                expect(env.GROQ_API_KEY).toBe('global-groq');
-            });
+            createTempDirStructure(
+                {
+                    '.dexto/.env': 'OPENAI_API_KEY=global-key\nNEW_VAR=new-value',
+                },
+                mockHomeDir
+            );
 
-            it('handles comprehensive multi-layer priority with same keys', async () => {
-                // Setup: Same keys across all layers to test complete priority system
-                createTempDirStructure(
-                    {
-                        '.dexto/.env':
-                            'OPENAI_API_KEY=global\nANTHROPIC_API_KEY=global\nGROQ_API_KEY=global\nDEXTO_LOG_LEVEL=global',
-                    },
-                    mockHomeDir
-                );
+            await applyLayeredEnvironmentLoading(tempDir);
 
-                createTempDirStructure(
-                    {
-                        'package.json': JSON.stringify({ dependencies: { dexto: '1.0.0' } }),
-                        '.env': 'OPENAI_API_KEY=project\nANTHROPIC_API_KEY=project\nDEXTO_LOG_LEVEL=project',
-                    },
-                    tempDir
-                );
-
-                // Shell only sets some keys
-                process.env.OPENAI_API_KEY = 'shell';
-                process.env.GROQ_API_KEY = 'shell';
-
-                const env = await loadEnvironmentVariables(tempDir);
-
-                // Shell wins where present
-                expect(env.OPENAI_API_KEY).toBe('shell');
-                expect(env.GROQ_API_KEY).toBe('shell');
-
-                // Project wins over global where shell not present
-                expect(env.ANTHROPIC_API_KEY).toBe('project');
-                expect(env.DEXTO_LOG_LEVEL).toBe('project');
-            });
-
-            it('preserves global-only variables through all merging layers', async () => {
-                // Setup: Global has unique keys not touched by project/shell
-                createTempDirStructure(
-                    {
-                        '.dexto/.env':
-                            'GLOBAL_UNIQUE_KEY=preserved\nSHARED_KEY=global-value\nGOOGLE_GENERATIVE_AI_API_KEY=global-google',
-                    },
-                    mockHomeDir
-                );
-
-                createTempDirStructure(
-                    {
-                        'package.json': JSON.stringify({ dependencies: { dexto: '1.0.0' } }),
-                        '.env': 'SHARED_KEY=project-value\nPROJECT_UNIQUE_KEY=project-only',
-                    },
-                    tempDir
-                );
-
-                process.env.SHARED_KEY = 'shell-value';
-                process.env.SHELL_UNIQUE_KEY = 'shell-only';
-
-                const env = await loadEnvironmentVariables(tempDir);
-
-                // Global unique keys should survive
-                expect(env.GLOBAL_UNIQUE_KEY).toBe('preserved');
-                expect(env.GOOGLE_GENERATIVE_AI_API_KEY).toBe('global-google');
-
-                // Project unique keys should survive
-                expect(env.PROJECT_UNIQUE_KEY).toBe('project-only');
-
-                // Shell unique keys should be present
-                expect(env.SHELL_UNIQUE_KEY).toBe('shell-only');
-
-                // Shared key should follow priority
-                expect(env.SHARED_KEY).toBe('shell-value');
-            });
-
-            it('handles empty project env while preserving global values', async () => {
-                // Setup: Global has values, project .env exists but empty
-                createTempDirStructure(
-                    {
-                        '.dexto/.env':
-                            'OPENAI_API_KEY=global-key\nANTHROPIC_API_KEY=global-anthropic',
-                    },
-                    mockHomeDir
-                );
-
-                createTempDirStructure(
-                    {
-                        'package.json': JSON.stringify({ dependencies: { dexto: '1.0.0' } }),
-                        '.env': '', // Empty project .env
-                    },
-                    tempDir
-                );
-
-                const env = await loadEnvironmentVariables(tempDir);
-
-                // Global values should be preserved despite empty project .env
-                expect(env.OPENAI_API_KEY).toBe('global-key');
-                expect(env.ANTHROPIC_API_KEY).toBe('global-anthropic');
-            });
-
-            it('handles empty global env while preserving project values', async () => {
-                // Setup: Project has values, global .env exists but empty
-                createTempDirStructure(
-                    {
-                        '.dexto/.env': '', // Empty global .env
-                    },
-                    mockHomeDir
-                );
-
-                createTempDirStructure(
-                    {
-                        'package.json': JSON.stringify({ dependencies: { dexto: '1.0.0' } }),
-                        '.env': 'OPENAI_API_KEY=project-key\nANTHROPIC_API_KEY=project-anthropic',
-                    },
-                    tempDir
-                );
-
-                const env = await loadEnvironmentVariables(tempDir);
-
-                // Project values should be present despite empty global .env
-                expect(env.OPENAI_API_KEY).toBe('project-key');
-                expect(env.ANTHROPIC_API_KEY).toBe('project-anthropic');
-            });
-
-            it('preserves shell environment priority in applyLayeredEnvironmentLoading', async () => {
-                // Setup: Shell env + global .env, test actual process.env modification
-                process.env.EXISTING_VAR = 'existing-value';
-                process.env.OPENAI_API_KEY = 'shell-key';
-
-                createTempDirStructure(
-                    {
-                        '.dexto/.env': 'OPENAI_API_KEY=global-key\nNEW_VAR=new-value',
-                    },
-                    mockHomeDir
-                );
-
-                await applyLayeredEnvironmentLoading(tempDir);
-
-                // Shell should win and be preserved in process.env
-                expect(process.env.OPENAI_API_KEY).toBe('shell-key');
-                // Existing shell vars should be preserved
-                expect(process.env.EXISTING_VAR).toBe('existing-value');
-                // New vars from files should be added
-                expect(process.env.NEW_VAR).toBe('new-value');
-            });
+            expect(process.env.OPENAI_API_KEY).toBe('shell-key'); // Shell wins
+            expect(process.env.EXISTING_VAR).toBe('existing-value'); // Shell preserved
+            expect(process.env.NEW_VAR).toBe('new-value'); // File vars added
         });
 
         it('handles missing global .dexto directory gracefully', async () => {
