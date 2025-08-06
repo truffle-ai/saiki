@@ -1,5 +1,6 @@
 import * as path from 'path';
 import { existsSync, readFileSync } from 'fs';
+import { promises as fs } from 'fs';
 import { homedir } from 'os';
 import { createRequire } from 'module';
 import { ConfigFileNotFoundError } from '@core/error/index.js';
@@ -7,6 +8,11 @@ import { ConfigFileNotFoundError } from '@core/error/index.js';
  * Default config file path (relative to package root)
  */
 export const DEFAULT_CONFIG_PATH = 'agents/agent.yml';
+
+/**
+ * User's global config path (relative to home directory)
+ */
+export const USER_CONFIG_PATH = '.dexto/agent.yml';
 
 /**
  * Generic directory walker that searches up the directory tree
@@ -118,9 +124,9 @@ export function resolveConfigPath(configPath?: string, startPath?: string): stri
     if (projectRoot) {
         // In dexto project: Look for config in project (multiple possible locations)
         const configPaths = [
-            path.join(projectRoot, 'agents', 'agent.yml'), // Standard
-            path.join(projectRoot, 'src', 'agents', 'agent.yml'), // Common
-            path.join(projectRoot, 'src', 'dexto', 'agents', 'agent.yml'), // Test app structure
+            path.join(projectRoot, DEFAULT_CONFIG_PATH), // Standard
+            path.join(projectRoot, 'src', DEFAULT_CONFIG_PATH), // Common
+            path.join(projectRoot, 'src', 'dexto', DEFAULT_CONFIG_PATH), // Test app structure
             path.join(projectRoot, '.dexto', 'agent.yml'), // Hidden
             path.join(projectRoot, 'agent.yml'), // Root
         ];
@@ -135,9 +141,17 @@ export function resolveConfigPath(configPath?: string, startPath?: string): stri
             `No agent.yml found in project. Searched: ${configPaths.join(', ')}`
         );
     } else {
-        // Global CLI: Use bundled default config
+        // Global CLI mode
+
+        // Check for user's global config first
+        const userConfigPath = getUserConfigPath();
+        if (existsSync(userConfigPath)) {
+            return userConfigPath;
+        }
+
+        // Fall back to bundled default config
         try {
-            const bundledConfigPath = resolveBundledScript('agents/agent.yml');
+            const bundledConfigPath = getBundledConfigPath();
             if (existsSync(bundledConfigPath)) {
                 return bundledConfigPath;
             }
@@ -182,5 +196,68 @@ export function resolveBundledScript(scriptPath: string): string {
             throw new Error(`Cannot resolve bundled script: ${scriptPath}`);
         }
         return path.resolve(packageRoot, scriptPath);
+    }
+}
+
+/**
+ * Ensure ~/.dexto directory exists for global storage
+ */
+export async function ensureDextoGlobalDirectory(): Promise<void> {
+    const dextoDir = path.join(homedir(), '.dexto');
+    try {
+        await fs.mkdir(dextoDir, { recursive: true });
+    } catch (error) {
+        // Directory might already exist, ignore EEXIST errors
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+            throw error;
+        }
+    }
+}
+
+/**
+ * Get the appropriate .env file path for saving API keys.
+ * Uses the same project detection logic as other dexto paths.
+ *
+ * @param startPath Starting directory for project detection
+ * @returns Absolute path to .env file for saving
+ */
+export function getDextoEnvPath(startPath: string = process.cwd()): string {
+    const projectRoot = getDextoProjectRoot(startPath);
+
+    if (projectRoot) {
+        // In dexto project: save to project .env
+        return path.join(projectRoot, '.env');
+    } else {
+        // Global usage: save to ~/.dexto/.env
+        return path.join(homedir(), '.dexto', '.env');
+    }
+}
+
+/**
+ * Get the user's global config path
+ * @returns Absolute path to ~/.dexto/agent.yml
+ */
+export function getUserConfigPath(): string {
+    return path.join(homedir(), USER_CONFIG_PATH);
+}
+
+/**
+ * Get the bundled config path
+ * @returns Absolute path to bundled agent.yml
+ */
+export function getBundledConfigPath(): string {
+    return resolveBundledScript(DEFAULT_CONFIG_PATH);
+}
+
+/**
+ * Check if a config path is the bundled config
+ * @param configPath Path to check
+ * @returns True if this is the bundled config
+ */
+export function isUsingBundledConfig(configPath: string): boolean {
+    try {
+        return configPath === getBundledConfigPath();
+    } catch {
+        return false;
     }
 }

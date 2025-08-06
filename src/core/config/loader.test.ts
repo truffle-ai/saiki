@@ -3,7 +3,6 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import { loadAgentConfig } from './loader.js';
 import {
-    ConfigEnvVarError,
     ConfigFileNotFoundError,
     ConfigFileReadError,
     ConfigParseError,
@@ -32,7 +31,7 @@ afterEach(async () => {
 });
 
 describe('loadAgentConfig', () => {
-    it('loads and expands environment variables within LLM configuration in YAML', async () => {
+    it('loads raw config without expanding environment variables', async () => {
         process.env.TEST_VAR = '0.7';
         process.env.MAX_TOKENS = '4000';
         const yamlContent = `
@@ -51,8 +50,9 @@ mcpServers:
         await fs.writeFile(tmpFile, yamlContent);
 
         const config = await loadAgentConfig(tmpFile);
-        expect(config.llm?.temperature).toBe(0.7);
-        expect(config.llm?.maxOutputTokens).toBe(4000);
+        // Config loader no longer expands env vars - Zod schema handles it
+        expect(config.llm?.temperature).toBe('${TEST_VAR}');
+        expect(config.llm?.maxOutputTokens).toBe('${MAX_TOKENS}');
     });
 
     it('throws ConfigFileNotFoundError when file does not exist', async () => {
@@ -89,19 +89,16 @@ mcpServers:
             expect(config).toBeDefined();
             expect(config.llm).toBeDefined();
         } catch (error) {
-            expect(error).toSatisfy(
-                (err: Error) =>
-                    err instanceof ConfigFileNotFoundError || err instanceof ConfigEnvVarError
-            );
+            expect(error).toSatisfy((err: Error) => err instanceof ConfigFileNotFoundError);
         }
     });
 
-    it('throws ConfigEnvVarError when a referenced environment variable is missing', async () => {
+    it('loads config with undefined environment variables as raw strings', async () => {
         const yamlContent = `
 llm:
   provider: 'test-provider'
   model: 'test-model'
-  api_key: \${UNDEFINED_API_KEY} # This variable is intentionally not set
+  apiKey: \${UNDEFINED_API_KEY} # This variable is intentionally not set
 mcpServers:
   testServer:
     type: 'stdio'
@@ -112,6 +109,8 @@ mcpServers:
 
         delete process.env.UNDEFINED_API_KEY;
 
-        await expect(loadAgentConfig(tmpFile)).rejects.toThrow(ConfigEnvVarError);
+        // Should not throw - env var expansion now handled by Zod schema
+        const config = await loadAgentConfig(tmpFile);
+        expect(config.llm?.apiKey).toBe('${UNDEFINED_API_KEY}');
     });
 });

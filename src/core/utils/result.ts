@@ -27,24 +27,26 @@ export const OptionalURL = z
     .optional();
 
 // Expand $VAR and ${VAR} using the provided env, then trim.
-export const EnvExpandedString = (env: Record<string, string | undefined> = process.env) =>
+export const EnvExpandedString = (env?: Record<string, string | undefined>) =>
     z.string().transform((input) => {
         if (typeof input !== 'string') return '';
+        // Use current process.env if no env provided (reads fresh each time)
+        const envToUse = env ?? process.env;
         const out = input.replace(
             /\$([A-Z_][A-Z0-9_]*)|\${([A-Z_][A-Z0-9_]*)}/gi,
-            (_, a, b) => env[a || b] ?? ''
+            (_, a, b) => envToUse[a || b] ?? ''
         );
         return out.trim();
     });
 
 // Zod type for non-empty environment expanded string
-export const NonEmptyEnvExpandedString = (env: Record<string, string | undefined> = process.env) =>
+export const NonEmptyEnvExpandedString = (env?: Record<string, string | undefined>) =>
     EnvExpandedString(env).refine((s) => s.length > 0, {
         message: 'Value is required',
     });
 
 // Zod type for URL that could be pulled from env variables
-export const RequiredEnvURL = (env = process.env) =>
+export const RequiredEnvURL = (env?: Record<string, string | undefined>) =>
     EnvExpandedString(env).refine(
         (s) => {
             try {

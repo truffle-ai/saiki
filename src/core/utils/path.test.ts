@@ -9,6 +9,9 @@ import {
     resolveConfigPath,
     findPackageRoot,
     resolveBundledScript,
+    getUserConfigPath,
+    getBundledConfigPath,
+    isUsingBundledConfig,
 } from './path.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -353,10 +356,64 @@ describe('resolveConfigPath', () => {
             });
         });
 
-        it('uses bundled config when no explicit config provided', () => {
+        it('uses bundled config when no explicit config provided and no user config exists', () => {
             const result = resolveConfigPath(undefined, tempDir);
             expect(result).toContain('agents/agent.yml');
             expect(path.isAbsolute(result)).toBe(true);
+        });
+
+        it('prioritizes user config over bundled config', () => {
+            // Create a mock user config
+            const userConfigPath = getUserConfigPath();
+            const userDir = path.dirname(userConfigPath);
+            fs.mkdirSync(userDir, { recursive: true });
+            fs.writeFileSync(userConfigPath, 'llm:\n  provider: google', 'utf8');
+
+            const result = resolveConfigPath(undefined, tempDir);
+            expect(result).toBe(userConfigPath);
+
+            // Cleanup
+            fs.rmSync(userDir, { recursive: true, force: true });
+        });
+    });
+
+    describe('getUserConfigPath', () => {
+        it('returns path to ~/.dexto/agent.yml', () => {
+            const result = getUserConfigPath();
+            expect(result).toContain('.dexto');
+            expect(result).toContain('agent.yml');
+            expect(path.isAbsolute(result)).toBe(true);
+        });
+    });
+
+    describe('getBundledConfigPath', () => {
+        it('returns path to bundled agent.yml', () => {
+            const result = getBundledConfigPath();
+            expect(result).toContain('agents');
+            expect(result).toContain('agent.yml');
+            expect(path.isAbsolute(result)).toBe(true);
+        });
+    });
+
+    describe('isUsingBundledConfig', () => {
+        it('returns true for bundled config path', () => {
+            const bundledPath = getBundledConfigPath();
+            expect(isUsingBundledConfig(bundledPath)).toBe(true);
+        });
+
+        it('returns false for user config path', () => {
+            const userPath = getUserConfigPath();
+            expect(isUsingBundledConfig(userPath)).toBe(false);
+        });
+
+        it('returns false for project config path', () => {
+            const projectPath = '/some/project/agents/agent.yml';
+            expect(isUsingBundledConfig(projectPath)).toBe(false);
+        });
+
+        it('handles errors gracefully', () => {
+            // Test with a path that might cause getBundledConfigPath to throw
+            expect(isUsingBundledConfig('')).toBe(false);
         });
     });
 });

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// Load environment variables FIRST, before any other imports
-import dotenv from 'dotenv';
-dotenv.config();
+// Load environment variables FIRST with layered loading
+import { applyLayeredEnvironmentLoading } from '../core/utils/env.js';
+
+// Apply layered environment loading before any other imports
+await applyLayeredEnvironmentLoading();
 
 import { existsSync } from 'fs';
 import { Command } from 'commander';
@@ -11,7 +13,6 @@ import pkg from '../../package.json' with { type: 'json' };
 
 import {
     logger,
-    DEFAULT_CONFIG_PATH,
     resolveConfigPath,
     getProviderFromModel,
     getAllSupportedModels,
@@ -19,13 +20,16 @@ import {
     loadAgentConfig,
     LLMProvider,
 } from '@core/index.js';
-import { applyCLIOverrides, type CLIConfigOverrides } from './config/cli-overrides.js';
+import type { AgentConfig } from '@core/agent/schemas.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
 import { startApiAndLegacyWebUIServer } from './api/server.js';
 import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
+import { validateAgentConfig } from './cli/utils/config-validation.js';
+import { applyCLIOverrides } from './config/cli-overrides.js';
+import { isFirstTimeUserScenario, handleFirstTimeSetup } from './cli/utils/first-time-setup.js';
 import { getPort } from '@core/utils/port-utils.js';
 import {
     createDextoProject,
@@ -41,6 +45,7 @@ import { startNextJsWebServer } from './web.js';
 import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
 import { createAgentCard } from '@core/config/agentCard.js';
 import { initializeMcpToolAggregationServer } from './api/mcp/tool-aggregation-handler.js';
+import { CLIConfigOverrides } from './config/cli-overrides.js';
 
 const program = new Command();
 
@@ -49,7 +54,7 @@ program
     .name('dexto')
     .description('AI-powered CLI and WebUI for interacting with MCP servers')
     .version(pkg.version, '-v, --version', 'output the current version')
-    .option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
+    .option('-a, --agent <path>', 'Path to agent config file')
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .option('-m, --model <model>', 'Specify the LLM model to use. ')
@@ -162,8 +167,7 @@ program
             // Load and resolve config
             // Get the global agent option from the main program
             const globalOpts = program.opts();
-            const configPath =
-                globalOpts.agent === DEFAULT_CONFIG_PATH ? undefined : globalOpts.agent;
+            const configPath = globalOpts.agent;
 
             const config = await loadAgentConfig(configPath);
             console.log(`📄 Loading Dexto config from: ${resolveConfigPath(configPath)}`);
@@ -227,47 +231,9 @@ program
             'Check subcommands for more features. Check https://github.com/truffle-ai/dexto for documentation on how to customize dexto and other examples'
     )
     .action(async (prompt: string[] = []) => {
-        // ——— ENV & API-KEY VALIDATION ———
+        // ——— ENV CHECK (optional) ———
         if (!existsSync('.env')) {
             logger.debug('WARNING: .env file not found; copy .env.example and set your API keys.');
-        }
-
-        // Check if any API key is available for common providers
-        const commonProviders: LLMProvider[] = [
-            'openai',
-            'google',
-            'anthropic',
-            'groq',
-            'xai',
-            'cohere',
-        ];
-        const hasApiKey = commonProviders.some((provider) => resolveApiKeyForProvider(provider));
-
-        if (!hasApiKey) {
-            // Import the interactive setup function dynamically to avoid loading overhead
-            const { interactiveApiKeySetup } = await import(
-                './cli/utils/interactive-api-key-setup.js'
-            );
-
-            const setupResult = await interactiveApiKeySetup();
-
-            if (!setupResult.success) {
-                if (setupResult.skipSetup) {
-                    // User chose manual setup - show message and exit gracefully
-                    console.log(
-                        chalk.dim('\n👋 Run dexto again once you have set up your API key!')
-                    );
-                } else {
-                    // Setup failed or was cancelled
-                    console.error(chalk.red('\n❌ API key setup required to continue.'));
-                }
-                process.exit(0);
-            }
-
-            // Reload environment variables after setup
-            dotenv.config();
-
-            console.log(chalk.green('\n✨ API key configured! Starting Dexto...\n'));
         }
 
         const opts = program.opts();
@@ -301,35 +267,53 @@ program
             handleCliOptionsError(err);
         }
 
-        // ——— Load config & create agent ———
+        // ——— LOAD AND PREPARE CONFIG ———
+        let validatedConfig: AgentConfig;
+        try {
+            // Check for first-time user scenario BEFORE loading config
+            const resolvedPath = resolveConfigPath(opts.agent);
+            if (isFirstTimeUserScenario(resolvedPath)) {
+                // Handle first-time setup (provider selection, config creation, API key)
+                const setupComplete = await handleFirstTimeSetup();
+                if (!setupComplete) {
+                    console.log(chalk.dim('\n👋 Run dexto again when ready!'));
+                    process.exit(0);
+                }
+                // Config has been created, continue with normal flow
+            }
+
+            // Load raw config and apply CLI overrides
+            const rawConfig = await loadAgentConfig(opts.agent);
+            const mergedConfig = applyCLIOverrides(rawConfig, opts as CLIConfigOverrides);
+
+            // Validate with interactive setup if needed (for API key issues)
+            validatedConfig = await validateAgentConfig(mergedConfig, true);
+        } catch (err) {
+            // Config loading failed completely
+            console.error(`❌ Failed to load configuration: ${err}`);
+            process.exit(1);
+        }
+
+        // ——— CREATE AGENT ———
         let agent: DextoAgent;
         try {
-            const configPath = opts.agent === DEFAULT_CONFIG_PATH ? undefined : opts.agent;
-            console.log(`🚀 Initializing Dexto with config: ${resolveConfigPath(configPath)}`);
-            const cfg = await loadAgentConfig(configPath);
+            console.log(`🚀 Initializing Dexto with config: ${resolveConfigPath(opts.agent)}`);
 
-            // Apply CLI overrides to config before passing to core layer
-            const cliOverrides: CLIConfigOverrides = {
-                model: opts.model,
-                provider: opts.provider,
-                router: opts.router,
-                apiKey: opts.apiKey,
-            };
             // Set run mode for tool confirmation provider
             process.env.DEXTO_RUN_MODE = opts.mode;
 
-            // Apply CLI overrides
-            const finalConfig = applyCLIOverrides(cfg, cliOverrides);
-
             // Apply --strict flag to all server configs
-            if (opts.strict && finalConfig.mcpServers) {
-                for (const [_serverName, serverConfig] of Object.entries(finalConfig.mcpServers)) {
+            if (opts.strict && validatedConfig.mcpServers) {
+                for (const [_serverName, serverConfig] of Object.entries(
+                    validatedConfig.mcpServers
+                )) {
                     // All server config types have connectionMode field
                     serverConfig.connectionMode = 'strict';
                 }
             }
 
-            agent = new DextoAgent(finalConfig, configPath);
+            // DextoAgent will parse/validate again (parse-twice pattern)
+            agent = new DextoAgent(validatedConfig, opts.agent);
 
             // Start the agent (initialize async services)
             await agent.start();

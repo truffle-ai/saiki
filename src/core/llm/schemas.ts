@@ -1,5 +1,6 @@
 import { DextoErrorCode } from '@core/schemas/errors.js';
-import { NonEmptyTrimmed, NonEmptyEnvExpandedString, OptionalURL } from '@core/utils/result.js';
+import { NonEmptyTrimmed, EnvExpandedString, OptionalURL } from '@core/utils/result.js';
+import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
 import { z } from 'zod';
 import {
     LLM_PROVIDERS,
@@ -24,8 +25,10 @@ export const LLMConfigBaseSchema = z
 
         model: NonEmptyTrimmed.describe('Specific model name for the selected provider'),
 
-        // Expand $ENV refs and trim; require non-empty string after expansion
-        apiKey: NonEmptyEnvExpandedString(process.env),
+        // Expand $ENV refs and trim; validation moved to superRefine with provider context
+        apiKey: EnvExpandedString().describe(
+            'API key for provider; can be given directly or via $ENV reference'
+        ),
 
         maxIterations: z.coerce
             .number()
@@ -70,6 +73,21 @@ export const LLMConfigBaseSchema = z
 export const LLMConfigSchema = LLMConfigBaseSchema.superRefine((data, ctx) => {
     const baseURLIsSet = data.baseURL != null && data.baseURL.trim() !== '';
     const maxInputTokensIsSet = data.maxInputTokens != null;
+
+    // API key validation with provider context
+    if (!data.apiKey?.trim()) {
+        const primaryVar = getPrimaryApiKeyEnvVar(data.provider);
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['apiKey'],
+            message: `Missing API key for provider '${data.provider}' – set ${primaryVar} or pass --api-key`,
+            params: {
+                code: DextoErrorCode.LLM_MISSING_API_KEY,
+                provider: data.provider,
+                envVar: primaryVar,
+            },
+        });
+    }
 
     if (baseURLIsSet) {
         if (!supportsBaseURL(data.provider)) {
