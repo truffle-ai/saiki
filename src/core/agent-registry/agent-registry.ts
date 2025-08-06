@@ -5,33 +5,66 @@
 
 import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createHash } from 'crypto';
 import { logger } from '@core/logger/index.js';
 import { getSaikiPath } from '@core/utils/path.js';
+import { resolveBundledScript } from '@core/utils/path.js';
 import {
     AgentRegistry,
     AgentRegistryEntry,
     AgentRegistryConfig,
     AgentRegistryConfigSchema,
+    RawToRegistryEntrySchema,
 } from './types.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PROJECT_ROOT = path.resolve(__dirname, '../../../');
+/**
+ * Check if a string is a URL
+ */
+function isUrl(str: string): boolean {
+    try {
+        new URL(str);
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 /**
- * Interface for the raw agent data from JSON file
+ * Convert GitHub blob URLs to raw URLs for direct file access
  */
-interface RawAgentData {
-    name: string;
-    displayName: string;
-    description: string;
-    version: string;
-    author?: string;
-    tags?: string[];
-    configUrl: string;
-    lastUpdated?: string;
+function normalizeGitHubUrl(url: string): string {
+    try {
+        const urlObj = new URL(url);
+
+        // Check if this is a GitHub blob URL
+        if (urlObj.hostname === 'github.com' && urlObj.pathname.includes('/blob/')) {
+            // Convert github.com/user/repo/blob/branch/path to raw.githubusercontent.com/user/repo/branch/path
+            const pathParts = urlObj.pathname.split('/');
+            if (pathParts.length >= 5 && pathParts[3] === 'blob') {
+                const user = pathParts[1];
+                const repo = pathParts[2];
+                const branch = pathParts[4];
+                const filePath = pathParts.slice(5).join('/');
+
+                const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${filePath}`;
+                logger.debug(`Converted GitHub blob URL to raw URL: ${url} → ${rawUrl}`);
+                return rawUrl;
+            }
+        }
+
+        // Return original URL if not a GitHub blob URL
+        return url;
+    } catch (error) {
+        logger.debug(`Failed to normalize URL ${url}: ${error}`);
+        return url;
+    }
+}
+
+/**
+ * Check if a string looks like a file path (contains path separators)
+ */
+function isPath(str: string): boolean {
+    return str.includes('/') || str.includes('\\') || str.includes('.');
 }
 
 export class LocalAgentRegistry implements AgentRegistry {
@@ -39,7 +72,7 @@ export class LocalAgentRegistry implements AgentRegistry {
     private _registryAgents: Record<string, AgentRegistryEntry> | null = null;
 
     constructor(config?: Partial<AgentRegistryConfig>) {
-        this.config = AgentRegistryConfigSchema.parse(config);
+        this.config = AgentRegistryConfigSchema.parse(config || {});
     }
 
     /**
@@ -56,43 +89,52 @@ export class LocalAgentRegistry implements AgentRegistry {
      * Load registry agents from JSON file and convert to AgentRegistryEntry format
      */
     private loadRegistryAgents(): Record<string, AgentRegistryEntry> {
+        let jsonPath: string;
+
         try {
-            const jsonPath = path.join(PROJECT_ROOT, 'agents', 'agent-registry.json');
+            // Use bundled script resolution for proper path handling
+            jsonPath = resolveBundledScript('agents/agent-registry.json');
+        } catch (error) {
+            logger.error(`Failed to resolve agent registry path: ${error}`);
+            return {};
+        }
+
+        if (!existsSync(jsonPath)) {
+            logger.debug(`Agent registry not found at: ${jsonPath}`);
+            return {};
+        }
+
+        try {
             const jsonData = readFileSync(jsonPath, 'utf-8');
-            const rawAgents: Record<string, RawAgentData> = JSON.parse(jsonData);
+            const rawAgents: Record<string, unknown> = JSON.parse(jsonData);
 
             const agents: Record<string, AgentRegistryEntry> = {};
 
-            for (const [key, rawAgent] of Object.entries(rawAgents)) {
-                const entry: AgentRegistryEntry = {
-                    name: rawAgent.name,
-                    displayName: rawAgent.displayName,
-                    description: rawAgent.description,
-                    version: rawAgent.version,
-                    // Use configUrl directly if it's a URL, otherwise resolve as local path
-                    configUrl: rawAgent.configUrl.startsWith('http')
-                        ? rawAgent.configUrl
-                        : path.join(PROJECT_ROOT, rawAgent.configUrl),
-                    source: 'registry' as const,
-                };
+            for (const [key, rawAgentData] of Object.entries(rawAgents)) {
+                // Validate and transform using Zod schema
+                const transformedAgent = RawToRegistryEntrySchema.parse(rawAgentData);
 
-                // Only add optional properties if they exist
-                if (rawAgent.author) {
-                    entry.author = rawAgent.author;
+                // Resolve config file path using bundled script resolution
+                let configPath: string;
+                try {
+                    configPath = resolveBundledScript(`agents/${transformedAgent.configFile}`);
+                } catch (error) {
+                    logger.debug(`Failed to resolve config for agent '${key}': ${error}`);
+                    continue; // Skip this agent if config can't be resolved
                 }
-                if (rawAgent.tags) {
-                    entry.tags = rawAgent.tags;
-                }
-                if (rawAgent.lastUpdated) {
-                    entry.lastUpdated = rawAgent.lastUpdated;
-                }
+
+                // Create final registry entry with resolved config path
+                const entry: AgentRegistryEntry = {
+                    ...transformedAgent,
+                    configFile: configPath,
+                };
 
                 agents[key] = entry;
             }
 
             return agents;
         } catch (error) {
-            logger.error(`Failed to load registry agents: ${error}`);
+            logger.error(`Failed to load registry agents from ${jsonPath}: ${error}`);
             return {};
         }
     }
@@ -181,16 +223,13 @@ export class LocalAgentRegistry implements AgentRegistry {
 
         // Add registry agents
         for (const agent of Object.values(this.getRegistryAgents())) {
-            // For HTTP URLs, we assume they're available (don't test connectivity during listing)
             // For local paths, verify the config file exists
-            if (agent.configUrl.startsWith('http') || existsSync(agent.configUrl)) {
+            if (existsSync(agent.configFile)) {
                 agents.push(agent);
             } else {
-                logger.debug(`Registry agent config not found: ${agent.configUrl}`);
+                logger.debug(`Registry agent config not found: ${agent.configFile}`);
             }
         }
-
-        // TODO: Add remote registry agents in future
 
         return agents.sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -202,14 +241,11 @@ export class LocalAgentRegistry implements AgentRegistry {
         // Check registry agents first
         const registryAgent = this.getRegistryAgent(name);
         if (registryAgent) {
-            // For HTTP URLs, we assume they're available
             // For local paths, verify the config file exists
-            if (registryAgent.configUrl.startsWith('http') || existsSync(registryAgent.configUrl)) {
+            if (existsSync(registryAgent.configFile)) {
                 return registryAgent;
             }
         }
-
-        // TODO: Check remote registries in future
 
         return null;
     }
@@ -223,56 +259,62 @@ export class LocalAgentRegistry implements AgentRegistry {
     }
 
     /**
-     * Resolve an agent name or path to a configuration file path
+     * Resolve an agent name, URL, or path to a configuration file path
      *
      * Resolution order:
-     * 1. If it's a registry agent name, return the registry config path (download if HTTP URL)
-     * 2. If it's a file path that exists, return it as-is
-     * 3. If it's a relative path, resolve it relative to cwd
-     * 4. Return null if nothing matches
+     * 1. If it's a URL (starts with http/https), download and cache it
+     * 2. If it's a registry agent name, return the registry config path
+     * 3. If it's an absolute file path that exists, return it as-is
+     * 4. If it's a relative path, resolve it relative to cwd
+     * 5. Throw error if nothing matches
      */
     async resolveAgent(nameOrPath: string): Promise<string> {
         logger.debug(`Resolving agent: ${nameOrPath}`);
 
-        // 1. Check if it's a registry agent name
-        if (this.isRegistryAgent(nameOrPath)) {
-            const agent = this.getRegistryAgent(nameOrPath);
-            if (agent) {
-                // If it's an HTTP URL, download and cache it
-                if (agent.configUrl.startsWith('http')) {
-                    const cachedPath = await this.downloadAndCacheConfig(agent.configUrl);
-                    logger.debug(
-                        `Resolved registry agent '${nameOrPath}' to cached file: ${cachedPath}`
-                    );
-                    return cachedPath;
-                }
-                // If it's a local file, check if it exists
-                else if (existsSync(agent.configUrl)) {
-                    logger.debug(`Resolved registry agent '${nameOrPath}' to: ${agent.configUrl}`);
-                    return agent.configUrl;
-                }
+        // 1. Check if it's a URL - download and cache it
+        if (isUrl(nameOrPath)) {
+            try {
+                const normalizedUrl = normalizeGitHubUrl(nameOrPath);
+                const cachedPath = await this.downloadAndCacheConfig(normalizedUrl);
+                logger.debug(`Resolved URL '${nameOrPath}' to cached file: ${cachedPath}`);
+                return cachedPath;
+            } catch (error) {
+                throw new Error(
+                    `Failed to download agent from URL '${nameOrPath}': ${error instanceof Error ? error.message : String(error)}`
+                );
             }
         }
 
-        // 2. Check if it's an absolute path that exists
+        // 2. Check if it's a registry agent name
+        if (this.isRegistryAgent(nameOrPath)) {
+            const agent = this.getRegistryAgent(nameOrPath);
+            if (agent && existsSync(agent.configFile)) {
+                logger.debug(`Resolved registry agent '${nameOrPath}' to: ${agent.configFile}`);
+                return agent.configFile;
+            }
+        }
+
+        // 3. Check if it's an absolute path that exists
         if (path.isAbsolute(nameOrPath) && existsSync(nameOrPath)) {
             logger.debug(`Using absolute path: ${nameOrPath}`);
             return nameOrPath;
         }
 
-        // 3. Check if it's a relative path that exists (resolve from cwd)
-        const resolvedPath = path.resolve(nameOrPath);
-        if (existsSync(resolvedPath)) {
-            logger.debug(`Resolved relative path '${nameOrPath}' to: ${resolvedPath}`);
-            return resolvedPath;
+        // 4. Check if it's a relative path that exists (resolve from cwd)
+        if (isPath(nameOrPath)) {
+            const resolvedPath = path.resolve(nameOrPath);
+            if (existsSync(resolvedPath)) {
+                logger.debug(`Resolved relative path '${nameOrPath}' to: ${resolvedPath}`);
+                return resolvedPath;
+            }
         }
 
-        // 4. Nothing found - throw error with helpful message
+        // 5. Nothing found - throw error with helpful message
         const availableAgents = Object.keys(this.getRegistryAgents());
         throw new Error(
             `Agent '${nameOrPath}' not found. ` +
-                `Available agents: ${availableAgents.join(', ')}. ` +
-                `Or provide a valid file path to an agent configuration.`
+                `Available registry agents: ${availableAgents.join(', ')}. ` +
+                `You can also provide: a file path to an agent configuration, or a URL to download one.`
         );
     }
 }

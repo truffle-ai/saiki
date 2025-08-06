@@ -4,23 +4,43 @@
 
 import { z } from 'zod';
 
-export const AgentRegistryEntrySchema = z
-    .object({
-        name: z.string().describe('Unique identifier for the agent'),
-        displayName: z.string().describe('Human-readable display name'),
-        description: z.string().describe("Brief description of the agent's purpose"),
-        version: z.string().describe('Agent version'),
-        author: z.string().optional().describe('Author/maintainer information'),
-        tags: z.array(z.string()).optional().describe('Tags for categorization'),
-        configUrl: z.string().describe('URL or local path to the agent configuration'),
-        source: z
-            .enum(['registry', 'remote', 'local'])
-            .describe('Whether this is a registry agent or external'),
-        lastUpdated: z.string().optional().describe('Last update timestamp'),
-    })
-    .strict();
+// Base schema for agent metadata
+const BaseAgentSchema = z.object({
+    name: z.string().describe('Unique identifier for the agent'),
+    displayName: z.string().describe('Human-readable display name'),
+    description: z.string().describe("Brief description of the agent's purpose"),
+    version: z.string().describe('Agent version'),
+    author: z.string().optional().describe('Author/maintainer information'),
+    tags: z.array(z.string()).optional().describe('Tags for categorization'),
+    lastUpdated: z.string().optional().describe('Last update timestamp'),
+});
 
-export type AgentRegistryEntry = z.infer<typeof AgentRegistryEntrySchema>;
+// Schema for raw agent data from JSON file (what's stored in agent-registry.json)
+export const RawAgentDataSchema = BaseAgentSchema.extend({
+    configFile: z
+        .string()
+        .describe('Local path to the agent configuration (relative to agents directory)'),
+}).strict();
+
+export type RawAgentData = z.output<typeof RawAgentDataSchema>;
+
+// Schema for processed agent registry entries - derived from raw data with additional fields
+export const AgentRegistryEntrySchema = BaseAgentSchema.extend({
+    configFile: z.string().describe('Absolute path to the agent configuration file'),
+    source: z
+        .enum(['registry', 'url', 'local'])
+        .describe('Whether this is a registry agent, direct URL, or local file'),
+}).strict();
+
+export type AgentRegistryEntry = z.output<typeof AgentRegistryEntrySchema>;
+
+// Transformation schema that converts RawAgentData to AgentRegistryEntry
+export const RawToRegistryEntrySchema = RawAgentDataSchema.transform((rawData) => ({
+    ...rawData,
+    source: 'registry' as const,
+}));
+
+export type RawToRegistryEntry = z.output<typeof RawToRegistryEntrySchema>;
 
 export interface AgentRegistry {
     /** Get all available agents */
@@ -42,10 +62,6 @@ export const AgentRegistryConfigSchema = z
             .record(z.string(), AgentRegistryEntrySchema)
             .describe('Local registry agents')
             .default({}),
-        remoteRegistries: z
-            .array(z.string())
-            .optional()
-            .describe('Remote registry endpoints (for future use)'),
         cacheTtl: z
             .number()
             .positive()
@@ -54,4 +70,4 @@ export const AgentRegistryConfigSchema = z
     })
     .strict();
 
-export type AgentRegistryConfig = z.infer<typeof AgentRegistryConfigSchema>;
+export type AgentRegistryConfig = z.output<typeof AgentRegistryConfigSchema>;

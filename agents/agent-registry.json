@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["database", "sql", "data", "queries"],
-    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/database-agent/database-agent.yml",
+    "configFile": "database-agent/database-agent.yml",
     "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "talk2pdf-agent": {
@@ -16,7 +16,7 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["pdf", "documents", "analysis", "conversation"],
-    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/talk2pdf-agent/talk2pdf-agent.yml",
+    "configFile": "talk2pdf-agent/talk2pdf-agent.yml",
     "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "image-editor-agent": {
@@ -26,7 +26,7 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["images", "editing", "graphics", "visual"],
-    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/image-editor-agent/image-editor-agent.yml",
+    "configFile": "image-editor-agent/image-editor-agent.yml",
     "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "music-agent": {
@@ -36,17 +36,17 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["music", "audio", "creation", "sound"],
-    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/music-agent/music-agent.yml",
+    "configFile": "music-agent/music-agent.yml",
     "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "product-researcher": {
-    "name": "product-name-researcher",
+    "name": "product-researcher",
     "displayName": "Product Name Researcher",
     "description": "AI agent for product name research and branding",
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["product", "research", "branding", "naming"],
-    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/product-name-researcher/product-name-researcher.yml",
+    "configFile": "product-name-researcher/product-name-researcher.yml",
     "lastUpdated": "2025-08-04T12:44:11Z"
   },
   "triage-agent": {
@@ -56,7 +56,7 @@
     "version": "1.0.0",
     "author": "Truffle AI",
     "tags": ["support", "triage", "customer-service", "routing"],
-    "configUrl": "https://raw.githubusercontent.com/truffle-ai/saiki/main/agents/triage-demo/triage-agent.yml",
+    "configFile": "triage-demo/triage-agent.yml",
     "lastUpdated": "2025-08-04T12:44:11Z"
   }
 }
