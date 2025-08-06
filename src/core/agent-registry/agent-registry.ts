@@ -3,11 +3,11 @@
  * Handles resolution of agent names to configuration paths
  */
 
-import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'fs';
+import { existsSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync } from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
 import { logger } from '@core/logger/index.js';
-import { getSaikiPath } from '@core/utils/path.js';
+import { getDextoPath } from '@core/utils/path.js';
 import { resolveBundledScript } from '@core/utils/path.js';
 import {
     AgentRegistry,
@@ -30,34 +30,85 @@ function isUrl(str: string): boolean {
 }
 
 /**
- * Convert GitHub blob URLs to raw URLs for direct file access
+ * Parse GitHub URL to extract repository information
  */
-function normalizeGitHubUrl(url: string): string {
+interface GitHubUrlInfo {
+    user: string;
+    repo: string;
+    branch: string;
+    path: string;
+    type: 'file' | 'directory';
+    isGitHub: boolean;
+}
+
+function parseGitHubUrl(url: string): GitHubUrlInfo | null {
     try {
         const urlObj = new URL(url);
 
-        // Check if this is a GitHub blob URL
-        if (urlObj.hostname === 'github.com' && urlObj.pathname.includes('/blob/')) {
-            // Convert github.com/user/repo/blob/branch/path to raw.githubusercontent.com/user/repo/branch/path
-            const pathParts = urlObj.pathname.split('/');
-            if (pathParts.length >= 5 && pathParts[3] === 'blob') {
-                const user = pathParts[1];
-                const repo = pathParts[2];
-                const branch = pathParts[4];
-                const filePath = pathParts.slice(5).join('/');
+        if (urlObj.hostname !== 'github.com') {
+            return null;
+        }
 
-                const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${filePath}`;
-                logger.debug(`Converted GitHub blob URL to raw URL: ${url} → ${rawUrl}`);
-                return rawUrl;
+        const pathParts = urlObj.pathname.split('/').filter(Boolean);
+
+        // Minimum: /user/repo
+        if (pathParts.length < 2) {
+            return null;
+        }
+
+        const user = pathParts[0];
+        const repo = pathParts[1];
+
+        // Handle different GitHub URL patterns:
+        // /user/repo/blob/branch/file.yml (file)
+        // /user/repo/tree/branch/folder (directory)
+        // /user/repo/tree/branch/folder/file.yml (file in directory)
+
+        let branch = 'main'; // default
+        let path = '';
+        let type: 'file' | 'directory' = 'file';
+
+        if (pathParts.length >= 4) {
+            if (pathParts[2] === 'blob') {
+                // File URL: /user/repo/blob/branch/path/to/file.yml
+                type = 'file';
+                branch = pathParts[3];
+                path = pathParts.slice(4).join('/');
+            } else if (pathParts[2] === 'tree') {
+                // Directory URL: /user/repo/tree/branch/path/to/folder
+                type = 'directory';
+                branch = pathParts[3];
+                path = pathParts.slice(4).join('/');
             }
         }
 
-        // Return original URL if not a GitHub blob URL
-        return url;
+        return {
+            user,
+            repo,
+            branch,
+            path,
+            type,
+            isGitHub: true,
+        };
     } catch (error) {
-        logger.debug(`Failed to normalize URL ${url}: ${error}`);
+        logger.debug(`Failed to parse GitHub URL ${url}: ${error}`);
+        return null;
+    }
+}
+
+/**
+ * Convert GitHub blob URLs to raw URLs for direct file access
+ */
+function normalizeGitHubUrl(url: string): string {
+    const parsed = parseGitHubUrl(url);
+
+    if (!parsed || parsed.type !== 'file') {
         return url;
     }
+
+    const rawUrl = `https://raw.githubusercontent.com/${parsed.user}/${parsed.repo}/${parsed.branch}/${parsed.path}`;
+    logger.debug(`Converted GitHub blob URL to raw URL: ${url} → ${rawUrl}`);
+    return rawUrl;
 }
 
 /**
@@ -154,12 +205,140 @@ export class LocalAgentRegistry implements AgentRegistry {
     }
 
     /**
+     * Download and cache a GitHub directory
+     */
+    private async downloadAndCacheDirectory(
+        url: string,
+        githubInfo: GitHubUrlInfo
+    ): Promise<string> {
+        try {
+            // Create cache directory
+            const cacheDir = getDextoPath('cache', 'agents');
+            if (!existsSync(cacheDir)) {
+                mkdirSync(cacheDir, { recursive: true });
+            }
+
+            // Generate cache directory name from URL using SHA-256 hash
+            const urlHash = createHash('sha256').update(url).digest('hex');
+            const cacheDirPath = path.join(cacheDir, urlHash);
+            const metaFile = path.join(cacheDirPath, '.meta.json');
+
+            // Check if cached version exists and is still valid
+            if (existsSync(cacheDirPath) && existsSync(metaFile)) {
+                try {
+                    const meta = JSON.parse(readFileSync(metaFile, 'utf-8'));
+                    const cacheAge = Date.now() - meta.timestamp;
+
+                    if (cacheAge < this.config.cacheTtl! * 1000) {
+                        logger.debug(`Using cached directory: ${cacheDirPath}`);
+                        // Return path to the main YAML file
+                        const mainYaml = path.join(cacheDirPath, 'agent.yml');
+                        if (existsSync(mainYaml)) {
+                            return mainYaml;
+                        }
+                        // Fallback to first .yml file found
+                        const files = readdirSync(cacheDirPath);
+                        const yamlFile = files.find(
+                            (f: string) => f.endsWith('.yml') || f.endsWith('.yaml')
+                        );
+                        if (yamlFile) {
+                            return path.join(cacheDirPath, yamlFile);
+                        }
+                    }
+                } catch (error) {
+                    logger.debug(`Cache meta file corrupted, re-downloading: ${error}`);
+                }
+            }
+
+            // Download fresh copy using GitHub API
+            logger.info(`Downloading directory from GitHub: ${url}`);
+
+            const apiUrl = `https://api.github.com/repos/${githubInfo.user}/${githubInfo.repo}/contents/${githubInfo.path}?ref=${githubInfo.branch}`;
+            const response = await fetch(apiUrl, {
+                headers: {
+                    Accept: 'application/vnd.github.v3+json',
+                    'User-Agent': 'dexto-agent-registry',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+            }
+
+            const contents = await response.json();
+
+            if (!Array.isArray(contents)) {
+                throw new Error('GitHub path is not a directory');
+            }
+
+            // Create cache directory
+            if (existsSync(cacheDirPath)) {
+                // Remove existing cache
+                rmSync(cacheDirPath, { recursive: true, force: true });
+            }
+            mkdirSync(cacheDirPath, { recursive: true });
+
+            let mainConfigFile: string | null = null;
+
+            // Download all files in the directory
+            for (const item of contents) {
+                if (item.type === 'file') {
+                    logger.debug(`Downloading file: ${item.name}`);
+
+                    const fileResponse = await fetch(item.download_url);
+                    if (!fileResponse.ok) {
+                        logger.warn(`Failed to download ${item.name}: ${fileResponse.status}`);
+                        continue;
+                    }
+
+                    const fileContent = await fileResponse.text();
+                    const filePath = path.join(cacheDirPath, item.name);
+                    writeFileSync(filePath, fileContent, 'utf-8');
+
+                    // Track main config file (prefer agent.yml, then first .yml file)
+                    if (item.name === 'agent.yml' || item.name === 'agent.yaml') {
+                        mainConfigFile = filePath;
+                    } else if (
+                        !mainConfigFile &&
+                        (item.name.endsWith('.yml') || item.name.endsWith('.yaml'))
+                    ) {
+                        mainConfigFile = filePath;
+                    }
+                }
+            }
+
+            if (!mainConfigFile) {
+                throw new Error('No YAML configuration file found in directory');
+            }
+
+            // Save metadata
+            writeFileSync(
+                metaFile,
+                JSON.stringify({
+                    url,
+                    timestamp: Date.now(),
+                    type: 'directory',
+                    mainConfig: path.basename(mainConfigFile),
+                }),
+                'utf-8'
+            );
+
+            logger.debug(`Cached directory: ${cacheDirPath}, main config: ${mainConfigFile}`);
+            return mainConfigFile;
+        } catch (error) {
+            throw new Error(
+                `Failed to download directory from ${url}: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+    }
+
+    /**
      * Download and cache a remote agent configuration
      */
     private async downloadAndCacheConfig(url: string): Promise<string> {
         try {
             // Create cache directory
-            const cacheDir = getSaikiPath('cache', 'agents');
+            const cacheDir = getDextoPath('cache', 'agents');
             if (!existsSync(cacheDir)) {
                 mkdirSync(cacheDir, { recursive: true });
             }
@@ -274,10 +453,22 @@ export class LocalAgentRegistry implements AgentRegistry {
         // 1. Check if it's a URL - download and cache it
         if (isUrl(nameOrPath)) {
             try {
-                const normalizedUrl = normalizeGitHubUrl(nameOrPath);
-                const cachedPath = await this.downloadAndCacheConfig(normalizedUrl);
-                logger.debug(`Resolved URL '${nameOrPath}' to cached file: ${cachedPath}`);
-                return cachedPath;
+                const githubInfo = parseGitHubUrl(nameOrPath);
+
+                if (githubInfo && githubInfo.type === 'directory') {
+                    // Handle GitHub directory URLs
+                    const cachedPath = await this.downloadAndCacheDirectory(nameOrPath, githubInfo);
+                    logger.debug(
+                        `Resolved directory URL '${nameOrPath}' to cached file: ${cachedPath}`
+                    );
+                    return cachedPath;
+                } else {
+                    // Handle single file URLs (existing behavior)
+                    const normalizedUrl = normalizeGitHubUrl(nameOrPath);
+                    const cachedPath = await this.downloadAndCacheConfig(normalizedUrl);
+                    logger.debug(`Resolved URL '${nameOrPath}' to cached file: ${cachedPath}`);
+                    return cachedPath;
+                }
             } catch (error) {
                 throw new Error(
                     `Failed to download agent from URL '${nameOrPath}': ${error instanceof Error ? error.message : String(error)}`
