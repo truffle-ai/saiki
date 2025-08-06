@@ -23,7 +23,7 @@ export async function loadEnvironmentVariables(
     // Layer 3: Global ~/.dexto/.env (lowest priority)
     const globalEnvPath = path.join(homedir(), '.dexto', '.env');
     try {
-        const globalResult = dotenv.config({ path: globalEnvPath });
+        const globalResult = dotenv.config({ path: globalEnvPath, processEnv: {} });
         if (globalResult.parsed) {
             Object.assign(env, globalResult.parsed);
         }
@@ -35,7 +35,7 @@ export async function loadEnvironmentVariables(
     if (projectRoot) {
         const projectEnvPath = path.join(projectRoot, '.env');
         try {
-            const projectResult = dotenv.config({ path: projectEnvPath });
+            const projectResult = dotenv.config({ path: projectEnvPath, processEnv: {} });
             if (projectResult.parsed) {
                 Object.assign(env, projectResult.parsed);
             }
