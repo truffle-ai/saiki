@@ -63,30 +63,6 @@ export class ConfigParseError extends ConfigurationError {
 }
 
 /**
- * Error thrown when there's an issue with environment variable expansion within the configuration.
- * This can happen if a required environment variable is missing or if its expansion fails.
- */
-export class ConfigEnvVarError extends ConfigurationError {
-    /**
-     * Creates an instance of ConfigEnvVarError.
-     * @param configPath - The path to the configuration file where the environment variable issue occurred.
-     * @param envVar - The name of the environment variable that caused the error.
-     * @param cause - Optional. A string describing the specific reason for the expansion failure (e.g., "not defined").
-     */
-    constructor(
-        configPath: string,
-        public readonly envVar: string, // Public readonly property for the specific environment variable
-        cause?: string
-    ) {
-        // Construct a specific message based on whether a cause is provided.
-        const message = cause
-            ? `Failed to expand environment variable '${envVar}': ${cause}`
-            : `Environment variable '${envVar}' is required but not set`;
-        super(message, configPath);
-    }
-}
-
-/**
  * Error thrown when the loaded configuration fails a defined validation rule.
  * This indicates that the configuration is syntactically correct but semantically invalid.
  */
