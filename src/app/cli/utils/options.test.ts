@@ -17,4 +17,12 @@ describe('validateCliOptions', () => {
         const opts = { agent: '', mode: 'cli', webPort: '8080' };
         expect(() => validateCliOptions(opts)).toThrow(ZodError);
     });
+
+    it('validates skipInteractive flag correctly', () => {
+        const optsWithSkipInteractive = { mode: 'cli', webPort: '8080', skipInteractive: true };
+        expect(() => validateCliOptions(optsWithSkipInteractive)).not.toThrow();
+
+        const optsWithoutSkipInteractive = { mode: 'cli', webPort: '8080' };
+        expect(() => validateCliOptions(optsWithoutSkipInteractive)).not.toThrow();
+    });
 });
