@@ -76,6 +76,23 @@ export function isDextoProject(startPath: string = process.cwd()): boolean {
 }
 
 /**
+ * Check if we're currently in the dexto source code itself
+ * @param startPath Starting directory path
+ * @returns True if in dexto source code (package.name === 'dexto')
+ */
+export function isDextoSourceCode(startPath: string = process.cwd()): boolean {
+    const projectRoot = getDextoProjectRoot(startPath);
+    if (!projectRoot) return false;
+
+    try {
+        const pkg = JSON.parse(readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
+        return pkg.name === 'dexto';
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Get dexto project root (or null if not in project)
  * @param startPath Starting directory path
  * @returns Project root directory or null
