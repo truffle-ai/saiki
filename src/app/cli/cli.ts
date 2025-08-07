@@ -7,8 +7,12 @@ import { parseInput } from './interactive-commands/command-parser.js';
 import { executeCommand } from './interactive-commands/commands.js';
 import { getDextoPath } from '@core/utils/path.js';
 import { registerGracefulShutdown } from '../utils/graceful-shutdown.js';
-import { ConfigurationError } from '@core/error/index.js';
-import { UnknownProviderError, UnknownModelError } from '@core/llm/errors.js';
+import {
+    DextoRuntimeError,
+    DextoValidationError,
+    LLMErrorCode,
+    ErrorScope,
+} from '@core/errors/index.js';
 
 /**
  * Find and load the most recent session based on lastActivity.
@@ -210,12 +214,15 @@ export async function startHeadlessCli(agent: DextoAgent, prompt: string): Promi
             // await agent.resetConversation();
             await agent.run(prompt);
         }
-    } catch (error) {
-        if (error instanceof UnknownProviderError) {
-            logger.error(`Provider error: ${error.message}`, null, 'red');
-        } else if (error instanceof UnknownModelError) {
-            logger.error(`Model error: ${error.message}`, null, 'red');
-        } else if (error instanceof ConfigurationError) {
+    } catch (error: unknown) {
+        if (error instanceof DextoRuntimeError && error.code === LLMErrorCode.MODEL_UNKNOWN) {
+            logger.error(`LLM error: ${error.message}`, null, 'red');
+        } else if (error instanceof DextoValidationError) {
+            logger.error(`Validation failed:`, null, 'red');
+            error.errors.forEach((err) => {
+                logger.error(`  - ${err.message}`, null, 'red');
+            });
+        } else if (error instanceof DextoRuntimeError && error.scope === ErrorScope.CONFIG) {
             logger.error(`Configuration error: ${error.message}`, null, 'red');
         } else {
             logger.error(
