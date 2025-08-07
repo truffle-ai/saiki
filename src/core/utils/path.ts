@@ -205,7 +205,6 @@ export function resolveBundledScript(scriptPath: string): string {
         const require = createRequire(import.meta.url);
         const packageJsonPath = require.resolve('dexto/package.json');
         const packageRoot = path.dirname(packageJsonPath);
-        console.log(`The resolve bundled script path is ${path.resolve(packageRoot, scriptPath)}`);
         return path.resolve(packageRoot, scriptPath);
     } catch {
         // Fallback for development

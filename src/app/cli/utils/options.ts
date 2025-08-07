@@ -31,7 +31,11 @@ export function validateCliOptions(opts: any): void {
         provider: z.string().optional(),
         model: z.string().optional(),
         router: z.enum(['vercel', 'in-built']).optional(),
-        skipInteractive: z.boolean().optional().default(false),
+        skipInteractive: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe('Skip interactive prompts and fail instead'),
     });
 
     // Basic semantic validation
