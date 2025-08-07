@@ -82,7 +82,7 @@ describe('validateInputForLLM', () => {
                         filename: 'audio.mp3',
                     },
                 },
-                { provider: 'openai', model: 'gpt-4o' } // This model doesn't support audio
+                { provider: 'xai', model: 'grok-4' } // This model doesn't support audio
             );
 
             expect(result.ok).toBe(false);
@@ -263,7 +263,7 @@ describe('validateInputForLLM', () => {
                         filename: 'audio.mp3',
                     },
                 },
-                { provider: 'openai', model: 'gpt-4o' } // This model doesn't support audio
+                { provider: 'xai', model: 'grok-4' } // This model doesn't support audio
             );
 
             expect(result.ok).toBe(false);
