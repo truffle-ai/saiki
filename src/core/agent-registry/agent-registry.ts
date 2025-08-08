@@ -14,7 +14,8 @@ import {
     AgentRegistryEntry,
     AgentRegistryConfig,
     AgentRegistryConfigSchema,
-    RawToRegistryEntrySchema,
+    RawAgentData,
+    RawAgentDataSchema,
 } from './types.js';
 
 /**
@@ -178,13 +179,19 @@ export class LocalAgentRegistry implements AgentRegistry {
             const agents: Record<string, AgentRegistryEntry> = {};
 
             for (const [key, rawAgentData] of Object.entries(rawAgents)) {
-                // Validate and transform using Zod schema
-                const transformedAgent = RawToRegistryEntrySchema.parse(rawAgentData);
+                // Validate raw agent data
+                let validatedRawAgent: RawAgentData;
+                try {
+                    validatedRawAgent = RawAgentDataSchema.parse(rawAgentData);
+                } catch (error) {
+                    logger.debug(`Failed to parse agent '${key}' in registry: ${error}`);
+                    continue; // Skip this agent if it doesn't match the schema
+                }
 
                 // Resolve config file path using bundled script resolution
                 let configPath: string;
                 try {
-                    configPath = resolveBundledScript(`agents/${transformedAgent.configFile}`);
+                    configPath = resolveBundledScript(`agents/${validatedRawAgent.configFile}`);
                 } catch (error) {
                     logger.debug(`Failed to resolve config for agent '${key}': ${error}`);
                     continue; // Skip this agent if config can't be resolved
@@ -192,7 +199,7 @@ export class LocalAgentRegistry implements AgentRegistry {
 
                 // Create final registry entry with resolved config path
                 const entry: AgentRegistryEntry = {
-                    ...transformedAgent,
+                    ...validatedRawAgent,
                     configFile: configPath,
                 };
 

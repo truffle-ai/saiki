@@ -418,7 +418,8 @@ program
                     displayPath = resolveConfigPath(configPath);
                 }
             } else {
-                displayPath = resolveConfigPath(configPath);
+                // When configPath is undefined, resolveConfigPath will use default behavior
+                displayPath = resolveConfigPath(undefined);
             }
 
             console.log(`🚀 Initializing Saiki with config: ${displayPath}`);

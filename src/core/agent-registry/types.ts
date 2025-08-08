@@ -4,6 +4,7 @@
 
 import { z } from 'zod';
 
+// TODO: Ideally, we should unify this with the agentCard schema to have a consistent agent type for all discovery use cases.
 // Base schema for agent metadata
 const BaseAgentSchema = z.object({
     name: z.string().describe('Unique identifier for the agent'),
@@ -19,28 +20,17 @@ const BaseAgentSchema = z.object({
 export const RawAgentDataSchema = BaseAgentSchema.extend({
     configFile: z
         .string()
-        .describe('Local path to the agent configuration (relative to agents directory)'),
+        .describe('Relative path to the agent configuration (from agents directory)'),
 }).strict();
 
 export type RawAgentData = z.output<typeof RawAgentDataSchema>;
 
-// Schema for processed agent registry entries - derived from raw data with additional fields
+// Schema for processed agent registry entries with resolved absolute paths
 export const AgentRegistryEntrySchema = BaseAgentSchema.extend({
     configFile: z.string().describe('Absolute path to the agent configuration file'),
-    source: z
-        .enum(['registry', 'url', 'local'])
-        .describe('Whether this is a registry agent, direct URL, or local file'),
 }).strict();
 
 export type AgentRegistryEntry = z.output<typeof AgentRegistryEntrySchema>;
-
-// Transformation schema that converts RawAgentData to AgentRegistryEntry
-export const RawToRegistryEntrySchema = RawAgentDataSchema.transform((rawData) => ({
-    ...rawData,
-    source: 'registry' as const,
-}));
-
-export type RawToRegistryEntry = z.output<typeof RawToRegistryEntrySchema>;
 
 export interface AgentRegistry {
     /** Get all available agents */
@@ -58,10 +48,6 @@ export interface AgentRegistry {
 
 export const AgentRegistryConfigSchema = z
     .object({
-        registryAgents: z
-            .record(z.string(), AgentRegistryEntrySchema)
-            .describe('Local registry agents')
-            .default({}),
         cacheTtl: z
             .number()
             .positive()
