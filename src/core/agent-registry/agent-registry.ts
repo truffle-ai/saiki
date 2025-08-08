@@ -56,28 +56,44 @@ function parseGitHubUrl(url: string): GitHubUrlInfo | null {
             return null;
         }
 
-        const user = pathParts[0];
-        const repo = pathParts[1];
+        const userPart = pathParts[0];
+        const repoPart = pathParts[1];
+        if (
+            typeof userPart !== 'string' ||
+            typeof repoPart !== 'string' ||
+            !userPart ||
+            !repoPart
+        ) {
+            return null;
+        }
+        const user: string = userPart;
+        const repo: string = repoPart;
 
         // Handle different GitHub URL patterns:
         // /user/repo/blob/branch/file.yml (file)
         // /user/repo/tree/branch/folder (directory)
         // /user/repo/tree/branch/folder/file.yml (file in directory)
 
-        let branch = 'main'; // default
-        let path = '';
+        let branch: string = 'main'; // default
+        let path: string = '';
         let type: 'file' | 'directory' = 'file';
 
         if (pathParts.length >= 4) {
             if (pathParts[2] === 'blob') {
                 // File URL: /user/repo/blob/branch/path/to/file.yml
                 type = 'file';
-                branch = pathParts[3];
+                const branchCandidate = pathParts[3];
+                if (typeof branchCandidate === 'string' && branchCandidate.length > 0) {
+                    branch = branchCandidate;
+                }
                 path = pathParts.slice(4).join('/');
             } else if (pathParts[2] === 'tree') {
                 // Directory URL: /user/repo/tree/branch/path/to/folder
                 type = 'directory';
-                branch = pathParts[3];
+                const branchCandidate = pathParts[3];
+                if (typeof branchCandidate === 'string' && branchCandidate.length > 0) {
+                    branch = branchCandidate;
+                }
                 path = pathParts.slice(4).join('/');
             }
         }
@@ -452,6 +468,11 @@ export class LocalAgentRegistry implements AgentRegistry {
 
         // 1. Check if it's a URL - download and cache it
         if (isUrl(nameOrPath)) {
+            // Mark remote URL resolution as experimental for DX clarity
+            logger.warn(
+                `Experimental: resolving agent from remote URL '${nameOrPath}'. ` +
+                    `Please use only for trusted sources.`
+            );
             try {
                 const githubInfo = parseGitHubUrl(nameOrPath);
 

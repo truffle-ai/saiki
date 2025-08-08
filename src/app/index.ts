@@ -164,11 +164,13 @@ program
 
             console.log(chalk.dim(`Total: ${agents.length} agents available`));
             console.log(chalk.dim('\nUsage examples:'));
-            console.log(chalk.dim(`  npx @truffle-ai/saiki ${agents[0]?.name || 'github-agent'}`));
             console.log(
-                chalk.dim(`  npx @truffle-ai/saiki --agent ${agents[0]?.name || 'github-agent'}`)
+                chalk.dim(`  npx @truffle-ai/dexto -a ${agents[0]?.name || 'github-agent'}`)
             );
-            console.log(chalk.dim('  npx @truffle-ai/saiki --agent /path/to/custom-agent.yml'));
+            console.log(
+                chalk.dim(`  npx @truffle-ai/dexto --agent ${agents[0]?.name || 'github-agent'}`)
+            );
+            console.log(chalk.dim('  npx @truffle-ai/dexto --agent /path/to/custom-agent.yml'));
         } catch (error) {
             console.error(
                 `❌ Failed to list agents: ${error instanceof Error ? error.message : String(error)}`
@@ -262,8 +264,8 @@ program
             'build complex AI applications like Cursor, and more.\n\n' +
             // TODO: Add `dexto tell me about your cli` starter prompt
             'Run dexto interactive CLI with `dexto` or run a one-shot prompt with `dexto <prompt>`\n' +
-            'Use available agents: `saiki github-agent`, `saiki database-agent`, etc.\n' +
-            'List all available agents with `saiki list-agents`\n' +
+            'Use available agents: `dexto -a github-agent`, `dexto -a database-agent`, etc.\n' +
+            'List all available agents with `dexto list-agents`\n' +
             'Start with a new session using `dexto --new-session [sessionId]`\n' +
             'Run dexto web UI with `dexto --mode web`\n' +
             'Run dexto as a server (REST APIs + WebSockets) with `dexto --mode server`\n' +
@@ -320,35 +322,8 @@ program
         const opts = program.opts();
         let headlessInput = prompt.join(' ') || undefined;
 
-        // ——— Handle agent name as first argument ———
-        // Check if the first argument might be an agent name (not a regular prompt)
-        if (prompt.length > 0) {
-            const firstArg = prompt[0];
-            const registry = getDefaultAgentRegistry();
-
-            try {
-                // Check if the first argument is an agent name
-                if (firstArg && (await registry.hasAgent(firstArg))) {
-                    logger.debug(`Detected agent name '${firstArg}' as first argument`);
-
-                    // Override the agent option
-                    opts.agent = firstArg;
-
-                    // Remove the agent name from the prompt and reconstruct headlessInput
-                    const remainingPrompt = prompt.slice(1);
-                    headlessInput = remainingPrompt.join(' ') || undefined;
-
-                    logger.info(
-                        `Using agent '${firstArg}' with prompt: "${headlessInput || 'interactive mode'}"`
-                    );
-                }
-            } catch (_error) {
-                // If agent resolution fails, treat it as a regular prompt
-                logger.debug(
-                    `First argument '${firstArg}' is not an agent name, treating as prompt`
-                );
-            }
-        }
+        // Note: Agent selection must be passed via -a/--agent. We no longer interpret
+        // the first positional argument as an agent name to avoid ambiguity with prompts.
 
         // ——— Infer provider & API key from model ———
         if (opts.model) {
