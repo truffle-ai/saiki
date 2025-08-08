@@ -422,8 +422,7 @@ program
                 displayPath = resolveConfigPath(undefined);
             }
 
-            console.log(`🚀 Initializing Saiki with config: ${displayPath}`);
-            await loadAgentConfig(configPath);
+            console.log(`🚀 Initializing Dexto with config: ${displayPath}`);
             // Set run mode for tool confirmation provider
             process.env.DEXTO_RUN_MODE = opts.mode;
 

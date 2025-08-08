@@ -129,10 +129,26 @@ function normalizeGitHubUrl(url: string): string {
 }
 
 /**
- * Check if a string looks like a file path (contains path separators)
+ * Check if a string looks like a file path
+ * More robust than just checking for dots to avoid false positives with agent names like "search.v1"
  */
 function isPath(str: string): boolean {
-    return str.includes('/') || str.includes('\\') || str.includes('.');
+    // Check for absolute paths first
+    if (path.isAbsolute(str)) {
+        return true;
+    }
+
+    // Check for path separators (relative paths)
+    if (/[\\/]/.test(str)) {
+        return true;
+    }
+
+    // Check for file extensions (but not just any dot)
+    if (/\.(ya?ml|json)$/i.test(str)) {
+        return true;
+    }
+
+    return false;
 }
 
 export class LocalAgentRegistry implements AgentRegistry {
@@ -382,7 +398,20 @@ export class LocalAgentRegistry implements AgentRegistry {
                         return cacheFile;
                     }
                 } catch (error) {
-                    logger.debug(`Cache meta file corrupted, re-downloading: ${error}`);
+                    logger.warn(
+                        `Cache metadata corrupted for ${url}, cleaning up and re-downloading: ${error}`
+                    );
+                    // Clean up corrupted cache files to avoid mixing stale artifacts
+                    try {
+                        if (existsSync(cacheFile)) {
+                            rmSync(cacheFile);
+                        }
+                        if (existsSync(metaFile)) {
+                            rmSync(metaFile);
+                        }
+                    } catch (cleanupError) {
+                        logger.debug(`Failed to clean up corrupted cache files: ${cleanupError}`);
+                    }
                 }
             }
 
