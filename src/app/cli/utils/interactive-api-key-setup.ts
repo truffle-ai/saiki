@@ -147,7 +147,7 @@ function showManualSetupInstructions(): void {
         `   # GROQ_API_KEY=your_key_here`,
         ``,
         `${chalk.bold('3. Run dexto again:')}`,
-        `   npx dexto`,
+        `   dexto | npx dexto`,
         ``,
         `${chalk.dim('💡 Tip: Start with Google Gemini for a free experience!')}`,
     ].join('\n');

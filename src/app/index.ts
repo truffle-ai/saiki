@@ -74,7 +74,8 @@ program
         'The application in which dexto should talk to you - cli | web | server | discord | telegram | mcp',
         'cli'
     )
-    .option('--web-port <port>', 'optional port for the web UI', '3000');
+    .option('--web-port <port>', 'optional port for the web UI', '3000')
+    .option('--skip-interactive', 'Disable interactive prompts (fail instead of prompting)');
 
 // 2) `create-app` SUB-COMMAND
 program
@@ -382,6 +383,19 @@ program
             // Check for first-time user scenario BEFORE loading config
             const resolvedPath = resolveConfigPath(opts.agent);
             if (isFirstTimeUserScenario(resolvedPath)) {
+                if (opts.skipInteractive) {
+                    console.error(
+                        chalk.red(
+                            '❌ First-time setup required but --skip-interactive flag is set.'
+                        )
+                    );
+                    console.error(
+                        chalk.dim(
+                            'Please run without --skip-interactive to complete setup, or provide a valid config file.'
+                        )
+                    );
+                    process.exit(1);
+                }
                 // Handle first-time setup (provider selection, config creation, API key)
                 const setupComplete = await handleFirstTimeSetup();
                 if (!setupComplete) {
@@ -396,7 +410,7 @@ program
             const mergedConfig = applyCLIOverrides(rawConfig, opts as CLIConfigOverrides);
 
             // Validate with interactive setup if needed (for API key issues)
-            validatedConfig = await validateAgentConfig(mergedConfig, true);
+            validatedConfig = await validateAgentConfig(mergedConfig, !opts.skipInteractive);
         } catch (err) {
             // Config loading failed completely
             console.error(`❌ Failed to load configuration: ${err}`);

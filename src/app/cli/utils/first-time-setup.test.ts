@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 import { isFirstTimeUserScenario, showProviderPicker } from './first-time-setup.js';
-import { getBundledConfigPath, getUserConfigPath } from '@core/utils/path.js';
 
 // Mock @clack/prompts to avoid interactive prompts in tests
 vi.mock('@clack/prompts', () => ({
@@ -8,22 +7,43 @@ vi.mock('@clack/prompts', () => ({
     isCancel: vi.fn(),
 }));
 
+// Mock path utilities to control the test environment
+vi.mock('@core/utils/path.js', async () => {
+    const actual = await vi.importActual('@core/utils/path.js');
+    return {
+        ...actual,
+        isDextoSourceCode: vi.fn(),
+        isUsingBundledConfig: vi.fn(),
+    };
+});
+
 describe('First-time setup utilities', () => {
     describe('isFirstTimeUserScenario', () => {
-        it('returns true when using actual bundled config path', () => {
-            // Get the real bundled config path
-            const bundledPath = getBundledConfigPath();
-            expect(isFirstTimeUserScenario(bundledPath)).toBe(true);
+        it('returns true when using bundled config and not in dexto source', async () => {
+            const { isDextoSourceCode, isUsingBundledConfig } = await import('@core/utils/path.js');
+            vi.mocked(isDextoSourceCode).mockReturnValue(false);
+            vi.mocked(isUsingBundledConfig).mockReturnValue(true);
+
+            const result = isFirstTimeUserScenario('/some/bundled/config/path');
+            expect(result).toBe(true);
         });
 
-        it('returns false when using user config path', () => {
-            const userPath = getUserConfigPath();
-            expect(isFirstTimeUserScenario(userPath)).toBe(false);
+        it('returns false when in dexto source code (even with bundled config)', async () => {
+            const { isDextoSourceCode, isUsingBundledConfig } = await import('@core/utils/path.js');
+            vi.mocked(isDextoSourceCode).mockReturnValue(true);
+            vi.mocked(isUsingBundledConfig).mockReturnValue(true);
+
+            const result = isFirstTimeUserScenario('/dexto/source/agents/agent.yml');
+            expect(result).toBe(false);
         });
 
-        it('returns false when using any other config path', () => {
-            const projectPath = '/some/project/agents/agent.yml';
-            expect(isFirstTimeUserScenario(projectPath)).toBe(false);
+        it('returns false when not using bundled config', async () => {
+            const { isDextoSourceCode, isUsingBundledConfig } = await import('@core/utils/path.js');
+            vi.mocked(isDextoSourceCode).mockReturnValue(false);
+            vi.mocked(isUsingBundledConfig).mockReturnValue(false);
+
+            const result = isFirstTimeUserScenario('/user/config/path');
+            expect(result).toBe(false);
         });
     });
 

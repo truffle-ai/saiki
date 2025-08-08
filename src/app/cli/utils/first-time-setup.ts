@@ -3,7 +3,12 @@ import * as path from 'path';
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import { parseDocument } from 'yaml';
-import { getBundledConfigPath, isUsingBundledConfig, getUserConfigPath } from '@core/utils/path.js';
+import {
+    getBundledConfigPath,
+    isUsingBundledConfig,
+    getUserConfigPath,
+    isDextoSourceCode,
+} from '@core/utils/path.js';
 import { LLMProvider, getDefaultModelForProvider } from '@core/index.js';
 import pkg from '../../../../package.json' with { type: 'json' };
 import { getPrimaryApiKeyEnvVar } from '@core/utils/api-key-resolver.js';
@@ -12,10 +17,16 @@ import { applyLayeredEnvironmentLoading } from '@core/utils/env.js';
 
 /**
  * Detects if this is a first-time user scenario.
- * Simply checks if we're using the bundled config.
- * If yes, it means no user or project config exists yet.
+ * Checks if we're using the bundled config, but excludes the case
+ * where we're in the dexto source code (development environment).
  */
 export function isFirstTimeUserScenario(configPath: string): boolean {
+    // If we're in dexto source code, never trigger first-time setup
+    if (isDextoSourceCode()) {
+        return false;
+    }
+
+    // Otherwise, use the existing bundled config check
     return isUsingBundledConfig(configPath);
 }
 

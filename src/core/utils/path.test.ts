@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import {
     walkUpDirectories,
     isDextoProject,
+    isDextoSourceCode,
     getDextoProjectRoot,
     getDextoPath,
     resolveConfigPath,
@@ -119,6 +120,11 @@ describe('isDextoProject and getDextoProjectRoot', () => {
             const result = getDextoProjectRoot(nestedDir);
             expect(result).toBe(tempDir);
         });
+
+        it('isDextoSourceCode returns false for project with dexto dependency', () => {
+            const result = isDextoSourceCode(tempDir);
+            expect(result).toBe(false);
+        });
     });
 
     describe('with dexto as devDependency', () => {
@@ -158,6 +164,11 @@ describe('isDextoProject and getDextoProjectRoot', () => {
             const result = getDextoProjectRoot(tempDir);
             expect(result).toBe(tempDir);
         });
+
+        it('isDextoSourceCode returns true for dexto source project', () => {
+            const result = isDextoSourceCode(tempDir);
+            expect(result).toBe(true);
+        });
     });
 
     describe('non-dexto project', () => {
@@ -174,6 +185,11 @@ describe('isDextoProject and getDextoProjectRoot', () => {
 
         it('returns false for non-dexto project', () => {
             const result = isDextoProject(tempDir);
+            expect(result).toBe(false);
+        });
+
+        it('isDextoSourceCode returns false for non-dexto project', () => {
+            const result = isDextoSourceCode(tempDir);
             expect(result).toBe(false);
         });
 
