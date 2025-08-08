@@ -55,6 +55,10 @@ program
         'Agent name (from registry) or path to agent config file',
         DEFAULT_CONFIG_PATH
     )
+    .option(
+        '-p, --prompt <text>',
+        'One-shot prompt text. Alternatively provide a single quoted string as positional argument.'
+    )
     .option('-s, --strict', 'Require all server connections to succeed')
     .option('--no-verbose', 'Disable verbose output')
     .option('-m, --model <model>', 'Specify the LLM model to use. ')
@@ -263,7 +267,7 @@ program
         'Dexto CLI allows you to talk to Dexto, build custom AI Agents, ' +
             'build complex AI applications like Cursor, and more.\n\n' +
             // TODO: Add `dexto tell me about your cli` starter prompt
-            'Run dexto interactive CLI with `dexto` or run a one-shot prompt with `dexto <prompt>`\n' +
+            'Run dexto interactive CLI with `dexto` or run a one-shot prompt with `dexto -p "<prompt>"` or `dexto "<prompt>"`\n' +
             'Use available agents: `dexto -a github-agent`, `dexto -a database-agent`, etc.\n' +
             'List all available agents with `dexto list-agents`\n' +
             'Start with a new session using `dexto --new-session [sessionId]`\n' +
@@ -320,7 +324,22 @@ program
         }
 
         const opts = program.opts();
-        let headlessInput = prompt.join(' ') || undefined;
+        let headlessInput: string | undefined = undefined;
+
+        // Prefer explicit -p/--prompt for headless one-shot
+        if (opts.prompt) {
+            headlessInput = String(opts.prompt);
+        } else if (prompt.length > 0) {
+            // Enforce quoted single positional argument for headless mode
+            if (prompt.length === 1) {
+                headlessInput = prompt[0];
+            } else {
+                console.error(
+                    '❌ For headless one-shot mode, pass the prompt in double quotes as a single argument (e.g., "say hello") or use -p/--prompt.'
+                );
+                process.exit(1);
+            }
+        }
 
         // Note: Agent selection must be passed via -a/--agent. We no longer interpret
         // the first positional argument as an agent name to avoid ambiguity with prompts.
