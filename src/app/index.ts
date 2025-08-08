@@ -21,6 +21,7 @@ import {
     LLMProvider,
     getDefaultAgentRegistry,
 } from '@core/index.js';
+import { DEFAULT_CONFIG_PATH } from '@core/utils/path.js';
 import type { AgentConfig } from '@core/agent/schemas.js';
 import { resolveApiKeyForProvider } from '@core/utils/api-key-resolver.js';
 import { startAiCli, startHeadlessCli } from './cli/cli.js';
@@ -29,7 +30,7 @@ import { startDiscordBot } from './discord/bot.js';
 import { startTelegramBot } from './telegram/bot.js';
 import { validateCliOptions, handleCliOptionsError } from './cli/utils/options.js';
 import { validateAgentConfig } from './cli/utils/config-validation.js';
-import { applyCLIOverrides } from './config/cli-overrides.js';
+import { applyCLIOverrides, CLIConfigOverrides } from './config/cli-overrides.js';
 import { isFirstTimeUserScenario, handleFirstTimeSetup } from './cli/utils/first-time-setup.js';
 import { getPort } from '@core/utils/port-utils.js';
 import {
@@ -46,7 +47,6 @@ import { startNextJsWebServer } from './web.js';
 import { initializeMcpServer, createMcpTransport } from './api/mcp/mcp_handler.js';
 import { createAgentCard } from '@core/config/agentCard.js';
 import { initializeMcpToolAggregationServer } from './api/mcp/tool-aggregation-handler.js';
-import { CLIConfigOverrides } from './config/cli-overrides.js';
 
 const program = new Command();
 
@@ -302,30 +302,16 @@ program
         const hasApiKey = commonProviders.some((provider) => resolveApiKeyForProvider(provider));
 
         if (!hasApiKey) {
-            // Import the interactive setup function dynamically to avoid loading overhead
-            const { interactiveApiKeySetup } = await import(
-                './cli/utils/interactive-api-key-setup.js'
+            console.log(
+                chalk.yellow(
+                    '⚠️  No API keys found for common LLM providers (OpenAI, Google, Anthropic, etc.)'
+                )
             );
-
-            const setupResult = await interactiveApiKeySetup();
-
-            if (!setupResult.success) {
-                if (setupResult.skipSetup) {
-                    // User chose manual setup - show message and exit gracefully
-                    console.log(
-                        chalk.dim('\n👋 Run dexto again once you have set up your API key!')
-                    );
-                } else {
-                    // Setup failed or was cancelled
-                    console.error(chalk.red('\n❌ API key setup required to continue.'));
-                }
-                process.exit(0);
-            }
-
-            // Reload environment variables after setup
-            dotenv.config();
-
-            console.log(chalk.green('\n✨ API key configured! Starting Dexto...\n'));
+            console.log(
+                chalk.dim(
+                    'You may need to set up API keys in your .env file to use certain features.'
+                )
+            );
         }
 
         const opts = program.opts();
@@ -436,15 +422,7 @@ program
             }
 
             console.log(`🚀 Initializing Saiki with config: ${displayPath}`);
-            const cfg = await loadAgentConfig(configPath);
-
-            // Apply CLI overrides to config before passing to core layer
-            const cliOverrides: CLIConfigOverrides = {
-                model: opts.model,
-                provider: opts.provider,
-                router: opts.router,
-                apiKey: opts.apiKey,
-            };
+            await loadAgentConfig(configPath);
             // Set run mode for tool confirmation provider
             process.env.DEXTO_RUN_MODE = opts.mode;
 
