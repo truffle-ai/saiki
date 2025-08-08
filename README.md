@@ -281,7 +281,7 @@ Arguments:
 
 Options:
   -v, --version             output the current version
-  -a, --agent <path>        Path to agent config file (default: "agents/agent.yml")
+  -a, --agent <path>        Path to agent config file
   -s, --strict              Require all server connections to succeed
   --no-verbose              Disable verbose output
   -m, --model <model>       Specify the LLM model to use.

@@ -10,7 +10,7 @@ This part tests the functions/classes/types that we export from dexto for usage 
     ```  
     This produces something like  
     ```
-    truffle-ai-dexto-0.2.1.tgz
+    dexto-0.2.1.tgz
     ```
 
 2.  Spin up a fresh, disposable test project  
@@ -21,7 +21,7 @@ This part tests the functions/classes/types that we export from dexto for usage 
 
 3.  Install your packaged tarball  
     ```bash
-    npm install /full/path/to/dexto/truffle-ai-dexto-0.2.1.tgz
+    npm install /full/path/to/dexto/dexto*.tgz
     ```
 
 4.  Verify CJS import resolution  
@@ -87,8 +87,8 @@ cd <location of dexto root directory>
 Install again
 ```
 npm run build && npm pack
-# this will create a tarball truffle-ai-dexto.<>.tgz
-npm install -g ./truffle-ai-dexto.0.2.1.tgz
+# this will create a tarball dexto.<>.tgz
+npm install -g dexto.*.tgz
 ```
 
 Now go to another directory and test

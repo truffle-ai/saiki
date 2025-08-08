@@ -12,7 +12,5 @@ export {
     postInitDexto,
     createDextoDirectories,
     createDextoConfigFile,
-    updateDextoConfigFile,
     createDextoExampleFile,
-    updateEnvFile,
 } from './init.js';

@@ -5,7 +5,6 @@ import { logger } from '../logger/index.js';
 import { resolveConfigPath } from '../utils/path.js';
 import { resolveAgentConfig } from '../agent-registry/index.js';
 import {
-    ConfigEnvVarError,
     ConfigFileNotFoundError,
     ConfigFileReadError,
     ConfigFileWriteError,
@@ -18,56 +17,20 @@ import {
  * @returns Complete agent configuration
  */
 
-// Expand $VAR and ${VAR} in all string values recursively
-function expandEnvVars(config: any): any {
-    if (typeof config === 'string') {
-        const expanded = config.replace(
-            /\$([A-Z_][A-Z0-9_]*)|\${([A-Z_][A-Z0-9_]*)}/gi,
-            (_, v1, v2) => {
-                const varName = v1 || v2;
-                const value = process.env[varName];
-
-                if (value === undefined || value === '') {
-                    throw new ConfigEnvVarError(config, varName, 'not defined');
-                }
-                logger.info(varName, value);
-
-                return value;
-            }
-        );
-
-        // Try to convert numeric strings to numbers
-        if (expanded !== config && /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(expanded.trim())) {
-            return Number(expanded); // handles int, float, sci-notation
-        }
-
-        return expanded;
-    } else if (Array.isArray(config)) {
-        return config.map(expandEnvVars);
-    } else if (typeof config === 'object' && config !== null) {
-        const result: any = {};
-        for (const key in config) {
-            result[key] = expandEnvVars(config[key]);
-        }
-        return result;
-    }
-    return config;
-}
-
 /**
  * Asynchronously loads and processes an agent configuration file.
  * This function orchestrates the steps of resolving the file path, checking its existence,
- * reading its content, parsing it as YAML, and expanding any environment variables within it.
+ * reading its content, and parsing it as YAML. Environment variable expansion is handled
+ * by the Zod schema during validation.
  * Each step is wrapped in a try-catch block to gracefully handle errors and throw specific,
  * custom error types for better error identification and handling by the caller.
  *
  * @param configPath - An optional string representing the path to the configuration file.
  * If not provided, a default path will be resolved internally.
- * @returns A Promise that resolves to the fully loaded and processed `AgentConfig` object.
+ * @returns A Promise that resolves to the raw parsed `AgentConfig` object.
  * @throws {ConfigFileNotFoundError} If the configuration file does not exist at the resolved path.
  * @throws {ConfigFileReadError} If an error occurs while attempting to read the configuration file (e.g., permissions issues).
  * @throws {ConfigParseError} If the content of the configuration file is not valid YAML.
- * @throws {ConfigEnvVarError} If there's a problem expanding environment variables within the parsed configuration.
  */
 export async function loadAgentConfig(configPath?: string): Promise<AgentConfig> {
     let absolutePath: string;
@@ -127,23 +90,8 @@ export async function loadAgentConfig(configPath?: string): Promise<AgentConfig>
         );
     }
 
-    // --- Step 4: Expand environment variables within the parsed configuration ---
-    try {
-        // Process the parsed configuration object to replace any placeholders
-        // with their corresponding environment variable values.
-        return expandEnvVars(config);
-    } catch (error) {
-        // If an environment variable is missing or its expansion fails,
-        // throw a `ConfigEnvVarError`. The 'unknown' placeholder suggests
-        // that the `expandEnvVars` utility might not directly return the
-        // problematic variable's name, but it's good to indicate it could be
-        // extracted if available.
-        throw new ConfigEnvVarError(
-            absolutePath,
-            'unknown', // Ideally, `expandEnvVars` would pass the problematic env var name
-            error instanceof Error ? error.message : String(error)
-        );
-    }
+    // Return raw config - environment variable expansion handled by Zod schema
+    return config;
 }
 
 /**

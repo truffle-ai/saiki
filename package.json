@@ -1,6 +1,6 @@
 {
     "name": "dexto",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "engines": {
         "node": ">=20.0.0",
         "npm": ">=8.3.0"
@@ -56,7 +56,8 @@
         "cli",
         "natural-language",
         "openai",
-        "truffle-ai"
+        "truffle-ai",
+        "dexto"
     ],
     "author": "",
     "license": "Elastic-2.0",
